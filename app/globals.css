@@ -1,0 +1,28 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg: #eef4fa;
+  --surface: #ffffff;
+  --ink: #102033;
+  --muted: #5b6f86;
+  --line: #dce7f2;
+  --primary: #1463ff;
+}
+
+[data-theme="night"] {
+  --bg: #07111d;
+  --surface: #0d2132;
+  --ink: #f8fbff;
+  --muted: #9db7ca;
+  --line: #1b3b52;
+  --primary: #14b8a6;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: "Segoe UI", "Noto Sans Thai", Arial, sans-serif;
+}
