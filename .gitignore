@@ -8,3 +8,6 @@ prisma/dev.db-journal
 storage/
 .superpowers/
 .npm-cache/
+pw-browsers/
+.next-e2e/
+test-results/

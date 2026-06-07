@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CM Landing Page Style Options</title>
+  <style>
+    :root {
+      --ink: #111827;
+      --muted: #667085;
+      --line: #d9e0e8;
+      --panel: #ffffff;
+      --bg: #f4f7fb;
+      --blue: #1463ff;
+      --teal: #10a78f;
+      --amber: #f59e0b;
+      --red: #dc2626;
+      --green: #16a34a;
+      font-family: "Segoe UI", "Noto Sans Thai", Arial, sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: #eef3f8;
+      color: var(--ink);
+    }
+
+    .page {
+      min-height: 100vh;
+      padding: 28px;
+    }
+
+    .intro {
+      max-width: 1180px;
+      margin: 0 auto 22px;
+      display: flex;
+      justify-content: space-between;
+      gap: 18px;
+      align-items: end;
+    }
+
+    h1 {
+      margin: 0 0 6px;
+      font-size: clamp(28px, 4vw, 44px);
+      line-height: 1.08;
+      letter-spacing: 0;
+    }
+
+    .intro p {
+      margin: 0;
+      color: var(--muted);
+      max-width: 720px;
+      line-height: 1.6;
+    }
+
+    .hint {
+      flex: 0 0 auto;
+      border: 1px solid #c9d5e4;
+      background: #fff;
+      border-radius: 8px;
+      padding: 10px 12px;
+      color: #334155;
+      font-size: 14px;
+    }
+
+    .style-grid {
+      max-width: 1180px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 18px;
+    }
+
+    .option {
+      background: #fff;
+      border: 1px solid #d7e0ea;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 16px 40px rgba(15, 23, 42, 0.08);
+    }
+
+    .option > header {
+      padding: 16px;
+      border-bottom: 1px solid #e5ebf2;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      height: 26px;
+      border-radius: 999px;
+      padding: 0 10px;
+      font-size: 12px;
+      font-weight: 700;
+      margin-bottom: 10px;
+    }
+
+    .option h2 {
+      margin: 0 0 6px;
+      font-size: 20px;
+      letter-spacing: 0;
+    }
+
+    .option header p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.55;
+      font-size: 14px;
+    }
+
+    .screen {
+      min-height: 620px;
+      padding: 14px;
+    }
+
+    .mini-app {
+      min-height: 590px;
+      border: 1px solid rgba(255, 255, 255, 0.4);
+      border-radius: 8px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .topbar {
+      height: 52px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 16px;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .nav-actions {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .btn {
+      border: 0;
+      border-radius: 6px;
+      height: 32px;
+      padding: 0 10px;
+      font-weight: 700;
+      font-size: 12px;
+      font-family: inherit;
+    }
+
+    .hero {
+      padding: 18px;
+    }
+
+    .hero h3 {
+      margin: 0;
+      font-size: 27px;
+      line-height: 1.16;
+      letter-spacing: 0;
+    }
+
+    .hero p {
+      margin: 10px 0 0;
+      font-size: 13px;
+      line-height: 1.55;
+    }
+
+    .kpis {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+      padding: 0 18px 14px;
+    }
+
+    .kpi {
+      border-radius: 8px;
+      padding: 12px;
+      min-height: 86px;
+    }
+
+    .kpi strong {
+      display: block;
+      font-size: 28px;
+      line-height: 1;
+      margin-bottom: 7px;
+    }
+
+    .kpi span {
+      display: block;
+      font-size: 12px;
+      color: inherit;
+      opacity: 0.78;
+    }
+
+    .dash {
+      margin: 0 18px 18px;
+      border-radius: 8px;
+      padding: 14px;
+    }
+
+    .dash-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+      font-size: 13px;
+      font-weight: 800;
+    }
+
+    .rows {
+      display: grid;
+      gap: 8px;
+    }
+
+    .row {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 8px;
+      align-items: center;
+      padding: 9px 10px;
+      border-radius: 6px;
+      font-size: 12px;
+    }
+
+    .bars {
+      display: grid;
+      gap: 9px;
+    }
+
+    .bar {
+      display: grid;
+      grid-template-columns: 82px 1fr 30px;
+      gap: 8px;
+      align-items: center;
+      font-size: 11px;
+    }
+
+    .track {
+      height: 8px;
+      border-radius: 999px;
+      overflow: hidden;
+    }
+
+    .fill { height: 100%; border-radius: 999px; }
+
+    .calendar {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 5px;
+    }
+
+    .day {
+      min-height: 34px;
+      border-radius: 5px;
+      padding: 4px;
+      font-size: 10px;
+    }
+
+    .chip {
+      display: inline-flex;
+      border-radius: 999px;
+      padding: 3px 7px;
+      font-size: 10px;
+      font-weight: 800;
+    }
+
+    .mock-plant {
+      height: 116px;
+      margin: 14px 18px 14px;
+      border-radius: 8px;
+      position: relative;
+      overflow: hidden;
+      background:
+        linear-gradient(180deg, rgba(255,255,255,0.22), rgba(255,255,255,0)),
+        linear-gradient(110deg, #d7e8f7 0 18%, #bccbd7 18% 28%, #e9eef2 28% 54%, #9ca8b4 54% 65%, #d4dee8 65% 100%);
+    }
+
+    .mock-plant::before {
+      content: "";
+      position: absolute;
+      left: 18px;
+      right: 18px;
+      bottom: 22px;
+      height: 32px;
+      background: #5f7184;
+      border-radius: 5px 5px 0 0;
+      box-shadow: 68px -20px 0 -2px #748394, 136px -34px 0 -5px #8a96a5, 210px -12px 0 0 #66788c;
+    }
+
+    .mock-plant::after {
+      content: "";
+      position: absolute;
+      width: 26px;
+      height: 80px;
+      bottom: 22px;
+      right: 52px;
+      background: #7b8795;
+      border-radius: 5px 5px 0 0;
+      box-shadow: -80px 24px 0 -4px #68798b;
+    }
+
+    /* Option A */
+    .a .badge { background: #eaf2ff; color: #1459d9; }
+    .a .mini-app { background: #f7fbff; border-color: #d6e4f4; }
+    .a .topbar { background: rgba(255,255,255,0.88); border-bottom: 1px solid #dce7f2; color: #18324f; }
+    .a .btn.primary { background: #1463ff; color: #fff; }
+    .a .btn.secondary { background: #ecf3fb; color: #18324f; }
+    .a .hero { color: #10233e; }
+    .a .hero p { color: #53687f; }
+    .a .kpi { background: #fff; border: 1px solid #dfe8f2; color: #18324f; }
+    .a .kpi:nth-child(2) strong { color: var(--amber); }
+    .a .kpi:nth-child(3) strong { color: var(--blue); }
+    .a .kpi:nth-child(4) strong { color: var(--green); }
+    .a .dash { background: #ffffff; border: 1px solid #dfe8f2; }
+    .a .row { background: #f5f8fc; color: #28394d; }
+    .a .track { background: #e7eef7; }
+    .a .fill { background: #1463ff; }
+
+    /* Option B */
+    .b .badge { background: #102638; color: #72f0da; }
+    .b .mini-app {
+      background: #081522;
+      border-color: #183449;
+      color: #f8fbff;
+      box-shadow: inset 0 0 0 1px rgba(54, 211, 193, 0.08);
+    }
+    .b .topbar { background: #0c1d2c; border-bottom: 1px solid #1b3b52; color: #d9fbff; }
+    .b .btn.primary { background: #14b8a6; color: #04201d; }
+    .b .btn.secondary { background: #132b3f; color: #b8d6e6; }
+    .b .hero { color: #f8fbff; }
+    .b .hero p { color: #9db7ca; }
+    .b .kpi { background: #0d2132; border: 1px solid #1d425b; color: #d6f7ff; }
+    .b .kpi:nth-child(2) strong { color: #fbbf24; }
+    .b .kpi:nth-child(3) strong { color: #38bdf8; }
+    .b .kpi:nth-child(4) strong { color: #34d399; }
+    .b .dash { background: #0d2132; border: 1px solid #1d425b; }
+    .b .row { background: #112c40; color: #d5effb; }
+    .b .track { background: #18384f; }
+    .b .fill { background: #14b8a6; }
+    .b .mock-plant {
+      background:
+        linear-gradient(180deg, rgba(20,184,166,0.14), rgba(20,184,166,0)),
+        linear-gradient(110deg, #0c2234 0 18%, #132d40 18% 28%, #0b1724 28% 54%, #203f55 54% 65%, #0d2334 65% 100%);
+    }
+
+    /* Option C */
+    .c .badge { background: #e9f8f1; color: #087f5b; }
+    .c .mini-app { background: #ffffff; border-color: #d8e0e7; }
+    .c .topbar { background: #ffffff; border-bottom: 1px solid #e5ebf2; color: #1f2937; }
+    .c .btn.primary { background: #0f766e; color: #fff; }
+    .c .btn.secondary { background: #f0f4f8; color: #344054; }
+    .c .hero { padding-bottom: 12px; color: #111827; }
+    .c .hero p { color: #667085; }
+    .c .kpis { grid-template-columns: repeat(4, 1fr); gap: 6px; }
+    .c .kpi { background: #f8fafc; border: 1px solid #e2e8f0; min-height: 78px; padding: 10px; }
+    .c .kpi strong { font-size: 24px; }
+    .c .dash { background: #f8fafc; border: 1px solid #e2e8f0; }
+    .c .row { background: #ffffff; border: 1px solid #edf2f7; color: #344054; }
+    .c .track { background: #e2e8f0; }
+    .c .fill { background: #0f766e; }
+
+    .style-notes {
+      padding: 0 16px 16px;
+      color: #475467;
+      font-size: 13px;
+      line-height: 1.55;
+    }
+
+    .style-notes strong { color: #111827; }
+
+    @media (max-width: 1100px) {
+      .style-grid { grid-template-columns: 1fr; }
+      .screen { min-height: auto; }
+      .mini-app { min-height: auto; }
+    }
+
+    @media (max-width: 720px) {
+      .page { padding: 18px; }
+      .intro { display: block; }
+      .hint { margin-top: 14px; }
+      .c .kpis { grid-template-columns: repeat(2, 1fr); }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <section class="intro">
+      <div>
+        <h1>ตัวอย่าง Landing Page ระบบ CM โรงไฟฟ้า</h1>
+        <p>เลือกแนวภาพรวมก่อน: ทั้ง 3 แบบใช้ข้อมูลเดียวกัน แต่คนละอารมณ์การใช้งาน รอบนี้เป็น mockup สำหรับคุยดีไซน์ ยังไม่ใช่ระบบจริง</p>
+      </div>
+      <div class="hint">แนะนำเริ่มจากแบบ A แล้วผสมความเรียบของแบบ C</div>
+    </section>
+
+    <section class="style-grid">
+      <article class="option a">
+        <header>
+          <span class="badge">A · Recommended</span>
+          <h2>Industrial Command Center</h2>
+          <p>ทันสมัย สว่าง อ่านง่าย เหมาะกับระบบ CM ที่ต้องใช้ทุกวันและยังให้ภาพลักษณ์โรงไฟฟ้า</p>
+        </header>
+        <div class="screen">
+          <div class="mini-app">
+            <div class="topbar">
+              <span>CM Control Center</span>
+              <div class="nav-actions">
+                <button class="btn secondary">Dashboard</button>
+                <button class="btn primary">แจ้งซ่อม</button>
+                <button class="btn secondary">Login</button>
+              </div>
+            </div>
+            <div class="mock-plant"></div>
+            <div class="hero">
+              <h3>Corrective Maintenance Control Center</h3>
+              <p>ติดตามงานซ่อมไฟฟ้าและเครื่องกล แยกตาม Zone, สถานะ และรอบเดือน</p>
+            </div>
+            <div class="kpis">
+              <div class="kpi"><strong>126</strong><span>งานทั้งหมด</span></div>
+              <div class="kpi"><strong>18</strong><span>แจ้งใหม่</span></div>
+              <div class="kpi"><strong>42</strong><span>กำลังดำเนินการ</span></div>
+              <div class="kpi"><strong>59</strong><span>ปิดงานแล้ว</span></div>
+            </div>
+            <div class="dash">
+              <div class="dash-title"><span>งานตาม Zone</span><span class="chip">June 2026</span></div>
+              <div class="bars">
+                <div class="bar"><span>Boiler</span><div class="track"><div class="fill" style="width:76%"></div></div><b>28</b></div>
+                <div class="bar"><span>Turbine</span><div class="track"><div class="fill" style="width:58%"></div></div><b>21</b></div>
+                <div class="bar"><span>ESP</span><div class="track"><div class="fill" style="width:36%"></div></div><b>13</b></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="style-notes"><strong>เหมาะเมื่อ:</strong> อยากได้หน้าแรกที่ดูดีแบบ Landing Page แต่ยังคุมความจริงจังและอ่านง่าย</div>
+      </article>
+
+      <article class="option b">
+        <header>
+          <span class="badge">B · Dark</span>
+          <h2>Dark Control Room</h2>
+          <p>เท่ เข้ม เหมือนห้องควบคุม เหมาะกับจอแสดงผลหรือ dashboard กลาง แต่ใช้งานนานอาจล้าสายตา</p>
+        </header>
+        <div class="screen">
+          <div class="mini-app">
+            <div class="topbar">
+              <span>CM Operations</span>
+              <div class="nav-actions">
+                <button class="btn secondary">Calendar</button>
+                <button class="btn primary">แจ้งซ่อม</button>
+                <button class="btn secondary">Login</button>
+              </div>
+            </div>
+            <div class="mock-plant"></div>
+            <div class="hero">
+              <h3>Plant Maintenance Live Board</h3>
+              <p>สถานะงานซ่อมแบบ real-time สำหรับไฟฟ้า เครื่องกล และพื้นที่สำคัญของโรงไฟฟ้า</p>
+            </div>
+            <div class="kpis">
+              <div class="kpi"><strong>126</strong><span>Total CM</span></div>
+              <div class="kpi"><strong>7</strong><span>Critical</span></div>
+              <div class="kpi"><strong>11</strong><span>รอปิดงาน</span></div>
+              <div class="kpi"><strong>3</strong><span>ยกเลิก</span></div>
+            </div>
+            <div class="dash">
+              <div class="dash-title"><span>Priority Monitor</span><span class="chip">Live</span></div>
+              <div class="rows">
+                <div class="row"><span>Fuel preparation · งานไฟฟ้า</span><b>วิกฤต</b></div>
+                <div class="row"><span>Cooling Tower · งานเครื่องกล</span><b>เร่งด่วน</b></div>
+                <div class="row"><span>Water Treatment Plant · งานไฟฟ้า</span><b>ปกติ</b></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="style-notes"><strong>เหมาะเมื่อ:</strong> อยากให้ระบบดูเหมือน control center มาก ๆ หรือมีจอแสดงผลกลางในโรงไฟฟ้า</div>
+      </article>
+
+      <article class="option c">
+        <header>
+          <span class="badge">C · Simple</span>
+          <h2>Maintenance Portal</h2>
+          <p>เรียบ คล่อง กดแจ้งซ่อมและดูรายการได้เร็ว เหมาะกับผู้ใช้หน้างานที่อยากเข้าแล้วทำงานทันที</p>
+        </header>
+        <div class="screen">
+          <div class="mini-app">
+            <div class="topbar">
+              <span>CM Portal</span>
+              <div class="nav-actions">
+                <button class="btn primary">แจ้งซ่อม</button>
+                <button class="btn secondary">Login</button>
+              </div>
+            </div>
+            <div class="hero">
+              <h3>แจ้งซ่อมและติดตามงาน CM</h3>
+              <p>สำหรับงานไฟฟ้าและเครื่องกล แยกตาม Zone พร้อมปฏิทินรายเดือน</p>
+            </div>
+            <div class="kpis">
+              <div class="kpi"><strong>18</strong><span>แจ้งใหม่</span></div>
+              <div class="kpi"><strong>42</strong><span>ดำเนินการ</span></div>
+              <div class="kpi"><strong>11</strong><span>รอปิด</span></div>
+              <div class="kpi"><strong>59</strong><span>ปิดแล้ว</span></div>
+            </div>
+            <div class="dash">
+              <div class="dash-title"><span>ปฏิทินงานเดือนนี้</span><span class="chip">Filter</span></div>
+              <div class="calendar">
+                <div class="day">1</div><div class="day">2</div><div class="day">3</div><div class="day">4</div><div class="day">5</div><div class="day">6</div><div class="day">7</div>
+                <div class="day">8</div><div class="day">9</div><div class="day">10</div><div class="day">11</div><div class="day">12</div><div class="day">13</div><div class="day">14</div>
+                <div class="day">15</div><div class="day" style="background:#dff6ee">16</div><div class="day">17</div><div class="day" style="background:#fff3d6">18</div><div class="day">19</div><div class="day">20</div><div class="day">21</div>
+                <div class="day">22</div><div class="day">23</div><div class="day" style="background:#e6f0ff">24</div><div class="day">25</div><div class="day">26</div><div class="day">27</div><div class="day">28</div>
+              </div>
+            </div>
+            <div class="dash">
+              <div class="dash-title"><span>รายการล่าสุด</span><span>ทั้งหมด</span></div>
+              <div class="rows">
+                <div class="row"><span>Boiler&Combustion · Feed pump vibration</span><b>รับแล้ว</b></div>
+                <div class="row"><span>Office · Lighting fault</span><b>แจ้งใหม่</b></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="style-notes"><strong>เหมาะเมื่อ:</strong> ต้องการระบบภายในที่เร็ว เรียบ และลดความหวือหวา เหลือแต่สิ่งที่ผู้ใช้ต้องกดจริง</div>
+      </article>
+    </section>
+  </main>
+</body>
+</html>

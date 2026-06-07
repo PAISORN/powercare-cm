@@ -1,4 +1,5 @@
 import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 import { db } from "./db";
 
 const sessionCookie = "cm_session_user";
@@ -30,6 +31,6 @@ export async function getCurrentUser() {
 
 export async function requireUser() {
   const user = await getCurrentUser();
-  if (!user) throw new Error("Login required");
+  if (!user) redirect("/login");
   return user;
 }

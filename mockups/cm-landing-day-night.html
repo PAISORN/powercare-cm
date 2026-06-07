@@ -1,0 +1,640 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CM Landing Day Night Concept</title>
+  <style>
+    :root {
+      font-family: "Segoe UI", "Noto Sans Thai", Arial, sans-serif;
+      color-scheme: light;
+      --bg: #eef4fa;
+      --surface: #ffffff;
+      --surface-2: #f7fbff;
+      --ink: #102033;
+      --muted: #5b6f86;
+      --line: #dce7f2;
+      --primary: #1463ff;
+      --primary-ink: #ffffff;
+      --accent: #10a78f;
+      --warning: #f59e0b;
+      --danger: #dc2626;
+      --success: #16a34a;
+      --shadow: 0 22px 60px rgba(15, 23, 42, 0.12);
+      --plant-a: #d7e8f7;
+      --plant-b: #bccbd7;
+      --plant-c: #e9eef2;
+      --plant-d: #9ca8b4;
+    }
+
+    body.night {
+      color-scheme: dark;
+      --bg: #07111d;
+      --surface: #0d2132;
+      --surface-2: #081522;
+      --ink: #f8fbff;
+      --muted: #9db7ca;
+      --line: #1b3b52;
+      --primary: #14b8a6;
+      --primary-ink: #04201d;
+      --accent: #38bdf8;
+      --warning: #fbbf24;
+      --danger: #fb7185;
+      --success: #34d399;
+      --shadow: 0 24px 70px rgba(0, 0, 0, 0.38);
+      --plant-a: #0c2234;
+      --plant-b: #132d40;
+      --plant-c: #0b1724;
+      --plant-d: #203f55;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background:
+        radial-gradient(circle at 22% 0%, color-mix(in srgb, var(--primary) 18%, transparent), transparent 32%),
+        linear-gradient(180deg, var(--bg), color-mix(in srgb, var(--bg) 86%, #000 14%));
+      color: var(--ink);
+      transition: background 220ms ease, color 220ms ease;
+    }
+
+    button {
+      font: inherit;
+    }
+
+    .app {
+      min-height: 100vh;
+      display: grid;
+      grid-template-rows: auto 1fr;
+    }
+
+    .topbar {
+      height: 72px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+      padding: 0 clamp(18px, 4vw, 48px);
+      border-bottom: 1px solid var(--line);
+      background: color-mix(in srgb, var(--surface) 88%, transparent);
+      backdrop-filter: blur(18px);
+      position: sticky;
+      top: 0;
+      z-index: 2;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 0;
+      font-weight: 800;
+      letter-spacing: 0;
+    }
+
+    .brand-mark {
+      width: 38px;
+      height: 38px;
+      display: grid;
+      place-items: center;
+      border-radius: 8px;
+      color: var(--primary-ink);
+      background: var(--primary);
+      font-weight: 900;
+    }
+
+    .brand small {
+      display: block;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 600;
+      margin-top: 2px;
+    }
+
+    .nav {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: end;
+    }
+
+    .mode-toggle {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      width: 210px;
+      height: 38px;
+      padding: 4px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: color-mix(in srgb, var(--surface-2) 88%, var(--surface));
+      position: relative;
+    }
+
+    .mode-toggle button {
+      border: 0;
+      border-radius: 999px;
+      background: transparent;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 800;
+      z-index: 1;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0 10px;
+      cursor: pointer;
+    }
+
+    .mode-toggle button.active {
+      background: var(--primary);
+      color: var(--primary-ink);
+      box-shadow: 0 8px 18px color-mix(in srgb, var(--primary) 28%, transparent);
+    }
+
+    .btn {
+      border: 1px solid var(--line);
+      height: 38px;
+      border-radius: 7px;
+      padding: 0 14px;
+      background: var(--surface);
+      color: var(--ink);
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    .btn.primary {
+      border-color: var(--primary);
+      background: var(--primary);
+      color: var(--primary-ink);
+    }
+
+    .time-note {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 800;
+      min-width: 82px;
+      text-align: right;
+    }
+
+    .main {
+      display: grid;
+      grid-template-columns: minmax(0, 1.05fr) minmax(380px, 0.95fr);
+      gap: clamp(18px, 3vw, 34px);
+      padding: clamp(22px, 4vw, 48px);
+      align-items: start;
+      max-width: 1440px;
+      width: 100%;
+      margin: 0 auto;
+    }
+
+    .hero {
+      min-height: calc(100vh - 150px);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 28px;
+    }
+
+    .hero-copy {
+      padding-top: 4vh;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      height: 30px;
+      padding: 0 11px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background: color-mix(in srgb, var(--surface) 86%, transparent);
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 800;
+      margin-bottom: 18px;
+    }
+
+    h1 {
+      margin: 0;
+      max-width: 760px;
+      font-size: clamp(42px, 7vw, 84px);
+      line-height: 0.98;
+      letter-spacing: 0;
+    }
+
+    .hero-copy p {
+      max-width: 620px;
+      color: var(--muted);
+      margin: 20px 0 0;
+      line-height: 1.72;
+      font-size: clamp(16px, 1.5vw, 19px);
+    }
+
+    .hero-actions {
+      display: flex;
+      gap: 12px;
+      margin-top: 28px;
+      flex-wrap: wrap;
+    }
+
+    .hero-actions .btn {
+      height: 46px;
+      padding: 0 18px;
+    }
+
+    .plant-visual {
+      min-height: 220px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      overflow: hidden;
+      background:
+        linear-gradient(180deg, color-mix(in srgb, var(--surface) 20%, transparent), transparent),
+        linear-gradient(110deg, var(--plant-a) 0 18%, var(--plant-b) 18% 28%, var(--plant-c) 28% 54%, var(--plant-d) 54% 65%, var(--plant-a) 65% 100%);
+      position: relative;
+      box-shadow: var(--shadow);
+    }
+
+    .plant-visual::before {
+      content: "";
+      position: absolute;
+      left: 8%;
+      right: 8%;
+      bottom: 46px;
+      height: 58px;
+      background: color-mix(in srgb, var(--ink) 38%, transparent);
+      border-radius: 7px 7px 0 0;
+      box-shadow:
+        120px -34px 0 -8px color-mix(in srgb, var(--ink) 30%, transparent),
+        246px -58px 0 -12px color-mix(in srgb, var(--ink) 24%, transparent),
+        390px -18px 0 0 color-mix(in srgb, var(--ink) 34%, transparent);
+    }
+
+    .plant-visual::after {
+      content: "";
+      position: absolute;
+      width: 42px;
+      height: 148px;
+      bottom: 46px;
+      right: 14%;
+      background: color-mix(in srgb, var(--ink) 33%, transparent);
+      border-radius: 8px 8px 0 0;
+      box-shadow:
+        -170px 36px 0 -8px color-mix(in srgb, var(--ink) 28%, transparent),
+        -86px 74px 0 -14px color-mix(in srgb, var(--primary) 48%, transparent);
+    }
+
+    .status-strip {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .status-card,
+    .panel {
+      border: 1px solid var(--line);
+      background: color-mix(in srgb, var(--surface) 92%, transparent);
+      border-radius: 8px;
+      box-shadow: 0 16px 45px rgba(15, 23, 42, 0.08);
+    }
+
+    .status-card {
+      padding: 16px;
+      min-height: 112px;
+    }
+
+    .status-card strong {
+      display: block;
+      font-size: clamp(30px, 4vw, 46px);
+      line-height: 1;
+      margin-bottom: 10px;
+    }
+
+    .status-card span {
+      color: var(--muted);
+      font-weight: 700;
+      font-size: 13px;
+    }
+
+    .dashboard {
+      display: grid;
+      gap: 16px;
+    }
+
+    .panel {
+      padding: 18px;
+    }
+
+    .panel-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .panel-head h2 {
+      margin: 0;
+      font-size: 18px;
+      letter-spacing: 0;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      height: 28px;
+      padding: 0 10px;
+      border-radius: 999px;
+      background: color-mix(in srgb, var(--primary) 12%, transparent);
+      color: var(--primary);
+      font-size: 12px;
+      font-weight: 900;
+      white-space: nowrap;
+    }
+
+    .filters {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+
+    .select-like {
+      height: 42px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      padding: 0 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      color: var(--muted);
+      background: var(--surface-2);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .chart {
+      display: grid;
+      gap: 12px;
+    }
+
+    .bar-row {
+      display: grid;
+      grid-template-columns: 128px 1fr 38px;
+      gap: 10px;
+      align-items: center;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .track {
+      height: 9px;
+      border-radius: 999px;
+      overflow: hidden;
+      background: color-mix(in srgb, var(--line) 70%, transparent);
+    }
+
+    .fill {
+      height: 100%;
+      border-radius: 999px;
+      background: var(--primary);
+    }
+
+    .calendar {
+      display: grid;
+      grid-template-columns: repeat(7, minmax(0, 1fr));
+      gap: 7px;
+    }
+
+    .day {
+      aspect-ratio: 1;
+      min-height: 48px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      background: var(--surface-2);
+      padding: 6px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 800;
+      position: relative;
+    }
+
+    .day::after {
+      content: "";
+      position: absolute;
+      left: 7px;
+      right: 7px;
+      bottom: 7px;
+      height: 5px;
+      border-radius: 999px;
+      background: transparent;
+    }
+
+    .day.open::after { background: var(--warning); }
+    .day.work::after { background: var(--primary); }
+    .day.done::after { background: var(--success); }
+    .day.critical::after { background: var(--danger); }
+
+    .work-list {
+      display: grid;
+      gap: 10px;
+    }
+
+    .work-item {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 10px;
+      align-items: center;
+      padding: 12px;
+      border: 1px solid var(--line);
+      background: var(--surface-2);
+      border-radius: 7px;
+    }
+
+    .work-item b {
+      display: block;
+      margin-bottom: 4px;
+      font-size: 14px;
+    }
+
+    .work-item span {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    @media (max-width: 1050px) {
+      .main {
+        grid-template-columns: 1fr;
+      }
+
+      .hero {
+        min-height: auto;
+      }
+    }
+
+    @media (max-width: 720px) {
+      .topbar {
+        height: auto;
+        padding-top: 14px;
+        padding-bottom: 14px;
+        align-items: flex-start;
+      }
+
+      .brand small {
+        display: none;
+      }
+
+      .nav {
+        gap: 8px;
+      }
+
+      .mode-toggle {
+        width: 130px;
+      }
+
+      .status-strip {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      .filters {
+        grid-template-columns: 1fr;
+      }
+
+      .bar-row {
+        grid-template-columns: 96px 1fr 32px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-mark">CM</div>
+        <div>
+          Corrective Maintenance
+          <small>Power Plant Control Center</small>
+        </div>
+      </div>
+      <nav class="nav" aria-label="Main navigation">
+        <div class="mode-toggle" aria-label="Day and night mode">
+          <button id="dayButton" class="active" type="button">Day</button>
+          <button id="nightButton" type="button">Night</button>
+        </div>
+        <span id="timeNote" class="time-note">TH time</span>
+        <button class="btn primary" type="button">แจ้งซ่อม</button>
+        <button class="btn" type="button">Login</button>
+      </nav>
+    </header>
+
+    <main class="main">
+      <section class="hero">
+        <div class="hero-copy">
+          <div class="eyebrow">งานไฟฟ้า · งานเครื่องกล · 10 Plant Zones</div>
+          <h1>Corrective Maintenance Control Center</h1>
+          <p>หน้าแรกสำหรับแจ้งซ่อม ติดตามสถานะงาน CM และดูภาพรวมของโรงไฟฟ้าในมุมเดียว เริ่มต้น Day/Night ตามเวลาประเทศไทย และผู้ใช้สลับโหมดเองได้</p>
+          <div class="hero-actions">
+            <button class="btn primary" type="button">แจ้งซ่อมทันที</button>
+            <button class="btn" type="button">ดู Dashboard</button>
+          </div>
+        </div>
+
+        <div class="plant-visual" aria-label="Power plant visual mockup"></div>
+
+        <div class="status-strip">
+          <div class="status-card"><strong>126</strong><span>งานทั้งหมด</span></div>
+          <div class="status-card"><strong style="color: var(--warning)">18</strong><span>แจ้งใหม่</span></div>
+          <div class="status-card"><strong style="color: var(--primary)">42</strong><span>กำลังดำเนินการ</span></div>
+          <div class="status-card"><strong style="color: var(--success)">59</strong><span>ปิดงานแล้ว</span></div>
+        </div>
+      </section>
+
+      <section class="dashboard" aria-label="Public dashboard preview">
+        <div class="panel">
+          <div class="panel-head">
+            <h2>Public CM Dashboard</h2>
+            <span class="pill">June 2026</span>
+          </div>
+          <div class="filters">
+            <div class="select-like"><span>Category: ทั้งหมด</span><b>⌄</b></div>
+            <div class="select-like"><span>Zone: ทั้งหมด</span><b>⌄</b></div>
+          </div>
+          <div class="chart">
+            <div class="bar-row"><span>Boiler&Combustion</span><div class="track"><div class="fill" style="width: 78%"></div></div><b>28</b></div>
+            <div class="bar-row"><span>Turbine</span><div class="track"><div class="fill" style="width: 58%"></div></div><b>21</b></div>
+            <div class="bar-row"><span>Fuel Warehouse</span><div class="track"><div class="fill" style="width: 44%"></div></div><b>16</b></div>
+            <div class="bar-row"><span>Water Treatment</span><div class="track"><div class="fill" style="width: 36%"></div></div><b>13</b></div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head">
+            <h2>ปฏิทินงาน CM</h2>
+            <span class="pill">เดือนนี้</span>
+          </div>
+          <div class="calendar">
+            <div class="day">1</div><div class="day open">2</div><div class="day">3</div><div class="day work">4</div><div class="day">5</div><div class="day done">6</div><div class="day">7</div>
+            <div class="day">8</div><div class="day critical">9</div><div class="day">10</div><div class="day work">11</div><div class="day">12</div><div class="day">13</div><div class="day done">14</div>
+            <div class="day">15</div><div class="day open">16</div><div class="day">17</div><div class="day work">18</div><div class="day">19</div><div class="day done">20</div><div class="day">21</div>
+            <div class="day">22</div><div class="day">23</div><div class="day critical">24</div><div class="day">25</div><div class="day work">26</div><div class="day">27</div><div class="day done">28</div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head">
+            <h2>รายการล่าสุด</h2>
+            <span class="pill">Public View</span>
+          </div>
+          <div class="work-list">
+            <div class="work-item">
+              <div><b>Feed pump vibration</b><span>Boiler&Combustion · งานเครื่องกล</span></div>
+              <span class="pill">กำลังดำเนินการ</span>
+            </div>
+            <div class="work-item">
+              <div><b>Lighting fault at office</b><span>Office · งานไฟฟ้า</span></div>
+              <span class="pill">แจ้งใหม่</span>
+            </div>
+            <div class="work-item">
+              <div><b>Cooling tower fan noise</b><span>Cooling Tower · งานเครื่องกล</span></div>
+              <span class="pill">รอปิดงาน</span>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    const dayButton = document.getElementById("dayButton");
+    const nightButton = document.getElementById("nightButton");
+    const timeNote = document.getElementById("timeNote");
+
+    function getBangkokTime() {
+      return new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Bangkok" }));
+    }
+
+    function setMode(mode) {
+      document.body.classList.toggle("night", mode === "night");
+      dayButton.classList.toggle("active", mode === "day");
+      nightButton.classList.toggle("active", mode === "night");
+    }
+
+    function setInitialModeFromThailandTime() {
+      const thailandNow = getBangkokTime();
+      const hour = thailandNow.getHours();
+      const minute = String(thailandNow.getMinutes()).padStart(2, "0");
+      const isDay = hour >= 6 && hour < 18;
+      setMode(isDay ? "day" : "night");
+      timeNote.textContent = `Default: ${isDay ? "Day" : "Night"} · TH ${String(hour).padStart(2, "0")}:${minute}`;
+    }
+
+    dayButton.addEventListener("click", () => setMode("day"));
+    nightButton.addEventListener("click", () => setMode("night"));
+    setInitialModeFromThailandTime();
+  </script>
+</body>
+</html>
