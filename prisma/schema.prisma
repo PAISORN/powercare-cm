@@ -1,0 +1,129 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String    @id @default(cuid())
+  username     String    @unique
+  passwordHash String
+  fullName     String
+  department   String?
+  role         String
+  categoryId   String?
+  category     Category? @relation(fields: [categoryId], references: [id])
+  signature    Signature?
+  active       Boolean   @default(true)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  claimedWorks CmWork[]     @relation("Claimant")
+  closedWorks  CmWork[]     @relation("EngineerReviewer")
+  auditEvents  AuditEvent[]
+}
+
+model Signature {
+  id          String   @id @default(cuid())
+  userId      String   @unique
+  user        User     @relation(fields: [userId], references: [id])
+  fileName    String
+  mimeType    String
+  fileSize    Int
+  storagePath String
+  uploadedAt  DateTime @default(now())
+}
+
+model Category {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users User[]
+  works CmWork[]
+}
+
+model Zone {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  works CmWork[]
+}
+
+model CmWork {
+  id                  String     @id @default(cuid())
+  number              String     @unique
+  requesterName       String
+  requesterDepartment String
+  categoryId          String
+  category            Category   @relation(fields: [categoryId], references: [id])
+  zoneId              String
+  zone                Zone       @relation(fields: [zoneId], references: [id])
+  machineName         String
+  problemTitle        String
+  problemDetail       String
+  urgency             String
+  status              String   @default("NEW")
+  claimantId          String?
+  claimant            User?      @relation("Claimant", fields: [claimantId], references: [id])
+  rootCause           String?
+  correctiveAction    String?
+  workNote            String?
+  engineerNote        String?
+  canceledReason      String?
+  releaseReason       String?
+  returnedReason      String?
+  createdAt           DateTime   @default(now())
+  claimedAt           DateTime?
+  inProgressAt        DateTime?
+  waitingToCloseAt    DateTime?
+  closedAt            DateTime?
+  canceledAt          DateTime?
+  reviewerId          String?
+  reviewer            User?      @relation("EngineerReviewer", fields: [reviewerId], references: [id])
+
+  statusHistory StatusHistory[]
+  auditEvents   AuditEvent[]
+}
+
+model StatusHistory {
+  id          String      @id @default(cuid())
+  cmWorkId    String
+  cmWork      CmWork      @relation(fields: [cmWorkId], references: [id])
+  fromStatus  String?
+  toStatus    String
+  changedById String?
+  changedAt   DateTime    @default(now())
+  note        String?
+}
+
+model AuditEvent {
+  id         String   @id @default(cuid())
+  cmWorkId   String?
+  cmWork     CmWork?  @relation(fields: [cmWorkId], references: [id])
+  actorId    String?
+  actor      User?    @relation(fields: [actorId], references: [id])
+  entityType String
+  entityId   String
+  action     String
+  beforeJson String?
+  afterJson  String?
+  reason     String?
+  createdAt  DateTime @default(now())
+}
+
+model SlaSetting {
+  id            String   @id @default(cuid())
+  claimDays     Int      @default(1)
+  executionDays Int      @default(3)
+  reviewDays    Int      @default(2)
+  updatedAt     DateTime @updatedAt
+}
