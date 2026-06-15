@@ -1,6 +1,8 @@
 import { redirect } from "next/navigation";
+import { AppShell } from "../../components/app-shell";
 import { PublicHeader } from "../../components/public-header";
 import { db } from "../../lib/db";
+import { getCurrentUser } from "../../lib/session";
 import { repairRequestSchema } from "../../lib/validation";
 import { createRepairRequest } from "../../modules/cm-work/cm-work-service";
 
@@ -22,14 +24,14 @@ async function submitRepairRequest(formData: FormData) {
 }
 
 export default async function RequestPage() {
+  const user = await getCurrentUser();
   const [categories, zones] = await Promise.all([
     db.category.findMany({ where: { active: true }, orderBy: { name: "asc" } }),
     db.zone.findMany({ where: { active: true }, orderBy: { name: "asc" } }),
   ]);
 
   return (
-    <main>
-      <PublicHeader />
+    <RequestShell signedIn={Boolean(user)}>
       <form action={submitRepairRequest} className="mx-auto grid max-w-3xl gap-4 px-8 py-10">
         <h1 className="text-3xl font-bold">แจ้งซ่อม</h1>
         <input name="requesterName" required placeholder="ชื่อผู้แจ้ง" className="rounded-md border p-3 text-black" />
@@ -62,6 +64,17 @@ export default async function RequestPage() {
           ส่งแจ้งซ่อม
         </button>
       </form>
+    </RequestShell>
+  );
+}
+
+function RequestShell({ signedIn, children }: { signedIn: boolean; children: React.ReactNode }) {
+  if (signedIn) return <AppShell>{children}</AppShell>;
+
+  return (
+    <main>
+      <PublicHeader />
+      {children}
     </main>
   );
 }

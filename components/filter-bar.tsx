@@ -1,7 +1,82 @@
-export function FilterBar() {
+import Link from "next/link";
+import { Search } from "lucide-react";
+import { statusLabels, urgencyLabels, Urgency, WorkStatus } from "../modules/cm-work/cm-work-types";
+
+type Option = {
+  id: string;
+  name: string;
+};
+
+type FilterValues = {
+  search?: string;
+  status?: string;
+  categoryId?: string;
+  zoneId?: string;
+  urgency?: string;
+  claimantId?: string;
+  month?: string;
+};
+
+export function FilterBar({
+  values,
+  categories,
+  zones,
+  claimants,
+}: {
+  values: FilterValues;
+  categories: Option[];
+  zones: Option[];
+  claimants: Option[];
+}) {
   return (
-    <div className="rounded-lg border border-[var(--line)] bg-[var(--surface)] p-4 text-sm text-[var(--muted)]">
-      Filters will use month, status, category, zone, urgency, claimant, requester department, and search text.
-    </div>
+    <form className="rounded-3xl border border-[var(--line)] bg-[var(--surface)] p-4 shadow-[var(--shadow)]" method="get">
+      <div className="grid gap-3 lg:grid-cols-[1.4fr_repeat(3,1fr)]">
+        <label className="grid gap-1 text-sm">
+          <span className="text-[var(--muted)]">Search</span>
+          <span className="flex items-center gap-2 rounded-2xl border border-[var(--line)] bg-[var(--soft)] px-3">
+            <Search size={16} className="text-[var(--muted)]" />
+            <input
+              className="min-w-0 flex-1 bg-transparent py-3 outline-none"
+              defaultValue={values.search ?? ""}
+              name="search"
+              placeholder="Search CM number, machine, requester"
+            />
+          </span>
+        </label>
+        <SelectFilter label="Status" name="status" value={values.status} options={Object.values(WorkStatus).map((status) => ({ id: status, name: statusLabels[status] }))} />
+        <SelectFilter label="Category" name="categoryId" value={values.categoryId} options={categories} />
+        <SelectFilter label="Zone" name="zoneId" value={values.zoneId} options={zones} />
+      </div>
+      <div className="mt-3 grid gap-3 lg:grid-cols-[1fr_1fr_1fr_auto_auto]">
+        <SelectFilter label="Urgency" name="urgency" value={values.urgency} options={Object.values(Urgency).map((urgency) => ({ id: urgency, name: urgencyLabels[urgency] }))} />
+        <SelectFilter label="Claimant" name="claimantId" value={values.claimantId} options={claimants} />
+        <label className="grid gap-1 text-sm">
+          <span className="text-[var(--muted)]">Month</span>
+          <input className="rounded-2xl border border-[var(--line)] bg-[var(--soft)] px-3 py-3 outline-none" defaultValue={values.month ?? ""} name="month" type="month" />
+        </label>
+        <button className="self-end rounded-2xl bg-[var(--primary)] px-5 py-3 font-bold text-white" type="submit">
+          Filter
+        </button>
+        <Link className="self-end rounded-2xl border border-[var(--line)] px-5 py-3 text-center font-semibold" href="/work">
+          Clear filters
+        </Link>
+      </div>
+    </form>
+  );
+}
+
+function SelectFilter({ label, name, value, options }: { label: string; name: string; value?: string; options: Option[] }) {
+  return (
+    <label className="grid gap-1 text-sm">
+      <span className="text-[var(--muted)]">{label}</span>
+      <select className="rounded-2xl border border-[var(--line)] bg-[var(--soft)] px-3 py-3 outline-none" defaultValue={value ?? ""} name={name}>
+        <option value="">All</option>
+        {options.map((option) => (
+          <option key={option.id} value={option.id}>
+            {option.name}
+          </option>
+        ))}
+      </select>
+    </label>
   );
 }

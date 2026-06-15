@@ -126,7 +126,9 @@ export default async function WorkDetailPage({ params }: { params: Promise<{ id:
       <section className="mt-6 flex flex-wrap gap-3">
         {canClaimWork(actor, work) ? (
           <form action={claimAction}>
-            <button className="rounded-md bg-[var(--primary)] px-4 py-2 text-white">รับงาน</button>
+            <button className="rounded-full bg-[var(--primary)] px-5 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-[var(--primary-strong)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)] focus:ring-offset-2 focus:ring-offset-[var(--bg)]">
+              รับงาน
+            </button>
           </form>
         ) : null}
         {isClaimant && work.status === WorkStatus.CLAIMED ? (

@@ -2,13 +2,21 @@ import { redirect } from "next/navigation";
 import { AppShell } from "../../../components/app-shell";
 import { db } from "../../../lib/db";
 import { requireUser } from "../../../lib/session";
+import { recordAudit } from "../../../modules/audit/audit-service";
 import { RoleName } from "../../../modules/cm-work/cm-work-types";
 
 async function createCategory(formData: FormData) {
   "use server";
   const user = await requireUser();
   if (user.role !== RoleName.ADMIN) redirect("/dashboard");
-  await db.category.create({ data: { name: String(formData.get("name")), active: true } });
+  const category = await db.category.create({ data: { name: String(formData.get("name")), active: true } });
+  await recordAudit({
+    actorId: user.id,
+    entityType: "Category",
+    entityId: category.id,
+    action: "CREATE_CATEGORY",
+    after: { name: category.name, active: category.active },
+  });
   redirect("/admin/categories");
 }
 
@@ -16,7 +24,17 @@ async function deactivateCategory(formData: FormData) {
   "use server";
   const user = await requireUser();
   if (user.role !== RoleName.ADMIN) redirect("/dashboard");
-  await db.category.update({ where: { id: String(formData.get("id")) }, data: { active: false } });
+  const id = String(formData.get("id"));
+  const before = await db.category.findUniqueOrThrow({ where: { id } });
+  const category = await db.category.update({ where: { id }, data: { active: false } });
+  await recordAudit({
+    actorId: user.id,
+    entityType: "Category",
+    entityId: category.id,
+    action: "DEACTIVATE_CATEGORY",
+    before: { name: before.name, active: before.active },
+    after: { name: category.name, active: category.active },
+  });
   redirect("/admin/categories");
 }
 

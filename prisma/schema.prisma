@@ -17,6 +17,7 @@ model User {
   categoryId   String?
   category     Category? @relation(fields: [categoryId], references: [id])
   signature    Signature?
+  profilePhoto ProfilePhoto?
   active       Boolean   @default(true)
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
@@ -35,6 +36,19 @@ model Signature {
   fileSize    Int
   storagePath String
   uploadedAt  DateTime @default(now())
+}
+
+model ProfilePhoto {
+  id         String   @id @default(cuid())
+  userId     String   @unique
+  user       User     @relation(fields: [userId], references: [id])
+  fileName   String
+  mimeType   String
+  fileSize   Int
+  storagePath String
+  checksum   String
+  uploadedAt DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 }
 
 model Category {

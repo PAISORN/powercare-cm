@@ -2,13 +2,21 @@ import { redirect } from "next/navigation";
 import { AppShell } from "../../../components/app-shell";
 import { db } from "../../../lib/db";
 import { requireUser } from "../../../lib/session";
+import { recordAudit } from "../../../modules/audit/audit-service";
 import { RoleName } from "../../../modules/cm-work/cm-work-types";
 
 async function createZone(formData: FormData) {
   "use server";
   const user = await requireUser();
   if (user.role !== RoleName.ADMIN) redirect("/dashboard");
-  await db.zone.create({ data: { name: String(formData.get("name")), active: true } });
+  const zone = await db.zone.create({ data: { name: String(formData.get("name")), active: true } });
+  await recordAudit({
+    actorId: user.id,
+    entityType: "Zone",
+    entityId: zone.id,
+    action: "CREATE_ZONE",
+    after: { name: zone.name, active: zone.active },
+  });
   redirect("/admin/zones");
 }
 
@@ -16,7 +24,17 @@ async function deactivateZone(formData: FormData) {
   "use server";
   const user = await requireUser();
   if (user.role !== RoleName.ADMIN) redirect("/dashboard");
-  await db.zone.update({ where: { id: String(formData.get("id")) }, data: { active: false } });
+  const id = String(formData.get("id"));
+  const before = await db.zone.findUniqueOrThrow({ where: { id } });
+  const zone = await db.zone.update({ where: { id }, data: { active: false } });
+  await recordAudit({
+    actorId: user.id,
+    entityType: "Zone",
+    entityId: zone.id,
+    action: "DEACTIVATE_ZONE",
+    before: { name: before.name, active: before.active },
+    after: { name: zone.name, active: zone.active },
+  });
   redirect("/admin/zones");
 }
 

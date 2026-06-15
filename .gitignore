@@ -10,4 +10,6 @@ storage/
 .npm-cache/
 pw-browsers/
 .next-e2e/
+.next-local/
+.tmp/
 test-results/

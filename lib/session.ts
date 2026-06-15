@@ -25,7 +25,7 @@ export async function getCurrentUser() {
   if (!userId) return null;
   return db.user.findFirst({
     where: { id: userId, active: true },
-    include: { category: true, signature: true },
+    include: { category: true, signature: true, profilePhoto: true },
   });
 }
 
