@@ -34,7 +34,8 @@ export function getDashboardTimeRangeWindow(timeRange: DashboardTimeRangeFilter,
 }
 
 export async function getDashboardSummary(filter?: { category?: DashboardCategoryFilter; timeRange?: DashboardTimeRangeFilter }) {
-  return getCachedDashboardSummary(filter?.category, filter?.timeRange);
+  const summary = await getCachedDashboardSummary(filter?.category, filter?.timeRange);
+  return reviveDashboardSummary(summary);
 }
 
 export async function loadDashboardSummary(filter?: { category?: DashboardCategoryFilter; timeRange?: DashboardTimeRangeFilter }) {
@@ -113,4 +114,76 @@ function calculateAverageCloseDays(works: { createdAt: Date; closedAt: Date | nu
   if (!closedDurations.length) return 0;
   const averageMs = closedDurations.reduce((sum, duration) => sum + duration, 0) / closedDurations.length;
   return Math.round((averageMs / 86_400_000) * 10) / 10;
+}
+
+function reviveDashboardSummary(summary: Awaited<ReturnType<typeof loadDashboardSummary>>) {
+  return {
+    ...summary,
+    priorityWorks: summary.priorityWorks.map((work) => ({
+      ...work,
+      createdAt: ensureDate(work.createdAt),
+      claimedAt: ensureNullableDate(work.claimedAt),
+      inProgressAt: ensureNullableDate(work.inProgressAt),
+      waitingToCloseAt: ensureNullableDate(work.waitingToCloseAt),
+      closedAt: ensureNullableDate(work.closedAt),
+      canceledAt: ensureNullableDate(work.canceledAt),
+      statusHistory: work.statusHistory.map((entry) => ({
+        ...entry,
+        changedAt: ensureDate(entry.changedAt),
+      })),
+      claimant: work.claimant
+        ? {
+            ...work.claimant,
+            createdAt: ensureDate(work.claimant.createdAt),
+            updatedAt: ensureDate(work.claimant.updatedAt),
+            profilePhoto: work.claimant.profilePhoto
+              ? {
+                  ...work.claimant.profilePhoto,
+                  uploadedAt: ensureDate(work.claimant.profilePhoto.uploadedAt),
+                  updatedAt: ensureDate(work.claimant.profilePhoto.updatedAt),
+                }
+              : null,
+          }
+        : null,
+      category: {
+        ...work.category,
+        createdAt: ensureDate(work.category.createdAt),
+        updatedAt: ensureDate(work.category.updatedAt),
+      },
+      zone: {
+        ...work.zone,
+        createdAt: ensureDate(work.zone.createdAt),
+        updatedAt: ensureDate(work.zone.updatedAt),
+      },
+    })),
+    latest: summary.latest.map((work) => ({
+      ...work,
+      createdAt: ensureDate(work.createdAt),
+      claimedAt: ensureNullableDate(work.claimedAt),
+      inProgressAt: ensureNullableDate(work.inProgressAt),
+      waitingToCloseAt: ensureNullableDate(work.waitingToCloseAt),
+      closedAt: ensureNullableDate(work.closedAt),
+      canceledAt: ensureNullableDate(work.canceledAt),
+      category: {
+        ...work.category,
+        createdAt: ensureDate(work.category.createdAt),
+        updatedAt: ensureDate(work.category.updatedAt),
+      },
+      zone: {
+        ...work.zone,
+        createdAt: ensureDate(work.zone.createdAt),
+        updatedAt: ensureDate(work.zone.updatedAt),
+      },
+    })),
+    activeCategory: summary.activeCategory,
+  };
+}
+
+function ensureDate(value: Date | string) {
+  return value instanceof Date ? value : new Date(value);
+}
+
+function ensureNullableDate(value: Date | string | null) {
+  if (!value) return null;
+  return ensureDate(value);
 }
