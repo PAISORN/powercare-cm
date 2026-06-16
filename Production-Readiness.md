@@ -323,9 +323,9 @@
 
 รายการงานย่อย:
 
-1. ตัดสินใจฐานข้อมูล production: PostgreSQL หรือ MySQL
+1. ใช้ Supabase PostgreSQL เป็น production/pilot database
 2. เพิ่ม `.env.production.example`
-3. ปรับ Prisma schema สำหรับ production database
+3. เพิ่ม Prisma schema สำหรับ Supabase ที่ `prisma/schema.supabase.prisma`
 4. เพิ่ม index ที่จำเป็น
 5. แก้การสร้าง CM work number ให้รองรับการแจ้งซ่อมพร้อมกัน
 6. เขียน backup/restore runbook
@@ -336,8 +336,6 @@
 ต้องตัดสินใจก่อนลง Phase 1 เต็ม:
 
 1. Production จะติดตั้งบนเครื่องแบบไหน: Windows server, Linux server, Docker, หรือ cloud
-2. ฐานข้อมูลที่ต้องการใช้จริง: PostgreSQL หรือ MySQL
-3. ผู้ใช้จะเข้าเว็บจาก network ภายในอย่างเดียว หรือเปิดจากภายนอกด้วย
-4. Storage รูป/ลายเซ็นจะเก็บใน server folder หรือ object storage
-5. ต้องมี audit การ print/export หรือไม่
-
+2. ผู้ใช้จะเข้าเว็บจาก network ภายในอย่างเดียว หรือเปิดจากภายนอกด้วย
+3. Storage รูป/ลายเซ็นจะเก็บใน server folder หรือ object storage
+4. ต้องมี audit การ print/export หรือไม่

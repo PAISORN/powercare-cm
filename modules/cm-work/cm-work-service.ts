@@ -2,7 +2,7 @@ import { db } from "../../lib/db";
 import { canCancelWork, canClaimWork, canCloseWork } from "../auth/permission";
 import { recordAudit } from "../audit/audit-service";
 import { canTransition } from "./cm-work-state-machine";
-import { formatCmWorkNumber } from "./cm-work-number";
+import { reserveCmWorkNumber } from "./cm-work-sequence";
 import { RoleName, WorkStatus, type Actor, type Urgency } from "./cm-work-types";
 
 export async function createRepairRequest(input: {
@@ -16,26 +16,23 @@ export async function createRepairRequest(input: {
   urgency: Urgency;
 }) {
   const now = new Date();
-  const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
-  const nextMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1));
-  const countThisMonth = await db.cmWork.count({
-    where: { createdAt: { gte: monthStart, lt: nextMonth } },
-  });
-  const number = formatCmWorkNumber(now, countThisMonth + 1);
+  const work = await db.$transaction(async (tx) => {
+    const number = await reserveCmWorkNumber(tx, now);
 
-  const work = await db.cmWork.create({
-    data: {
-      ...input,
-      number,
-      status: WorkStatus.NEW,
-      statusHistory: {
-        create: {
-          fromStatus: null,
-          toStatus: WorkStatus.NEW,
-          note: "Repair request submitted",
+    return tx.cmWork.create({
+      data: {
+        ...input,
+        number,
+        status: WorkStatus.NEW,
+        statusHistory: {
+          create: {
+            fromStatus: null,
+            toStatus: WorkStatus.NEW,
+            note: "Repair request submitted",
+          },
         },
       },
-    },
+    });
   });
 
   await recordAudit({

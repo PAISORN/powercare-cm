@@ -8,14 +8,19 @@
   },
   "scripts": {
     "dev": "next dev",
+    "dev:supabase": "prisma generate --schema prisma/schema.supabase.prisma && next dev",
     "build": "next build",
     "start": "next start",
+    "start:supabase": "prisma generate --schema prisma/schema.supabase.prisma && next start",
     "db:generate": "prisma generate",
+    "db:generate:supabase": "prisma generate --schema prisma/schema.supabase.prisma",
+    "db:push:supabase": "prisma db push --schema prisma/schema.supabase.prisma",
     "db:migrate": "prisma migrate dev",
     "db:seed": "prisma db seed",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:e2e": "powershell -ExecutionPolicy Bypass -File scripts/run-e2e.ps1"
+    "test:e2e": "powershell -ExecutionPolicy Bypass -File scripts/run-e2e.ps1",
+    "backup:supabase": "powershell -ExecutionPolicy Bypass -File scripts/backup-supabase.ps1"
   },
   "keywords": [],
   "author": "",

@@ -3,6 +3,9 @@ node_modules/
 dist/
 coverage/
 .env
+.env.local
+.env.production
+.env*.local
 prisma/dev.db
 prisma/dev.db-journal
 storage/
@@ -13,3 +16,5 @@ pw-browsers/
 .next-local/
 .tmp/
 test-results/
+backups/
+restore-workspace/

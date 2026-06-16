@@ -1,6 +1,6 @@
-import { readFile } from "node:fs/promises";
 import { NextResponse } from "next/server";
 import { db } from "../../../lib/db";
+import { readStoredFile } from "../../../lib/file-storage";
 import { getCurrentUser } from "../../../lib/session";
 
 export async function GET(_request: Request, { params }: { params: Promise<{ userId: string }> }) {
@@ -11,11 +11,11 @@ export async function GET(_request: Request, { params }: { params: Promise<{ use
   const signature = await db.signature.findUnique({ where: { userId } });
   if (!signature) return new NextResponse("Not found", { status: 404 });
 
-  const bytes = await readFile(signature.storagePath);
+  const { bytes, contentType } = await readStoredFile(signature.storagePath);
   return new NextResponse(bytes, {
     headers: {
-      "Content-Type": signature.mimeType,
-      "Cache-Control": "private, max-age=3600",
+      "Content-Type": contentType || signature.mimeType,
+      "Cache-Control": "private, no-store",
     },
   });
 }

@@ -86,13 +86,13 @@ export default async function PrintCompletionPage({ params }: { params: Promise<
       <div className="mt-16 grid grid-cols-2 gap-12">
         <div className="text-center">
           <div className="flex h-28 items-center justify-center border-b">
-            {work.claimant?.signature ? <img alt="Technician signature" className="max-h-24 object-contain" src={`/signatures/${work.claimant.id}`} /> : null}
+            {work.claimant?.signature ? <img alt="Technician signature" className="max-h-24 object-contain" src={`/signatures/${work.claimant.id}?v=${work.claimant.signature.uploadedAt.getTime()}`} /> : null}
           </div>
           <p className="mt-2">ผู้ดำเนินการ: {work.claimant?.fullName ?? "-"}</p>
         </div>
         <div className="text-center">
           <div className="flex h-28 items-center justify-center border-b">
-            {work.reviewer?.signature ? <img alt="Engineer signature" className="max-h-24 object-contain" src={`/signatures/${work.reviewer.id}`} /> : null}
+            {work.reviewer?.signature ? <img alt="Engineer signature" className="max-h-24 object-contain" src={`/signatures/${work.reviewer.id}?v=${work.reviewer.signature.uploadedAt.getTime()}`} /> : null}
           </div>
           <p className="mt-2">ผู้ตรวจรับ: {work.reviewer?.fullName ?? "-"}</p>
         </div>

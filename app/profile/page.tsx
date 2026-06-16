@@ -112,7 +112,7 @@ export default async function ProfilePage({
                   </span>
                   <div>
                     <h2 className="font-extrabold">Profile Photo</h2>
-                    <p className="text-sm text-[var(--muted)]">รองรับ PNG/JPG/WebP ไม่เกิน 5 MB และบันทึกไว้ในฐานข้อมูล</p>
+                    <p className="text-sm text-[var(--muted)]">รองรับ PNG/JPG/WebP ไม่เกิน 1 MB และเก็บไว้ใน Supabase Storage</p>
                   </div>
                 </div>
                 <div className="mt-4">
@@ -131,7 +131,7 @@ export default async function ProfilePage({
                     </span>
                     <div>
                       <h2 className="font-extrabold">Signature</h2>
-                      <p className="text-sm text-[var(--muted)]">ใช้ในเอกสารปิดงาน</p>
+                      <p className="text-sm text-[var(--muted)]">รองรับ PNG/JPG ไม่เกิน 500 KB และใช้ในเอกสารปิดงาน</p>
                     </div>
                   </div>
                   <div className="mt-4">

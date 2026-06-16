@@ -3,8 +3,9 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 model User {
@@ -25,6 +26,10 @@ model User {
   claimedWorks CmWork[]     @relation("Claimant")
   closedWorks  CmWork[]     @relation("EngineerReviewer")
   auditEvents  AuditEvent[]
+
+  @@index([role])
+  @@index([categoryId])
+  @@index([active])
 }
 
 model Signature {
@@ -39,16 +44,16 @@ model Signature {
 }
 
 model ProfilePhoto {
-  id         String   @id @default(cuid())
-  userId     String   @unique
-  user       User     @relation(fields: [userId], references: [id])
-  fileName   String
-  mimeType   String
-  fileSize   Int
+  id          String   @id @default(cuid())
+  userId      String   @unique
+  user        User     @relation(fields: [userId], references: [id])
+  fileName    String
+  mimeType    String
+  fileSize    Int
   storagePath String
-  checksum   String
-  uploadedAt DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  checksum    String
+  uploadedAt  DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
 
 model Category {
@@ -60,6 +65,8 @@ model Category {
 
   users User[]
   works CmWork[]
+
+  @@index([active])
 }
 
 model Zone {
@@ -70,24 +77,26 @@ model Zone {
   updatedAt DateTime @updatedAt
 
   works CmWork[]
+
+  @@index([active])
 }
 
 model CmWork {
-  id                  String     @id @default(cuid())
-  number              String     @unique
+  id                  String    @id @default(cuid())
+  number              String    @unique
   requesterName       String
   requesterDepartment String
   categoryId          String
-  category            Category   @relation(fields: [categoryId], references: [id])
+  category            Category  @relation(fields: [categoryId], references: [id])
   zoneId              String
-  zone                Zone       @relation(fields: [zoneId], references: [id])
+  zone                Zone      @relation(fields: [zoneId], references: [id])
   machineName         String
   problemTitle        String
   problemDetail       String
   urgency             String
-  status              String   @default("NEW")
+  status              String    @default("NEW")
   claimantId          String?
-  claimant            User?      @relation("Claimant", fields: [claimantId], references: [id])
+  claimant            User?     @relation("Claimant", fields: [claimantId], references: [id])
   rootCause           String?
   correctiveAction    String?
   workNote            String?
@@ -95,17 +104,26 @@ model CmWork {
   canceledReason      String?
   releaseReason       String?
   returnedReason      String?
-  createdAt           DateTime   @default(now())
+  createdAt           DateTime  @default(now())
   claimedAt           DateTime?
   inProgressAt        DateTime?
   waitingToCloseAt    DateTime?
   closedAt            DateTime?
   canceledAt          DateTime?
   reviewerId          String?
-  reviewer            User?      @relation("EngineerReviewer", fields: [reviewerId], references: [id])
+  reviewer            User?     @relation("EngineerReviewer", fields: [reviewerId], references: [id])
 
   statusHistory StatusHistory[]
   auditEvents   AuditEvent[]
+
+  @@index([status])
+  @@index([createdAt])
+  @@index([categoryId, status])
+  @@index([zoneId, status])
+  @@index([urgency, status])
+  @@index([claimantId])
+  @@index([reviewerId])
+  @@index([closedAt])
 }
 
 model CmNumberSequence {
@@ -116,14 +134,18 @@ model CmNumberSequence {
 }
 
 model StatusHistory {
-  id          String      @id @default(cuid())
+  id          String   @id @default(cuid())
   cmWorkId    String
-  cmWork      CmWork      @relation(fields: [cmWorkId], references: [id])
+  cmWork      CmWork   @relation(fields: [cmWorkId], references: [id])
   fromStatus  String?
   toStatus    String
   changedById String?
-  changedAt   DateTime    @default(now())
+  changedAt   DateTime @default(now())
   note        String?
+
+  @@index([cmWorkId, changedAt])
+  @@index([changedById])
+  @@index([toStatus])
 }
 
 model AuditEvent {
@@ -139,6 +161,12 @@ model AuditEvent {
   afterJson  String?
   reason     String?
   createdAt  DateTime @default(now())
+
+  @@index([cmWorkId])
+  @@index([actorId])
+  @@index([entityType, entityId])
+  @@index([action])
+  @@index([createdAt])
 }
 
 model SlaSetting {

@@ -173,7 +173,7 @@ async function deleteUser(formData: FormData) {
       },
     }),
   ]);
-  await deleteStoredFile(before.profilePhoto?.storagePath);
+  await Promise.all([deleteStoredFile(before.profilePhoto?.storagePath), deleteStoredFile(before.signature?.storagePath)]);
 
   redirect("/admin/users?deleteStatus=success");
 }
@@ -284,11 +284,11 @@ export default async function AdminUsersPage({ searchParams }: { searchParams: P
                 </div>
                 <div className="grid gap-3 lg:grid-cols-2">
                   <label className="grid gap-1 text-sm font-semibold">
-                    Upload signature PNG/JPG
+                    Upload signature PNG/JPG, max 500 KB
                     <input name="signature" type="file" accept="image/png,image/jpeg" className="rounded-xl border border-[var(--line)] bg-[var(--surface)] p-3 text-[var(--ink)]" />
                   </label>
                   <div className="grid gap-1 text-sm font-semibold">
-                    Upload profile photo PNG/JPG
+                    Upload profile photo PNG/JPG/WebP, max 1 MB
                     <ProfilePhotoPreview />
                   </div>
                 </div>
