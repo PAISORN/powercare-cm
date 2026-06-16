@@ -18,5 +18,6 @@ pw-browsers/
 test-results/
 backups/
 restore-workspace/
+.local-ssh/
 
 .vercel
