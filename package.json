@@ -10,6 +10,7 @@
     "dev": "next dev",
     "dev:supabase": "prisma generate --schema prisma/schema.supabase.prisma && next dev",
     "build": "next build",
+    "build:vercel": "prisma generate --schema prisma/schema.supabase.prisma && next build",
     "start": "next start",
     "start:supabase": "prisma generate --schema prisma/schema.supabase.prisma && next start",
     "db:generate": "prisma generate",
