@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { AppShell } from "../../../components/app-shell";
 import { db } from "../../../lib/db";
+import { cacheTags, revalidateCmData } from "../../../lib/query-cache";
 import { requireUser } from "../../../lib/session";
 import { recordAudit } from "../../../modules/audit/audit-service";
 import { RoleName } from "../../../modules/cm-work/cm-work-types";
@@ -17,6 +18,7 @@ async function createZone(formData: FormData) {
     action: "CREATE_ZONE",
     after: { name: zone.name, active: zone.active },
   });
+  revalidateCmData([cacheTags.zones, cacheTags.dashboardSummary]);
   redirect("/admin/zones");
 }
 
@@ -35,6 +37,7 @@ async function deactivateZone(formData: FormData) {
     before: { name: before.name, active: before.active },
     after: { name: zone.name, active: zone.active },
   });
+  revalidateCmData([cacheTags.zones, cacheTags.dashboardSummary]);
   redirect("/admin/zones");
 }
 

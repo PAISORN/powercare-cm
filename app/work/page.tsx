@@ -7,6 +7,7 @@ import { StatusBadge } from "../../components/status-badge";
 import { StatusKpiStrip } from "../../components/status-kpi-strip";
 import { UserAvatar } from "../../components/user-avatar";
 import { db } from "../../lib/db";
+import { getActiveCategories, getActiveClaimants, getActiveZones } from "../../lib/query-cache";
 import { requireUser } from "../../lib/session";
 import { canClaimWork } from "../../modules/auth/permission";
 import { claimWork } from "../../modules/cm-work/cm-work-service";
@@ -67,9 +68,9 @@ export default async function WorkListPage({ searchParams }: { searchParams: Pro
       },
     }),
     db.cmWork.count({ where }),
-    db.category.findMany({ where: { active: true }, orderBy: { name: "asc" }, select: { id: true, name: true } }),
-    db.zone.findMany({ where: { active: true }, orderBy: { name: "asc" }, select: { id: true, name: true } }),
-    db.user.findMany({ where: { active: true }, orderBy: { fullName: "asc" }, select: { id: true, fullName: true } }),
+    getActiveCategories(),
+    getActiveZones(),
+    getActiveClaimants(),
     db.cmWork.groupBy({ by: ["status"], where: statusSummaryWhere, _count: { _all: true } }),
   ]);
   const statusCountByKey = new Map<WorkStatus, number>(byStatus.map((item) => [item.status as WorkStatus, item._count._all]));

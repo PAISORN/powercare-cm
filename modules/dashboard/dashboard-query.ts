@@ -1,5 +1,6 @@
 import type { Prisma } from "@prisma/client";
 import { db } from "../../lib/db";
+import { getAllCategories, getAllZones, getCachedDashboardSummary } from "../../lib/query-cache";
 import { Urgency, WorkStatus } from "../cm-work/cm-work-types";
 import { initialCategories } from "../master-data/seed-data";
 import { buildMonthlyTrend } from "./dashboard-chart-data";
@@ -33,6 +34,10 @@ export function getDashboardTimeRangeWindow(timeRange: DashboardTimeRangeFilter,
 }
 
 export async function getDashboardSummary(filter?: { category?: DashboardCategoryFilter; timeRange?: DashboardTimeRangeFilter }) {
+  return getCachedDashboardSummary(filter?.category, filter?.timeRange);
+}
+
+export async function loadDashboardSummary(filter?: { category?: DashboardCategoryFilter; timeRange?: DashboardTimeRangeFilter }) {
   const activeCategoryName = filter?.category ? categoryNameByFilter[filter.category] : null;
   const categoryWhere: Prisma.CmWorkWhereInput = activeCategoryName ? { category: { name: activeCategoryName } } : {};
   const activeTimeRange = filter?.timeRange ? normalizeDashboardTimeRange(filter.timeRange) : undefined;
@@ -78,7 +83,7 @@ export async function getDashboardSummary(filter?: { category?: DashboardCategor
     }),
   ]);
 
-  const [categories, zones] = await Promise.all([db.category.findMany(), db.zone.findMany()]);
+  const [categories, zones] = await Promise.all([getAllCategories(), getAllZones()]);
   const categoryNameById = new Map(categories.map((category) => [category.id, category.name]));
   const zoneNameById = new Map(zones.map((zone) => [zone.id, zone.name]));
   const zoneCountById = new Map(byZoneRaw.map((item) => [item.zoneId, item._count._all]));

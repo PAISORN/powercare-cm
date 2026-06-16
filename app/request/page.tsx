@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { AppShell } from "../../components/app-shell";
 import { PublicHeader } from "../../components/public-header";
-import { db } from "../../lib/db";
+import { getActiveCategories, getActiveZones } from "../../lib/query-cache";
 import { getCurrentUser } from "../../lib/session";
 import { repairRequestSchema } from "../../lib/validation";
 import { createRepairRequest } from "../../modules/cm-work/cm-work-service";
@@ -25,10 +25,7 @@ async function submitRepairRequest(formData: FormData) {
 
 export default async function RequestPage() {
   const user = await getCurrentUser();
-  const [categories, zones] = await Promise.all([
-    db.category.findMany({ where: { active: true }, orderBy: { name: "asc" } }),
-    db.zone.findMany({ where: { active: true }, orderBy: { name: "asc" } }),
-  ]);
+  const [categories, zones] = await Promise.all([getActiveCategories(), getActiveZones()]);
 
   return (
     <RequestShell signedIn={Boolean(user)}>

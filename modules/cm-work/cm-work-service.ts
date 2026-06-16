@@ -1,4 +1,5 @@
 import { db } from "../../lib/db";
+import { cacheTags, revalidateCmData } from "../../lib/query-cache";
 import { canCancelWork, canClaimWork, canCloseWork } from "../auth/permission";
 import { recordAudit } from "../audit/audit-service";
 import { canTransition } from "./cm-work-state-machine";
@@ -43,6 +44,7 @@ export async function createRepairRequest(input: {
     after: work,
   });
 
+  revalidateCmData([cacheTags.dashboardSummary]);
   return work;
 }
 
@@ -77,6 +79,7 @@ export async function claimWork(actor: Actor, cmWorkId: string) {
     after: updated,
   });
 
+  revalidateCmData([cacheTags.dashboardSummary]);
   return updated;
 }
 
@@ -110,6 +113,7 @@ export async function moveToInProgress(actor: Actor, cmWorkId: string) {
     after: updated,
   });
 
+  revalidateCmData([cacheTags.dashboardSummary]);
   return updated;
 }
 
@@ -150,6 +154,7 @@ export async function submitForReview(
     after: updated,
   });
 
+  revalidateCmData([cacheTags.dashboardSummary]);
   return updated;
 }
 
@@ -187,6 +192,7 @@ export async function releaseWork(actor: Actor, cmWorkId: string, reason: string
     reason,
   });
 
+  revalidateCmData([cacheTags.dashboardSummary]);
   return updated;
 }
 
@@ -225,6 +231,7 @@ export async function returnForCorrection(actor: Actor, cmWorkId: string, reason
     reason,
   });
 
+  revalidateCmData([cacheTags.dashboardSummary]);
   return updated;
 }
 
@@ -260,6 +267,7 @@ export async function closeWork(actor: Actor, cmWorkId: string, engineerNote?: s
     after: updated,
   });
 
+  revalidateCmData([cacheTags.dashboardSummary]);
   return updated;
 }
 

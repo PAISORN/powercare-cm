@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { AppShell } from "../../../components/app-shell";
 import { db } from "../../../lib/db";
+import { cacheTags, revalidateCmData } from "../../../lib/query-cache";
 import { requireUser } from "../../../lib/session";
 import { recordAudit } from "../../../modules/audit/audit-service";
 import { RoleName } from "../../../modules/cm-work/cm-work-types";
@@ -17,6 +18,7 @@ async function createCategory(formData: FormData) {
     action: "CREATE_CATEGORY",
     after: { name: category.name, active: category.active },
   });
+  revalidateCmData([cacheTags.categories, cacheTags.dashboardSummary]);
   redirect("/admin/categories");
 }
 
@@ -35,6 +37,7 @@ async function deactivateCategory(formData: FormData) {
     before: { name: before.name, active: before.active },
     after: { name: category.name, active: category.active },
   });
+  revalidateCmData([cacheTags.categories, cacheTags.dashboardSummary]);
   redirect("/admin/categories");
 }
 

@@ -6,6 +6,7 @@ import { ProfilePhotoPreview } from "../../../components/profile-photo-preview";
 import { UserAvatar } from "../../../components/user-avatar";
 import { db } from "../../../lib/db";
 import { deleteStoredFile, saveProfilePhotoFile, saveSignatureFile } from "../../../lib/file-storage";
+import { cacheTags, getActiveCategories, revalidateCmData } from "../../../lib/query-cache";
 import { hashPassword, verifyPassword } from "../../../lib/password";
 import { requireUser } from "../../../lib/session";
 import { recordAudit } from "../../../modules/audit/audit-service";
@@ -43,6 +44,7 @@ async function createUser(formData: FormData) {
     },
   });
 
+  revalidateCmData([cacheTags.usersActive, cacheTags.dashboardSummary]);
   redirect("/admin/users");
 }
 
@@ -129,6 +131,7 @@ async function updateUserProfile(formData: FormData) {
     await deleteStoredFile(before.profilePhoto.storagePath);
   }
 
+  revalidateCmData([cacheTags.usersActive, cacheTags.dashboardSummary]);
   redirect("/admin/users");
 }
 
@@ -175,6 +178,7 @@ async function deleteUser(formData: FormData) {
   ]);
   await Promise.all([deleteStoredFile(before.profilePhoto?.storagePath), deleteStoredFile(before.signature?.storagePath)]);
 
+  revalidateCmData([cacheTags.usersActive, cacheTags.dashboardSummary]);
   redirect("/admin/users?deleteStatus=success");
 }
 
@@ -185,7 +189,7 @@ export default async function AdminUsersPage({ searchParams }: { searchParams: P
 
   const [users, categories] = await Promise.all([
     db.user.findMany({ include: { category: true, signature: true, profilePhoto: true }, orderBy: { createdAt: "desc" } }),
-    db.category.findMany({ where: { active: true }, orderBy: { name: "asc" } }),
+    getActiveCategories(),
   ]);
 
   return (

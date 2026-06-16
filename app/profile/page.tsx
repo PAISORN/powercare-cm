@@ -6,6 +6,7 @@ import { SignaturePreview } from "../../components/signature-preview";
 import { UserAvatar } from "../../components/user-avatar";
 import { db } from "../../lib/db";
 import { deleteStoredFile, saveProfilePhotoFile, saveSignatureFile } from "../../lib/file-storage";
+import { cacheTags, revalidateCmData } from "../../lib/query-cache";
 import { requireUser } from "../../lib/session";
 import { RoleName } from "../../modules/cm-work/cm-work-types";
 
@@ -28,6 +29,7 @@ async function uploadProfilePhoto(formData: FormData) {
     redirect("/profile?photoError=1");
   }
 
+  revalidateCmData([cacheTags.usersActive, cacheTags.dashboardSummary]);
   redirect("/profile?photoUploaded=1");
 }
 
