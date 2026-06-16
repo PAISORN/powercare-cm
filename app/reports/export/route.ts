@@ -4,6 +4,8 @@ import { createCmWorkWorkbook } from "../../../lib/excel";
 import { getCurrentUser } from "../../../lib/session";
 import { RoleName, statusLabels, urgencyLabels, type Urgency, type WorkStatus } from "../../../modules/cm-work/cm-work-types";
 
+export const preferredRegion = "home";
+
 export async function GET() {
   const user = await getCurrentUser();
   if (!user) return new NextResponse("Unauthorized", { status: 401 });

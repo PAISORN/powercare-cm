@@ -3,6 +3,8 @@ import { db } from "../../../lib/db";
 import { readStoredFile } from "../../../lib/file-storage";
 import { getCurrentUser } from "../../../lib/session";
 
+export const preferredRegion = "home";
+
 export async function GET(_request: Request, { params }: { params: Promise<{ userId: string }> }) {
   const currentUser = await getCurrentUser();
   if (!currentUser) return new NextResponse("Unauthorized", { status: 401 });

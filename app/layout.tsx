@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import Script from "next/script";
 import "./globals.css";
 
+export const preferredRegion = "home";
+
 export const metadata: Metadata = {
   title: "Power Plant CM Control Center",
   description: "ระบบแจ้งซ่อมและติดตามงาน Corrective Maintenance",
