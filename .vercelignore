@@ -1,0 +1,10 @@
+.env
+.env.*
+!.env.production.example
+.tmp/
+.npm-cache/
+backups/
+restore-workspace/
+storage/
+prisma/dev.db
+prisma/dev.db-journal

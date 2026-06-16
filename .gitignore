@@ -18,3 +18,5 @@ pw-browsers/
 test-results/
 backups/
 restore-workspace/
+
+.vercel
