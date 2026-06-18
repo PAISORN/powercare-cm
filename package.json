@@ -15,6 +15,7 @@
     "start:supabase": "prisma generate --schema prisma/schema.supabase.prisma && next start",
     "db:generate": "prisma generate",
     "db:generate:supabase": "prisma generate --schema prisma/schema.supabase.prisma",
+    "db:check:development": "tsx scripts/check-development-database.ts",
     "db:push:supabase": "prisma db push --schema prisma/schema.supabase.prisma",
     "db:migrate": "prisma migrate dev",
     "db:seed": "prisma db seed",
