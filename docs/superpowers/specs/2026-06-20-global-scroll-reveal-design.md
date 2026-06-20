@@ -9,7 +9,7 @@ Apply the dashboard's soft entrance and scroll-reveal behavior consistently to e
 - Keep the sidebar and header stable and immediately visible.
 - Reveal the first main content sections with a short upward slide and fade when a page opens.
 - Reveal lower cards, forms, and content sections when their leading edge enters the viewport.
-- Use a short 300 ms ease-out transition with small staggered delays between nearby sections.
+- Use a 550 ms ease-out transition with 70 ms staggered delays between nearby sections.
 - Preserve the current layout dimensions while elements are hidden so content does not jump.
 - Show all content immediately when the user enables reduced motion.
 
@@ -29,8 +29,16 @@ Apply the dashboard's soft entrance and scroll-reveal behavior consistently to e
 - Tall list containers reveal as soon as their leading portion enters the viewport.
 - Existing horizontal scroll areas remain usable and are not animated individually.
 
+## Overlay And Mobile Header Safety
+
+- Revealed elements must finish with `transform: none` so they do not retain a stacking context that can trap calendars, menus, or other overlays below later page sections.
+- The date-range dialog remains above KPI cards on desktop and responsive layouts.
+- On the authenticated mobile header, the menu control appears immediately before the Home control.
+- Desktop sidebar and header behavior remain unchanged.
+
 ## Verification
 
 - Component tests cover initial hidden state, intersection reveal, tall-section threshold, nested sections, and reduced-motion behavior.
 - TypeScript validation and the full test suite must pass.
 - Check representative public, dashboard, work-list, profile, report, and form pages at desktop and mobile widths.
+- Tests protect the final non-stacking transform state and the mobile menu-before-Home order.
