@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 760" role="img" aria-labelledby="title desc">
+  <title id="title">PowerCare CM gear background</title>
+  <desc id="desc">A cluster of one large gear and two smaller gears aligned to the right.</desc>
+  <defs>
+    <g id="gear-shape">
+      <circle cx="0" cy="0" r="72" />
+      <path d="M-18-98H18L25-68H-25Z" />
+      <path d="M-18-98H18L25-68H-25Z" transform="rotate(36)" />
+      <path d="M-18-98H18L25-68H-25Z" transform="rotate(72)" />
+      <path d="M-18-98H18L25-68H-25Z" transform="rotate(108)" />
+      <path d="M-18-98H18L25-68H-25Z" transform="rotate(144)" />
+      <path d="M-18-98H18L25-68H-25Z" transform="rotate(180)" />
+      <path d="M-18-98H18L25-68H-25Z" transform="rotate(216)" />
+      <path d="M-18-98H18L25-68H-25Z" transform="rotate(252)" />
+      <path d="M-18-98H18L25-68H-25Z" transform="rotate(288)" />
+      <path d="M-18-98H18L25-68H-25Z" transform="rotate(324)" />
+    </g>
+    <mask id="gear-hole" maskUnits="userSpaceOnUse" x="-110" y="-110" width="220" height="220">
+      <rect x="-110" y="-110" width="220" height="220" fill="white" />
+      <circle cx="0" cy="0" r="44" fill="black" />
+    </mask>
+  </defs>
+
+  <g fill="#b7d5ed">
+    <g id="gear-large" transform="translate(330 410) scale(3.45)">
+      <use href="#gear-shape" mask="url(#gear-hole)" />
+    </g>
+    <g id="gear-medium" transform="translate(800 195) scale(1.95)">
+      <use href="#gear-shape" mask="url(#gear-hole)" />
+    </g>
+    <g id="gear-small" transform="translate(798 585) scale(1.45) rotate(18)">
+      <use href="#gear-shape" mask="url(#gear-hole)" />
+    </g>
+  </g>
+</svg>

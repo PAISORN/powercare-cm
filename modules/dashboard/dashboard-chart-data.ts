@@ -1,3 +1,4 @@
+import { BANGKOK_TIME_ZONE } from "../../lib/date-time/bangkok-time";
 import { WorkStatus } from "../cm-work/cm-work-types";
 
 const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -34,7 +35,8 @@ export function toChartRows(items: CountInput[]): ChartRow[] {
 }
 
 export function buildMonthlyTrend(works: WorkDateInput[], currentDate = new Date(), monthCount = 6): MonthlyTrendRow[] {
-  const anchor = new Date(Date.UTC(currentDate.getUTCFullYear(), currentDate.getUTCMonth(), 1));
+  const anchorParts = getBangkokYearMonth(currentDate);
+  const anchor = new Date(Date.UTC(anchorParts.year, anchorParts.month - 1, 1));
   const buckets = Array.from({ length: monthCount }, (_, index) => {
     const monthOffset = index - (monthCount - 1);
     const date = new Date(Date.UTC(anchor.getUTCFullYear(), anchor.getUTCMonth() + monthOffset, 1));
@@ -93,7 +95,19 @@ function isWorkStatus(status: string): status is WorkStatus {
 }
 
 function toMonthKey(date: Date) {
-  const year = date.getUTCFullYear();
-  const month = String(date.getUTCMonth() + 1).padStart(2, "0");
-  return `${year}-${month}`;
+  const { year, month } = getBangkokYearMonth(date);
+  return `${year}-${String(month).padStart(2, "0")}`;
+}
+
+function getBangkokYearMonth(date: Date) {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: BANGKOK_TIME_ZONE,
+    year: "numeric",
+    month: "2-digit",
+  }).formatToParts(date);
+
+  return {
+    year: Number(parts.find((part) => part.type === "year")?.value ?? "0"),
+    month: Number(parts.find((part) => part.type === "month")?.value ?? "1"),
+  };
 }

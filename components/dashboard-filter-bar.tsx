@@ -3,7 +3,9 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import type { FormEvent } from "react";
-import type { DashboardCategoryFilter, DashboardTimeRangeFilter } from "../modules/dashboard/dashboard-query";
+import { CmDateFilterBar } from "./cm-date-filter-bar";
+import type { CmDateFilterInput } from "../modules/filters/cm-date-filter";
+import type { DashboardCategoryFilter } from "../modules/dashboard/dashboard-query";
 
 const categoryOptions: { value: "" | DashboardCategoryFilter; label: string }[] = [
   { value: "", label: "Overview - All CM Work" },
@@ -11,20 +13,13 @@ const categoryOptions: { value: "" | DashboardCategoryFilter; label: string }[] 
   { value: "electrical", label: "Electrical - Electrical Work" },
 ];
 
-const timeRangeOptions: { value: "" | DashboardTimeRangeFilter; label: string }[] = [
-  { value: "", label: "All Time" },
-  { value: "this-month", label: "This Month" },
-  { value: "last-3-months", label: "Last 3 Months" },
-  { value: "last-6-months", label: "Last 6 Months" },
-];
-
 export function DashboardFilterBar({
   activeCategory,
-  activeTimeRange,
+  activeDateFilter,
   clearHref,
 }: {
   activeCategory?: DashboardCategoryFilter;
-  activeTimeRange?: DashboardTimeRangeFilter;
+  activeDateFilter?: CmDateFilterInput;
   clearHref: string;
 }) {
   const router = useRouter();
@@ -34,11 +29,21 @@ export function DashboardFilterBar({
     event.preventDefault();
     const formData = new FormData(event.currentTarget);
     const params = new URLSearchParams();
-    const category = String(formData.get("category") ?? "");
-    const timeRange = String(formData.get("timeRange") ?? "");
+    const category = readText(formData, "category");
+    const mode = readText(formData, "mode");
+    const date = readText(formData, "date");
+    const startDate = readText(formData, "startDate");
+    const endDate = readText(formData, "endDate");
+    const month = readText(formData, "month");
+    const year = readText(formData, "year");
 
     if (category) params.set("category", category);
-    if (timeRange) params.set("timeRange", timeRange);
+    if (mode) params.set("mode", mode);
+    if (date) params.set("date", date);
+    if (startDate) params.set("startDate", startDate);
+    if (endDate) params.set("endDate", endDate);
+    if (month) params.set("month", month);
+    if (year) params.set("year", year);
 
     const query = params.toString();
     router.push(query ? `${pathname}?${query}` : pathname);
@@ -46,9 +51,17 @@ export function DashboardFilterBar({
 
   return (
     <form className="mt-6 rounded-3xl border border-[var(--line)] bg-[var(--surface)] p-4 shadow-[var(--shadow)]" data-testid="dashboard-filter-bar" method="get" onSubmit={applyFilters}>
-      <div className="grid gap-3 md:grid-cols-[1fr_1fr_auto_auto] md:items-end">
+      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-[1.1fr_1.4fr_auto_auto] xl:items-end">
         <SelectField label="Work Category" name="category" value={activeCategory ?? ""} options={categoryOptions} />
-        <SelectField label="Time Range" name="timeRange" value={activeTimeRange ?? ""} options={timeRangeOptions} />
+        <CmDateFilterBar
+          defaultMode={activeDateFilter?.mode}
+          defaultDate={activeDateFilter?.date}
+          defaultStartDate={activeDateFilter?.startDate}
+          defaultEndDate={activeDateFilter?.endDate}
+          defaultMonth={activeDateFilter?.month}
+          defaultYear={activeDateFilter?.year}
+          initiallyUnset={!activeDateFilter}
+        />
         <button className="rounded-2xl bg-[var(--primary)] px-5 py-3 font-bold text-white shadow-sm transition hover:bg-[var(--primary-strong)]" type="submit">
           Apply filters
         </button>
@@ -74,7 +87,7 @@ function SelectField({
   return (
     <label className="grid gap-1 text-sm font-semibold">
       <span className="text-[var(--muted)]">{label}</span>
-      <select className="rounded-2xl border border-[var(--line)] bg-[var(--soft)] px-3 py-3 outline-none" defaultValue={value} name={name}>
+      <select className="min-h-[52px] rounded-2xl border border-[var(--line)] bg-[var(--soft)] px-3 py-3 outline-none" defaultValue={value} name={name}>
         {options.map((option) => (
           <option key={option.label} value={option.value}>
             {option.label}
@@ -83,4 +96,8 @@ function SelectField({
       </select>
     </label>
   );
+}
+
+function readText(formData: FormData, key: string) {
+  return String(formData.get(key) ?? "").trim();
 }

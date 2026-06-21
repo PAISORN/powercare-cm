@@ -8,23 +8,25 @@ datasource db {
 }
 
 model User {
-  id           String    @id @default(cuid())
-  username     String    @unique
+  id           String        @id @default(cuid())
+  username     String        @unique
   passwordHash String
   fullName     String
   department   String?
   role         String
   categoryId   String?
-  category     Category? @relation(fields: [categoryId], references: [id])
+  category     Category?     @relation(fields: [categoryId], references: [id])
   signature    Signature?
   profilePhoto ProfilePhoto?
-  active       Boolean   @default(true)
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  active       Boolean       @default(true)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
 
-  claimedWorks CmWork[]     @relation("Claimant")
-  closedWorks  CmWork[]     @relation("EngineerReviewer")
-  auditEvents  AuditEvent[]
+  claimedWorks  CmWork[]           @relation("Claimant")
+  closedWorks   CmWork[]           @relation("EngineerReviewer")
+  auditEvents   AuditEvent[]
+  announcements Announcement[]     @relation("AnnouncementAuthor")
+  notifications UserNotification[] @relation("NotificationRecipient")
 }
 
 model Signature {
@@ -39,16 +41,16 @@ model Signature {
 }
 
 model ProfilePhoto {
-  id         String   @id @default(cuid())
-  userId     String   @unique
-  user       User     @relation(fields: [userId], references: [id])
-  fileName   String
-  mimeType   String
-  fileSize   Int
+  id          String   @id @default(cuid())
+  userId      String   @unique
+  user        User     @relation(fields: [userId], references: [id])
+  fileName    String
+  mimeType    String
+  fileSize    Int
   storagePath String
-  checksum   String
-  uploadedAt DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  checksum    String
+  uploadedAt  DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
 
 model Category {
@@ -58,8 +60,9 @@ model Category {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  users User[]
-  works CmWork[]
+  users            User[]
+  works            CmWork[]
+  lineDestinations LineDestination[]
 }
 
 model Zone {
@@ -73,21 +76,21 @@ model Zone {
 }
 
 model CmWork {
-  id                  String     @id @default(cuid())
-  number              String     @unique
+  id                  String    @id @default(cuid())
+  number              String    @unique
   requesterName       String
   requesterDepartment String
   categoryId          String
-  category            Category   @relation(fields: [categoryId], references: [id])
+  category            Category  @relation(fields: [categoryId], references: [id])
   zoneId              String
-  zone                Zone       @relation(fields: [zoneId], references: [id])
+  zone                Zone      @relation(fields: [zoneId], references: [id])
   machineName         String
   problemTitle        String
   problemDetail       String
   urgency             String
-  status              String   @default("NEW")
+  status              String    @default("NEW")
   claimantId          String?
-  claimant            User?      @relation("Claimant", fields: [claimantId], references: [id])
+  claimant            User?     @relation("Claimant", fields: [claimantId], references: [id])
   rootCause           String?
   correctiveAction    String?
   workNote            String?
@@ -95,14 +98,14 @@ model CmWork {
   canceledReason      String?
   releaseReason       String?
   returnedReason      String?
-  createdAt           DateTime   @default(now())
+  createdAt           DateTime  @default(now())
   claimedAt           DateTime?
   inProgressAt        DateTime?
   waitingToCloseAt    DateTime?
   closedAt            DateTime?
   canceledAt          DateTime?
   reviewerId          String?
-  reviewer            User?      @relation("EngineerReviewer", fields: [reviewerId], references: [id])
+  reviewer            User?     @relation("EngineerReviewer", fields: [reviewerId], references: [id])
 
   statusHistory StatusHistory[]
   auditEvents   AuditEvent[]
@@ -116,13 +119,13 @@ model CmNumberSequence {
 }
 
 model StatusHistory {
-  id          String      @id @default(cuid())
+  id          String   @id @default(cuid())
   cmWorkId    String
-  cmWork      CmWork      @relation(fields: [cmWorkId], references: [id])
+  cmWork      CmWork   @relation(fields: [cmWorkId], references: [id])
   fromStatus  String?
   toStatus    String
   changedById String?
-  changedAt   DateTime    @default(now())
+  changedAt   DateTime @default(now())
   note        String?
 }
 
@@ -147,4 +150,122 @@ model SlaSetting {
   executionDays Int      @default(3)
   reviewDays    Int      @default(2)
   updatedAt     DateTime @updatedAt
+}
+
+model SystemSetting {
+  id                            String   @id
+  engineerWorkAssignmentEnabled Boolean  @default(false)
+  updatedAt                     DateTime @updatedAt
+}
+
+model Announcement {
+  id               String   @id @default(cuid())
+  title            String
+  content          String
+  imageFileName    String?
+  imageMimeType    String?
+  imageFileSize    Int?
+  imageStoragePath String?
+  publishStart     DateTime
+  publishEnd       DateTime
+  pinned           Boolean  @default(false)
+  active           Boolean  @default(true)
+  authorId         String
+  author           User     @relation("AnnouncementAuthor", fields: [authorId], references: [id])
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([active, publishStart, publishEnd])
+  @@index([pinned, publishStart])
+  @@index([authorId])
+}
+
+model UserNotification {
+  id           String    @id @default(cuid())
+  recipientId  String
+  recipient    User      @relation("NotificationRecipient", fields: [recipientId], references: [id], onDelete: Cascade)
+  eventType    String
+  entityType   String
+  entityId     String
+  targetStatus String?
+  title        String
+  message      String
+  href         String?
+  createdAt    DateTime  @default(now())
+  readAt       DateTime?
+
+  @@index([recipientId, readAt, createdAt])
+  @@index([recipientId, targetStatus, readAt])
+  @@index([recipientId, entityType, entityId, readAt])
+  @@index([entityType, entityId])
+  @@index([eventType])
+}
+
+model LineDestination {
+  id          String    @id @default(cuid())
+  displayName String
+  targetId    String    @unique
+  categoryId  String?
+  category    Category? @relation(fields: [categoryId], references: [id])
+  active      Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  settings   LineEventSetting[]
+  deliveries LineDeliveryLog[]
+  discovery  LineGroupDiscovery?
+
+  @@index([categoryId, active])
+}
+
+model LineEventSetting {
+  id            String          @id @default(cuid())
+  destinationId String
+  destination   LineDestination @relation(fields: [destinationId], references: [id], onDelete: Cascade)
+  eventType     String
+  enabled       Boolean         @default(true)
+
+  @@unique([destinationId, eventType])
+}
+
+model LineDeliveryLog {
+  id            String          @id @default(cuid())
+  eventId       String
+  destinationId String
+  destination   LineDestination @relation(fields: [destinationId], references: [id])
+  eventType     String
+  payloadJson   String
+  status        String          @default("PENDING")
+  attempts      Int             @default(0)
+  errorSummary  String?
+  sentAt        DateTime?
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  @@unique([eventId, destinationId])
+  @@index([status, createdAt])
+}
+
+model LineGroupDiscovery {
+  id                 String           @id @default(cuid())
+  groupId            String           @unique
+  displayName        String?
+  eventType          String?
+  firstSeenAt        DateTime         @default(now())
+  lastSeenAt         DateTime         @default(now())
+  addedDestinationId String?          @unique
+  addedDestination   LineDestination? @relation(fields: [addedDestinationId], references: [id], onDelete: SetNull)
+
+  @@index([lastSeenAt])
+}
+
+model OrganizationProfile {
+  id              String   @id
+  companyName     String
+  logoFileName    String?
+  logoMimeType    String?
+  logoFileSize    Int?
+  logoStoragePath String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 }

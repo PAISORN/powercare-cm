@@ -1,10 +1,96 @@
+import type { Prisma } from "@prisma/client";
 import { db } from "../../lib/db";
 import { cacheTags, revalidateCmData } from "../../lib/query-cache";
-import { canCancelWork, canClaimWork, canCloseWork } from "../auth/permission";
+import { canAssignWork, canCancelWork, canClaimWork, canCloseWork } from "../auth/permission";
 import { recordAudit } from "../audit/audit-service";
 import { canTransition } from "./cm-work-state-machine";
 import { reserveCmWorkNumber } from "./cm-work-sequence";
-import { RoleName, WorkStatus, type Actor, type Urgency } from "./cm-work-types";
+import { RoleName, statusLabels, WorkStatus, type Actor, type Urgency } from "./cm-work-types";
+import { createCmNotifications } from "../notifications/notification-service";
+import { NotificationEventType } from "../notifications/notification-types";
+import { dispatchLineWorkEvent } from "../line/line-service";
+import { mapCmNotificationToLineEvent } from "../line/line-work-event";
+
+type AssignmentWork = {
+  id: string;
+  status: string;
+  categoryId: string;
+  claimantId: string | null;
+};
+
+type AssignmentTechnician = {
+  id: string;
+  fullName: string;
+  role: string;
+  categoryId: string | null;
+  active: boolean;
+};
+
+export type AssignmentStore = {
+  getWork(id: string): Promise<AssignmentWork | null>;
+  getTechnician(id: string): Promise<AssignmentTechnician | null>;
+  getEngineerAssignmentEnabled(): Promise<boolean>;
+  claimIfAvailable(input: {
+    cmWorkId: string;
+    technicianId: string;
+    technicianName: string;
+    actorId: string;
+    fromStatus: string;
+  }): Promise<{ id: string; claimantId: string | null; status: string } | null>;
+};
+
+function createPrismaAssignmentStore(tx: Prisma.TransactionClient): AssignmentStore {
+  return {
+    getWork: (id) =>
+      tx.cmWork.findUnique({
+        where: { id },
+        select: { id: true, status: true, categoryId: true, claimantId: true },
+      }),
+    getTechnician: (id) =>
+      tx.user.findUnique({
+        where: { id },
+        select: { id: true, fullName: true, role: true, categoryId: true, active: true },
+      }),
+    async getEngineerAssignmentEnabled() {
+      return (await tx.systemSetting.findUnique({ where: { id: "global" } }))
+        ?.engineerWorkAssignmentEnabled ?? false;
+    },
+    async claimIfAvailable(input) {
+      const claimedAt = new Date();
+      const result = await tx.cmWork.updateMany({
+        where: { id: input.cmWorkId, claimantId: null, status: input.fromStatus },
+        data: { claimantId: input.technicianId, status: WorkStatus.CLAIMED, claimedAt },
+      });
+      if (result.count !== 1) return null;
+
+      await tx.statusHistory.create({
+        data: {
+          cmWorkId: input.cmWorkId,
+          fromStatus: input.fromStatus,
+          toStatus: WorkStatus.CLAIMED,
+          changedById: input.actorId,
+          note: `Assigned to ${input.technicianName}`,
+        },
+      });
+      await tx.auditEvent.create({
+        data: {
+          cmWorkId: input.cmWorkId,
+          actorId: input.actorId,
+          entityType: "CmWork",
+          entityId: input.cmWorkId,
+          action: "ASSIGN_WORK",
+          beforeJson: JSON.stringify({ claimantId: null, status: input.fromStatus }),
+          afterJson: JSON.stringify({ claimantId: input.technicianId, status: WorkStatus.CLAIMED }),
+        },
+      });
+
+      return tx.cmWork.findUniqueOrThrow({
+        where: { id: input.cmWorkId },
+        select: { id: true, claimantId: true, status: true },
+      });
+    },
+  };
+}
 
 export async function createRepairRequest(input: {
   requesterName: string;
@@ -44,6 +130,8 @@ export async function createRepairRequest(input: {
     after: work,
   });
 
+  await emitWorkNotification(work.id, null, NotificationEventType.NEW_REQUEST, WorkStatus.NEW);
+
   revalidateCmData([cacheTags.dashboardSummary]);
   return work;
 }
@@ -79,7 +167,52 @@ export async function claimWork(actor: Actor, cmWorkId: string) {
     after: updated,
   });
 
+  await emitWorkNotification(updated.id, actor.id, NotificationEventType.CLAIMED, WorkStatus.CLAIMED);
+
   revalidateCmData([cacheTags.dashboardSummary]);
+  return updated;
+}
+
+export async function assignWork(actor: Actor, cmWorkId: string, technicianId: string) {
+  const updated = await db.$transaction((tx) =>
+    assignWorkWithStore(createPrismaAssignmentStore(tx), actor, cmWorkId, technicianId),
+  );
+  revalidateCmData([cacheTags.dashboardSummary]);
+  await emitWorkNotification(updated.id, actor.id, NotificationEventType.ASSIGNED, WorkStatus.CLAIMED);
+  return updated;
+}
+
+export async function assignWorkWithStore(
+  store: AssignmentStore,
+  actor: Actor,
+  cmWorkId: string,
+  technicianId: string,
+) {
+  const [work, technician, enabled] = await Promise.all([
+    store.getWork(cmWorkId),
+    store.getTechnician(technicianId),
+    store.getEngineerAssignmentEnabled(),
+  ]);
+
+  if (!work) throw new Error("CM work not found");
+  if (!technician || technician.role !== RoleName.TECHNICIAN) throw new Error("Technician not found");
+  if (!technician.active) throw new Error("Technician is inactive");
+  if (!canAssignWork(actor, work, enabled)) {
+    if (actor.role === RoleName.ENGINEER && !enabled) {
+      throw new Error("Engineer work assignment is disabled");
+    }
+    throw new Error("CM work is no longer available");
+  }
+  if (technician.categoryId !== work.categoryId) throw new Error("Technician category mismatch");
+
+  const updated = await store.claimIfAvailable({
+    cmWorkId,
+    technicianId,
+    technicianName: technician.fullName,
+    actorId: actor.id,
+    fromStatus: work.status,
+  });
+  if (!updated) throw new Error("CM work is no longer available");
   return updated;
 }
 
@@ -112,6 +245,8 @@ export async function moveToInProgress(actor: Actor, cmWorkId: string) {
     before: work,
     after: updated,
   });
+
+  await emitWorkNotification(updated.id, actor.id, NotificationEventType.IN_PROGRESS, WorkStatus.IN_PROGRESS);
 
   revalidateCmData([cacheTags.dashboardSummary]);
   return updated;
@@ -154,6 +289,8 @@ export async function submitForReview(
     after: updated,
   });
 
+  await emitWorkNotification(updated.id, actor.id, NotificationEventType.WAITING_CLOSE, WorkStatus.WAITING_TO_CLOSE);
+
   revalidateCmData([cacheTags.dashboardSummary]);
   return updated;
 }
@@ -191,6 +328,8 @@ export async function releaseWork(actor: Actor, cmWorkId: string, reason: string
     after: updated,
     reason,
   });
+
+  await emitWorkNotification(updated.id, actor.id, NotificationEventType.RELEASED, WorkStatus.WAITING_TO_CLAIM);
 
   revalidateCmData([cacheTags.dashboardSummary]);
   return updated;
@@ -231,6 +370,8 @@ export async function returnForCorrection(actor: Actor, cmWorkId: string, reason
     reason,
   });
 
+  await emitWorkNotification(updated.id, actor.id, NotificationEventType.RETURNED, WorkStatus.RETURNED_FOR_CORRECTION);
+
   revalidateCmData([cacheTags.dashboardSummary]);
   return updated;
 }
@@ -266,6 +407,8 @@ export async function closeWork(actor: Actor, cmWorkId: string, engineerNote?: s
     before: work,
     after: updated,
   });
+
+  await emitWorkNotification(updated.id, actor.id, NotificationEventType.CLOSED, WorkStatus.CLOSED);
 
   revalidateCmData([cacheTags.dashboardSummary]);
   return updated;
@@ -304,5 +447,57 @@ export async function cancelWork(actor: Actor, cmWorkId: string, reason: string)
     reason,
   });
 
+  await emitWorkNotification(updated.id, actor.id, NotificationEventType.CANCELED, WorkStatus.CANCELED);
+
   return updated;
+}
+
+async function emitWorkNotification(cmWorkId: string, actorId: string | null, eventType: string, targetStatus: string) {
+  const work = await db.cmWork.findUniqueOrThrow({
+    where: { id: cmWorkId },
+    select: {
+      id: true,
+      number: true,
+      categoryId: true,
+      category: { select: { name: true } },
+      claimantId: true,
+      machineName: true,
+      statusHistory: { orderBy: [{ changedAt: "desc" }, { id: "desc" }], take: 1, select: { id: true } },
+    },
+  });
+  await db.$transaction((tx) =>
+    createCmNotifications(
+      {
+        eventType,
+        cmWorkId: work.id,
+        cmNumber: work.number,
+        categoryId: work.categoryId,
+        claimantId: work.claimantId,
+        actorId,
+        targetStatus,
+        title: `${work.number} · ${targetStatus}`,
+        message: `CM work changed to ${targetStatus}`,
+        href: `/work/${work.id}`,
+      },
+      tx,
+    ),
+  );
+
+  const lineEventType = mapCmNotificationToLineEvent(eventType);
+  const historyId = work.statusHistory[0]?.id;
+  if (!lineEventType || !historyId) return;
+  const actor = actorId
+    ? await db.user.findUnique({ where: { id: actorId }, select: { fullName: true } })
+    : null;
+  await dispatchLineWorkEvent({
+    eventId: historyId,
+    eventType: lineEventType,
+    categoryId: work.categoryId,
+    categoryName: work.category.name,
+    workId: work.id,
+    workNumber: work.number,
+    machineName: work.machineName,
+    statusLabel: statusLabels[targetStatus as WorkStatus] ?? targetStatus,
+    actorName: actor?.fullName,
+  }).catch(() => undefined);
 }

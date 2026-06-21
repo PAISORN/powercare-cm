@@ -1,4 +1,5 @@
 import { pathToFileURL } from "node:url";
+import { loadProjectEnv } from "./load-project-env.js";
 
 export function assertDevelopmentDatabase(input: { databaseUrl?: string; productionProjectRef?: string }) {
   if (!input.databaseUrl) throw new Error("DATABASE_URL is required");
@@ -10,6 +11,8 @@ export function assertDevelopmentDatabase(input: { databaseUrl?: string; product
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  loadProjectEnv();
+
   assertDevelopmentDatabase({
     databaseUrl: process.env.DATABASE_URL,
     productionProjectRef: process.env.PRODUCTION_SUPABASE_PROJECT_REF,

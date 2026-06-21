@@ -1,14 +1,17 @@
 import Link from "next/link";
 import { Activity, AlertTriangle, CheckCircle2, ClipboardList, Gauge, History, RotateCcw, Wrench } from "lucide-react";
 import { WorkStatus, statusLabels } from "../modules/cm-work/cm-work-types";
+import { UnreadBadge } from "./unread-badge";
 
 type StatusKpiStripProps = {
   statusCountByKey: Map<WorkStatus, number>;
   activeStatus?: string;
   getHref?: (status: WorkStatus) => string;
+  unreadCountByStatus?: Partial<Record<WorkStatus, number>>;
+  readAction?: (formData: FormData) => void | Promise<void>;
 };
 
-export function StatusKpiStrip({ statusCountByKey, activeStatus, getHref }: StatusKpiStripProps) {
+export function StatusKpiStrip({ statusCountByKey, activeStatus, getHref, unreadCountByStatus = {}, readAction }: StatusKpiStripProps) {
   const icons: Record<WorkStatus, React.ReactNode> = {
     [WorkStatus.NEW]: <ClipboardList size={20} />,
     [WorkStatus.WAITING_TO_CLAIM]: <Activity size={20} />,
@@ -38,6 +41,9 @@ export function StatusKpiStrip({ statusCountByKey, activeStatus, getHref }: Stat
           active={activeStatus === status}
           ariaLabel={`Status KPI ${status}`}
           href={getHref?.(status)}
+          unreadCount={unreadCountByStatus[status] ?? 0}
+          readAction={readAction}
+          status={status}
           label={statusLabels[status]}
           value={statusCountByKey.get(status) ?? 0}
           icon={icons[status]}
@@ -52,6 +58,9 @@ function MetricCard({
   active,
   ariaLabel,
   href,
+  unreadCount,
+  readAction,
+  status,
   label,
   value,
   icon,
@@ -60,6 +69,9 @@ function MetricCard({
   active: boolean;
   ariaLabel: string;
   href?: string;
+  unreadCount: number;
+  readAction?: (formData: FormData) => void | Promise<void>;
+  status: WorkStatus;
   label: string;
   value: number;
   icon: React.ReactNode;
@@ -74,9 +86,10 @@ function MetricCard({
     green: "bg-[#dcfce7] text-[#073f26]",
     slate: "bg-[#e2e8f0] text-[#1f2937]",
   };
-  const className = `rounded-2xl p-4 shadow-[var(--shadow)] transition ${tones[tone]} ${active ? "ring-2 ring-[var(--primary)] ring-offset-2 ring-offset-[var(--bg)]" : ""}`;
+  const className = `relative rounded-2xl p-4 text-left shadow-[var(--shadow)] transition ${tones[tone]} ${active ? "ring-2 ring-[var(--primary)] ring-offset-2 ring-offset-[var(--bg)]" : ""}`;
   const content = (
     <>
+      <UnreadBadge count={unreadCount} />
       <div className="flex items-center justify-between gap-3">
         <p className="min-w-0 truncate text-sm font-semibold">{label}</p>
         {icon}
@@ -84,6 +97,18 @@ function MetricCard({
       <strong className="mt-3 block text-3xl">{value}</strong>
     </>
   );
+
+  if (href && readAction) {
+    return (
+      <form action={readAction}>
+        <input name="group" type="hidden" value={status} />
+        <input name="href" type="hidden" value={href} />
+        <button className={`${className} h-full w-full hover:-translate-y-0.5 hover:shadow-lg`} type="submit" aria-label={ariaLabel}>
+          {content}
+        </button>
+      </form>
+    );
+  }
 
   if (href) {
     return (

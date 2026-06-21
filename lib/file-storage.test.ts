@@ -1,5 +1,12 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
-import { deleteStoredFile, readStoredFile, saveProfilePhotoFile, saveSignatureFile } from "./file-storage";
+import {
+  deleteStoredFile,
+  readStoredFile,
+  saveAnnouncementImageFile,
+  saveOrganizationLogoFile,
+  saveProfilePhotoFile,
+  saveSignatureFile,
+} from "./file-storage";
 
 const originalEnv = { ...process.env };
 
@@ -9,6 +16,8 @@ function setSupabaseStorageEnv() {
   process.env.SUPABASE_SERVICE_ROLE_KEY = "service-role-key";
   process.env.SUPABASE_PROFILE_PHOTOS_BUCKET = "powercare-profile-photos";
   process.env.SUPABASE_SIGNATURES_BUCKET = "powercare-signatures";
+  process.env.SUPABASE_ANNOUNCEMENTS_BUCKET = "powercare-announcements";
+  process.env.SUPABASE_ORGANIZATION_LOGOS_BUCKET = "powercare-organization-logos";
 }
 
 describe("Supabase file storage", () => {
@@ -70,6 +79,57 @@ describe("Supabase file storage", () => {
           "x-upsert": "true",
         }),
       }),
+    );
+  });
+
+  test("uploads announcement images to a stable path with upsert enabled", async () => {
+    const fetchMock = vi.fn(async () => new Response(JSON.stringify({ Key: "ok" }), { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+    const file = new File([new Uint8Array([1, 2, 3])], "notice.webp", { type: "image/webp" });
+
+    const saved = await saveAnnouncementImageFile("announcement-1", file);
+
+    expect(saved.fileName).toBe("cover.webp");
+    expect(saved.mimeType).toBe("image/webp");
+    expect(saved.storagePath).toBe("supabase://powercare-announcements/announcements/announcement-1/cover");
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://project-ref.supabase.co/storage/v1/object/powercare-announcements/announcements/announcement-1/cover",
+      expect.objectContaining({
+        method: "POST",
+        headers: expect.objectContaining({ "Content-Type": "image/webp", "x-upsert": "true" }),
+      }),
+    );
+  });
+
+  test("rejects announcement images larger than 2 MB", async () => {
+    const file = new File([new Uint8Array(2 * 1024 * 1024 + 1)], "large.jpg", { type: "image/jpeg" });
+    await expect(saveAnnouncementImageFile("announcement-1", file)).rejects.toThrow("2 MB or smaller");
+  });
+
+  test("uploads organization logos to a versioned storage path", async () => {
+    const fetchMock = vi.fn(async () => new Response(JSON.stringify({ Key: "ok" }), { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+    const file = new File([new Uint8Array([1, 2, 3])], "company.webp", { type: "image/webp" });
+
+    const saved = await saveOrganizationLogoFile("primary", file);
+
+    expect(saved.fileName).toBe("company.webp");
+    expect(saved.mimeType).toBe("image/webp");
+    expect(saved.fileSize).toBe(file.size);
+    expect(saved.storagePath).toContain("supabase://powercare-organization-logos/organizations/primary/");
+  });
+
+  test("rejects unsupported organization logo formats", async () => {
+    const file = new File([new Uint8Array([1])], "company.gif", { type: "image/gif" });
+    await expect(saveOrganizationLogoFile("primary", file)).rejects.toThrow(
+      "Organization logo must be PNG, JPG, or WebP",
+    );
+  });
+
+  test("rejects organization logos larger than 2 MB", async () => {
+    const file = new File([new Uint8Array(2 * 1024 * 1024 + 1)], "large.jpg", { type: "image/jpeg" });
+    await expect(saveOrganizationLogoFile("primary", file)).rejects.toThrow(
+      "Organization logo must be 2 MB or smaller",
     );
   });
 

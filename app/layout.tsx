@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import Script from "next/script";
+import { RevealOnScroll } from "../components/reveal-on-scroll";
+import { BANGKOK_TIME_ZONE } from "../lib/date-time/bangkok-time";
 import "./globals.css";
 
 export const preferredRegion = "home";
@@ -25,7 +27,7 @@ export const themeBootScript = `
     const thaiHour = Number(new Intl.DateTimeFormat("en-US", {
       hour: "numeric",
       hour12: false,
-      timeZone: "Asia/Bangkok"
+      timeZone: "${BANGKOK_TIME_ZONE}"
     }).format(new Date()));
     document.documentElement.dataset.theme = thaiHour >= 6 && thaiHour < 18 ? "day" : "night";
   } catch {
@@ -37,8 +39,9 @@ export const themeBootScript = `
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="th" suppressHydrationWarning>
-      <body>
+      <body suppressHydrationWarning>
         <Script id="theme-boot" strategy="beforeInteractive" dangerouslySetInnerHTML={{ __html: themeBootScript }} />
+        <RevealOnScroll />
         {children}
       </body>
     </html>

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { LogIn, Menu, ShieldCheck } from "lucide-react";
 import { ThemeToggle } from "./theme-toggle";
+import { AppBrand } from "./app-brand";
 
 export function PublicHeader() {
   return (
@@ -11,7 +12,7 @@ export function PublicHeader() {
             <Menu size={18} />
           </button>
           <Link className="truncate text-2xl font-extrabold text-[var(--primary)]" href="/">
-            PowerCare.CM
+            <AppBrand />
           </Link>
         </div>
         <nav className="flex shrink-0 items-center gap-2 text-sm md:gap-3">

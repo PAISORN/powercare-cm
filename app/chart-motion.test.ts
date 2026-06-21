@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, test } from "vitest";
 
@@ -27,5 +27,29 @@ describe("chart entry motion", () => {
     expect(css).toContain("@keyframes cm-bar-enter");
     expect(css).toContain("@keyframes cm-zone-fill-enter");
     expect(css).toContain("@media (prefers-reduced-motion: reduce)");
+  });
+
+  test("global styles define a full-height right-aligned gear cluster for all pages", () => {
+    const css = readProjectFile("app/globals.css");
+    const artworkPath = join(root, "public/gear-cluster.svg");
+
+    expect(existsSync(artworkPath)).toBe(true);
+    const artwork = readFileSync(artworkPath, "utf8");
+
+    expect(css).toContain("body::before");
+    expect(css).toContain('background-image: url("/gear-cluster.svg")');
+    expect(css).toContain("background-position: right center");
+    expect(css).toContain("background-size: contain");
+    expect(css).toContain("width: min(92vw, 1800px)");
+    expect(css).toContain("height: 100dvh");
+    expect(css).toContain("background-repeat: no-repeat");
+    expect(css).toContain("pointer-events: none");
+    expect(css).toContain('[data-theme="night"]');
+    expect(artwork).toContain('id="gear-large"');
+    expect(artwork).toContain('id="gear-medium"');
+    expect(artwork).toContain('id="gear-small"');
+    expect(artwork).toContain('id="gear-hole"');
+    expect(artwork).toContain('mask="url(#gear-hole)"');
+    expect(artwork).toContain("translate(330 410) scale(3.45)");
   });
 });

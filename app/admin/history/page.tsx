@@ -2,6 +2,7 @@ import { Database, History, PlusCircle, Trash2 } from "lucide-react";
 import { redirect } from "next/navigation";
 import { AppShell } from "../../../components/app-shell";
 import { db } from "../../../lib/db";
+import { formatThaiDateTime as formatThaiDate } from "../../../lib/date-time/bangkok-time";
 import { requireUser } from "../../../lib/session";
 import { RoleName } from "../../../modules/cm-work/cm-work-types";
 
@@ -121,12 +122,4 @@ function readEventDetails(json?: string | null) {
   } catch {
     return null;
   }
-}
-
-function formatThaiDate(date: Date) {
-  return new Intl.DateTimeFormat("th-TH", {
-    dateStyle: "medium",
-    timeStyle: "short",
-    timeZone: "Asia/Bangkok",
-  }).format(date);
 }

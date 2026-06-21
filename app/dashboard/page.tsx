@@ -1,13 +1,20 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { AlertTriangle, BarChart3, CheckCircle2, CircleDot, ClipboardList, Factory, Flame, Gauge, Wrench } from "lucide-react";
 import { AppShell } from "../../components/app-shell";
 import { DashboardFilterBar } from "../../components/dashboard-filter-bar";
 import { StatusBadge } from "../../components/status-badge";
 import { UserAvatar } from "../../components/user-avatar";
+import { formatThaiDateTime } from "../../lib/date-time/bangkok-time";
 import { WorkStatus, statusLabels } from "../../modules/cm-work/cm-work-types";
 import type { ChartRow, MonthlyTrendRow } from "../../modules/dashboard/dashboard-chart-data";
 import { toChartRows } from "../../modules/dashboard/dashboard-chart-data";
-import { getDashboardSummary, normalizeDashboardTimeRange, type DashboardCategoryFilter } from "../../modules/dashboard/dashboard-query";
+import { getDashboardSummaryForDateFilter, type DashboardCategoryFilter } from "../../modules/dashboard/dashboard-query";
+import { hasExplicitCmDateFilter, parseCmDateFilter, type CmDateFilterInput } from "../../modules/filters/cm-date-filter";
+import { requireUser } from "../../lib/session";
+import { getUnreadSummary, markStatusGroupRead } from "../../modules/notifications/notification-service";
+import type { NotificationGroup } from "../../modules/notifications/notification-types";
+import { UnreadBadge } from "../../components/unread-badge";
 
 const statusColors: Record<WorkStatus, string> = {
   [WorkStatus.NEW]: "#3b82f6",
@@ -31,14 +38,36 @@ const inProcessStatuses = [
 
 type DashboardSearchParams = {
   category?: string;
-  timeRange?: string;
+  mode?: "day" | "range" | "month" | "year" | "all";
+  date?: string;
+  startDate?: string;
+  endDate?: string;
+  month?: string;
+  year?: string;
+  includeTerminal?: string;
 };
 
 export default async function DashboardPage({ searchParams }: { searchParams: Promise<DashboardSearchParams> }) {
+  const user = await requireUser();
   const params = await searchParams;
   const activeCategoryFilter = normalizeDashboardCategory(params.category);
-  const activeTimeRange = normalizeDashboardTimeRange(params.timeRange);
-  const summary = await getDashboardSummary({ category: activeCategoryFilter, timeRange: activeTimeRange });
+  const activeDateFilterInput = readDateFilterInput(params);
+  const hasExplicitDateFilter = hasExplicitCmDateFilter(activeDateFilterInput);
+  const activeDateFilter = hasExplicitDateFilter ? safeParseDateFilter(activeDateFilterInput) : undefined;
+  const [summary, unreadSummary] = await Promise.all([
+    getDashboardSummaryForDateFilter({ category: activeCategoryFilter, dateFilter: activeDateFilter }),
+    getUnreadSummary(user.id),
+  ]);
+
+  async function markDashboardGroupReadAction(formData: FormData) {
+    "use server";
+    const currentUser = await requireUser();
+    const group = String(formData.get("group") ?? "") as NotificationGroup;
+    const href = String(formData.get("href") ?? "/work");
+    const allowedGroups = ["ALL_CM", "NEW", "IN_PROCESS", "CLOSED", "CANCELED"];
+    if (allowedGroups.includes(group)) await markStatusGroupRead(currentUser.id, group);
+    redirect(href.startsWith("/work") ? href : "/work");
+  }
   const statusCountByKey = new Map<WorkStatus, number>(summary.byStatus.map((item) => [item.status as WorkStatus, item.count]));
   const statusRows = Object.values(WorkStatus).map((status) => ({
     label: statusLabels[status],
@@ -78,36 +107,36 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
           </div>
           <div className="rounded-2xl bg-white/15 px-4 py-3 text-right text-sm backdrop-blur">
             <p className="font-semibold">อัปเดตล่าสุด</p>
-            <p className="text-white/80">{new Date().toLocaleString("th-TH", { timeZone: "Asia/Bangkok" })}</p>
+            <p className="text-white/80">{formatThaiDateTime(new Date())}</p>
           </div>
         </div>
       </section>
 
-      <DashboardFilterBar activeCategory={activeCategoryFilter} activeTimeRange={activeTimeRange} clearHref="/dashboard" />
+      <DashboardFilterBar activeCategory={activeCategoryFilter} activeDateFilter={hasExplicitDateFilter ? activeDateFilterInput : undefined} clearHref="/dashboard" />
 
       <section className="mt-6 grid gap-5 md:grid-cols-2 xl:grid-cols-5">
-        <KpiCard href={buildWorkHref(workCategoryParam)} label="Total CM" value={String(summary.total)} note="งานซ่อมทั้งหมด" icon={<ClipboardList size={34} />} color="#3b82f6" />
-        <KpiCard href={buildWorkHref(workCategoryParam, { status: WorkStatus.NEW })} label="New Request" value={String(newCount)} note="แจ้งซ่อมใหม่" icon={<CircleDot size={34} />} color="#06b6d4" />
-        <KpiCard href={buildWorkHref(workCategoryParam, { statusGroup: "IN_PROCESS" })} label="In Process" value={String(inProcessCount)} note="งานอยู่ระหว่างดำเนินการ" icon={<Wrench size={34} />} color="#14b8a6" />
-        <KpiCard href={buildWorkHref(workCategoryParam, { status: WorkStatus.CLOSED })} label="Closed" value={String(closedCount)} note="ปิดงานแล้ว" icon={<CheckCircle2 size={34} />} color="#22c55e" />
-        <KpiCard href={buildWorkHref(workCategoryParam, { status: WorkStatus.CANCELED })} label="Cancel" value={String(canceledCount)} note="ยกเลิก" icon={<AlertTriangle size={34} />} color="#8b5cf6" />
+        <KpiCard href={buildWorkHref(workCategoryParam)} group="ALL_CM" unreadCount={unreadSummary.total} readAction={markDashboardGroupReadAction} label="Total CM" value={String(summary.total)} note="งานซ่อมทั้งหมด" icon={<ClipboardList size={34} />} color="#3b82f6" />
+        <KpiCard href={buildWorkHref(workCategoryParam, { status: WorkStatus.NEW })} group="NEW" unreadCount={unreadSummary.newRequest} readAction={markDashboardGroupReadAction} label="New Request" value={String(newCount)} note="แจ้งซ่อมใหม่" icon={<CircleDot size={34} />} color="#06b6d4" />
+        <KpiCard href={buildWorkHref(workCategoryParam, { statusGroup: "IN_PROCESS" })} group="IN_PROCESS" unreadCount={unreadSummary.inProcess} readAction={markDashboardGroupReadAction} label="In Process" value={String(inProcessCount)} note="งานอยู่ระหว่างดำเนินการ" icon={<Wrench size={34} />} color="#14b8a6" />
+        <KpiCard href={buildWorkHref(workCategoryParam, { status: WorkStatus.CLOSED })} group="CLOSED" unreadCount={unreadSummary.closed} readAction={markDashboardGroupReadAction} label="Closed" value={String(closedCount)} note="ปิดงานแล้ว" icon={<CheckCircle2 size={34} />} color="#22c55e" />
+        <KpiCard href={buildWorkHref(workCategoryParam, { status: WorkStatus.CANCELED })} group="CANCELED" unreadCount={unreadSummary.canceled} readAction={markDashboardGroupReadAction} label="Cancel" value={String(canceledCount)} note="ยกเลิก" icon={<AlertTriangle size={34} />} color="#8b5cf6" />
       </section>
 
       <section className="mt-6 grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
-        <Panel title="Status Overview" icon={<CircleDot size={22} className="text-[#3b82f6]" />} aside={`${statusTotal} jobs`}>
+        <Panel title="Status Overview" icon={<CircleDot size={22} className="text-[#3b82f6]" />} aside={hasExplicitDateFilter ? `${statusTotal} jobs` : "Current year"}>
           <div className="grid gap-5 lg:grid-cols-[minmax(300px,1fr)_minmax(210px,230px)] lg:items-center">
             <Donut rows={statusRows} total={statusTotal} centerLabel="Total CM" />
             <Legend rows={statusRows} total={statusTotal} />
           </div>
         </Panel>
 
-        <Panel title="Monthly CM Trend" icon={<BarChart3 size={22} className="text-[#14b8a6]" />} aside={`${summary.monthlyTrend.length}-month view`}>
+        <Panel title="Monthly CM Trend" icon={<BarChart3 size={22} className="text-[#14b8a6]" />} aside={hasExplicitDateFilter ? `${summary.monthlyTrend.length}-month view` : "Latest 6 months"}>
           <MonthlyTrendPanel rows={summary.monthlyTrend} />
         </Panel>
       </section>
 
       <section className="mt-6 grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
-        <Panel title="Plant Zone Workload" icon={<Factory size={22} className="text-[#f59e0b]" />} aside="Top zones">
+        <Panel title="Plant Zone Workload" icon={<Factory size={22} className="text-[#f59e0b]" />} aside={hasExplicitDateFilter ? "Top zones" : "Current year"}>
           <div className="mt-4 grid gap-4">
             {zoneRows.map((row, index) => (
               <ZoneBar key={row.label} row={row} color={zoneColors[index % zoneColors.length]} />
@@ -115,10 +144,10 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
           </div>
         </Panel>
 
-        <Panel title="Priority Work Queue" icon={<Flame size={22} className="text-[#ef4444]" />} aside="Action first">
+        <Panel title="Priority Work Queue" icon={<Flame size={22} className="text-[#ef4444]" />} aside={hasExplicitDateFilter ? "Action first" : "Top 5 priority"}>
           <div className="mt-4 grid gap-4">
             {summary.priorityWorks.length ? (
-              summary.priorityWorks.slice(0, 5).map((work) => (
+              summary.priorityWorks.map((work) => (
                 <Link key={work.id} className="grid gap-3 rounded-2xl border border-[var(--line)] bg-[var(--soft)] p-4 hover:bg-[var(--surface)] md:grid-cols-[1fr_auto]" href={`/work/${work.id}`}>
                   <span className="min-w-0">
                     <strong className="block text-lg">{work.number}</strong>
@@ -153,14 +182,18 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   );
 }
 
-function KpiCard({ href, label, value, note, icon, color }: { href: string; label: string; value: string; note: string; icon: React.ReactNode; color: string }) {
+function KpiCard({ href, group, unreadCount, readAction, label, value, note, icon, color }: { href: string; group: NotificationGroup; unreadCount: number; readAction: (formData: FormData) => void | Promise<void>; label: string; value: string; note: string; icon: React.ReactNode; color: string }) {
   return (
-    <Link
-      href={href}
-      className="block rounded-2xl p-5 text-white shadow-[var(--shadow)] transition hover:-translate-y-0.5 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-white/60 focus:ring-offset-2 focus:ring-offset-[var(--bg)]"
+    <form action={readAction}>
+      <input name="group" type="hidden" value={group} />
+      <input name="href" type="hidden" value={href} />
+      <button
+      type="submit"
+      className="relative block h-full w-full rounded-2xl p-5 text-left text-white shadow-[var(--shadow)] transition hover:-translate-y-0.5 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-white/60 focus:ring-offset-2 focus:ring-offset-[var(--bg)]"
       style={{ background: `linear-gradient(135deg, ${color}, color-mix(in srgb, ${color} 78%, white))` }}
       aria-label={`KPI ${label}`}
-    >
+      >
+      <UnreadBadge count={unreadCount} />
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-sm font-bold text-white/80">{label}</p>
@@ -169,7 +202,8 @@ function KpiCard({ href, label, value, note, icon, color }: { href: string; labe
         <div className="text-white/75">{icon}</div>
       </div>
       <p className="mt-4 text-sm text-white/80">{note}</p>
-    </Link>
+      </button>
+    </form>
   );
 }
 
@@ -190,6 +224,26 @@ function Panel({ title, icon, aside, children }: { title: string; icon: React.Re
 
 function normalizeDashboardCategory(value?: string): DashboardCategoryFilter | undefined {
   return value === "mechanical" || value === "electrical" ? value : undefined;
+}
+
+function readDateFilterInput(params: DashboardSearchParams): CmDateFilterInput {
+  return {
+    mode: params.mode,
+    date: params.date,
+    startDate: params.startDate,
+    endDate: params.endDate,
+    month: params.month,
+    year: params.year,
+    includeTerminal: params.includeTerminal,
+  };
+}
+
+function safeParseDateFilter(input: CmDateFilterInput) {
+  try {
+    return parseCmDateFilter(input);
+  } catch {
+    return undefined;
+  }
 }
 
 function buildWorkHref(categoryParam: string, filters: { status?: WorkStatus; statusGroup?: string } = {}) {
@@ -370,11 +424,7 @@ function getStatusDate(work: StatusDateInput) {
 }
 
 function formatStatusDate(date: Date) {
-  return new Intl.DateTimeFormat("en-GB", {
-    dateStyle: "medium",
-    timeStyle: "short",
-    timeZone: "Asia/Bangkok",
-  }).format(date);
+  return formatThaiDateTime(date);
 }
 
 function ZoneBar({ row, color }: { row: ChartRow; color: string }) {
