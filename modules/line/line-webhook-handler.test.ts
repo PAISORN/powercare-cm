@@ -50,12 +50,16 @@ describe("LINE webhook HTTP handler", () => {
   });
 
   it("returns 500 when persistence fails so LINE can retry", async () => {
-    const discoverGroups = vi.fn().mockRejectedValue(new Error("database unavailable"));
+    const error = new Error("database unavailable");
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const discoverGroups = vi.fn().mockRejectedValue(error);
     const handler = createLineWebhookHandler({ channelSecret: secret, discoverGroups });
     const body = JSON.stringify({ events: [{ type: "join", source: { type: "group", groupId: "C1" } }] });
 
     const response = await handler(signedRequest(body));
     expect(response.status).toBe(500);
     await expect(response.json()).resolves.toEqual({ ok: false });
+    expect(consoleError).toHaveBeenCalledWith("[line-webhook] group discovery failed", error);
+    consoleError.mockRestore();
   });
 });

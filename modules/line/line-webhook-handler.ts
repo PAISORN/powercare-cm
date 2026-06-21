@@ -30,7 +30,8 @@ export function createLineWebhookHandler({
     try {
       await discoverGroups(groups);
       return Response.json({ ok: true });
-    } catch {
+    } catch (error) {
+      console.error("[line-webhook] group discovery failed", error);
       return Response.json({ ok: false }, { status: 500 });
     }
   };
