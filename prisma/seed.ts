@@ -70,6 +70,15 @@ async function main() {
     await db.slaSetting.create({ data: defaultSla });
   }
 
+  await db.systemSetting.upsert({
+    where: { id: "global" },
+    update: {},
+    create: {
+      id: "global",
+      engineerWorkAssignmentEnabled: false,
+    },
+  });
+
   const electrical = await db.category.findUniqueOrThrow({ where: { name: "งานไฟฟ้า" } });
   const mechanical = await db.category.findUniqueOrThrow({ where: { name: "งานเครื่องกล" } });
   const boiler = await db.zone.findUniqueOrThrow({ where: { name: "Boiler&Combustion" } });

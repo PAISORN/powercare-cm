@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 
@@ -8,6 +8,12 @@ const allowedProfilePhotoMimeTypes = ["image/png", "image/jpeg", "image/webp"];
 const maxProfilePhotoBytes = 1 * 1024 * 1024;
 const defaultProfilePhotosBucket = "powercare-profile-photos";
 const defaultSignaturesBucket = "powercare-signatures";
+const allowedAnnouncementMimeTypes = ["image/png", "image/jpeg", "image/webp"];
+const maxAnnouncementBytes = 2 * 1024 * 1024;
+const defaultAnnouncementsBucket = "powercare-announcements";
+const allowedOrganizationLogoMimeTypes = ["image/png", "image/jpeg", "image/webp"];
+const maxOrganizationLogoBytes = 2 * 1024 * 1024;
+const defaultOrganizationLogosBucket = "powercare-organization-logos";
 
 type StorageTarget = {
   bucket: string;
@@ -161,6 +167,83 @@ export async function saveProfilePhotoFile(userId: string, file: File) {
     fileSize: file.size,
     storagePath,
     checksum,
+  };
+}
+
+export async function saveAnnouncementImageFile(announcementId: string, file: File) {
+  if (!allowedAnnouncementMimeTypes.includes(file.type)) {
+    throw new Error("Announcement image must be PNG, JPG, or WebP");
+  }
+  if (file.size > maxAnnouncementBytes) {
+    throw new Error("Announcement image must be 2 MB or smaller");
+  }
+
+  const extension = extensionForMimeType(file.type);
+  const bytes = Buffer.from(await file.arrayBuffer());
+  const fileName = `cover.${extension}`;
+
+  if (isSupabaseStorageEnabled()) {
+    const target = {
+      bucket: process.env.SUPABASE_ANNOUNCEMENTS_BUCKET || defaultAnnouncementsBucket,
+      objectPath: `announcements/${announcementId}/cover`,
+    };
+    await uploadSupabaseObject(target, bytes, file.type);
+    return {
+      fileName,
+      mimeType: file.type,
+      fileSize: file.size,
+      storagePath: toSupabasePath(target),
+    };
+  }
+
+  const storageDir = path.join(process.cwd(), "storage", "announcements", announcementId);
+  await mkdir(storageDir, { recursive: true });
+  const storagePath = path.join(storageDir, "cover");
+  await writeFile(storagePath, bytes);
+  return {
+    fileName,
+    mimeType: file.type,
+    fileSize: file.size,
+    storagePath,
+  };
+}
+
+export async function saveOrganizationLogoFile(organizationId: string, file: File) {
+  if (!allowedOrganizationLogoMimeTypes.includes(file.type)) {
+    throw new Error("Organization logo must be PNG, JPG, or WebP");
+  }
+  if (file.size > maxOrganizationLogoBytes) {
+    throw new Error("Organization logo must be 2 MB or smaller");
+  }
+
+  const extension = extensionForMimeType(file.type);
+  const bytes = Buffer.from(await file.arrayBuffer());
+  const version = randomUUID();
+  const fileName = `company.${extension}`;
+
+  if (isSupabaseStorageEnabled()) {
+    const target = {
+      bucket: process.env.SUPABASE_ORGANIZATION_LOGOS_BUCKET || defaultOrganizationLogosBucket,
+      objectPath: `organizations/${organizationId}/${version}`,
+    };
+    await uploadSupabaseObject(target, bytes, file.type);
+    return {
+      fileName,
+      mimeType: file.type,
+      fileSize: file.size,
+      storagePath: toSupabasePath(target),
+    };
+  }
+
+  const storageDir = path.join(process.cwd(), "storage", "organization-logos", organizationId);
+  await mkdir(storageDir, { recursive: true });
+  const storagePath = path.join(storageDir, `${version}.${extension}`);
+  await writeFile(storagePath, bytes);
+  return {
+    fileName,
+    mimeType: file.type,
+    fileSize: file.size,
+    storagePath,
   };
 }
 

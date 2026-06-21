@@ -2,6 +2,7 @@ import { CheckCircle2, ClipboardList, Database, History, ShieldCheck, UserRound 
 import { redirect } from "next/navigation";
 import { AppShell } from "../../../components/app-shell";
 import { db } from "../../../lib/db";
+import { formatThaiDateTime as formatThaiDate } from "../../../lib/date-time/bangkok-time";
 import { requireUser } from "../../../lib/session";
 import { RoleName } from "../../../modules/cm-work/cm-work-types";
 
@@ -21,13 +22,20 @@ const actionLabels: Record<string, string> = {
   CANCEL_WORK: "ยกเลิกงาน",
   UPDATE_USER_PROFILE: "แก้ไขข้อมูลผู้ใช้",
   DELETE_USER: "ลบผู้ใช้",
+  UPDATE_ENGINEER_ASSIGNMENT_SETTING: "เปลี่ยนสิทธิ์การมอบหมายงานของวิศวกร",
+  ASSIGN_WORK: "มอบหมายงานให้ช่าง",
+  CREATE_ANNOUNCEMENT: "สร้างประกาศ",
+  UPDATE_ANNOUNCEMENT: "แก้ไขประกาศ",
+  ACTIVATE_ANNOUNCEMENT: "เปิดใช้งานประกาศ",
+  DEACTIVATE_ANNOUNCEMENT: "ปิดใช้งานประกาศ",
+  DELETE_ANNOUNCEMENT: "ลบประกาศ",
 };
 
 const processSteps = [
   { label: "Create", match: ["CREATE_REPAIR_REQUEST"], icon: ClipboardList },
-  { label: "Work Action", match: ["CLAIM_WORK", "START_WORK", "RELEASE_WORK"], icon: UserRound },
+  { label: "Work Action", match: ["CLAIM_WORK", "ASSIGN_WORK", "START_WORK", "RELEASE_WORK"], icon: UserRound },
   { label: "Review", match: ["SUBMIT_FOR_REVIEW", "RETURN_FOR_CORRECTION", "CLOSE_WORK"], icon: CheckCircle2 },
-  { label: "Admin Record", match: ["CANCEL_WORK"], icon: ShieldCheck },
+  { label: "Admin Record", match: ["CANCEL_WORK", "UPDATE_ENGINEER_ASSIGNMENT_SETTING", "CREATE_ANNOUNCEMENT", "UPDATE_ANNOUNCEMENT", "ACTIVATE_ANNOUNCEMENT", "DEACTIVATE_ANNOUNCEMENT", "DELETE_ANNOUNCEMENT"], icon: ShieldCheck },
 ];
 
 export default async function AdminAuditPage() {
@@ -148,12 +156,4 @@ function AuditTimelineRow({ action, actor, cmNumber, entity, reason, time, activ
       </div>
     </div>
   );
-}
-
-function formatThaiDate(date: Date) {
-  return new Intl.DateTimeFormat("th-TH", {
-    dateStyle: "medium",
-    timeStyle: "short",
-    timeZone: "Asia/Bangkok",
-  }).format(date);
 }

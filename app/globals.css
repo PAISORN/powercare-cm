@@ -14,6 +14,8 @@
   --accent: #12b6cb;
   --warning: #f59e0b;
   --danger: #ef4444;
+  --calendar-range-bg: #dbeafe;
+  --calendar-range-ink: #17365d;
   --shadow: 0 20px 45px rgb(17 52 102 / 12%);
 }
 
@@ -29,14 +31,39 @@
   --accent: #60a5fa;
   --warning: #fbbf24;
   --danger: #fb7185;
+  --calendar-range-bg: #164264;
+  --calendar-range-ink: #f8fbff;
   --shadow: 0 22px 55px rgb(0 0 0 / 28%);
 }
 
 body {
   margin: 0;
-  background: var(--bg);
+  background-color: var(--bg);
+  position: relative;
+  isolation: isolate;
   color: var(--ink);
   font-family: "Segoe UI", "Noto Sans Thai", Arial, sans-serif;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  top: 0;
+  right: 0;
+  width: min(92vw, 1800px);
+  height: 100dvh;
+  z-index: -1;
+  pointer-events: none;
+  background-image: url("/gear-cluster.svg");
+  background-position: right center;
+  background-repeat: no-repeat;
+  background-size: contain;
+  opacity: 0.54;
+}
+
+[data-theme="night"] body::before {
+  filter: brightness(0.72) saturate(0.65);
+  opacity: 0.2;
 }
 
 * {
@@ -203,6 +230,25 @@ body {
   }
 }
 
+[data-scroll-reveal="true"] {
+  --cm-reveal-distance: 16px;
+  transition:
+    opacity 550ms ease-out var(--cm-reveal-delay, 0ms),
+    transform 550ms ease-out var(--cm-reveal-delay, 0ms);
+}
+
+[data-scroll-reveal="true"][data-revealed="false"] {
+  opacity: 0;
+  transform: translateY(var(--cm-reveal-distance));
+  will-change: opacity, transform;
+}
+
+[data-scroll-reveal="true"][data-revealed="true"] {
+  opacity: 1;
+  transform: none;
+  will-change: auto;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .cm-donut-motion::before,
   .cm-donut-core,
@@ -214,5 +260,35 @@ body {
 
   .cm-donut-motion::before {
     display: none;
+  }
+
+  [data-scroll-reveal="true"] {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+}
+
+@media (max-width: 640px) {
+  [data-scroll-reveal="true"] {
+    --cm-reveal-distance: 10px;
+  }
+
+  body::before {
+    right: -20vw;
+    width: 118vw;
+    opacity: 0.38;
+  }
+
+  [data-theme="night"] body::before {
+    opacity: 0.14;
+  }
+}
+
+@media print {
+  [data-scroll-reveal="true"] {
+    opacity: 1 !important;
+    transform: none !important;
+    transition: none !important;
   }
 }

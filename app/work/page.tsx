@@ -7,13 +7,16 @@ import { StatusBadge } from "../../components/status-badge";
 import { StatusKpiStrip } from "../../components/status-kpi-strip";
 import { UserAvatar } from "../../components/user-avatar";
 import { db } from "../../lib/db";
+import { formatThaiDateTime } from "../../lib/date-time/bangkok-time";
 import { getActiveCategories, getActiveClaimants, getActiveZones } from "../../lib/query-cache";
 import { requireUser } from "../../lib/session";
 import { canClaimWork } from "../../modules/auth/permission";
 import { claimWork } from "../../modules/cm-work/cm-work-service";
 import { WorkStatus, type Actor } from "../../modules/cm-work/cm-work-types";
+import { parseCmDateFilter, type CmDateFilterInput, type ParsedCmDateFilter } from "../../modules/filters/cm-date-filter";
+import { getUnreadSummary, getUnreadWorkIds, markStatusGroupRead, markWorkRead } from "../../modules/notifications/notification-service";
 
-type WorkSearchParams = {
+type WorkSearchParams = CmDateFilterInput & {
   search?: string;
   status?: string;
   statusGroup?: string;
@@ -21,7 +24,6 @@ type WorkSearchParams = {
   zoneId?: string;
   urgency?: string;
   claimantId?: string;
-  month?: string;
   page?: string;
 };
 
@@ -34,12 +36,27 @@ const inProcessStatuses = [
   WorkStatus.WAITING_TO_CLOSE,
   WorkStatus.RETURNED_FOR_CORRECTION,
 ];
+const sharedWorkFilterKeys = [
+  "search",
+  "categoryId",
+  "zoneId",
+  "urgency",
+  "claimantId",
+  "mode",
+  "date",
+  "startDate",
+  "endDate",
+  "month",
+  "year",
+] as const;
+const pagedWorkFilterKeys = [...sharedWorkFilterKeys, "status", "statusGroup"] as const;
 
 export default async function WorkListPage({ searchParams }: { searchParams: Promise<WorkSearchParams> }) {
   const user = await requireUser();
   const filters = normalizeFilters(await searchParams);
-  const where = buildWorkWhere(filters);
-  const statusSummaryWhere = buildWorkWhere({ ...filters, status: undefined, statusGroup: undefined });
+  const dateFilter = safeParseDateFilter(filters);
+  const where = buildWorkWhere(filters, dateFilter);
+  const statusSummaryWhere = buildWorkWhere({ ...filters, status: undefined, statusGroup: undefined }, dateFilter);
   const currentPage = normalizePage(filters.page);
   const skip = (currentPage - 1) * pageSize;
   const actor: Actor = { id: user.id, role: user.role as Actor["role"], categoryId: user.categoryId };
@@ -54,7 +71,28 @@ export default async function WorkListPage({ searchParams }: { searchParams: Pro
     redirect(safeReturnTo.startsWith("/work") ? safeReturnTo : "/work");
   }
 
-  const [works, total, categories, zones, claimants, byStatus] = await Promise.all([
+  async function markStatusReadAction(formData: FormData) {
+    "use server";
+    const currentUser = await requireUser();
+    const group = String(formData.get("group") ?? "");
+    const href = String(formData.get("href") ?? "/work");
+    if (Object.values(WorkStatus).includes(group as WorkStatus)) {
+      await markStatusGroupRead(currentUser.id, group);
+    }
+    redirect(href.startsWith("/work") ? href : "/work");
+  }
+
+  async function openWorkAction(formData: FormData) {
+    "use server";
+    const currentUser = await requireUser();
+    const workId = String(formData.get("workId") ?? "");
+    const work = await db.cmWork.findUnique({ where: { id: workId }, select: { id: true } });
+    if (!work) redirect("/work");
+    await markWorkRead(currentUser.id, work.id);
+    redirect(`/work/${work.id}`);
+  }
+
+  const [works, total, categories, zones, claimants, byStatus, unreadSummary] = await Promise.all([
     db.cmWork.findMany({
       where,
       orderBy: { createdAt: "desc" },
@@ -72,7 +110,9 @@ export default async function WorkListPage({ searchParams }: { searchParams: Pro
     getActiveZones(),
     getActiveClaimants(),
     db.cmWork.groupBy({ by: ["status"], where: statusSummaryWhere, _count: { _all: true } }),
+    getUnreadSummary(user.id),
   ]);
+  const unreadWorkIds = await getUnreadWorkIds(user.id, works.map((work) => work.id));
   const statusCountByKey = new Map<WorkStatus, number>(byStatus.map((item) => [item.status as WorkStatus, item._count._all]));
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const safeCurrentPage = Math.min(currentPage, totalPages);
@@ -90,7 +130,7 @@ export default async function WorkListPage({ searchParams }: { searchParams: Pro
         <div className="relative z-10">
           <p className="inline-flex rounded-full bg-white/15 px-4 py-2 text-sm font-semibold">CM Work List</p>
           <h1 className="mt-5 text-4xl font-extrabold">รายการงานทั้งหมด</h1>
-          <p className="mt-2 text-white/80">ค้นหาและกรองงานตามสถานะ หมวด โซน ความเร่งด่วน เดือน และผู้รับงาน</p>
+          <p className="mt-2 text-white/80">ค้นหาและกรองงานตามสถานะ หมวด โซน ความเร่งด่วน ช่วงวันที่ และผู้รับงาน</p>
         </div>
       </section>
 
@@ -98,7 +138,13 @@ export default async function WorkListPage({ searchParams }: { searchParams: Pro
         <FilterBar values={filters} categories={categories} zones={zones} claimants={claimants.map((user) => ({ id: user.id, name: user.fullName }))} />
       </section>
 
-      <StatusKpiStrip statusCountByKey={statusCountByKey} activeStatus={filters.status} getHref={(status) => buildStatusFilterHref(filters, status)} />
+      <StatusKpiStrip
+        statusCountByKey={statusCountByKey}
+        activeStatus={filters.status}
+        getHref={(status) => buildStatusFilterHref(filters, status)}
+        unreadCountByStatus={unreadSummary.byStatus}
+        readAction={markStatusReadAction}
+      />
 
       {filters.statusGroup === IN_PROCESS_GROUP ? (
         <section className="mt-4 flex flex-wrap items-center gap-3 rounded-2xl border border-[var(--line)] bg-[var(--surface)] px-4 py-3 shadow-[var(--shadow)]">
@@ -121,8 +167,10 @@ export default async function WorkListPage({ searchParams }: { searchParams: Pro
           {works.length ? (
             works.map((work) => (
               <div key={work.id} className="grid gap-3 border-b border-[var(--line)] bg-[var(--surface)] p-4 last:border-b-0 hover:bg-[var(--soft)] md:grid-cols-[1fr_auto]">
-                <Link className="min-w-0" href={`/work/${work.id}`}>
-                <span>
+                <form action={openWorkAction} className="min-w-0">
+                  <input name="workId" type="hidden" value={work.id} />
+                  <button className="relative block w-full min-w-0 text-left" type="submit">
+                  {unreadWorkIds.has(work.id) ? <span aria-label="Unread work update" className="absolute right-0 top-0 h-3 w-3 rounded-full bg-red-600 shadow-sm ring-2 ring-[var(--surface)]" /> : null}
                   <strong className="block text-lg">{work.number}</strong>
                   <span className="mt-1 block text-sm font-semibold text-[var(--ink)]">
                     Category: {work.category.name} · Zone: {work.zone.name}
@@ -130,14 +178,14 @@ export default async function WorkListPage({ searchParams }: { searchParams: Pro
                   <span className="mt-2 flex items-center gap-2 text-sm text-[var(--muted)]">
                     {work.claimant ? <UserAvatar fullName={work.claimant.fullName} hasPhoto={Boolean(work.claimant.profilePhoto)} size="sm" userId={work.claimant.id} version={work.claimant.profilePhoto?.updatedAt.getTime()} /> : null}
                     <span>
-                      Date: {formatStatusDate(getStatusDate(work))} · Assignee: {work.claimant?.fullName ?? "-"} · Work: {work.problemTitle}
+                      Date: {formatThaiDateTime(getStatusDate(work))} · Assignee: {work.claimant?.fullName ?? "-"} · Work: {work.problemTitle}
                     </span>
                   </span>
                   <span className="hidden">
                     {work.machineName} · {work.category.name} · {work.zone.name} · ผู้รับงาน: {work.claimant?.fullName ?? "-"}
                   </span>
-                </span>
-                </Link>
+                  </button>
+                </form>
                 <span className="flex flex-wrap items-start justify-start gap-2 md:justify-end">
                   <StatusBadge status={work.status} />
                   {canClaimWork(actor, work) ? (
@@ -197,17 +245,9 @@ function getStatusDate(work: StatusDateInput) {
   }
 }
 
-function formatStatusDate(date: Date) {
-  return new Intl.DateTimeFormat("en-GB", {
-    dateStyle: "medium",
-    timeStyle: "short",
-    timeZone: "Asia/Bangkok",
-  }).format(date);
-}
-
 function buildStatusFilterHref(filters: WorkSearchParams, status: WorkStatus) {
   const params = new URLSearchParams();
-  for (const key of ["search", "categoryId", "zoneId", "urgency", "claimantId", "month"] as const) {
+  for (const key of sharedWorkFilterKeys) {
     const value = filters[key];
     if (value) params.set(key, value);
   }
@@ -217,7 +257,7 @@ function buildStatusFilterHref(filters: WorkSearchParams, status: WorkStatus) {
 
 function buildWorkListHref(filters: WorkSearchParams) {
   const params = new URLSearchParams();
-  for (const key of ["search", "status", "statusGroup", "categoryId", "zoneId", "urgency", "claimantId", "month", "page"] as const) {
+  for (const key of [...pagedWorkFilterKeys, "page"] as const) {
     const value = filters[key];
     if (value) params.set(key, value);
   }
@@ -255,7 +295,7 @@ function PageLink({ filters, page, label, active = false, disabled = false }: { 
 
 function buildPageHref(filters: WorkSearchParams, page: number) {
   const params = new URLSearchParams();
-  for (const key of ["search", "status", "statusGroup", "categoryId", "zoneId", "urgency", "claimantId", "month"] as const) {
+  for (const key of pagedWorkFilterKeys) {
     const value = filters[key];
     if (value) params.set(key, value);
   }
@@ -273,7 +313,7 @@ function normalizeFilters(params: WorkSearchParams): WorkSearchParams {
   return Object.fromEntries(Object.entries(params).map(([key, value]) => [key, typeof value === "string" ? value.trim() : ""]).filter(([, value]) => value)) as WorkSearchParams;
 }
 
-function buildWorkWhere(filters: WorkSearchParams): Prisma.CmWorkWhereInput {
+function buildWorkWhere(filters: WorkSearchParams, dateFilter: ParsedCmDateFilter): Prisma.CmWorkWhereInput {
   const where: Prisma.CmWorkWhereInput = {};
 
   if (filters.status) where.status = filters.status;
@@ -282,9 +322,8 @@ function buildWorkWhere(filters: WorkSearchParams): Prisma.CmWorkWhereInput {
   if (filters.zoneId) where.zoneId = filters.zoneId;
   if (filters.urgency) where.urgency = filters.urgency;
   if (filters.claimantId) where.claimantId = filters.claimantId;
-  if (filters.month) {
-    const range = monthRange(filters.month);
-    if (range) where.createdAt = { gte: range.start, lt: range.end };
+  if (dateFilter.start && dateFilter.endExclusive) {
+    where.createdAt = { gte: dateFilter.start, lt: dateFilter.endExclusive };
   }
   if (filters.search) {
     where.OR = [
@@ -299,14 +338,10 @@ function buildWorkWhere(filters: WorkSearchParams): Prisma.CmWorkWhereInput {
   return where;
 }
 
-function monthRange(month: string) {
-  const match = /^(\d{4})-(\d{2})$/.exec(month);
-  if (!match) return null;
-  const year = Number(match[1]);
-  const monthIndex = Number(match[2]) - 1;
-  if (!Number.isInteger(year) || monthIndex < 0 || monthIndex > 11) return null;
-  return {
-    start: new Date(Date.UTC(year, monthIndex, 1)),
-    end: new Date(Date.UTC(year, monthIndex + 1, 1)),
-  };
+function safeParseDateFilter(input: CmDateFilterInput) {
+  try {
+    return parseCmDateFilter(input);
+  } catch {
+    return parseCmDateFilter({});
+  }
 }

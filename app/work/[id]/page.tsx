@@ -2,11 +2,14 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { AppShell } from "../../../components/app-shell";
 import { StatusBadge } from "../../../components/status-badge";
+import { WorkAssignmentForm } from "../../../components/work-assignment-form";
 import { db } from "../../../lib/db";
+import { formatThaiDateTime } from "../../../lib/date-time/bangkok-time";
 import { requireUser } from "../../../lib/session";
 import { reasonSchema, workCompletionSchema } from "../../../lib/validation";
-import { canCancelWork, canClaimWork, canCloseWork } from "../../../modules/auth/permission";
+import { canAssignWork, canCancelWork, canClaimWork, canCloseWork } from "../../../modules/auth/permission";
 import {
+  assignWork,
   cancelWork,
   claimWork,
   closeWork,
@@ -16,24 +19,47 @@ import {
   submitForReview,
 } from "../../../modules/cm-work/cm-work-service";
 import { RoleName, WorkStatus, statusLabels, urgencyLabels, type Actor, type Urgency } from "../../../modules/cm-work/cm-work-types";
+import { readEngineerAssignmentSetting } from "../../../modules/settings/system-settings-service";
 
 async function getActor(): Promise<Actor> {
   const user = await requireUser();
   return { id: user.id, role: user.role as Actor["role"], categoryId: user.categoryId };
 }
 
-export default async function WorkDetailPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function WorkDetailPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ assignmentError?: string }>;
+}) {
   const { id } = await params;
   const user = await requireUser();
-  const work = await db.cmWork.findUniqueOrThrow({
-    where: { id },
-    include: { category: true, zone: true, claimant: true, reviewer: true, statusHistory: true, auditEvents: true },
-  });
+  const [work, engineerAssignmentEnabled, query] = await Promise.all([
+    db.cmWork.findUniqueOrThrow({
+      where: { id },
+      include: { category: true, zone: true, claimant: true, reviewer: true, statusHistory: true, auditEvents: true },
+    }),
+    readEngineerAssignmentSetting(),
+    searchParams,
+  ]);
   const actor: Actor = { id: user.id, role: user.role as Actor["role"], categoryId: user.categoryId };
 
   async function claimAction() {
     "use server";
     await claimWork(await getActor(), id);
+    redirect(`/work/${id}`);
+  }
+
+  async function assignAction(formData: FormData) {
+    "use server";
+    const technicianId = String(formData.get("technicianId") ?? "").trim();
+    if (!technicianId) redirect(`/work/${id}?assignmentError=1`);
+    try {
+      await assignWork(await getActor(), id, technicianId);
+    } catch {
+      redirect(`/work/${id}?assignmentError=1`);
+    }
     redirect(`/work/${id}`);
   }
 
@@ -86,6 +112,14 @@ export default async function WorkDetailPage({ params }: { params: Promise<{ id:
   const canCancel = canCancelWork(actor, work);
   const canRelease = isClaimant && (work.status === WorkStatus.CLAIMED || work.status === WorkStatus.IN_PROGRESS);
   const canSubmit = isClaimant && (work.status === WorkStatus.IN_PROGRESS || work.status === WorkStatus.RETURNED_FOR_CORRECTION);
+  const mayAssign = canAssignWork(actor, work, engineerAssignmentEnabled);
+  const technicians = mayAssign
+    ? await db.user.findMany({
+        where: { active: true, role: RoleName.TECHNICIAN, categoryId: work.categoryId },
+        orderBy: { fullName: "asc" },
+        select: { id: true, fullName: true },
+      })
+    : [];
 
   return (
     <AppShell>
@@ -143,6 +177,24 @@ export default async function WorkDetailPage({ params }: { params: Promise<{ id:
         ) : null}
       </section>
 
+      {query.assignmentError === "1" ? (
+        <p className="mt-6 rounded-lg border border-red-500/35 bg-red-500/10 px-4 py-3 font-semibold text-red-700 dark:text-red-300" role="alert">
+          ไม่สามารถมอบหมายงานได้ กรุณาตรวจสอบสิทธิ์ สถานะงาน และลองใหม่อีกครั้ง
+        </p>
+      ) : null}
+
+      {mayAssign ? (
+        <section className="mt-6 rounded-lg border border-[var(--line)] bg-[var(--surface)] p-5 shadow-[var(--shadow)]">
+          <h2 className="text-xl font-bold">มอบหมายงานให้ช่าง</h2>
+          <p className="mt-1 text-sm text-[var(--muted)]">
+            แสดงเฉพาะช่างที่เปิดใช้งานและอยู่ใน Category เดียวกับงานนี้
+          </p>
+          <div className="mt-4">
+            <WorkAssignmentForm action={assignAction} technicians={technicians} />
+          </div>
+        </section>
+      ) : null}
+
       {canSubmit ? (
         <form action={submitReviewAction} className="mt-6 grid gap-3 rounded-lg border border-[var(--line)] bg-[var(--surface)] p-5">
           <h2 className="text-xl font-semibold">บันทึกช่าง</h2>
@@ -192,7 +244,7 @@ export default async function WorkDetailPage({ params }: { params: Promise<{ id:
         <div className="mt-4 grid gap-2">
           {work.auditEvents.map((event) => (
             <div key={event.id} className="rounded-md border border-[var(--line)] p-3 text-sm">
-              {event.action} · {event.createdAt.toLocaleString("th-TH")}
+              {event.action} · {formatThaiDateTime(event.createdAt)}
             </div>
           ))}
         </div>

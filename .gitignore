@@ -21,3 +21,4 @@ restore-workspace/
 .local-ssh/
 
 .vercel
+.worktrees/

@@ -16,6 +16,12 @@ export function canClaimWork(actor: Actor, work: WorkAccessContext) {
   return false;
 }
 
+export function canAssignWork(actor: Actor, work: WorkAccessContext, engineerAssignmentEnabled: boolean) {
+  if (work.claimantId || !isClaimableStatus(work.status)) return false;
+  if (actor.role === RoleName.ADMIN) return true;
+  return actor.role === RoleName.ENGINEER && engineerAssignmentEnabled && sameCategory(actor, work);
+}
+
 export function canCancelWork(actor: Actor, work: WorkAccessContext) {
   if (work.status === WorkStatus.CLOSED || work.status === WorkStatus.CANCELED) return false;
   if (actor.role === RoleName.ADMIN) return true;
@@ -30,4 +36,20 @@ export function canCloseWork(actor: Actor, work: WorkAccessContext) {
 
 export function canPrintCompletionDocument(actor: Actor, work: WorkAccessContext) {
   return Boolean(actor.id) && work.status === WorkStatus.CLOSED;
+}
+
+export function canViewMemberWorkload(role: string) {
+  return role === RoleName.ADMIN || role === RoleName.ENGINEER;
+}
+
+export function canUpdateSystemSettings(role: string) {
+  return role === RoleName.ADMIN;
+}
+
+export function canManageLineSettings(role: string) {
+  return role === RoleName.ADMIN;
+}
+
+export function canManageOrganization(role: string) {
+  return role === RoleName.ADMIN;
 }

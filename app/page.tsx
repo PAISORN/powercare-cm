@@ -2,11 +2,15 @@ import { Activity, AlertTriangle, BarChart3, CheckCircle2, CircleDot, ClipboardL
 import Link from "next/link";
 import { DashboardFilterBar } from "../components/dashboard-filter-bar";
 import { PublicHeader } from "../components/public-header";
+import { PublicAnnouncements } from "../components/public-announcements";
 import { StatusBadge } from "../components/status-badge";
+import { formatThaiDateTime } from "../lib/date-time/bangkok-time";
 import { WorkStatus, statusLabels } from "../modules/cm-work/cm-work-types";
 import type { ChartRow, MonthlyTrendRow } from "../modules/dashboard/dashboard-chart-data";
 import { toChartRows } from "../modules/dashboard/dashboard-chart-data";
-import { getDashboardSummary, normalizeDashboardTimeRange, type DashboardCategoryFilter } from "../modules/dashboard/dashboard-query";
+import { getDashboardSummaryForDateFilter, type DashboardCategoryFilter } from "../modules/dashboard/dashboard-query";
+import { hasExplicitCmDateFilter, parseCmDateFilter, type CmDateFilterInput } from "../modules/filters/cm-date-filter";
+import { listPublicAnnouncements } from "../modules/announcements/announcement-service";
 
 const statusColors: Record<WorkStatus, string> = {
   [WorkStatus.NEW]: "#3b82f6",
@@ -30,14 +34,25 @@ const inProcessStatuses = [
 
 type LandingSearchParams = {
   category?: string;
-  timeRange?: string;
+  mode?: "day" | "range" | "month" | "year" | "all";
+  date?: string;
+  startDate?: string;
+  endDate?: string;
+  month?: string;
+  year?: string;
+  includeTerminal?: string;
 };
 
 export default async function LandingPage({ searchParams }: { searchParams: Promise<LandingSearchParams> }) {
   const params = await searchParams;
   const activeCategoryFilter = normalizeDashboardCategory(params.category);
-  const activeTimeRange = normalizeDashboardTimeRange(params.timeRange);
-  const summary = await getDashboardSummary({ category: activeCategoryFilter, timeRange: activeTimeRange });
+  const activeDateFilterInput = readDateFilterInput(params);
+  const hasExplicitDateFilter = hasExplicitCmDateFilter(activeDateFilterInput);
+  const activeDateFilter = hasExplicitDateFilter ? safeParseDateFilter(activeDateFilterInput) : undefined;
+  const [summary, announcements] = await Promise.all([
+    getDashboardSummaryForDateFilter({ category: activeCategoryFilter, dateFilter: activeDateFilter }),
+    listPublicAnnouncements(),
+  ]);
   const statusCountByKey = new Map<WorkStatus, number>(summary.byStatus.map((item) => [item.status as WorkStatus, item.count]));
   const statusRows = Object.values(WorkStatus).map((status) => ({
     label: statusLabels[status],
@@ -85,7 +100,7 @@ export default async function LandingPage({ searchParams }: { searchParams: Prom
             </div>
             <div className="rounded-2xl bg-white/15 px-4 py-3 text-right text-sm backdrop-blur">
               <p className="font-semibold">อัปเดตล่าสุด</p>
-              <p className="text-white/80">{new Date().toLocaleString("th-TH", { timeZone: "Asia/Bangkok" })}</p>
+              <p className="text-white/80">{formatThaiDateTime(new Date())}</p>
             </div>
           </div>
         </section>
@@ -109,7 +124,21 @@ export default async function LandingPage({ searchParams }: { searchParams: Prom
           </div>
         </section>
 
-        <DashboardFilterBar activeCategory={activeCategoryFilter} activeTimeRange={activeTimeRange} clearHref="/" />
+        <PublicAnnouncements
+          announcements={announcements.map((announcement) => ({
+            id: announcement.id,
+            title: announcement.title,
+            content: announcement.content,
+            publishStart: announcement.publishStart,
+            publishEnd: announcement.publishEnd,
+            pinned: announcement.pinned,
+            isNew: announcement.isNew,
+            imageStoragePath: announcement.imageStoragePath,
+            authorName: announcement.author.fullName,
+          }))}
+        />
+
+        <DashboardFilterBar activeCategory={activeCategoryFilter} activeDateFilter={hasExplicitDateFilter ? activeDateFilterInput : undefined} clearHref="/" />
 
         <section className="mt-6 grid gap-5 md:grid-cols-2 xl:grid-cols-5">
           <KpiCard label="Total CM" value={String(summary.total)} note="งานซ่อมทั้งหมด" icon={<ClipboardList size={34} />} color="#3b82f6" />
@@ -120,20 +149,20 @@ export default async function LandingPage({ searchParams }: { searchParams: Prom
         </section>
 
         <section className="mt-6 grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
-          <Panel title="Status Overview" icon={<CircleDot size={22} className="text-[#3b82f6]" />} aside={`${statusTotal} jobs`}>
+          <Panel title="Status Overview" icon={<CircleDot size={22} className="text-[#3b82f6]" />} aside={hasExplicitDateFilter ? `${statusTotal} jobs` : "Current year"}>
             <div className="grid gap-4 lg:grid-cols-[minmax(360px,1fr)_230px] lg:items-center">
               <Donut rows={statusRows} total={statusTotal} centerLabel="Total CM" />
               <Legend rows={statusRows} total={statusTotal} />
             </div>
           </Panel>
 
-          <Panel title="Monthly CM Trend" icon={<BarChart3 size={22} className="text-[#14b8a6]" />} aside={`${summary.monthlyTrend.length}-month view`}>
+          <Panel title="Monthly CM Trend" icon={<BarChart3 size={22} className="text-[#14b8a6]" />} aside={hasExplicitDateFilter ? `${summary.monthlyTrend.length}-month view` : "Latest 6 months"}>
             <MonthlyTrendPanel rows={summary.monthlyTrend} />
           </Panel>
         </section>
 
         <section className="mt-6 grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
-          <Panel title="Plant Zone Workload" icon={<Factory size={22} className="text-[#f59e0b]" />} aside="All zones">
+          <Panel title="Plant Zone Workload" icon={<Factory size={22} className="text-[#f59e0b]" />} aside={hasExplicitDateFilter ? "All zones" : "Current year"}>
             <div className="mt-4 grid gap-4">
               {zoneRows.map((row, index) => (
                 <ZoneBar key={row.label} row={row} color={zoneColors[index % zoneColors.length]} />
@@ -141,10 +170,10 @@ export default async function LandingPage({ searchParams }: { searchParams: Prom
             </div>
           </Panel>
 
-          <Panel title="Priority Work Queue" icon={<Flame size={22} className="text-[#ef4444]" />} aside="Read only">
+          <Panel title="Priority Work Queue" icon={<Flame size={22} className="text-[#ef4444]" />} aside={hasExplicitDateFilter ? "Read only" : "Top 5 priority"}>
             <div className="mt-4 grid gap-4">
               {summary.priorityWorks.length ? (
-                summary.priorityWorks.slice(0, 5).map((work) => (
+                summary.priorityWorks.map((work) => (
                   <div key={work.id} className="grid gap-3 rounded-2xl border border-[var(--line)] bg-[var(--soft)] p-4 md:grid-cols-[1fr_auto]">
                     <span className="min-w-0">
                       <strong className="block text-lg">{work.number}</strong>
@@ -203,6 +232,26 @@ function Panel({ title, icon, aside, children }: { title: string; icon: React.Re
 
 function normalizeDashboardCategory(value?: string): DashboardCategoryFilter | undefined {
   return value === "mechanical" || value === "electrical" ? value : undefined;
+}
+
+function readDateFilterInput(params: LandingSearchParams): CmDateFilterInput {
+  return {
+    mode: params.mode,
+    date: params.date,
+    startDate: params.startDate,
+    endDate: params.endDate,
+    month: params.month,
+    year: params.year,
+    includeTerminal: params.includeTerminal,
+  };
+}
+
+function safeParseDateFilter(input: CmDateFilterInput) {
+  try {
+    return parseCmDateFilter(input);
+  } catch {
+    return undefined;
+  }
 }
 
 function Donut({ rows, total, centerLabel }: { rows: { label: string; value: number; color: string }[]; total: number; centerLabel: string }) {
@@ -375,11 +424,7 @@ function getStatusDate(work: StatusDateInput) {
 }
 
 function formatStatusDate(date: Date) {
-  return new Intl.DateTimeFormat("en-GB", {
-    dateStyle: "medium",
-    timeStyle: "short",
-    timeZone: "Asia/Bangkok",
-  }).format(date);
+  return formatThaiDateTime(date);
 }
 
 function ZoneBar({ row, color }: { row: ChartRow; color: string }) {

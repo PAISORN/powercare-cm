@@ -2,13 +2,9 @@
 
 import { Moon, Sun } from "lucide-react";
 import { useEffect, useState } from "react";
+import { getBangkokTheme } from "../lib/date-time/bangkok-time";
 
 const storageKey = "cm-theme-mode";
-
-function getThailandHour() {
-  const thaiTime = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Bangkok" }));
-  return thaiTime.getHours();
-}
 
 export function ThemeToggle() {
   const [hydrated, setHydrated] = useState(false);
@@ -16,9 +12,13 @@ export function ThemeToggle() {
 
   useEffect(() => {
     const savedTheme = sessionStorage.getItem(storageKey);
-    const hour = getThailandHour();
     const htmlTheme = document.documentElement.dataset.theme;
-    const initial = htmlTheme === "day" || htmlTheme === "night" ? htmlTheme : savedTheme === "day" || savedTheme === "night" ? savedTheme : hour >= 6 && hour < 18 ? "day" : "night";
+    const initial =
+      htmlTheme === "day" || htmlTheme === "night"
+        ? htmlTheme
+        : savedTheme === "day" || savedTheme === "night"
+          ? savedTheme
+          : getBangkokTheme();
     setTheme(initial);
     document.documentElement.dataset.theme = initial;
     setHydrated(true);

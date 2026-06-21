@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Search } from "lucide-react";
 import { statusLabels, urgencyLabels, Urgency, WorkStatus } from "../modules/cm-work/cm-work-types";
+import { CmDateFilterBar } from "./cm-date-filter-bar";
 
 type Option = {
   id: string;
@@ -14,7 +15,12 @@ type FilterValues = {
   zoneId?: string;
   urgency?: string;
   claimantId?: string;
+  mode?: "day" | "range" | "month" | "year" | "all";
+  date?: string;
+  startDate?: string;
+  endDate?: string;
   month?: string;
+  year?: string;
 };
 
 export function FilterBar({
@@ -47,13 +53,17 @@ export function FilterBar({
         <SelectFilter label="Category" name="categoryId" value={values.categoryId} options={categories} />
         <SelectFilter label="Zone" name="zoneId" value={values.zoneId} options={zones} />
       </div>
-      <div className="mt-3 grid gap-3 lg:grid-cols-[1fr_1fr_1fr_auto_auto]">
+      <div className="mt-3 grid gap-3 md:grid-cols-2 xl:grid-cols-[1fr_1fr_1.4fr_auto_auto] xl:items-end">
         <SelectFilter label="Urgency" name="urgency" value={values.urgency} options={Object.values(Urgency).map((urgency) => ({ id: urgency, name: urgencyLabels[urgency] }))} />
         <SelectFilter label="Claimant" name="claimantId" value={values.claimantId} options={claimants} />
-        <label className="grid gap-1 text-sm">
-          <span className="text-[var(--muted)]">Month</span>
-          <input className="rounded-2xl border border-[var(--line)] bg-[var(--soft)] px-3 py-3 outline-none" defaultValue={values.month ?? ""} name="month" type="month" />
-        </label>
+        <CmDateFilterBar
+          defaultDate={values.date}
+          defaultEndDate={values.endDate}
+          defaultMode={values.mode}
+          defaultMonth={values.month}
+          defaultStartDate={values.startDate}
+          defaultYear={values.year}
+        />
         <button className="self-end rounded-2xl bg-[var(--primary)] px-5 py-3 font-bold text-white" type="submit">
           Filter
         </button>

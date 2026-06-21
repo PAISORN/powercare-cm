@@ -3,6 +3,7 @@ import { AppShell } from "../../components/app-shell";
 import { PublicHeader } from "../../components/public-header";
 import { StatusBadge } from "../../components/status-badge";
 import { db } from "../../lib/db";
+import { formatThaiDateTime as formatThaiDate } from "../../lib/date-time/bangkok-time";
 import { getCurrentUser } from "../../lib/session";
 import { WorkStatus, statusLabels, urgencyLabels, type Urgency } from "../../modules/cm-work/cm-work-types";
 
@@ -203,12 +204,4 @@ function TimelineRow({ title, actor, time, note, active }: { title: string; acto
       </div>
     </div>
   );
-}
-
-function formatThaiDate(date: Date) {
-  return new Intl.DateTimeFormat("th-TH", {
-    dateStyle: "medium",
-    timeStyle: "short",
-    timeZone: "Asia/Bangkok",
-  }).format(date);
 }
