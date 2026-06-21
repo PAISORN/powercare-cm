@@ -28,11 +28,13 @@ export function FilterBar({
   categories,
   zones,
   claimants,
+  initiallyUnset = false,
 }: {
   values: FilterValues;
   categories: Option[];
   zones: Option[];
   claimants: Option[];
+  initiallyUnset?: boolean;
 }) {
   return (
     <form className="rounded-3xl border border-[var(--line)] bg-[var(--surface)] p-4 shadow-[var(--shadow)]" method="get">
@@ -63,6 +65,7 @@ export function FilterBar({
           defaultMonth={values.month}
           defaultStartDate={values.startDate}
           defaultYear={values.year}
+          initiallyUnset={initiallyUnset}
         />
         <button className="self-end rounded-2xl bg-[var(--primary)] px-5 py-3 font-bold text-white" type="submit">
           Filter

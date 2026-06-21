@@ -13,7 +13,8 @@ import { requireUser } from "../../lib/session";
 import { canClaimWork } from "../../modules/auth/permission";
 import { claimWork } from "../../modules/cm-work/cm-work-service";
 import { WorkStatus, type Actor } from "../../modules/cm-work/cm-work-types";
-import { parseCmDateFilter, type CmDateFilterInput, type ParsedCmDateFilter } from "../../modules/filters/cm-date-filter";
+import { hasExplicitCmDateFilter, parseCmDateFilter, type CmDateFilterInput, type ParsedCmDateFilter } from "../../modules/filters/cm-date-filter";
+import { getCmDatePreset } from "../../modules/filters/cm-date-filter-presets";
 import { getUnreadSummary, getUnreadWorkIds, markStatusGroupRead, markWorkRead } from "../../modules/notifications/notification-service";
 
 type WorkSearchParams = CmDateFilterInput & {
@@ -54,7 +55,8 @@ const pagedWorkFilterKeys = [...sharedWorkFilterKeys, "status", "statusGroup"] a
 export default async function WorkListPage({ searchParams }: { searchParams: Promise<WorkSearchParams> }) {
   const user = await requireUser();
   const filters = normalizeFilters(await searchParams);
-  const dateFilter = safeParseDateFilter(filters);
+  const hasExplicitDateFilter = hasExplicitCmDateFilter(filters);
+  const dateFilter = safeParseDateFilter(filters, hasExplicitDateFilter);
   const where = buildWorkWhere(filters, dateFilter);
   const statusSummaryWhere = buildWorkWhere({ ...filters, status: undefined, statusGroup: undefined }, dateFilter);
   const currentPage = normalizePage(filters.page);
@@ -135,7 +137,13 @@ export default async function WorkListPage({ searchParams }: { searchParams: Pro
       </section>
 
       <section className="relative z-20 -mt-7">
-        <FilterBar values={filters} categories={categories} zones={zones} claimants={claimants.map((user) => ({ id: user.id, name: user.fullName }))} />
+        <FilterBar
+          values={filters}
+          categories={categories}
+          zones={zones}
+          claimants={claimants.map((user) => ({ id: user.id, name: user.fullName }))}
+          initiallyUnset={!hasExplicitDateFilter}
+        />
       </section>
 
       <StatusKpiStrip
@@ -338,10 +346,11 @@ function buildWorkWhere(filters: WorkSearchParams, dateFilter: ParsedCmDateFilte
   return where;
 }
 
-function safeParseDateFilter(input: CmDateFilterInput) {
+function safeParseDateFilter(input: CmDateFilterInput, hasExplicitDateFilter: boolean) {
+  const yearToDate = getCmDatePreset("yearToDate");
   try {
-    return parseCmDateFilter(input);
+    return parseCmDateFilter(hasExplicitDateFilter ? input : yearToDate);
   } catch {
-    return parseCmDateFilter({});
+    return parseCmDateFilter(yearToDate);
   }
 }
