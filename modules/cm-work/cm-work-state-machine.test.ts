@@ -17,6 +17,10 @@ describe("canTransition", () => {
     expect(canTransition(WorkStatus.RETURNED_FOR_CORRECTION, WorkStatus.WAITING_TO_CLOSE)).toBe(true);
   });
 
+  it("allows an unassigned returned work to be claimed again", () => {
+    expect(canTransition(WorkStatus.RETURNED_FOR_CORRECTION, WorkStatus.CLAIMED)).toBe(true);
+  });
+
   it("blocks closed and canceled work from returning to active workflow", () => {
     expect(canTransition(WorkStatus.CLOSED, WorkStatus.IN_PROGRESS)).toBe(false);
     expect(canTransition(WorkStatus.CANCELED, WorkStatus.CLAIMED)).toBe(false);

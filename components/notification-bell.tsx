@@ -22,7 +22,7 @@ export function NotificationBell({ unreadCount, notifications }: { unreadCount: 
       <button
         aria-expanded={open}
         aria-label="Notifications"
-        className="relative grid h-10 w-10 place-items-center rounded-full border border-[var(--line)] bg-[var(--surface)] text-[var(--ink)] shadow-sm transition hover:bg-[var(--soft)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)]"
+        className="relative grid h-9 w-9 place-items-center rounded-full border border-[var(--line)] bg-[var(--surface)] text-[var(--ink)] shadow-sm transition hover:bg-[var(--soft)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)] sm:h-10 sm:w-10"
         onClick={() => setOpen((value) => !value)}
         type="button"
       >

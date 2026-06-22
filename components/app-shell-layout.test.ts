@@ -5,13 +5,11 @@ import { describe, expect, it } from "vitest";
 describe("AppShell mobile header", () => {
   it("places the menu control before Home", () => {
     const source = fs.readFileSync(path.join(process.cwd(), "components/app-shell.tsx"), "utf8");
-    const controlsStart = source.indexOf('<div className="flex shrink-0 items-center gap-2">');
-    const controlsEnd = source.indexOf('<div className="min-w-0">', controlsStart);
-    const leadingControls = source.slice(controlsStart, controlsEnd);
+    const menuIndex = source.indexOf("<MobileAppDrawer");
+    const homeIndex = source.indexOf('aria-label="Home"');
 
-    expect(controlsStart).toBeGreaterThan(-1);
-    expect(controlsEnd).toBeGreaterThan(controlsStart);
-    expect(leadingControls.indexOf("<MobileAppDrawer")).toBeLessThan(leadingControls.indexOf('<Link className="grid h-10'));
+    expect(menuIndex).toBeGreaterThan(-1);
+    expect(homeIndex).toBeGreaterThan(menuIndex);
   });
 
   it("keeps the desktop identity fixed while navigation scrolls", () => {

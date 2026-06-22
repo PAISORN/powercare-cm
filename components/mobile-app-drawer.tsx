@@ -57,7 +57,7 @@ export function MobileAppDrawer({
       <button
         ref={buttonRef}
         aria-label="Open menu"
-        className="relative grid h-10 w-10 place-items-center rounded-full border border-[var(--line)] bg-[var(--surface)] shadow-sm transition hover:bg-[var(--soft)] md:hidden"
+        className="relative grid h-9 w-9 place-items-center rounded-full border border-[var(--line)] bg-[var(--surface)] shadow-sm transition hover:bg-[var(--soft)] sm:h-10 sm:w-10 md:hidden"
         type="button"
         onClick={() => setOpen(true)}
       >

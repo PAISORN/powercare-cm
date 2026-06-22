@@ -6,7 +6,7 @@ const allowedTransitions: Record<WorkStatusValue, WorkStatusValue[]> = {
   CLAIMED: [WorkStatus.IN_PROGRESS, WorkStatus.WAITING_TO_CLAIM, WorkStatus.CANCELED],
   IN_PROGRESS: [WorkStatus.WAITING_TO_CLOSE, WorkStatus.WAITING_TO_CLAIM, WorkStatus.CANCELED],
   WAITING_TO_CLOSE: [WorkStatus.CLOSED, WorkStatus.RETURNED_FOR_CORRECTION, WorkStatus.CANCELED],
-  RETURNED_FOR_CORRECTION: [WorkStatus.WAITING_TO_CLOSE, WorkStatus.CANCELED],
+  RETURNED_FOR_CORRECTION: [WorkStatus.CLAIMED, WorkStatus.WAITING_TO_CLOSE, WorkStatus.CANCELED],
   CLOSED: [],
   CANCELED: [],
 };

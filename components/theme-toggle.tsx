@@ -41,24 +41,17 @@ export function ThemeToggle() {
       <button
         aria-label={displayTheme === "day" ? "Day mode" : "Night mode"}
         aria-pressed={displayTheme === "night"}
-        className={
-          displayTheme === "day"
-            ? "relative flex h-10 w-[88px] items-center justify-between overflow-hidden rounded-full bg-[var(--primary)] px-3 text-xs font-extrabold uppercase text-white shadow-sm transition md:h-11 md:w-[118px] md:px-4 md:text-sm"
-            : "relative flex h-10 w-[88px] items-center justify-between overflow-hidden rounded-full bg-[var(--primary)] px-3 text-xs font-extrabold uppercase text-white shadow-sm transition md:h-11 md:w-[118px] md:px-4 md:text-sm"
-        }
+        className="relative flex h-9 w-16 shrink-0 items-center justify-between overflow-hidden rounded-full bg-[var(--primary)] px-2 text-white shadow-sm transition-colors hover:bg-[var(--primary-strong)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)] focus:ring-offset-2"
         onClick={toggleTheme}
+        title={displayTheme === "day" ? "Switch to night mode" : "Switch to day mode"}
         type="button"
       >
-        <span className={displayTheme === "day" ? "pr-7 md:pr-9" : "pl-7 md:pl-9"}>{displayTheme === "day" ? "Day" : "Night"}</span>
+        <Sun aria-hidden="true" className={`relative z-10 ${displayTheme === "day" ? "text-[var(--primary)]" : "text-white"}`} size={15} />
+        <Moon aria-hidden="true" className={`relative z-10 ${displayTheme === "night" ? "text-[var(--primary)]" : "text-white"}`} size={14} />
         <span
-          className={
-            displayTheme === "day"
-              ? "absolute right-1.5 grid h-7 w-7 place-items-center rounded-full bg-white text-[var(--primary)] transition md:h-8 md:w-8"
-              : "absolute left-1.5 grid h-7 w-7 place-items-center rounded-full bg-white text-[var(--primary)] transition md:h-8 md:w-8"
-          }
-        >
-          {displayTheme === "day" ? <Sun aria-hidden="true" size={17} /> : <Moon aria-hidden="true" size={16} />}
-        </span>
+          aria-hidden="true"
+          className={`absolute left-1 top-1 h-7 w-7 rounded-full bg-white shadow-sm transition-transform duration-300 ${displayTheme === "night" ? "translate-x-7" : "translate-x-0"}`}
+        />
       </button>
       <button
         aria-hidden="true"
