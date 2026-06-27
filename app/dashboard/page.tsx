@@ -15,6 +15,8 @@ import { requireUser } from "../../lib/session";
 import { getUnreadSummary, markStatusGroupRead } from "../../modules/notifications/notification-service";
 import type { NotificationGroup } from "../../modules/notifications/notification-types";
 import { UnreadBadge } from "../../components/unread-badge";
+import { formatOrganizationDashboardTitle } from "../../modules/organization/organization-profile";
+import { readOrganizationProfile } from "../../modules/organization/organization-service";
 
 const statusColors: Record<WorkStatus, string> = {
   [WorkStatus.NEW]: "#3b82f6",
@@ -54,9 +56,10 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const activeDateFilterInput = readDateFilterInput(params);
   const hasExplicitDateFilter = hasExplicitCmDateFilter(activeDateFilterInput);
   const activeDateFilter = hasExplicitDateFilter ? safeParseDateFilter(activeDateFilterInput) : undefined;
-  const [summary, unreadSummary] = await Promise.all([
+  const [summary, unreadSummary, organization] = await Promise.all([
     getDashboardSummaryForDateFilter({ category: activeCategoryFilter, dateFilter: activeDateFilter }),
     getUnreadSummary(user.id),
+    readOrganizationProfile(),
   ]);
 
   async function markDashboardGroupReadAction(formData: FormData) {
@@ -102,7 +105,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
               <Factory size={17} />
               CM Operations Dashboard
             </p>
-            <h1 className="mt-5 text-4xl font-extrabold tracking-normal">ภาพรวมงานซ่อม โรงไฟฟ้า รุ่งทิวา ไบโอแมส จำกัด</h1>
+            <h1 className="mt-5 text-4xl font-extrabold tracking-normal">{formatOrganizationDashboardTitle(organization.companyName)}</h1>
             <p className="mt-2 max-w-2xl text-white/80">Operation Command Center สำหรับดูสถานะ งานเร่งด่วน โซน และแนวโน้มรายเดือนในหน้าเดียว</p>
           </div>
           <div className="rounded-2xl bg-white/15 px-4 py-3 text-right text-sm backdrop-blur">

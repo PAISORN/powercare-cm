@@ -48,7 +48,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
       </aside>
 
       <main className="min-h-screen p-5 md:ml-72 md:p-8">
-        <div className="mb-6 grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 rounded-2xl border border-[var(--line)] bg-[var(--surface)] px-2.5 py-2.5 shadow-[var(--shadow)] sm:gap-3 sm:px-3 md:rounded-3xl md:px-4 md:py-3">
+        <div className="sticky top-3 z-40 mb-6 grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 rounded-2xl border border-[var(--line)] bg-[var(--surface)]/95 px-2.5 py-2.5 shadow-[var(--shadow)] backdrop-blur sm:gap-3 sm:px-3 md:top-4 md:rounded-3xl md:px-4 md:py-3">
           <div className="flex min-w-0 items-center gap-2 sm:gap-3">
             <div className="flex shrink-0 items-center gap-2">
               <MobileAppDrawer

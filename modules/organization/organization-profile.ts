@@ -16,3 +16,7 @@ export function normalizeOrganizationInput(input: { companyName: string }) {
   if (companyName.length > 200) throw new Error("Company name is too long");
   return { companyName };
 }
+
+export function formatOrganizationDashboardTitle(companyName: string) {
+  return `ภาพรวมงานซ่อม ${normalizeOrganizationInput({ companyName }).companyName}`;
+}

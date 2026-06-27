@@ -219,8 +219,33 @@ export default async function WorkDetailPage({
       ) : null}
 
       {canReview ? (
+        <section className="mt-6 grid gap-4 rounded-lg border border-[var(--line)] bg-[var(--surface)] p-5 shadow-[var(--shadow)]">
+          <div>
+            <p className="text-sm font-semibold text-[var(--primary)]">Technician Work Summary</p>
+            <h2 className="mt-1 text-xl font-bold">รายละเอียดที่ช่างบันทึกก่อนตรวจรับ</h2>
+            <p className="mt-1 text-sm text-[var(--muted)]">
+              ใช้ข้อมูลส่วนนี้ประกอบการตัดสินใจก่อนปิดงานหรือส่งกลับให้แก้ไข
+            </p>
+          </div>
+          <div className="grid gap-3 md:grid-cols-3">
+            <ReviewDetail label="สาเหตุ" value={work.rootCause} />
+            <ReviewDetail label="วิธีการแก้ไข" value={work.correctiveAction} />
+            <ReviewDetail label="หมายเหตุช่าง" value={work.workNote} />
+          </div>
+          <div className="grid gap-3 rounded-2xl bg-[var(--soft)] p-4 text-sm md:grid-cols-2">
+            <p>
+              <strong>ผู้ดำเนินการ:</strong> {work.claimant?.fullName ?? "-"}
+            </p>
+            <p>
+              <strong>วันที่ส่งรอตรวจรับ:</strong> {work.waitingToCloseAt ? formatThaiDateTime(work.waitingToCloseAt) : "-"}
+            </p>
+          </div>
+        </section>
+      ) : null}
+
+      {canReview ? (
         <section className="mt-6 grid gap-3 rounded-lg border border-[var(--line)] bg-[var(--surface)] p-5">
-          <h2 className="text-xl font-semibold">ตรวจรับวิศวกร</h2>
+          <h2 className="text-xl font-semibold">Engineer Review · ตรวจรับวิศวกร</h2>
           <form action={closeAction} className="grid gap-3">
             <textarea name="engineerNote" placeholder="หมายเหตุวิศวกร" className="rounded-md border p-3 text-black" />
             <button className="w-fit rounded-md bg-green-700 px-4 py-2 text-white">ปิดงาน</button>
@@ -250,5 +275,14 @@ export default async function WorkDetailPage({
         </div>
       </section>
     </AppShell>
+  );
+}
+
+function ReviewDetail({ label, value }: { label: string; value: string | null }) {
+  return (
+    <div className="rounded-2xl bg-[var(--soft)] p-4">
+      <p className="text-sm font-semibold text-[var(--muted)]">{label}</p>
+      <p className="mt-2 whitespace-pre-wrap font-semibold">{value?.trim() || "-"}</p>
+    </div>
   );
 }

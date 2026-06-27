@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { normalizeOrganizationInput, organizationFallback } from "./organization-profile";
+import { formatOrganizationDashboardTitle, normalizeOrganizationInput, organizationFallback } from "./organization-profile";
 
 describe("organization profile", () => {
   it("normalizes the company name", () => {
@@ -16,5 +16,11 @@ describe("organization profile", () => {
 
   it("provides the document fallback", () => {
     expect(organizationFallback.companyName).toBe("PowerCare.CM");
+  });
+
+  it("builds the dashboard title from the configured organization name", () => {
+    expect(formatOrganizationDashboardTitle("โรงไฟฟ้า รุ่งทิวา ไบโอแมส จำกัด")).toBe(
+      "ภาพรวมงานซ่อม โรงไฟฟ้า รุ่งทิวา ไบโอแมส จำกัด",
+    );
   });
 });

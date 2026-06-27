@@ -11,6 +11,8 @@ import { toChartRows } from "../modules/dashboard/dashboard-chart-data";
 import { getDashboardSummaryForDateFilter, type DashboardCategoryFilter } from "../modules/dashboard/dashboard-query";
 import { hasExplicitCmDateFilter, parseCmDateFilter, type CmDateFilterInput } from "../modules/filters/cm-date-filter";
 import { listPublicAnnouncements } from "../modules/announcements/announcement-service";
+import { formatOrganizationDashboardTitle } from "../modules/organization/organization-profile";
+import { readOrganizationProfile } from "../modules/organization/organization-service";
 
 const statusColors: Record<WorkStatus, string> = {
   [WorkStatus.NEW]: "#3b82f6",
@@ -49,9 +51,10 @@ export default async function LandingPage({ searchParams }: { searchParams: Prom
   const activeDateFilterInput = readDateFilterInput(params);
   const hasExplicitDateFilter = hasExplicitCmDateFilter(activeDateFilterInput);
   const activeDateFilter = hasExplicitDateFilter ? safeParseDateFilter(activeDateFilterInput) : undefined;
-  const [summary, announcements] = await Promise.all([
+  const [summary, announcements, organization] = await Promise.all([
     getDashboardSummaryForDateFilter({ category: activeCategoryFilter, dateFilter: activeDateFilter }),
     listPublicAnnouncements(),
+    readOrganizationProfile(),
   ]);
   const statusCountByKey = new Map<WorkStatus, number>(summary.byStatus.map((item) => [item.status as WorkStatus, item.count]));
   const statusRows = Object.values(WorkStatus).map((status) => ({
@@ -84,7 +87,7 @@ export default async function LandingPage({ searchParams }: { searchParams: Prom
                 <Factory size={17} />
                 CM Operations Dashboard
               </p>
-              <h1 className="mt-5 text-4xl font-extrabold tracking-normal">ภาพรวมงานซ่อม โรงไฟฟ้า รุ่งทิวา ไบโอแมส จำกัด</h1>
+              <h1 className="mt-5 text-4xl font-extrabold tracking-normal">{formatOrganizationDashboardTitle(organization.companyName)}</h1>
               <p className="mt-2 max-w-2xl text-white/80">Operation Command Center สำหรับดูสถานะ งานเร่งด่วน โซน และแนวโน้มรายเดือนในหน้าเดียว</p>
               <div className="mt-5 flex flex-wrap gap-4 text-sm text-white/90">
                 <span className="inline-flex items-center gap-2">

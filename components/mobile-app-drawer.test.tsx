@@ -7,7 +7,12 @@ describe("MobileAppDrawer", () => {
     render(<MobileAppDrawer userName="Electrical Technician" role="TECHNICIAN" categoryName="งานไฟฟ้า" unreadCount={0} />);
 
     fireEvent.click(screen.getByRole("button", { name: "Open menu" }));
-    expect(screen.getByRole("dialog", { name: "Application menu" })).toBeTruthy();
+    const dialog = screen.getByRole("dialog", { name: "Application menu" });
+    expect(dialog).toBeTruthy();
+    expect(dialog.className).toContain("fixed inset-0");
+    expect(dialog.className).toContain("w-screen");
+    expect(dialog.className).toContain("sm:w-[86vw]");
+    expect(dialog.className).toContain("sm:max-w-[340px]");
     const navigation = screen.getByTestId("mobile-drawer-nav");
     expect(navigation.className).toContain("min-h-0");
     expect(navigation.className).toContain("flex-1");

@@ -22,4 +22,12 @@ describe("AppShell mobile header", () => {
     expect(source).toContain("min-h-0 flex-1");
     expect(source).toContain("overflow-y-auto");
   });
+
+  it("keeps the top app bar visible while the page scrolls", () => {
+    const source = fs.readFileSync(path.join(process.cwd(), "components/app-shell.tsx"), "utf8");
+
+    expect(source).toContain("sticky top-3");
+    expect(source).toContain("z-40");
+    expect(source).toContain("backdrop-blur");
+  });
 });
