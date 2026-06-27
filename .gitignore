@@ -19,6 +19,9 @@ test-results/
 backups/
 restore-workspace/
 .local-ssh/
+logs/
+.codex-dev*.log
+outputs/
 
 .vercel
 .worktrees/
