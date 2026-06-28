@@ -194,7 +194,7 @@ export default async function WorkListPage({ searchParams }: { searchParams: Pro
                   </span>
                   </button>
                 </form>
-                <span className="flex flex-wrap items-start justify-start gap-2 md:justify-end">
+                <span data-reveal-section className="flex flex-wrap items-start justify-start gap-2 md:justify-end">
                   <StatusBadge status={work.status} />
                   {canClaimWork(actor, work) ? (
                     <form action={claimFromListAction}>
