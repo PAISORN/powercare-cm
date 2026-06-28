@@ -105,4 +105,25 @@ describe("LINE daily report dispatcher", () => {
       status: "SENT",
     });
   });
+
+  it("can add a manual event suffix so test sends do not reuse the scheduled delivery id", async () => {
+    const deliver = vi.fn().mockResolvedValue(undefined);
+    const dispatcher = createLineDailyReportDispatcher({
+      getSetting: vi.fn().mockResolvedValue(enabledSetting()),
+      queryReport: vi.fn().mockResolvedValue(report),
+      deliver,
+    });
+
+    await dispatcher.dispatch({
+      now: new Date("2026-06-28T02:00:00.000Z"),
+      force: true,
+      eventIdSuffix: "manual-test",
+    });
+
+    expect(deliver).toHaveBeenCalledWith(
+      expect.objectContaining({
+        eventId: buildLineDailyReportEventId("2026-06-27", "destination-1", "manual-test"),
+      }),
+    );
+  });
 });

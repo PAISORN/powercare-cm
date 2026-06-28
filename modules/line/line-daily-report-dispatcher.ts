@@ -50,7 +50,11 @@ export function createLineDailyReportDispatcher({
   deliver: (input: DailyReportDeliveryInput) => Promise<void>;
 }) {
   return {
-    async dispatch({ now = new Date(), force = false }: { now?: Date; force?: boolean } = {}): Promise<LineDailyReportDispatchResult> {
+    async dispatch({
+      now = new Date(),
+      force = false,
+      eventIdSuffix,
+    }: { now?: Date; force?: boolean; eventIdSuffix?: string } = {}): Promise<LineDailyReportDispatchResult> {
       const setting = await getSetting();
       if (!setting?.enabled) return { status: "SKIPPED", reason: "DISABLED" };
       if (!setting.destination) return { status: "SKIPPED", reason: "NO_DESTINATION" };
@@ -63,7 +67,7 @@ export function createLineDailyReportDispatcher({
       const report = await queryReport({ date, categoryId: setting.destination.categoryId });
       const text = buildLineDailyReportMessage(report, parseLineDailyReportTemplate(setting.templateJson));
       await deliver({
-        eventId: buildLineDailyReportEventId(date, setting.destination.id),
+        eventId: buildLineDailyReportEventId(date, setting.destination.id, eventIdSuffix),
         destinationId: setting.destination.id,
         targetId: setting.destination.targetId,
         text,
@@ -73,8 +77,8 @@ export function createLineDailyReportDispatcher({
   };
 }
 
-export function buildLineDailyReportEventId(date: string, destinationId: string) {
-  return `LINE_DAILY_REPORT:${date}:${destinationId}`;
+export function buildLineDailyReportEventId(date: string, destinationId: string, suffix?: string) {
+  return `LINE_DAILY_REPORT:${date}:${destinationId}${suffix ? `:${suffix}` : ""}`;
 }
 
 export function resolveLineDailyReportDate(mode: LineDailyReportDateMode, now = new Date()) {
@@ -88,7 +92,7 @@ export function isLineDailyReportDue(sendTime: string, now = new Date()) {
   return getBangkokHourMinute(now) === sendTime;
 }
 
-export async function dispatchLineDailyReport(input: { now?: Date; force?: boolean } = {}) {
+export async function dispatchLineDailyReport(input: { now?: Date; force?: boolean; eventIdSuffix?: string } = {}) {
   return createLineDailyReportDispatcher({
     getSetting: () =>
       db.lineDailyReportSetting.findUnique({

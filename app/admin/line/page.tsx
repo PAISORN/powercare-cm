@@ -15,6 +15,7 @@ import {
   templateFromFormData,
   type LineDailyReportTemplate,
 } from "../../../modules/line/line-daily-report-settings";
+import { dispatchLineDailyReport, type LineDailyReportDispatchResult } from "../../../modules/line/line-daily-report-dispatcher";
 import { maskLineTargetId, resolveLineDiscoveryPrefill } from "../../../modules/line/line-settings";
 import { listLineGroupDiscoveries } from "../../../modules/line/line-group-discovery-service";
 import {
@@ -118,10 +119,47 @@ async function saveDailyReportAction(formData: FormData) {
   redirect("/admin/line?dailyReportSaved=1");
 }
 
+async function sendDailyReportNowAction() {
+  "use server";
+  const user = await requireUser();
+  if (user.role !== RoleName.ADMIN) redirect("/dashboard");
+  let result: LineDailyReportDispatchResult;
+  try {
+    result = await dispatchLineDailyReport({
+      force: true,
+      eventIdSuffix: `manual-${Date.now()}`,
+    });
+    await db.auditEvent.create({
+      data: {
+        actorId: user.id,
+        entityType: "LineDailyReportSetting",
+        entityId: "default",
+        action: "SEND_LINE_DAILY_REPORT_TEST",
+        afterJson: JSON.stringify(result),
+      },
+    });
+  } catch {
+    redirect("/admin/line?error=daily-report-test");
+  }
+  if (result.status === "SENT") {
+    redirect("/admin/line?dailyReportTested=1");
+  }
+  redirect(`/admin/line?dailyReportSkipped=${encodeURIComponent(result.reason)}`);
+}
+
 export default async function AdminLineSettingsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ saved?: string; tested?: string; retried?: string; dailyReportSaved?: string; error?: string; discovery?: string }>;
+  searchParams: Promise<{
+    saved?: string;
+    tested?: string;
+    retried?: string;
+    dailyReportSaved?: string;
+    dailyReportTested?: string;
+    dailyReportSkipped?: string;
+    error?: string;
+    discovery?: string;
+  }>;
 }) {
   const user = await requireUser();
   if (user.role !== RoleName.ADMIN) redirect("/dashboard");
@@ -161,10 +199,13 @@ export default async function AdminLineSettingsPage({
       {query.tested ? <Notice>ส่งข้อความทดสอบสำเร็จแล้ว</Notice> : null}
       {query.retried ? <Notice>ส่งรายการเดิมซ้ำเรียบร้อยแล้ว</Notice> : null}
       {query.dailyReportSaved ? <Notice>บันทึกการตั้งค่ารายงานสรุป LINE เรียบร้อยแล้ว</Notice> : null}
+      {query.dailyReportTested ? <Notice>ส่งรายงาน LINE ทดสอบเรียบร้อยแล้ว</Notice> : null}
+      {query.dailyReportSkipped ? <Notice error>{lineDailyReportSkippedMessage(query.dailyReportSkipped)}</Notice> : null}
       {query.error ? <Notice error>ดำเนินการไม่สำเร็จ กรุณาตรวจสอบ Target ID, Token และการเชื่อมต่อ LINE</Notice> : null}
 
       <DailyReportSettingsForm
         action={saveDailyReportAction}
+        testAction={sendDailyReportNowAction}
         destinations={destinations.filter((destination) => destination.active)}
         setting={dailyReportSetting}
       />
@@ -285,10 +326,12 @@ export default async function AdminLineSettingsPage({
 
 function DailyReportSettingsForm({
   action,
+  testAction,
   destinations,
   setting,
 }: {
   action: (formData: FormData) => void | Promise<void>;
+  testAction: () => void | Promise<void>;
   destinations: Array<{ id: string; displayName: string; category?: { name: string } | null }>;
   setting: {
     enabled: boolean;
@@ -363,8 +406,27 @@ function DailyReportSettingsForm({
           <Save aria-hidden="true" size={17} /> บันทึกการตั้งค่ารายงาน
         </button>
       </form>
+
+      <form action={testAction} className="mt-3">
+        <button className="inline-flex min-h-11 w-fit items-center gap-2 rounded-md border border-[var(--primary)] bg-[var(--surface)] px-5 font-bold text-[var(--primary)] shadow-sm transition hover:-translate-y-0.5 hover:bg-[var(--soft)]" type="submit">
+          <Send aria-hidden="true" size={17} /> ส่งรายงาน LINE ทดสอบตอนนี้
+        </button>
+        <p className="mt-2 text-xs text-[var(--muted)]">
+          ใช้สำหรับทดสอบกลุ่มและรูปแบบข้อความทันที โดยไม่ต้องรอเวลาส่งรายงานประจำวัน
+        </p>
+      </form>
     </section>
   );
+}
+
+function lineDailyReportSkippedMessage(reason: string) {
+  const messages: Record<string, string> = {
+    DISABLED: "ยังไม่ได้เปิดใช้งาน Daily Report กรุณาเปิดใช้งานและบันทึกก่อนส่งทดสอบ",
+    NO_DESTINATION: "ยังไม่ได้เลือกกลุ่ม LINE สำหรับ Daily Report",
+    DESTINATION_INACTIVE: "กลุ่ม LINE ที่เลือกถูกปิดใช้งาน กรุณาเปิดใช้งานกลุ่มก่อน",
+    NOT_DUE: "ยังไม่ถึงเวลาส่งรายงานตามที่ตั้งไว้",
+  };
+  return messages[reason] ?? "ยังไม่สามารถส่งรายงาน LINE ทดสอบได้ กรุณาตรวจสอบการตั้งค่า";
 }
 
 function Notice({ children, error = false }: { children: React.ReactNode; error?: boolean }) {
