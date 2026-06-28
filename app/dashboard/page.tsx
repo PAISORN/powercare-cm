@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { AlertTriangle, BarChart3, CheckCircle2, CircleDot, ClipboardList, Factory, Flame, Gauge, Wrench } from "lucide-react";
 import { AppShell } from "../../components/app-shell";
 import { DashboardFilterBar } from "../../components/dashboard-filter-bar";
+import { OrganizationHeroLogo } from "../../components/organization-hero-logo";
 import { StatusBadge } from "../../components/status-badge";
 import { UserAvatar } from "../../components/user-avatar";
 import { formatThaiDateTime } from "../../lib/date-time/bangkok-time";
@@ -99,19 +100,16 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
           <span />
           <span />
         </div>
-        <div className="relative z-10 flex flex-wrap items-start justify-between gap-4">
-          <div>
+        <div className="relative z-10 flex items-start justify-between gap-4">
+          <div className="min-w-0 flex-1">
             <p className="inline-flex items-center gap-2 rounded-full bg-white/15 px-4 py-2 text-sm font-semibold">
               <Factory size={17} />
               CM Operations Dashboard
             </p>
-            <h1 className="mt-5 text-4xl font-extrabold tracking-normal">{formatOrganizationDashboardTitle(organization.companyName)}</h1>
+            <h1 className="mt-5 max-w-5xl text-3xl font-extrabold tracking-normal sm:text-4xl">{formatOrganizationDashboardTitle(organization.companyName)}</h1>
             <p className="mt-2 max-w-2xl text-white/80">Operation Command Center สำหรับดูสถานะ งานเร่งด่วน โซน และแนวโน้มรายเดือนในหน้าเดียว</p>
           </div>
-          <div className="rounded-2xl bg-white/15 px-4 py-3 text-right text-sm backdrop-blur">
-            <p className="font-semibold">อัปเดตล่าสุด</p>
-            <p className="text-white/80">{formatThaiDateTime(new Date())}</p>
-          </div>
+          <OrganizationHeroLogo companyName={organization.companyName} hasLogo={organization.hasLogo} />
         </div>
       </section>
 
@@ -192,7 +190,7 @@ function KpiCard({ href, group, unreadCount, readAction, label, value, note, ico
       <input name="href" type="hidden" value={href} />
       <button
       type="submit"
-      className="relative block h-full w-full rounded-2xl p-5 text-left text-white shadow-[var(--shadow)] transition hover:-translate-y-0.5 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-white/60 focus:ring-offset-2 focus:ring-offset-[var(--bg)]"
+      className="relative block h-full w-full rounded-2xl p-5 text-left text-white shadow-[var(--shadow)] transition duration-300 ease-out hover:-translate-y-1 hover:shadow-lg active:translate-y-0 focus:outline-none focus:ring-2 focus:ring-white/60 focus:ring-offset-2 focus:ring-offset-[var(--bg)]"
       style={{ background: `linear-gradient(135deg, ${color}, color-mix(in srgb, ${color} 78%, white))` }}
       aria-label={`KPI ${label}`}
       >

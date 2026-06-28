@@ -41,10 +41,22 @@ describe("category permissions", () => {
     expect(canPrintCompletionDocument(tech, { status: WorkStatus.CANCELED, categoryId: mechanical, claimantId: "other" })).toBe(false);
   });
 
+  it("keeps visitor role read-only", () => {
+    const visitor = { id: "visitor", role: RoleName.VISITOR, categoryId: null };
+    const work = { status: WorkStatus.NEW, categoryId: electrical, claimantId: null };
+
+    expect(canClaimWork(visitor, work)).toBe(false);
+    expect(canAssignWork(visitor, work, true)).toBe(false);
+    expect(canCancelWork(visitor, { ...work, status: WorkStatus.IN_PROGRESS, claimantId: "tech" })).toBe(false);
+    expect(canCloseWork(visitor, { ...work, status: WorkStatus.WAITING_TO_CLOSE, claimantId: "tech" })).toBe(false);
+    expect(canPrintCompletionDocument(visitor, { ...work, status: WorkStatus.CLOSED, claimantId: "tech" })).toBe(false);
+  });
+
   it("shows member workload only to admin and engineer", () => {
     expect(canViewMemberWorkload(RoleName.ADMIN)).toBe(true);
     expect(canViewMemberWorkload(RoleName.ENGINEER)).toBe(true);
     expect(canViewMemberWorkload(RoleName.TECHNICIAN)).toBe(false);
+    expect(canViewMemberWorkload(RoleName.VISITOR)).toBe(false);
   });
 });
 

@@ -17,5 +17,5 @@ function normalizeStatus(status: string): WorkStatusValue {
 
 export function StatusBadge({ status }: { status: string }) {
   const normalized = normalizeStatus(status);
-  return <span className={`rounded-full px-3 py-1 text-xs font-bold ${colorByStatus[normalized]}`}>{statusLabels[normalized]}</span>;
+  return <span className={`inline-flex rounded-full px-3 py-1 text-xs font-bold transition duration-300 ease-out hover:-translate-y-0.5 ${colorByStatus[normalized]}`}>{statusLabels[normalized]}</span>;
 }

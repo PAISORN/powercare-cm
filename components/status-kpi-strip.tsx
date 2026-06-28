@@ -86,7 +86,7 @@ function MetricCard({
     green: "bg-[#dcfce7] text-[#073f26]",
     slate: "bg-[#e2e8f0] text-[#1f2937]",
   };
-  const className = `relative rounded-2xl p-4 text-left shadow-[var(--shadow)] transition ${tones[tone]} ${active ? "ring-2 ring-[var(--primary)] ring-offset-2 ring-offset-[var(--bg)]" : ""}`;
+  const className = `relative block rounded-2xl p-4 text-left shadow-[var(--shadow)] transition duration-300 ease-out ${tones[tone]} ${active ? "ring-2 ring-[var(--primary)] ring-offset-2 ring-offset-[var(--bg)]" : ""}`;
   const content = (
     <>
       <UnreadBadge count={unreadCount} />
@@ -103,7 +103,7 @@ function MetricCard({
       <form action={readAction}>
         <input name="group" type="hidden" value={status} />
         <input name="href" type="hidden" value={href} />
-        <button className={`${className} h-full w-full hover:-translate-y-0.5 hover:shadow-lg`} type="submit" aria-label={ariaLabel}>
+        <button className={`${className} h-full w-full hover:-translate-y-1 hover:shadow-lg active:translate-y-0`} type="submit" aria-label={ariaLabel}>
           {content}
         </button>
       </form>
@@ -112,7 +112,7 @@ function MetricCard({
 
   if (href) {
     return (
-      <Link className={`${className} hover:-translate-y-0.5 hover:shadow-lg`} href={href} aria-label={ariaLabel}>
+      <Link className={`${className} hover:-translate-y-1 hover:shadow-lg active:translate-y-0`} href={href} aria-label={ariaLabel}>
         {content}
       </Link>
     );

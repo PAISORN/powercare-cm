@@ -14,6 +14,7 @@ import {
   Bell,
   LogOut,
   Megaphone,
+  MessageSquareText,
   MessageCircleMore,
   PlusCircle,
   Search,
@@ -43,14 +44,20 @@ export function getAppLinks(role: RoleValue): AppLink[] {
     { label: "Dashboard", href: "/dashboard", icon: BarChart3 },
     { label: "All Work", href: "/work", icon: Wrench },
     { label: "Members", href: "/members", icon: UsersRound },
-    { label: "Notifications", href: "/notifications", icon: Bell },
-    { label: "Reports", kind: "section", icon: FileSpreadsheet, sectionId: "reports" },
-    { label: "Daily Report", href: "/reports/daily", icon: CalendarDays, nested: true, parentSectionId: "reports" },
-    { label: "CM Reports", href: "/reports/cm", icon: FileSpreadsheet, nested: true, parentSectionId: "reports" },
-    { label: "Profile", href: "/profile", icon: UserRound },
-    { label: "Create Request", href: "/request", icon: PlusCircle },
-    { label: "Track Work", href: "/tracking", icon: Search },
   ];
+
+  if (role !== RoleName.VISITOR) {
+    baseLinks.push(
+      { label: "Notifications", href: "/notifications", icon: Bell },
+      { label: "Reports", kind: "section", icon: FileSpreadsheet, sectionId: "reports" },
+      { label: "Daily Report", href: "/reports/daily", icon: CalendarDays, nested: true, parentSectionId: "reports" },
+      { label: "CM Reports", href: "/reports/cm", icon: FileSpreadsheet, nested: true, parentSectionId: "reports" },
+      { label: "Create Request", href: "/request", icon: PlusCircle },
+      { label: "Track Work", href: "/tracking", icon: Search },
+    );
+  }
+
+  baseLinks.push({ label: "Profile", href: "/profile", icon: UserRound });
 
   if (role === RoleName.ADMIN) {
     baseLinks.push(
@@ -59,6 +66,7 @@ export function getAppLinks(role: RoleValue): AppLink[] {
       { label: "System Settings", href: "/admin/settings", icon: SlidersHorizontal, nested: true, parentSectionId: "admin-settings" },
       { label: "Organization", href: "/admin/organization", icon: Building2, nested: true, parentSectionId: "admin-settings" },
       { label: "Announcements", href: "/admin/announcements", icon: Megaphone, nested: true, parentSectionId: "admin-settings" },
+      { label: "Feedback", href: "/admin/feedback", icon: MessageSquareText, nested: true, parentSectionId: "admin-settings" },
       { label: "LINE Settings", href: "/admin/line", icon: MessageCircleMore, nested: true, parentSectionId: "admin-settings" },
       { label: "Category", href: "/admin/categories", icon: Tags, nested: true, parentSectionId: "admin-settings" },
       { label: "Zone", href: "/admin/zones", icon: Factory, nested: true, parentSectionId: "admin-settings" },

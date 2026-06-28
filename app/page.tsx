@@ -1,6 +1,8 @@
 import { Activity, AlertTriangle, BarChart3, CheckCircle2, CircleDot, ClipboardList, Factory, Flame, Search, ShieldCheck, Wrench } from "lucide-react";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { DashboardFilterBar } from "../components/dashboard-filter-bar";
+import { OrganizationHeroLogo } from "../components/organization-hero-logo";
 import { PublicHeader } from "../components/public-header";
 import { PublicAnnouncements } from "../components/public-announcements";
 import { StatusBadge } from "../components/status-badge";
@@ -13,6 +15,7 @@ import { hasExplicitCmDateFilter, parseCmDateFilter, type CmDateFilterInput } fr
 import { listPublicAnnouncements } from "../modules/announcements/announcement-service";
 import { formatOrganizationDashboardTitle } from "../modules/organization/organization-profile";
 import { readOrganizationProfile } from "../modules/organization/organization-service";
+import { db } from "../lib/db";
 
 const statusColors: Record<WorkStatus, string> = {
   [WorkStatus.NEW]: "#3b82f6",
@@ -36,6 +39,7 @@ const inProcessStatuses = [
 
 type LandingSearchParams = {
   category?: string;
+  feedback?: string;
   mode?: "day" | "range" | "month" | "year" | "all";
   date?: string;
   startDate?: string;
@@ -44,6 +48,27 @@ type LandingSearchParams = {
   year?: string;
   includeTerminal?: string;
 };
+
+async function submitPublicFeedback(formData: FormData) {
+  "use server";
+
+  const name = String(formData.get("name") ?? "").trim();
+  const department = String(formData.get("department") ?? "").trim();
+  const message = String(formData.get("message") ?? "").trim();
+
+  if (!name || !message) redirect("/?feedback=error#feedback");
+
+  await db.publicFeedback.create({
+    data: {
+      name: name.slice(0, 120),
+      department: department ? department.slice(0, 120) : null,
+      message: message.slice(0, 1500),
+      sourcePath: "/",
+    },
+  });
+
+  redirect("/?feedback=success#feedback");
+}
 
 export default async function LandingPage({ searchParams }: { searchParams: Promise<LandingSearchParams> }) {
   const params = await searchParams;
@@ -81,13 +106,13 @@ export default async function LandingPage({ searchParams }: { searchParams: Prom
             <span />
             <span />
           </div>
-          <div className="relative z-10 flex flex-wrap items-start justify-between gap-4">
-            <div>
+          <div className="relative z-10 flex items-start justify-between gap-4">
+            <div className="min-w-0 flex-1">
               <p className="inline-flex items-center gap-2 rounded-full bg-white/15 px-4 py-2 text-sm font-semibold">
                 <Factory size={17} />
                 CM Operations Dashboard
               </p>
-              <h1 className="mt-5 text-4xl font-extrabold tracking-normal">{formatOrganizationDashboardTitle(organization.companyName)}</h1>
+              <h1 className="mt-5 max-w-5xl text-3xl font-extrabold tracking-normal sm:text-4xl">{formatOrganizationDashboardTitle(organization.companyName)}</h1>
               <p className="mt-2 max-w-2xl text-white/80">Operation Command Center สำหรับดูสถานะ งานเร่งด่วน โซน และแนวโน้มรายเดือนในหน้าเดียว</p>
               <div className="mt-5 flex flex-wrap gap-4 text-sm text-white/90">
                 <span className="inline-flex items-center gap-2">
@@ -101,10 +126,7 @@ export default async function LandingPage({ searchParams }: { searchParams: Prom
                 </span>
               </div>
             </div>
-            <div className="rounded-2xl bg-white/15 px-4 py-3 text-right text-sm backdrop-blur">
-              <p className="font-semibold">อัปเดตล่าสุด</p>
-              <p className="text-white/80">{formatThaiDateTime(new Date())}</p>
-            </div>
+            <OrganizationHeroLogo companyName={organization.companyName} hasLogo={organization.hasLogo} />
           </div>
         </section>
 
@@ -198,8 +220,58 @@ export default async function LandingPage({ searchParams }: { searchParams: Prom
             </div>
           </Panel>
         </section>
+
+        <PublicFeedbackSection status={params.feedback} />
       </section>
     </main>
+  );
+}
+
+function PublicFeedbackSection({ status }: { status?: string }) {
+  return (
+    <section id="feedback" className="mt-6 rounded-3xl border border-[var(--line)] bg-[var(--surface)] p-5 shadow-[var(--shadow)] sm:p-6">
+      <div className="grid gap-5 lg:grid-cols-[0.85fr_1.15fr] lg:items-start">
+        <div>
+          <p className="inline-flex rounded-full bg-[var(--soft)] px-3 py-1.5 text-sm font-bold text-[var(--primary)]">Feedback</p>
+          <h2 className="mt-3 text-2xl font-extrabold">ความคิดเห็น / คำแนะนำ</h2>
+          <p className="mt-2 text-sm text-[var(--muted)]">
+            ฝากข้อเสนอแนะเกี่ยวกับการใช้งานระบบ PowerCare.CM เพื่อใช้ปรับปรุงเว็บให้เหมาะกับงานหน้างานมากขึ้น
+          </p>
+          {status === "success" ? (
+            <p className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-bold text-emerald-700">
+              ส่งความคิดเห็นเรียบร้อยแล้ว ขอบคุณสำหรับคำแนะนำครับ
+            </p>
+          ) : null}
+          {status === "error" ? (
+            <p className="mt-4 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-bold text-red-700">
+              กรุณากรอกชื่อและความคิดเห็นก่อนส่ง
+            </p>
+          ) : null}
+        </div>
+
+        <form action={submitPublicFeedback} className="grid gap-3">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <label className="grid gap-1 text-sm font-semibold">
+              <span className="text-[var(--muted)]">ชื่อผู้แสดงความคิดเห็น</span>
+              <input className="min-h-[52px] rounded-2xl border border-[var(--line)] bg-[var(--soft)] px-4 py-3 outline-none" maxLength={120} name="name" placeholder="ชื่อ-นามสกุล" required />
+            </label>
+            <label className="grid gap-1 text-sm font-semibold">
+              <span className="text-[var(--muted)]">หน่วยงาน</span>
+              <input className="min-h-[52px] rounded-2xl border border-[var(--line)] bg-[var(--soft)] px-4 py-3 outline-none" maxLength={120} name="department" placeholder="เช่น Operations, Maintenance" />
+            </label>
+          </div>
+          <label className="grid gap-1 text-sm font-semibold">
+            <span className="text-[var(--muted)]">ความคิดเห็น / คำแนะนำ</span>
+            <textarea className="min-h-36 resize-y rounded-2xl border border-[var(--line)] bg-[var(--soft)] px-4 py-3 outline-none" maxLength={1500} name="message" placeholder="พิมพ์ข้อเสนอแนะที่ต้องการแจ้ง..." required />
+          </label>
+          <div className="flex justify-end">
+            <button className="min-h-[52px] rounded-2xl bg-[var(--primary)] px-6 py-3 font-bold text-white shadow-sm transition hover:bg-[var(--primary-strong)]" type="submit">
+              ส่งความคิดเห็น
+            </button>
+          </div>
+        </form>
+      </div>
+    </section>
   );
 }
 

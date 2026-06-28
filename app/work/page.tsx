@@ -174,10 +174,10 @@ export default async function WorkListPage({ searchParams }: { searchParams: Pro
         <div className="mt-4 overflow-hidden rounded-2xl border border-[var(--line)]">
           {works.length ? (
             works.map((work) => (
-              <div key={work.id} className="grid gap-3 border-b border-[var(--line)] bg-[var(--surface)] p-4 last:border-b-0 hover:bg-[var(--soft)] md:grid-cols-[1fr_auto]">
+              <div key={work.id} className="grid gap-3 border-b border-[var(--line)] bg-[var(--surface)] p-4 transition duration-300 ease-out last:border-b-0 hover:bg-[var(--soft)] md:grid-cols-[1fr_auto]">
                 <form action={openWorkAction} className="min-w-0">
                   <input name="workId" type="hidden" value={work.id} />
-                  <button className="relative block w-full min-w-0 text-left" type="submit">
+                  <button className="relative block w-full min-w-0 rounded-xl text-left transition duration-300 ease-out hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-[var(--primary)] focus:ring-offset-2 focus:ring-offset-[var(--surface)]" type="submit">
                   {unreadWorkIds.has(work.id) ? <span aria-label="Unread work update" className="absolute right-0 top-0 h-3 w-3 rounded-full bg-red-600 shadow-sm ring-2 ring-[var(--surface)]" /> : null}
                   <strong className="block text-lg">{work.number}</strong>
                   <span className="mt-1 block text-sm font-semibold text-[var(--ink)]">
@@ -200,7 +200,7 @@ export default async function WorkListPage({ searchParams }: { searchParams: Pro
                     <form action={claimFromListAction}>
                       <input name="workId" type="hidden" value={work.id} />
                       <input name="returnTo" type="hidden" value={returnTo} />
-                      <button className="rounded-full bg-[var(--primary)] px-4 py-1.5 text-xs font-bold text-white shadow-sm transition hover:bg-[var(--primary-strong)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)] focus:ring-offset-2 focus:ring-offset-[var(--surface)]" type="submit">
+                      <button className="rounded-full bg-[var(--primary)] px-4 py-1.5 text-xs font-bold text-white shadow-sm transition duration-300 ease-out hover:-translate-y-0.5 hover:bg-[var(--primary-strong)] active:translate-y-0 focus:outline-none focus:ring-2 focus:ring-[var(--primary)] focus:ring-offset-2 focus:ring-offset-[var(--surface)]" type="submit">
                         <span>รับงาน</span>
                         <span className="hidden">
                         à¸£à¸±à¸šà¸‡à¸²à¸™

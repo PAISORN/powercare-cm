@@ -211,9 +211,10 @@ model LineDestination {
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
-  settings   LineEventSetting[]
-  deliveries LineDeliveryLog[]
-  discovery  LineGroupDiscovery?
+  settings            LineEventSetting[]
+  deliveries          LineDeliveryLog[]
+  discovery           LineGroupDiscovery?
+  dailyReportSettings LineDailyReportSetting[]
 
   @@index([categoryId, active])
 }
@@ -259,6 +260,20 @@ model LineGroupDiscovery {
   @@index([lastSeenAt])
 }
 
+model LineDailyReportSetting {
+  id            String           @id
+  enabled       Boolean          @default(false)
+  destinationId String?
+  destination   LineDestination? @relation(fields: [destinationId], references: [id], onDelete: SetNull)
+  sendTime      String           @default("08:00")
+  dateMode      String           @default("YESTERDAY")
+  templateJson  String
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+
+  @@index([destinationId])
+}
+
 model OrganizationProfile {
   id              String   @id
   companyName     String
@@ -268,4 +283,15 @@ model OrganizationProfile {
   logoStoragePath String?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
+}
+
+model PublicFeedback {
+  id         String   @id @default(cuid())
+  name       String
+  department String?
+  message    String
+  sourcePath String?
+  createdAt  DateTime @default(now())
+
+  @@index([createdAt])
 }

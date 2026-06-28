@@ -9,4 +9,12 @@ describe("Members date picker layout", () => {
     expect(source).toContain("rounded-t-3xl");
     expect(source).toContain("canSeeMetrics ? (");
   });
+
+  it("defaults member workload filters to the current year range", () => {
+    const source = readFileSync("app/members/page.tsx", "utf8");
+
+    expect(source).toContain("defaultMembersDateInput");
+    expect(source).toContain('startDate: "2026-01-01"');
+    expect(source).toContain("getBangkokDateString");
+  });
 });

@@ -35,7 +35,7 @@ export function canCloseWork(actor: Actor, work: WorkAccessContext) {
 }
 
 export function canPrintCompletionDocument(actor: Actor, work: WorkAccessContext) {
-  return Boolean(actor.id) && work.status === WorkStatus.CLOSED;
+  return actor.role !== RoleName.VISITOR && Boolean(actor.id) && work.status === WorkStatus.CLOSED;
 }
 
 export function canViewMemberWorkload(role: string) {

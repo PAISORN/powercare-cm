@@ -206,6 +206,7 @@ export default async function AdminUsersPage({ searchParams }: { searchParams: P
           <option value={RoleName.ADMIN}>Admin</option>
           <option value={RoleName.ENGINEER}>Engineer</option>
           <option value={RoleName.TECHNICIAN}>Technician</option>
+          <option value={RoleName.VISITOR}>Visitor</option>
         </select>
         <select name="categoryId" className="rounded-md border p-3 text-black">
           <option value="">ไม่ผูก Category</option>
@@ -264,6 +265,7 @@ export default async function AdminUsersPage({ searchParams }: { searchParams: P
                       <option value={RoleName.ADMIN}>Admin</option>
                       <option value={RoleName.ENGINEER}>Engineer</option>
                       <option value={RoleName.TECHNICIAN}>Technician</option>
+                      <option value={RoleName.VISITOR}>Visitor</option>
                     </select>
                   </label>
                   <label className="grid gap-1 text-sm font-semibold">

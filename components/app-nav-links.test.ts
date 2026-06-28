@@ -6,7 +6,7 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { AppNavLinks } from "./app-nav-links";
 
 describe("getAppLinks", () => {
-  it.each([RoleName.ADMIN, RoleName.ENGINEER, RoleName.TECHNICIAN])("shows Members to %s", (role) => {
+  it.each([RoleName.ADMIN, RoleName.ENGINEER, RoleName.TECHNICIAN, RoleName.VISITOR])("shows Members to %s", (role) => {
     expect(getAppLinks(role).some((link) => link.href === "/members")).toBe(true);
   });
 
@@ -36,7 +36,7 @@ describe("getAppLinks", () => {
     const links = getAppLinks(RoleName.ADMIN);
 
     expect(links.some((link) => link.kind === "section" && link.label === "Admin Settings")).toBe(true);
-    for (const href of ["/admin/settings", "/admin/organization", "/admin/announcements", "/admin/line", "/admin/categories", "/admin/zones", "/admin/qr-code"]) {
+    for (const href of ["/admin/settings", "/admin/organization", "/admin/announcements", "/admin/feedback", "/admin/line", "/admin/categories", "/admin/zones", "/admin/qr-code"]) {
       expect(links.some((link) => link.href === href && link.nested)).toBe(true);
     }
   });
@@ -58,6 +58,7 @@ describe("getAppLinks", () => {
 
     expect(screen.getByRole("link", { name: /System Settings/i })).toBeTruthy();
     expect(screen.getByRole("link", { name: /Organization/i })).toBeTruthy();
+    expect(screen.getByRole("link", { name: /Feedback/i })).toBeTruthy();
   });
 
   it("hides report links until the Reports trigger is clicked", () => {
@@ -69,5 +70,18 @@ describe("getAppLinks", () => {
 
     expect(screen.getByRole("link", { name: /Daily Report/i })).toBeTruthy();
     expect(screen.getByRole("link", { name: /CM Reports/i })).toBeTruthy();
+  });
+
+  it("keeps Visitor role read-only in the sidebar", () => {
+    const links = getAppLinks(RoleName.VISITOR);
+
+    expect(links.some((link) => link.href === "/dashboard")).toBe(true);
+    expect(links.some((link) => link.href === "/work")).toBe(true);
+    expect(links.some((link) => link.href === "/members")).toBe(true);
+    expect(links.some((link) => link.href === "/profile")).toBe(true);
+    expect(links.some((link) => link.href === "/request")).toBe(false);
+    expect(links.some((link) => link.href === "/tracking")).toBe(false);
+    expect(links.some((link) => link.href?.startsWith("/reports"))).toBe(false);
+    expect(links.some((link) => link.href === "/notifications")).toBe(false);
   });
 });

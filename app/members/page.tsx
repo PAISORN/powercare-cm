@@ -3,10 +3,11 @@ import Link from "next/link";
 import { AppShell } from "../../components/app-shell";
 import { CmDateFilterBar } from "../../components/cm-date-filter-bar";
 import { UserAvatar } from "../../components/user-avatar";
+import { getBangkokDateString } from "../../lib/date-time/bangkok-time";
 import { requireUser } from "../../lib/session";
 import { canViewMemberWorkload } from "../../modules/auth/permission";
 import type { CmDateFilterInput } from "../../modules/filters/cm-date-filter";
-import { parseCmDateFilter } from "../../modules/filters/cm-date-filter";
+import { hasExplicitCmDateFilter, parseCmDateFilter } from "../../modules/filters/cm-date-filter";
 import { getMembers, type MemberCategoryFilter } from "../../modules/members/member-query";
 
 type MemberSearchParams = CmDateFilterInput & {
@@ -29,8 +30,14 @@ export default async function MembersPage({
     month: params.month,
     year: params.year,
   };
+  const defaultMembersDateInput: CmDateFilterInput = {
+    mode: "range",
+    startDate: "2026-01-01",
+    endDate: getBangkokDateString(new Date()),
+  };
+  const effectiveDateInput = hasExplicitCmDateFilter(dateInput) ? dateInput : defaultMembersDateInput;
   const canSeeMetrics = canViewMemberWorkload(user.role);
-  const dateFilter = parseCmDateFilter(dateInput);
+  const dateFilter = parseCmDateFilter(effectiveDateInput);
   const members = await getMembers({ viewerRole: user.role, category, dateFilter });
   const activeTotal = members.reduce((sum, member) => sum + (member.metrics?.active ?? 0), 0);
   const closedTotal = members.reduce((sum, member) => sum + (member.metrics?.closed ?? 0), 0);
@@ -66,10 +73,10 @@ export default async function MembersPage({
           {canSeeMetrics ? (
             <CmDateFilterBar
               defaultDate={params.date}
-              defaultEndDate={params.endDate}
-              defaultMode={params.mode}
+              defaultEndDate={effectiveDateInput.endDate}
+              defaultMode={effectiveDateInput.mode}
               defaultMonth={params.month}
-              defaultStartDate={params.startDate}
+              defaultStartDate={effectiveDateInput.startDate}
               defaultYear={params.year}
             />
           ) : (

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { LogIn, ShieldCheck } from "lucide-react";
+import { LogIn } from "lucide-react";
 import { ThemeToggle } from "./theme-toggle";
 import { AppBrand } from "./app-brand";
 
@@ -21,10 +21,6 @@ export function PublicHeader() {
             <span className="hidden md:inline">Staff Login</span>
           </Link>
           <ThemeToggle />
-          <Link className="hidden items-center gap-2 md:flex" href="/tracking">
-            <ShieldCheck size={16} />
-            Track Work
-          </Link>
         </nav>
       </div>
     </header>

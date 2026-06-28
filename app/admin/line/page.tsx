@@ -1,4 +1,4 @@
-import { MessageCircleMore, RefreshCw, Save, Send, ShieldCheck } from "lucide-react";
+import { CalendarClock, MessageCircleMore, RefreshCw, Save, Send, ShieldCheck } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { AppShell } from "../../../components/app-shell";
@@ -6,6 +6,15 @@ import { formatThaiDateTime } from "../../../lib/date-time/bangkok-time";
 import { db } from "../../../lib/db";
 import { requireUser } from "../../../lib/session";
 import { RoleName, type Actor } from "../../../modules/cm-work/cm-work-types";
+import {
+  getLineDailyReportSetting,
+  lineDailyReportTemplateFields,
+  normalizeLineDailyReportDateMode,
+  normalizeLineDailyReportSendTime,
+  saveLineDailyReportSetting,
+  templateFromFormData,
+  type LineDailyReportTemplate,
+} from "../../../modules/line/line-daily-report-settings";
 import { maskLineTargetId, resolveLineDiscoveryPrefill } from "../../../modules/line/line-settings";
 import { listLineGroupDiscoveries } from "../../../modules/line/line-group-discovery-service";
 import {
@@ -76,18 +85,51 @@ async function retryAction(formData: FormData) {
   redirect("/admin/line?retried=1");
 }
 
+async function saveDailyReportAction(formData: FormData) {
+  "use server";
+  const user = await requireUser();
+  if (user.role !== RoleName.ADMIN) redirect("/dashboard");
+  try {
+    const setting = await saveLineDailyReportSetting({
+      enabled: formData.get("dailyReportEnabled") === "on",
+      destinationId: String(formData.get("dailyReportDestinationId") ?? "") || null,
+      sendTime: normalizeLineDailyReportSendTime(formData.get("dailyReportSendTime")),
+      dateMode: normalizeLineDailyReportDateMode(formData.get("dailyReportDateMode")),
+      template: templateFromFormData(formData),
+    });
+    await db.auditEvent.create({
+      data: {
+        actorId: user.id,
+        entityType: "LineDailyReportSetting",
+        entityId: setting.id,
+        action: "UPDATE_LINE_DAILY_REPORT_SETTING",
+        afterJson: JSON.stringify({
+          enabled: setting.enabled,
+          destinationId: setting.destinationId,
+          sendTime: setting.sendTime,
+          dateMode: setting.dateMode,
+        }),
+      },
+    });
+  } catch {
+    redirect("/admin/line?error=daily-report");
+  }
+  redirect("/admin/line?dailyReportSaved=1");
+}
+
 export default async function AdminLineSettingsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ saved?: string; tested?: string; retried?: string; error?: string; discovery?: string }>;
+  searchParams: Promise<{ saved?: string; tested?: string; retried?: string; dailyReportSaved?: string; error?: string; discovery?: string }>;
 }) {
   const user = await requireUser();
   if (user.role !== RoleName.ADMIN) redirect("/dashboard");
-  const [destinations, categories, deliveries, discoveries, query] = await Promise.all([
+  const [destinations, categories, deliveries, discoveries, dailyReportSetting, query] = await Promise.all([
     listLineDestinations(),
     db.category.findMany({ where: { active: true }, orderBy: { name: "asc" } }),
     listLineDeliveryHistory(),
     listLineGroupDiscoveries(),
+    getLineDailyReportSetting(),
     searchParams,
   ]);
   const selectedDiscovery = discoveries.find((discovery) => discovery.id === query.discovery) ?? null;
@@ -117,7 +159,14 @@ export default async function AdminLineSettingsPage({
       {query.saved ? <Notice>บันทึกการตั้งค่า LINE เรียบร้อยแล้ว</Notice> : null}
       {query.tested ? <Notice>ส่งข้อความทดสอบสำเร็จแล้ว</Notice> : null}
       {query.retried ? <Notice>ส่งรายการเดิมซ้ำเรียบร้อยแล้ว</Notice> : null}
+      {query.dailyReportSaved ? <Notice>บันทึกการตั้งค่ารายงานสรุป LINE เรียบร้อยแล้ว</Notice> : null}
       {query.error ? <Notice error>ดำเนินการไม่สำเร็จ กรุณาตรวจสอบ Target ID, Token และการเชื่อมต่อ LINE</Notice> : null}
+
+      <DailyReportSettingsForm
+        action={saveDailyReportAction}
+        destinations={destinations.filter((destination) => destination.active)}
+        setting={dailyReportSetting}
+      />
 
       <section className="mt-6 rounded-lg border border-[var(--line)] bg-[var(--surface)] p-5 shadow-[var(--shadow)]">
         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -230,6 +279,90 @@ export default async function AdminLineSettingsPage({
         </div>
       </section>
     </AppShell>
+  );
+}
+
+function DailyReportSettingsForm({
+  action,
+  destinations,
+  setting,
+}: {
+  action: (formData: FormData) => void | Promise<void>;
+  destinations: Array<{ id: string; displayName: string; category?: { name: string } | null }>;
+  setting: {
+    enabled: boolean;
+    destinationId: string;
+    sendTime: string;
+    dateMode: string;
+    template: LineDailyReportTemplate;
+  };
+}) {
+  return (
+    <section className="mt-6 rounded-lg border border-[var(--line)] bg-[var(--surface)] p-5 shadow-[var(--shadow)]">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <p className="flex items-center gap-2 text-sm font-semibold text-[var(--primary)]">
+            <CalendarClock aria-hidden="true" size={18} /> Daily Report
+          </p>
+          <h2 className="mt-2 text-xl font-bold">ตั้งค่ารายงานสรุปประจำวันผ่าน LINE</h2>
+          <p className="mt-1 max-w-3xl text-sm text-[var(--muted)]">
+            เลือกกลุ่มปลายทาง เวลา และข้อมูลที่ต้องการให้แสดงในข้อความรายงาน เช่น จำนวนงาน รายการงาน Category Zone หรือผู้รับงาน
+          </p>
+        </div>
+        <span className={`rounded-full px-3 py-1 text-xs font-bold ${setting.enabled ? "bg-green-100 text-green-800" : "bg-gray-200 text-gray-700"}`}>
+          {setting.enabled ? "เปิดใช้งาน" : "ปิดใช้งาน"}
+        </span>
+      </div>
+
+      <form action={action} className="mt-5 grid gap-5">
+        <div className="grid gap-4 lg:grid-cols-4">
+          <label className="flex min-h-11 items-center gap-2 rounded-md border border-[var(--line)] bg-[var(--soft)] px-3 text-sm font-semibold">
+            <input defaultChecked={setting.enabled} name="dailyReportEnabled" type="checkbox" /> เปิดรายงานประจำวัน
+          </label>
+          <label className="grid gap-1 text-sm font-semibold lg:col-span-2">
+            กลุ่ม LINE ที่ต้องการส่งรายงาน
+            <select className="min-h-11 rounded-md border border-[var(--line)] bg-[var(--soft)] px-3" defaultValue={setting.destinationId} name="dailyReportDestinationId">
+              <option value="">ยังไม่เลือกกลุ่ม</option>
+              {destinations.map((destination) => (
+                <option key={destination.id} value={destination.id}>
+                  {destination.displayName}{destination.category?.name ? ` (${destination.category.name})` : ""}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="grid gap-1 text-sm font-semibold">
+            เวลาส่ง
+            <input className="min-h-11 rounded-md border border-[var(--line)] bg-[var(--soft)] px-3" defaultValue={setting.sendTime} name="dailyReportSendTime" type="time" />
+          </label>
+          <label className="grid gap-1 text-sm font-semibold lg:col-span-2">
+            วันที่ใช้ทำรายงาน
+            <select className="min-h-11 rounded-md border border-[var(--line)] bg-[var(--soft)] px-3" defaultValue={setting.dateMode} name="dailyReportDateMode">
+              <option value="YESTERDAY">เมื่อวาน</option>
+              <option value="TODAY">วันนี้</option>
+            </select>
+          </label>
+        </div>
+
+        <fieldset>
+          <legend className="text-sm font-bold">เลือกข้อมูลที่ต้องการแสดงในรายงาน</legend>
+          <div className="mt-3 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+            {lineDailyReportTemplateFields.map((field) => (
+              <label className="flex min-h-16 items-start gap-3 rounded-md border border-[var(--line)] bg-[var(--soft)] px-3 py-3" key={field.key}>
+                <input className="mt-1" defaultChecked={setting.template[field.key]} name={field.key} type="checkbox" />
+                <span>
+                  <span className="block text-sm font-bold">{field.label}</span>
+                  <span className="mt-0.5 block text-xs text-[var(--muted)]">{field.description}</span>
+                </span>
+              </label>
+            ))}
+          </div>
+        </fieldset>
+
+        <button className="inline-flex min-h-11 w-fit items-center gap-2 rounded-md bg-[var(--primary)] px-5 font-bold text-white hover:bg-[var(--primary-strong)]" type="submit">
+          <Save aria-hidden="true" size={17} /> บันทึกการตั้งค่ารายงาน
+        </button>
+      </form>
+    </section>
   );
 }
 
