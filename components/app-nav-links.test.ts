@@ -41,6 +41,14 @@ describe("getAppLinks", () => {
     }
   });
 
+  it("groups report pages under Reports", () => {
+    const links = getAppLinks(RoleName.ENGINEER);
+
+    expect(links.some((link) => link.kind === "section" && link.label === "Reports")).toBe(true);
+    expect(links.some((link) => link.href === "/reports/daily" && link.nested)).toBe(true);
+    expect(links.some((link) => link.href === "/reports/cm" && link.nested)).toBe(true);
+  });
+
   it("hides admin setting links until the Admin Settings trigger is clicked", () => {
     render(React.createElement(AppNavLinks, { role: RoleName.ADMIN }));
 
@@ -50,5 +58,16 @@ describe("getAppLinks", () => {
 
     expect(screen.getByRole("link", { name: /System Settings/i })).toBeTruthy();
     expect(screen.getByRole("link", { name: /Organization/i })).toBeTruthy();
+  });
+
+  it("hides report links until the Reports trigger is clicked", () => {
+    render(React.createElement(AppNavLinks, { role: RoleName.ENGINEER }));
+
+    expect(screen.queryByRole("link", { name: /Daily Report/i })).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: /Reports/i }));
+
+    expect(screen.getByRole("link", { name: /Daily Report/i })).toBeTruthy();
+    expect(screen.getByRole("link", { name: /CM Reports/i })).toBeTruthy();
   });
 });

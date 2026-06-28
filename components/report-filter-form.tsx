@@ -7,18 +7,22 @@ import { CmDateFilterBar } from "./cm-date-filter-bar";
 type Option = { id: string; name: string };
 
 export function ReportFilterForm({
+  action = "/reports",
+  clearHref = "/reports",
   filter,
   categories,
   zones,
   claimants,
 }: {
+  action?: string;
+  clearHref?: string;
   filter: ReportFilter;
   categories: Option[];
   zones: Option[];
   claimants: Option[];
 }) {
   return (
-    <form className="border-b border-[var(--line)] bg-[var(--surface)] p-4 sm:p-5" method="get">
+    <form action={action} className="border-b border-[var(--line)] bg-[var(--surface)] p-4 sm:p-5" method="get">
       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
         <TextFilter icon={Search} label="CM Number" name="number" placeholder="CM-2026-06-0001" value={filter.number} />
         <TextFilter label="Machine Name" name="machineName" placeholder="Pump, fan, conveyor" value={filter.machineName} />
@@ -56,7 +60,7 @@ export function ReportFilterForm({
         <button className="min-h-[52px] rounded-2xl bg-[var(--primary)] px-5 py-3 font-bold text-white shadow-sm transition hover:bg-[var(--primary-strong)]" type="submit">
           Preview report
         </button>
-        <Link className="flex min-h-[52px] items-center justify-center rounded-2xl border border-[var(--line)] px-5 py-3 text-center font-semibold hover:bg-[var(--soft)]" href="/reports">
+        <Link className="flex min-h-[52px] items-center justify-center rounded-2xl border border-[var(--line)] px-5 py-3 text-center font-semibold hover:bg-[var(--soft)]" href={clearHref}>
           Clear filters
         </Link>
       </div>

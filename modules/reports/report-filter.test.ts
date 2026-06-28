@@ -42,4 +42,14 @@ describe("report filter", () => {
     expect(filter.status).toBeUndefined();
     expect(filter.urgency).toBeUndefined();
   });
+
+  it("defaults to the beginning of 2026 through the current Bangkok date", () => {
+    const filter = parseReportFilter(new URLSearchParams(), new Date("2026-06-27T18:00:00.000Z"));
+
+    expect(filter.dateInput.mode).toBe("range");
+    expect(filter.dateInput.startDate).toBe("2026-01-01");
+    expect(filter.dateInput.endDate).toBe("2026-06-28");
+    expect(filter.dateFilter.start).toEqual(new Date("2025-12-31T17:00:00.000Z"));
+    expect(filter.dateFilter.endExclusive).toEqual(new Date("2026-06-28T17:00:00.000Z"));
+  });
 });

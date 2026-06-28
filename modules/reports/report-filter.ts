@@ -1,5 +1,6 @@
 import { Urgency, WorkStatus, type Urgency as UrgencyValue, type WorkStatus as WorkStatusValue } from "../cm-work/cm-work-types";
 import { parseCmDateFilter, type CmDateFilterInput, type ParsedCmDateFilter } from "../filters/cm-date-filter";
+import { getBangkokDateString } from "../../lib/date-time/bangkok-time";
 
 export type ReportFilter = {
   dateInput: CmDateFilterInput;
@@ -25,11 +26,12 @@ function read(params: URLSearchParams, key: string) {
 
 export function parseReportFilter(params: URLSearchParams, now = new Date()): ReportFilter {
   const rawMode = read(params, "mode");
+  const hasExplicitDate = Boolean(rawMode || read(params, "date") || read(params, "startDate") || read(params, "endDate") || read(params, "month") || read(params, "year"));
   const dateInput: CmDateFilterInput = {
-    mode: validModes.has(rawMode ?? "") ? (rawMode as CmDateFilterInput["mode"]) : "month",
+    mode: validModes.has(rawMode ?? "") ? (rawMode as CmDateFilterInput["mode"]) : "range",
     date: read(params, "date"),
-    startDate: read(params, "startDate"),
-    endDate: read(params, "endDate"),
+    startDate: read(params, "startDate") ?? (hasExplicitDate ? undefined : "2026-01-01"),
+    endDate: read(params, "endDate") ?? (hasExplicitDate ? undefined : getBangkokDateString(now)),
     month: read(params, "month"),
     year: read(params, "year"),
   };
@@ -38,10 +40,10 @@ export function parseReportFilter(params: URLSearchParams, now = new Date()): Re
   try {
     dateFilter = parseCmDateFilter(dateInput, now);
   } catch {
-    dateInput.mode = "month";
+    dateInput.mode = "range";
     dateInput.date = undefined;
-    dateInput.startDate = undefined;
-    dateInput.endDate = undefined;
+    dateInput.startDate = "2026-01-01";
+    dateInput.endDate = getBangkokDateString(now);
     dateInput.month = undefined;
     dateInput.year = undefined;
     dateFilter = parseCmDateFilter(dateInput, now);

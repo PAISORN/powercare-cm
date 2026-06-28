@@ -34,6 +34,18 @@ export function bangkokDayWindow(date: string) {
   };
 }
 
+export function getBangkokDateString(now = new Date()) {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: BANGKOK_TIME_ZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(now);
+
+  const read = (type: Intl.DateTimeFormatPartTypes) => parts.find((part) => part.type === type)?.value ?? "";
+  return `${read("year")}-${read("month")}-${read("day")}`;
+}
+
 export function formatThaiDateTime(value: Date) {
   const parts = thaiDateTimeFormatter.formatToParts(value);
 

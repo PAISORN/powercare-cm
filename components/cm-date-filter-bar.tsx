@@ -13,7 +13,9 @@ export function CmDateFilterBar({
   defaultEndDate = "",
   defaultMonth = "",
   defaultYear = "",
+  fieldNames,
   initiallyUnset = false,
+  label,
   now = new Date(),
 }: {
   defaultMode?: FilterMode;
@@ -22,7 +24,9 @@ export function CmDateFilterBar({
   defaultEndDate?: string;
   defaultMonth?: string;
   defaultYear?: string;
+  fieldNames?: { mode: string; startDate: string; endDate: string };
   initiallyUnset?: boolean;
+  label?: string;
   now?: Date;
 }) {
   const pickerDefaults = resolvePickerDefaults({
@@ -40,7 +44,9 @@ export function CmDateFilterBar({
       defaultEndDate={pickerDefaults.endDate}
       defaultMode={pickerDefaults.mode}
       defaultStartDate={pickerDefaults.startDate}
+      fieldNames={fieldNames}
       initiallyUnset={initiallyUnset}
+      label={label}
       now={now}
     />
   );

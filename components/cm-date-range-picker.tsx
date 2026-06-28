@@ -66,12 +66,16 @@ export function CmDateRangePicker({
   defaultMode = "range",
   defaultStartDate,
   defaultEndDate,
+  fieldNames = { mode: "mode", startDate: "startDate", endDate: "endDate" },
   initiallyUnset = false,
+  label = "ช่วงวันที่แสดงข้อมูล",
 }: {
   defaultMode?: "range" | "all";
   defaultStartDate: string;
   defaultEndDate: string;
+  fieldNames?: { mode: string; startDate: string; endDate: string };
   initiallyUnset?: boolean;
+  label?: string;
   now?: Date;
 }) {
   const [open, setOpen] = useState(false);
@@ -149,7 +153,7 @@ export function CmDateRangePicker({
 
   return (
     <div ref={rootRef} className="relative grid gap-1 text-sm font-semibold md:col-span-2 xl:col-span-1">
-      <span className="text-[var(--muted)]">ช่วงวันที่แสดงข้อมูล</span>
+      <span className="text-[var(--muted)]">{label}</span>
       <button
         aria-expanded={open}
         className="flex min-h-[52px] items-center justify-between gap-3 rounded-2xl border border-[var(--line)] bg-[var(--soft)] px-4 py-3 text-left text-[var(--ink)] outline-none"
@@ -163,9 +167,9 @@ export function CmDateRangePicker({
         <ChevronDown aria-hidden="true" className="h-4 w-4 shrink-0" />
       </button>
 
-      <input disabled={!hasAppliedFilter} name="mode" type="hidden" value={appliedMode} />
-      <input disabled={!hasAppliedFilter} name="startDate" type="hidden" value={appliedStartDate} />
-      <input disabled={!hasAppliedFilter} name="endDate" type="hidden" value={appliedEndDate} />
+      <input disabled={!hasAppliedFilter} name={fieldNames.mode} type="hidden" value={appliedMode} />
+      <input disabled={!hasAppliedFilter} name={fieldNames.startDate} type="hidden" value={appliedStartDate} />
+      <input disabled={!hasAppliedFilter} name={fieldNames.endDate} type="hidden" value={appliedEndDate} />
 
       {open ? (
         <div

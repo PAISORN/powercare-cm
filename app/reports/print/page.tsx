@@ -13,7 +13,7 @@ type PrintSearchParams = Record<string, string | undefined>;
 
 export default async function PrintableReportPage({ searchParams }: { searchParams: Promise<PrintSearchParams> }) {
   const user = await requireUser();
-  if (user.role !== RoleName.ADMIN && user.role !== RoleName.ENGINEER) redirect("/reports");
+  if (user.role !== RoleName.ADMIN && user.role !== RoleName.ENGINEER) redirect("/reports/cm");
 
   const values = await searchParams;
   const params = new URLSearchParams();
@@ -40,7 +40,7 @@ export default async function PrintableReportPage({ searchParams }: { searchPara
           <p className="mt-1 text-xs text-slate-500">Generated: {formatThaiDateTime(new Date())} · {works.length.toLocaleString("en-US")} records</p>
         </div>
         <div className="flex gap-2 print:hidden">
-          <Link className="inline-flex min-h-11 items-center rounded-xl border border-slate-300 px-4 py-2.5 font-semibold" href="/reports">Back</Link>
+          <Link className="inline-flex min-h-11 items-center rounded-xl border border-slate-300 px-4 py-2.5 font-semibold" href="/reports/cm">Back</Link>
           <PrintButton />
         </div>
       </header>
