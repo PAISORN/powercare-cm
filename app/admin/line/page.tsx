@@ -26,7 +26,7 @@ import {
 import { isLineServerConfigured, listLineDeliveryHistory } from "../../../modules/line/line-service";
 import { LINE_EVENT_TYPES, type LineEventType } from "../../../modules/line/line-types";
 
-const eventLabels: Record<LineEventType, string> = {
+const eventLabels: Record<string, string> = {
   NEW_REQUEST: "แจ้งซ่อมใหม่",
   CLAIMED: "รับงาน",
   REASSIGNED: "มอบหมายงาน",
@@ -35,6 +35,7 @@ const eventLabels: Record<LineEventType, string> = {
   WAITING_CLOSE: "รอปิดงาน",
   CLOSED: "ปิดงานแล้ว",
   CANCELED: "ยกเลิกงาน",
+  DAILY_REPORT: "รายงานสรุปประจำวัน",
 };
 
 function actorFrom(user: { id: string; role: string; categoryId: string | null }): Actor {

@@ -96,6 +96,22 @@ export async function dispatchLineWorkEvent(event: LineWorkEvent) {
   );
 }
 
+export async function deliverLineDailyReport(input: {
+  eventId: string;
+  destinationId: string;
+  targetId: string;
+  text: string;
+}) {
+  if (!isLineServerConfigured()) throw new Error("LINE channel access token is not configured");
+  await deliveryService().deliver({
+    eventId: input.eventId,
+    eventType: "DAILY_REPORT",
+    destinationId: input.destinationId,
+    targetId: input.targetId,
+    payload: { text: input.text },
+  });
+}
+
 export async function retryLineDelivery(deliveryId: string) {
   const delivery = await db.lineDeliveryLog.findUnique({
     where: { id: deliveryId },

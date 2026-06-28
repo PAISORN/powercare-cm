@@ -22,7 +22,8 @@ export type LineDailyReportTemplate = {
 };
 
 type ReportWork = {
-  cmNumber: string;
+  cmNumber?: string;
+  number?: string;
   machineName?: string | null;
   problemTitle?: string | null;
   requesterName?: string | null;
@@ -187,7 +188,7 @@ function appendWorkSection(
     return;
   }
   for (const work of works.slice(0, 10)) {
-    lines.push(`- ${work.cmNumber}`);
+    lines.push(`- ${getReportWorkNumber(work)}`);
     if (template.showProblemTitle && work.problemTitle) lines.push(`  งาน: ${work.problemTitle}`);
     if (template.showCategory && work.category?.name) lines.push(`  ประเภท: ${work.category.name}`);
     if (template.showZone && work.zone?.name) lines.push(`  โซน: ${work.zone.name}`);
@@ -198,6 +199,10 @@ function appendWorkSection(
     if (template.showTimes && timestamp) lines.push(`  เวลา: ${formatThaiDateTime(new Date(timestamp))}`);
   }
   if (works.length > 10) lines.push(`- และอีก ${works.length - 10} รายการ`);
+}
+
+function getReportWorkNumber(work: ReportWork) {
+  return work.cmNumber ?? work.number ?? "-";
 }
 
 function appendSummary(
