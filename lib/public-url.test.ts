@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getGeneralRequestUrl, getPublicBaseUrl } from "./public-url";
+import { getGeneralRequestUrl, getPlantRequestUrl, getPublicBaseUrl } from "./public-url";
 
 describe("public URL helpers", () => {
   it("uses forwarded host and protocol for production URLs", () => {
@@ -17,5 +17,9 @@ describe("public URL helpers", () => {
 
   it("prefers the request origin when available", () => {
     expect(getGeneralRequestUrl({ origin: "https://example.com" })).toBe("https://example.com/request");
+  });
+
+  it("builds plant-specific repair request URLs for QR codes", () => {
+    expect(getPlantRequestUrl({ origin: "https://example.com" }, "main")).toBe("https://example.com/p/main/request");
   });
 });

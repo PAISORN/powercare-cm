@@ -15,7 +15,9 @@ export type CmNotificationEvent = {
   eventType: string;
   cmWorkId: string;
   cmNumber: string;
+  organizationId: string | null;
   categoryId: string;
+  plantId: string | null;
   claimantId: string | null;
   actorId: string | null;
   targetStatus: string;

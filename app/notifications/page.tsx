@@ -3,12 +3,14 @@ import { AppShell } from "../../components/app-shell";
 import { formatThaiDateTime } from "../../lib/date-time/bangkok-time";
 import { requireUser } from "../../lib/session";
 import { getUnreadCount, listNotifications } from "../../modules/notifications/notification-service";
+import { buildUserOperationalScope } from "../../modules/organization/user-plant-scope";
 
 export default async function NotificationsPage() {
   const user = await requireUser();
+  const scope = buildUserOperationalScope(user);
   const [notifications, unreadCount] = await Promise.all([
-    listNotifications(user.id, 1, 50),
-    getUnreadCount(user.id),
+    listNotifications(user.id, 1, 50, scope),
+    getUnreadCount(user.id, scope),
   ]);
 
   return (

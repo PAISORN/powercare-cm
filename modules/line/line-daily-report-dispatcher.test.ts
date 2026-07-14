@@ -18,6 +18,8 @@ function enabledSetting(overrides = {}) {
       targetId: "group-1",
       displayName: "CM group",
       active: true,
+      organizationId: "org-a",
+      plantId: "plant-a",
       categoryId: "mechanical",
     },
     ...overrides,
@@ -78,7 +80,7 @@ describe("LINE daily report dispatcher", () => {
       status: "SENT",
       date: "2026-06-27",
     });
-    expect(queryReport).toHaveBeenCalledWith({ date: "2026-06-27", categoryId: "mechanical" });
+    expect(queryReport).toHaveBeenCalledWith({ date: "2026-06-27", categoryId: "mechanical", organizationId: "org-a", plantId: "plant-a" });
     expect(deliver).toHaveBeenCalledWith(
       expect.objectContaining({
         eventId: buildLineDailyReportEventId("2026-06-27", "destination-1"),
@@ -87,6 +89,20 @@ describe("LINE daily report dispatcher", () => {
         text: expect.stringContaining("แจ้งใหม่: 1 งาน"),
       }),
     );
+  });
+
+  it("keeps organization-level destinations scoped to their organization when no plant is selected", async () => {
+    const deliver = vi.fn().mockResolvedValue(undefined);
+    const queryReport = vi.fn().mockResolvedValue(report);
+    const dispatcher = createLineDailyReportDispatcher({
+      getSetting: vi.fn().mockResolvedValue(enabledSetting({ destination: { ...enabledSetting().destination, plantId: null } })),
+      queryReport,
+      deliver,
+    });
+
+    await dispatcher.dispatch({ now: new Date("2026-06-28T01:00:00.000Z") });
+
+    expect(queryReport).toHaveBeenCalledWith({ date: "2026-06-27", categoryId: "mechanical", organizationId: "org-a", plantId: null });
   });
 
   it("skips when the cron runs outside the configured Bangkok time unless forced", async () => {

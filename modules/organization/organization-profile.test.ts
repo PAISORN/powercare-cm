@@ -15,7 +15,7 @@ describe("organization profile", () => {
   });
 
   it("provides the document fallback", () => {
-    expect(organizationFallback.companyName).toBe("PowerCare.CM");
+    expect(organizationFallback.companyName).toBe("Power Care.CM");
   });
 
   it("builds the dashboard title from the configured organization name", () => {

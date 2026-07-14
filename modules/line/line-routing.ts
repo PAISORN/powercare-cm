@@ -7,6 +7,7 @@ export function selectLineDestinations<T extends LineRoutingDestination>(event: 
 
   return destinations.filter((destination) => {
     if (!destination.active) return false;
+    if (destination.plantId && destination.plantId !== event.plantId) return false;
     if (destination.categoryId && destination.categoryId !== event.categoryId) return false;
     return destination.settings.some((setting) => setting.eventType === event.eventType && setting.enabled);
   });

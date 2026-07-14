@@ -1,9 +1,10 @@
 import type { Prisma } from "@prisma/client";
 import { db } from "../../lib/db";
 import { canViewMemberWorkload } from "../auth/permission";
-import { WorkStatus } from "../cm-work/cm-work-types";
+import { RoleName, WorkStatus } from "../cm-work/cm-work-types";
 import type { ParsedCmDateFilter } from "../filters/cm-date-filter";
 import { initialCategories } from "../master-data/seed-data";
+import type { OperationalScope } from "../organization/user-plant-scope";
 
 export type MemberCategoryFilter = "electrical" | "mechanical";
 
@@ -23,6 +24,7 @@ const categoryNameByFilter: Record<MemberCategoryFilter, string> = {
 };
 
 const terminalStatuses = [WorkStatus.CLOSED, WorkStatus.CANCELED];
+const ownerOnlyMemberRoles = [RoleName.ADMIN];
 
 export function calculateMemberMetrics(works: MetricWork[], window?: MetricWindow) {
   return works.reduce(
@@ -45,18 +47,25 @@ export async function getMembers({
   viewerRole,
   category,
   dateFilter,
+  scope,
 }: {
   viewerRole: string;
   category?: MemberCategoryFilter;
   dateFilter?: ParsedCmDateFilter;
+  scope?: OperationalScope;
 }) {
   const categoryName = category ? categoryNameByFilter[category] : undefined;
+  const memberScopeWhere: Prisma.UserWhereInput = {
+    ...buildMemberUserWhere(scope),
+    ...buildMemberViewerRoleWhere(viewerRole),
+  };
   const members = await db.user.findMany({
     where: {
       active: true,
-      ...(categoryName ? { category: { name: categoryName } } : {}),
+      ...memberScopeWhere,
+      ...(categoryName ? { OR: [{ category: { name: categoryName } }, { categories: { some: { category: { name: categoryName } } } }] } : {}),
     },
-    include: { category: true, profilePhoto: true },
+    include: { category: true, categories: { include: { category: true } }, profilePhoto: true },
     orderBy: [{ role: "asc" }, { fullName: "asc" }],
   });
 
@@ -66,6 +75,7 @@ export async function getMembers({
 
   const memberIds = members.map((member) => member.id);
   const categoryWorkWhere: Prisma.CmWorkWhereInput = categoryName ? { category: { name: categoryName } } : {};
+  const workScopeWhere: Prisma.CmWorkWhereInput = buildMemberWorkWhere(scope);
   const closedAtWhere =
     dateFilter?.start && dateFilter.endExclusive
       ? { gte: dateFilter.start, lt: dateFilter.endExclusive }
@@ -77,6 +87,7 @@ export async function getMembers({
       where: {
         claimantId: { in: memberIds },
         status: { notIn: terminalStatuses },
+        ...workScopeWhere,
         ...categoryWorkWhere,
       },
       _count: { _all: true },
@@ -87,6 +98,7 @@ export async function getMembers({
         claimantId: { in: memberIds },
         status: WorkStatus.CLOSED,
         ...(closedAtWhere ? { closedAt: closedAtWhere } : {}),
+        ...workScopeWhere,
         ...categoryWorkWhere,
       },
       _count: { _all: true },
@@ -103,4 +115,21 @@ export async function getMembers({
       closed: closedByMember.get(member.id) ?? 0,
     },
   }));
+}
+
+export function buildMemberViewerRoleWhere(viewerRole: string): Prisma.UserWhereInput {
+  if (viewerRole === RoleName.ADMIN) return {};
+  return { role: { notIn: ownerOnlyMemberRoles } };
+}
+
+function buildMemberUserWhere(scope?: OperationalScope): Prisma.UserWhereInput {
+  if (scope?.plantId) return { plantId: scope.plantId };
+  if (scope?.organizationId) return { organizationId: scope.organizationId };
+  return {};
+}
+
+function buildMemberWorkWhere(scope?: OperationalScope): Prisma.CmWorkWhereInput {
+  if (scope?.plantId) return { plantId: scope.plantId };
+  if (scope?.organizationId) return { organizationId: scope.organizationId };
+  return {};
 }

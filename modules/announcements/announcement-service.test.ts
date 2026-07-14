@@ -68,6 +68,14 @@ describe("announcement scheduling", () => {
         input,
       ),
     ).rejects.toThrow("Only admin can manage announcements");
+
+    await expect(
+      createAnnouncementWithStore(
+        createStore(),
+        { id: "plant-admin", role: RoleName.SITE_ADMIN, categoryId: null, plantId: "main-plant" },
+        input,
+      ),
+    ).rejects.toThrow("Only admin can manage announcements");
   });
 
   it("rejects an end date before the start date", async () => {

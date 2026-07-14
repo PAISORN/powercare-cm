@@ -2,60 +2,53 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Home } from "lucide-react";
 import { getCurrentUser } from "../lib/session";
-import type { RoleName } from "../modules/cm-work/cm-work-types";
-import { AppNavLinks } from "./app-nav-links";
+import { RoleName, type RoleName as RoleNameValue } from "../modules/cm-work/cm-work-types";
 import { AppBrand } from "./app-brand";
+import { DesktopSidebar } from "./desktop-sidebar";
 import { MobileAppDrawer } from "./mobile-app-drawer";
 import { ThemeToggle } from "./theme-toggle";
-import { UserAvatar } from "./user-avatar";
 import { NotificationBell } from "./notification-bell";
 import { getUnreadCount, listRecentNotifications } from "../modules/notifications/notification-service";
+import { buildUserOperationalScope } from "../modules/organization/user-plant-scope";
+import { formatRoleName } from "../modules/users/role-labels";
 
 export async function AppShell({ children }: { children: React.ReactNode }) {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
+  const scope = buildUserOperationalScope(user);
   const [unreadCount, recentNotifications] = await Promise.all([
-    getUnreadCount(user.id),
-    listRecentNotifications(user.id),
+    getUnreadCount(user.id, scope),
+    listRecentNotifications(user.id, 10, scope),
   ]);
+  const displayName = user.role === RoleName.ADMIN ? formatRoleName(user.role) : user.fullName;
 
   return (
     <div className="min-h-screen">
-      <aside className="fixed inset-y-0 left-0 hidden h-screen w-72 flex-col border-r border-[var(--line)] bg-[var(--surface)] p-5 md:flex">
-        <Link className="text-2xl font-extrabold text-[var(--primary)]" href="/dashboard">
-          <AppBrand />
-        </Link>
+      <DesktopSidebar
+        categoryName={user.category?.name}
+        fullName={displayName}
+        hasPhoto={Boolean(user.profilePhoto)}
+        plantId={user.plantId}
+        role={user.role as RoleNameValue}
+        siteAdminPermissions={user.siteAdminPermissions}
+        userId={user.id}
+        version={user.profilePhoto?.updatedAt.getTime()}
+      />
 
-        <div className="mt-5 flex items-center gap-3 rounded-2xl bg-[var(--soft)] p-3">
-          <span data-testid="sidebar-user-avatar">
-            <UserAvatar fullName={user.fullName} hasPhoto={Boolean(user.profilePhoto)} size="md" userId={user.id} version={user.profilePhoto?.updatedAt.getTime()} />
-          </span>
-          <div className="min-w-0">
-            <p className="truncate font-bold">{user.fullName}</p>
-            <p className="mt-1 truncate text-xs text-[var(--muted)]">
-              {user.role}
-              {user.category ? ` - ${user.category.name}` : ""}
-            </p>
-          </div>
-        </div>
-
-        <nav
-          className="mt-6 grid min-h-0 flex-1 content-start gap-2 overflow-y-auto overscroll-contain pr-1"
-          data-testid="desktop-sidebar-nav"
+      <main className="min-h-screen p-5 transition-[margin] duration-300 md:ml-[var(--app-sidebar-width,18rem)] md:p-8">
+        <div
+          className="sticky top-3 z-40 mb-6 grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 rounded-2xl border border-[var(--line)] bg-[var(--surface)]/95 px-2.5 py-2.5 shadow-[var(--shadow)] backdrop-blur transition-all duration-200 sm:gap-3 sm:px-3 md:top-4 md:rounded-3xl md:px-4 md:py-3"
+          data-app-top-bar
         >
-          <AppNavLinks role={user.role as RoleName} />
-        </nav>
-      </aside>
-
-      <main className="min-h-screen p-5 md:ml-72 md:p-8">
-        <div className="sticky top-3 z-40 mb-6 grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 rounded-2xl border border-[var(--line)] bg-[var(--surface)]/95 px-2.5 py-2.5 shadow-[var(--shadow)] backdrop-blur sm:gap-3 sm:px-3 md:top-4 md:rounded-3xl md:px-4 md:py-3">
           <div className="flex min-w-0 items-center gap-2 sm:gap-3">
             <div className="flex shrink-0 items-center gap-2">
               <MobileAppDrawer
-                userName={user.fullName}
-                role={user.role as RoleName}
+                userName={displayName}
+                role={user.role as RoleNameValue}
                 categoryName={user.category?.name}
                 userId={user.id}
+                plantId={user.plantId}
+                siteAdminPermissions={user.siteAdminPermissions}
                 hasPhoto={Boolean(user.profilePhoto)}
                 version={user.profilePhoto?.updatedAt.getTime()}
                 unreadCount={unreadCount}
@@ -67,7 +60,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
           </div>
           <div className="min-w-0 md:pl-1">
             <p className="truncate text-sm font-bold sm:text-base md:hidden"><AppBrand className="flex-nowrap" versionClassName="hidden sm:inline" /></p>
-            <p className="hidden truncate text-xs text-[var(--muted)] min-[390px]:block sm:text-sm">{user.fullName}</p>
+            <p className="hidden truncate text-xs text-[var(--muted)] min-[390px]:block sm:text-sm">{displayName}</p>
           </div>
           <div className="flex shrink-0 items-center gap-1.5 sm:gap-2 md:gap-3">
             <NotificationBell unreadCount={unreadCount} notifications={recentNotifications} />

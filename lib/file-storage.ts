@@ -14,6 +14,7 @@ const defaultAnnouncementsBucket = "powercare-announcements";
 const allowedOrganizationLogoMimeTypes = ["image/png", "image/jpeg", "image/webp"];
 const maxOrganizationLogoBytes = 2 * 1024 * 1024;
 const defaultOrganizationLogosBucket = "powercare-organization-logos";
+const defaultPlantLogosBucket = "powercare-plant-logos";
 
 type StorageTarget = {
   bucket: string;
@@ -236,6 +237,45 @@ export async function saveOrganizationLogoFile(organizationId: string, file: Fil
   }
 
   const storageDir = path.join(process.cwd(), "storage", "organization-logos", organizationId);
+  await mkdir(storageDir, { recursive: true });
+  const storagePath = path.join(storageDir, `${version}.${extension}`);
+  await writeFile(storagePath, bytes);
+  return {
+    fileName,
+    mimeType: file.type,
+    fileSize: file.size,
+    storagePath,
+  };
+}
+
+export async function savePlantLogoFile(plantId: string, file: File) {
+  if (!allowedOrganizationLogoMimeTypes.includes(file.type)) {
+    throw new Error("Site logo must be PNG, JPG, or WebP");
+  }
+  if (file.size > maxOrganizationLogoBytes) {
+    throw new Error("Site logo must be 2 MB or smaller");
+  }
+
+  const extension = extensionForMimeType(file.type);
+  const bytes = Buffer.from(await file.arrayBuffer());
+  const version = randomUUID();
+  const fileName = `site.${extension}`;
+
+  if (isSupabaseStorageEnabled()) {
+    const target = {
+      bucket: process.env.SUPABASE_PLANT_LOGOS_BUCKET || defaultPlantLogosBucket,
+      objectPath: `plants/${plantId}/${version}`,
+    };
+    await uploadSupabaseObject(target, bytes, file.type);
+    return {
+      fileName,
+      mimeType: file.type,
+      fileSize: file.size,
+      storagePath: toSupabasePath(target),
+    };
+  }
+
+  const storageDir = path.join(process.cwd(), "storage", "plant-logos", plantId);
   await mkdir(storageDir, { recursive: true });
   const storagePath = path.join(storageDir, `${version}.${extension}`);
   await writeFile(storagePath, bytes);

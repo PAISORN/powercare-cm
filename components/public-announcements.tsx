@@ -32,7 +32,7 @@ export function PublicAnnouncements({ announcements }: { announcements: PublicAn
         <div>
           <p className="flex items-center gap-2 text-sm font-semibold text-[var(--primary)]">
             <Megaphone aria-hidden="true" size={17} />
-            Plant Communication
+            Site Communication
           </p>
           <h2 className="mt-1 text-2xl font-extrabold" id="public-announcements-title">
             ประกาศโรงไฟฟ้า

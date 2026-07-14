@@ -1,0 +1,54 @@
+import { existsSync, readFileSync } from "node:fs";
+import { describe, expect, it } from "vitest";
+
+describe("Store stock page", () => {
+  it("renders an enterprise stock dashboard with filters, inventory table, and row actions", () => {
+    expect(existsSync("app/inventory/stock/page.tsx")).toBe(true);
+    const source = readFileSync("app/inventory/stock/page.tsx", "utf8");
+
+    expect(source).toContain("Home &gt; Inventory &gt; Stock");
+    expect(source).toContain("Stock (");
+    expect(source).toContain("storeCategoryId");
+    expect(source).toContain('name="unit"');
+    expect(source).toContain("Item code");
+    expect(source).toContain("Max");
+    expect(source).toContain("categoryRunningNumbers");
+    expect(source).toContain("stockPageSize = 50");
+    expect(source).toContain("pagedStocks.map");
+    expect(source).toContain("stockPageHref");
+    expect(source).toContain("Stock pagination");
+    expect(source).toContain("StockHeaderReplacementController");
+    expect(source).toContain('id="stock-table-region"');
+    expect(source).toContain("data-stock-table-header");
+    expect(source).toContain("data-stock-replacement-header");
+    expect(source).toContain("data-stock-table-scroll");
+    expect(source).toContain("stock-replacement-header");
+    expect(source).toContain("StockTableColGroup");
+    expect(source).toContain("min-w-[1460px] table-fixed");
+    expect(source).toContain("overflow-x-auto");
+    expect(source).toContain("sticky top-0 z-40 bg-[var(--soft)]");
+    expect(source).toContain("rounded-3xl border border-[var(--line)] bg-[var(--surface)]");
+    expect(source).toContain("bg-[var(--surface)] transition hover:bg-[var(--soft)]/80");
+    expect(source).toContain("[&>td]:border-b [&>td]:border-[var(--line)] last:[&>td]:border-b-0");
+    expect(source).toContain("bg-blue-500/10 text-blue-700 hover:bg-blue-600");
+    expect(source).toContain("w-[4.75rem]");
+    expect(source).not.toContain("max-h-[70vh] overflow-x-auto overflow-y-auto");
+    expect(source).not.toContain("Barcode");
+    expect(source).toContain("StockStatusPill");
+    expect(source).toContain("Stock (คลังอะไหล่)");
+    expect(source).toContain("ชื่อและรหัสอะไหล่");
+    expect(source).toContain("มูลค่าอะไหล่");
+    expect(source).toContain("deleteSparePartFromStockAction");
+    expect(source).toContain("ConfirmSubmitButton");
+    expect(source).toContain('stockAction === "issue"');
+    expect(source).toContain('stockAction === "receive"');
+    expect(source).toContain('stockAction === "adjust"');
+    expect(source).toContain("Issue");
+    expect(source).toContain("Receive");
+    expect(source).toContain("Adjust");
+    expect(source).not.toContain("Stock Movement ล่าสุด");
+    expect(source).not.toContain("db.stockMovement.findMany");
+    expect(source).not.toContain("movements.map");
+    expect(source).not.toContain("Ã Â¸");
+  });
+});

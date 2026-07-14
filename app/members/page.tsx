@@ -1,17 +1,24 @@
 import { BriefcaseBusiness, CheckCircle2, UsersRound, Wrench } from "lucide-react";
 import Link from "next/link";
+import { AdminSiteScopeSelector } from "../../components/admin-site-scope-selector";
 import { AppShell } from "../../components/app-shell";
+import { AutoSubmitSelect } from "../../components/auto-submit-select";
 import { CmDateFilterBar } from "../../components/cm-date-filter-bar";
 import { UserAvatar } from "../../components/user-avatar";
 import { getBangkokDateString } from "../../lib/date-time/bangkok-time";
 import { requireUser } from "../../lib/session";
+import { resolveAdminSiteScope } from "../../modules/admin/admin-site-scope";
 import { canViewMemberWorkload } from "../../modules/auth/permission";
 import type { CmDateFilterInput } from "../../modules/filters/cm-date-filter";
 import { hasExplicitCmDateFilter, parseCmDateFilter } from "../../modules/filters/cm-date-filter";
 import { getMembers, type MemberCategoryFilter } from "../../modules/members/member-query";
+import { buildUserOperationalScope } from "../../modules/organization/user-plant-scope";
+import { formatRoleName } from "../../modules/users/role-labels";
 
 type MemberSearchParams = CmDateFilterInput & {
   category?: string;
+  organizationId?: string;
+  plantId?: string;
 };
 
 export default async function MembersPage({
@@ -38,7 +45,12 @@ export default async function MembersPage({
   const effectiveDateInput = hasExplicitCmDateFilter(dateInput) ? dateInput : defaultMembersDateInput;
   const canSeeMetrics = canViewMemberWorkload(user.role);
   const dateFilter = parseCmDateFilter(effectiveDateInput);
-  const members = await getMembers({ viewerRole: user.role, category, dateFilter });
+  const canSelectSite = user.role === "ADMIN" || user.role === "ORGANIZATION_ADMIN";
+  const adminScope = canSelectSite
+    ? await resolveAdminSiteScope(user, { organizationId: params.organizationId, plantId: params.plantId })
+    : null;
+  const scope = adminScope ? { plantId: adminScope.plant.id } : buildUserOperationalScope(user);
+  const members = await getMembers({ viewerRole: user.role, category, dateFilter, scope });
   const activeTotal = members.reduce((sum, member) => sum + (member.metrics?.active ?? 0), 0);
   const closedTotal = members.reduce((sum, member) => sum + (member.metrics?.closed ?? 0), 0);
 
@@ -60,14 +72,31 @@ export default async function MembersPage({
           {canSeeMetrics ? <SummaryMetric icon={CheckCircle2} label="ปิดในช่วงที่เลือก" value={closedTotal} /> : null}
         </div>
 
+        <div className="p-4">
+          {adminScope ? (
+            <AdminSiteScopeSelector
+              action="/members"
+              scope={adminScope}
+              title="Member scope"
+              description="เลือก Organization และ Site ที่ต้องการดูรายชื่อสมาชิก"
+            />
+          ) : null}
+        </div>
+
         <form className="grid gap-3 p-4 md:grid-cols-2 xl:grid-cols-[1fr_1.7fr_auto_auto] xl:items-end" method="get">
+          {adminScope ? (
+            <>
+              <input name="organizationId" type="hidden" value={adminScope.organization.id} />
+              <input name="plantId" type="hidden" value={adminScope.plant.id} />
+            </>
+          ) : null}
           <label className="grid gap-1 text-sm font-semibold">
             <span className="text-[var(--muted)]">Work Category</span>
-            <select className="min-h-[52px] rounded-2xl border border-[var(--line)] bg-[var(--soft)] px-3 py-3 outline-none" defaultValue={category ?? ""} name="category">
+            <AutoSubmitSelect className="min-h-[52px] rounded-2xl border border-[var(--line)] bg-[var(--soft)] px-3 py-3 outline-none" defaultValue={category ?? ""} name="category">
               <option value="">Overview - All Members</option>
               <option value="mechanical">Mechanical</option>
               <option value="electrical">Electrical</option>
-            </select>
+            </AutoSubmitSelect>
           </label>
 
           {canSeeMetrics ? (
@@ -106,14 +135,14 @@ export default async function MembersPage({
                 />
                 <div className="min-w-0">
                   <h2 className="truncate text-lg font-extrabold">{member.fullName}</h2>
-                  <p className="mt-1 truncate text-sm font-semibold text-[var(--primary)]">{member.role}</p>
+                  <p className="mt-1 truncate text-sm font-semibold text-[var(--primary)]">{formatRoleName(member.role)}</p>
                   <p className="mt-1 truncate text-sm text-[var(--muted)]">{member.department || "-"}</p>
                 </div>
               </div>
 
               <div className="mt-4 flex items-center justify-between gap-3 border-t border-[var(--line)] pt-4 text-sm">
                 <span className="text-[var(--muted)]">Category</span>
-                <strong className="truncate text-right">{member.category?.name ?? "-"}</strong>
+                <strong className="truncate text-right">{formatMemberCategories(member) || "-"}</strong>
               </div>
 
               {member.metrics ? (
@@ -172,4 +201,15 @@ function MemberMetric({ icon: Icon, label, value }: { icon: typeof CheckCircle2;
       <strong className="mt-1 block text-2xl">{value}</strong>
     </div>
   );
+}
+
+function formatMemberCategories(member: {
+  category?: { name: string } | null;
+  categories?: { category: { name: string } }[];
+}) {
+  const names = [
+    ...(member.category?.name ? [member.category.name] : []),
+    ...(member.categories ?? []).map((item) => item.category.name),
+  ];
+  return [...new Set(names)].join(", ");
 }

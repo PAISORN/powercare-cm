@@ -36,6 +36,21 @@ describe("CmDateRangePicker", () => {
     expect(screen.getByRole("dialog", { name: "เลือกช่วงวันที่" })).toBeTruthy();
   });
 
+  it("renders the calendar popup in the compact 75 percent size", () => {
+    render(
+      <CmDateRangePicker
+        defaultEndDate="2026-06-19"
+        defaultStartDate="2026-06-01"
+        now={new Date("2026-06-18T17:30:00.000Z")}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /1 มิ\.ย\. 2569/ }));
+
+    expect(screen.getByRole("dialog").className).toContain("cm-date-picker-popover");
+    expect(screen.getByRole("dialog").className).toContain("w-[min(315px,calc(100vw-2rem))]");
+  });
+
   it("keeps a calendar selection as a draft until the user applies it", () => {
     const { container } = render(
       <CmDateRangePicker

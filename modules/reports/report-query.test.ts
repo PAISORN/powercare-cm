@@ -10,7 +10,8 @@ describe("buildReportWhere", () => {
       ),
     );
 
-    expect(buildReportWhere(filter)).toEqual({
+    expect(buildReportWhere(filter, { organizationId: "org-a" })).toEqual({
+      organizationId: "org-a",
       createdAt: { gte: new Date("2026-05-31T17:00:00.000Z"), lt: new Date("2026-06-19T17:00:00.000Z") },
       status: "IN_PROGRESS",
       categoryId: "cat-1",
@@ -22,5 +23,14 @@ describe("buildReportWhere", () => {
       machineName: { contains: "Pump" },
       number: { contains: "CM-2026" },
     });
+  });
+
+  it("uses plant scope over organization scope when both are present", () => {
+    const filter = parseReportFilter(new URLSearchParams());
+
+    expect(buildReportWhere(filter, { organizationId: "org-a", plantId: "plant-a" })).toMatchObject({
+      plantId: "plant-a",
+    });
+    expect(buildReportWhere(filter, { organizationId: "org-a", plantId: "plant-a" })).not.toHaveProperty("organizationId");
   });
 });

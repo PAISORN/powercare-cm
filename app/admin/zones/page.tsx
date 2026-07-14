@@ -1,39 +1,50 @@
 import { redirect } from "next/navigation";
+import { AdminScopeHiddenFields, AdminSiteScopeSelector } from "../../../components/admin-site-scope-selector";
 import { AppShell } from "../../../components/app-shell";
 import { db } from "../../../lib/db";
 import { cacheTags, revalidateCmData } from "../../../lib/query-cache";
 import { requireUser } from "../../../lib/session";
+import { canManageZone } from "../../../modules/auth/permission";
 import { recordAudit } from "../../../modules/audit/audit-service";
-import { RoleName } from "../../../modules/cm-work/cm-work-types";
+import { adminScopeSearchFromFormData, resolveAdminSiteScope } from "../../../modules/admin/admin-site-scope";
 
 async function createZone(formData: FormData) {
   "use server";
   const user = await requireUser();
-  if (user.role !== RoleName.ADMIN) redirect("/dashboard");
+  if (!canManageZone(user)) redirect("/dashboard");
+  const scope = await resolveAdminSiteScope(user, adminScopeSearchFromFormData(formData));
   const name = String(formData.get("name") ?? "").trim();
-  if (!name) redirect("/admin/zones");
-  const zone = await db.zone.create({ data: { name, active: true } });
+  const redirectTo = zoneRedirect(scope);
+  if (!name) redirect(redirectTo);
+  const zone = await db.zone.create({ data: { name, active: true, plantId: scope.plant.id } });
   await recordAudit({
     actorId: user.id,
+    organizationId: scope.organization.id,
+    plantId: scope.plant.id,
     entityType: "Zone",
     entityId: zone.id,
     action: "CREATE_ZONE",
     after: { name: zone.name, active: zone.active },
   });
   revalidateCmData([cacheTags.zones, cacheTags.dashboardSummary]);
-  redirect("/admin/zones");
+  redirect(redirectTo);
 }
 
 async function setZoneActive(formData: FormData) {
   "use server";
   const user = await requireUser();
-  if (user.role !== RoleName.ADMIN) redirect("/dashboard");
+  if (!canManageZone(user)) redirect("/dashboard");
+  const scope = await resolveAdminSiteScope(user, adminScopeSearchFromFormData(formData));
   const id = String(formData.get("id"));
   const active = String(formData.get("active")) === "true";
-  const before = await db.zone.findUniqueOrThrow({ where: { id } });
+  const before = await db.zone.findFirstOrThrow({
+    where: { id, plantId: scope.plant.id },
+  });
   const zone = await db.zone.update({ where: { id }, data: { active } });
   await recordAudit({
     actorId: user.id,
+    organizationId: scope.organization.id,
+    plantId: scope.plant.id,
     entityType: "Zone",
     entityId: zone.id,
     action: active ? "ACTIVATE_ZONE" : "DEACTIVATE_ZONE",
@@ -41,38 +52,57 @@ async function setZoneActive(formData: FormData) {
     after: { name: zone.name, active: zone.active },
   });
   revalidateCmData([cacheTags.zones, cacheTags.dashboardSummary]);
-  redirect("/admin/zones");
+  redirect(zoneRedirect(scope));
 }
 
 async function deleteZone(formData: FormData) {
   "use server";
   const user = await requireUser();
-  if (user.role !== RoleName.ADMIN) redirect("/dashboard");
+  if (!canManageZone(user)) redirect("/dashboard");
+  const scope = await resolveAdminSiteScope(user, adminScopeSearchFromFormData(formData));
   const id = String(formData.get("id"));
-  const before = await db.zone.findUniqueOrThrow({ where: { id }, include: { _count: { select: { works: true } } } });
-  if (before._count.works > 0) redirect("/admin/zones?deleteError=1");
+  const before = await db.zone.findFirstOrThrow({
+    where: { id, plantId: scope.plant.id },
+    include: { _count: { select: { works: true } } },
+  });
+  if (before._count.works > 0) redirect(`${zoneRedirect(scope)}&deleteError=1`);
   await db.zone.delete({ where: { id } });
   await recordAudit({
     actorId: user.id,
+    organizationId: scope.organization.id,
+    plantId: scope.plant.id,
     entityType: "Zone",
     entityId: id,
     action: "DELETE_ZONE",
     before: { name: before.name, active: before.active },
   });
   revalidateCmData([cacheTags.zones, cacheTags.dashboardSummary]);
-  redirect("/admin/zones");
+  redirect(zoneRedirect(scope));
 }
 
-export default async function AdminZonesPage({ searchParams }: { searchParams: Promise<{ deleteError?: string }> }) {
+export default async function AdminZonesPage({ searchParams }: { searchParams: Promise<{ deleteError?: string; organizationId?: string; plantId?: string }> }) {
   const user = await requireUser();
-  if (user.role !== RoleName.ADMIN) redirect("/dashboard");
+  if (!canManageZone(user)) redirect("/dashboard");
   const query = await searchParams;
-  const zones = await db.zone.findMany({ orderBy: { name: "asc" }, include: { _count: { select: { works: true } } } });
+  const scope = await resolveAdminSiteScope(user, query);
+  const zones = await db.zone.findMany({
+    where: { OR: [{ plantId: scope.plant.id }, { plantId: null }] },
+    orderBy: { name: "asc" },
+    include: { _count: { select: { works: true } } },
+  });
 
   return (
     <AppShell>
       <h1 className="text-3xl font-bold">Zones</h1>
+      <div className="mt-6">
+        <AdminSiteScopeSelector
+          scope={scope}
+          title="Zone scope"
+          description="Zone ถูกแยกตาม Site เพราะแต่ละโรงงาน/พื้นที่ใช้งานไม่เหมือนกัน"
+        />
+      </div>
       <form action={createZone} className="mt-6 flex flex-wrap gap-3">
+        <AdminScopeHiddenFields scope={scope} />
         <input name="name" required placeholder="Zone name" className="rounded-md border p-3 text-black" />
         <button className="rounded-md bg-[var(--primary)] px-4 py-2 text-white">เพิ่ม Zone</button>
       </form>
@@ -82,26 +112,39 @@ export default async function AdminZonesPage({ searchParams }: { searchParams: P
         </p>
       ) : null}
       <div className="mt-6 grid gap-2">
-        {zones.map((zone) => (
+        {zones.map((zone) => {
+          const shared = zone.plantId === null;
+
+          return (
           <div key={zone.id} className="grid gap-3 rounded-md border border-[var(--line)] bg-[var(--surface)] p-4 md:grid-cols-[1fr_auto_auto_auto]">
             <span>{zone.name}</span>
-            <span>{zone.active ? "active" : "inactive"} · used {zone._count.works}</span>
+            <span>
+              {zone.active ? "active" : "inactive"} · used {zone._count.works}
+              {shared ? " · shared default" : ""}
+            </span>
             <form action={setZoneActive}>
+              <AdminScopeHiddenFields scope={scope} />
               <input name="id" type="hidden" value={zone.id} />
               <input name="active" type="hidden" value={zone.active ? "false" : "true"} />
-              <button className="rounded-md border border-[var(--line)] px-3 py-1">
+              <button className="rounded-md border border-[var(--line)] px-3 py-1 disabled:opacity-40" disabled={shared}>
                 {zone.active ? "ปิดใช้งาน" : "เปิดใช้งาน"}
               </button>
             </form>
             <form action={deleteZone}>
+              <AdminScopeHiddenFields scope={scope} />
               <input name="id" type="hidden" value={zone.id} />
-              <button className="rounded-md border border-red-500/40 px-3 py-1 text-red-700 disabled:opacity-40" disabled={zone._count.works > 0}>
+              <button className="rounded-md border border-red-500/40 px-3 py-1 text-red-700 disabled:opacity-40" disabled={shared || zone._count.works > 0}>
                 ลบ
               </button>
             </form>
           </div>
-        ))}
+          );
+        })}
       </div>
     </AppShell>
   );
+}
+
+function zoneRedirect(scope: { organization: { id: string }; plant: { id: string } }) {
+  return `/admin/zones?organizationId=${encodeURIComponent(scope.organization.id)}&plantId=${encodeURIComponent(scope.plant.id)}`;
 }

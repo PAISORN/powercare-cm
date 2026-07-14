@@ -14,13 +14,15 @@ describe("AppShell mobile header", () => {
 
   it("keeps the desktop identity fixed while navigation scrolls", () => {
     const source = fs.readFileSync(path.join(process.cwd(), "components/app-shell.tsx"), "utf8");
+    const desktopSidebarSource = fs.readFileSync(path.join(process.cwd(), "components/desktop-sidebar.tsx"), "utf8");
 
-    expect(source).toContain("h-screen");
-    expect(source).toContain("flex-col");
-    expect(source).toContain("md:flex");
-    expect(source).toContain('data-testid="desktop-sidebar-nav"');
-    expect(source).toContain("min-h-0 flex-1");
-    expect(source).toContain("overflow-y-auto");
+    expect(source).toContain("<DesktopSidebar");
+    expect(desktopSidebarSource).toContain("h-screen");
+    expect(desktopSidebarSource).toContain("flex-col");
+    expect(desktopSidebarSource).toContain("md:flex");
+    expect(desktopSidebarSource).toContain('data-testid="desktop-sidebar-nav"');
+    expect(desktopSidebarSource).toContain("min-h-0 flex-1");
+    expect(desktopSidebarSource).toContain("overflow-y-auto");
   });
 
   it("keeps the top app bar visible while the page scrolls", () => {
@@ -29,5 +31,6 @@ describe("AppShell mobile header", () => {
     expect(source).toContain("sticky top-3");
     expect(source).toContain("z-40");
     expect(source).toContain("backdrop-blur");
+    expect(source).toContain("data-app-top-bar");
   });
 });

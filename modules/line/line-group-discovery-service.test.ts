@@ -12,6 +12,7 @@ describe("LINE group discovery service", () => {
 
     expect(repository.upsert).toHaveBeenCalledWith({
       groupId: "C1",
+      organizationId: "primary",
       eventType: "join",
       displayName: "CM Test",
       seenAt: now,

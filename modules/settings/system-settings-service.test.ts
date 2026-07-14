@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { PermissionKey } from "../auth/site-admin-permissions";
 import { RoleName } from "../cm-work/cm-work-types";
 import {
   readEngineerAssignmentSetting,
@@ -36,6 +37,35 @@ describe("system settings service", () => {
     expect(store.audits).toEqual([{ action: "UPDATE_ENGINEER_ASSIGNMENT_SETTING" }]);
   });
 
+  it("lets Site Admin update engineer assignment mode only with checkbox permission", async () => {
+    const store = createStore(false);
+    await updateEngineerAssignmentSetting(
+      {
+        id: "plant-admin",
+        role: RoleName.SITE_ADMIN,
+        categoryId: null,
+        plantId: "plant-1",
+        siteAdminPermissions: [
+          { userId: "plant-admin", plantId: "plant-1", permissionKey: PermissionKey.MANAGE_ENGINEER_ASSIGNMENT, enabled: true },
+        ],
+      },
+      true,
+      store,
+    );
+    expect(await readEngineerAssignmentSetting(store)).toBe(true);
+  });
+
+  it("rejects Site Admin without engineer assignment checkbox permission", async () => {
+    const store = createStore(false);
+    await expect(
+      updateEngineerAssignmentSetting(
+        { id: "plant-admin", role: RoleName.SITE_ADMIN, categoryId: null, plantId: "plant-1" },
+        true,
+        store,
+      ),
+    ).rejects.toThrow("Only admin can update engineer assignment settings");
+  });
+
   it("rejects engineer updates", async () => {
     const store = createStore(false);
     await expect(
@@ -44,6 +74,6 @@ describe("system settings service", () => {
         true,
         store,
       ),
-    ).rejects.toThrow("Only admin can update system settings");
+    ).rejects.toThrow("Only admin can update engineer assignment settings");
   });
 });

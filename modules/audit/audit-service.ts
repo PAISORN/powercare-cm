@@ -6,6 +6,8 @@ export async function recordAudit(input: AuditInput) {
     data: {
       cmWorkId: input.cmWorkId,
       actorId: input.actorId,
+      organizationId: input.organizationId,
+      plantId: input.plantId,
       entityType: input.entityType,
       entityId: input.entityId,
       action: input.action,

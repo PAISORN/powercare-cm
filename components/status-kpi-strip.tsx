@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Activity, AlertTriangle, CheckCircle2, ClipboardList, Gauge, History, RotateCcw, Wrench } from "lucide-react";
+import { Activity, AlertTriangle, Archive, CheckCircle2, ClipboardList, Gauge, History, RotateCcw, Wrench } from "lucide-react";
 import { WorkStatus, statusLabels } from "../modules/cm-work/cm-work-types";
 import { UnreadBadge } from "./unread-badge";
 
@@ -17,6 +17,7 @@ export function StatusKpiStrip({ statusCountByKey, activeStatus, getHref, unread
     [WorkStatus.WAITING_TO_CLAIM]: <Activity size={20} />,
     [WorkStatus.CLAIMED]: <Wrench size={20} />,
     [WorkStatus.IN_PROGRESS]: <Gauge size={20} />,
+    [WorkStatus.BACKLOG_SHUTDOWN]: <Archive size={20} />,
     [WorkStatus.WAITING_TO_CLOSE]: <History size={20} />,
     [WorkStatus.RETURNED_FOR_CORRECTION]: <RotateCcw size={20} />,
     [WorkStatus.CLOSED]: <CheckCircle2 size={20} />,
@@ -27,6 +28,7 @@ export function StatusKpiStrip({ statusCountByKey, activeStatus, getHref, unread
     [WorkStatus.WAITING_TO_CLAIM]: "amber",
     [WorkStatus.CLAIMED]: "cyan",
     [WorkStatus.IN_PROGRESS]: "violet",
+    [WorkStatus.BACKLOG_SHUTDOWN]: "slate",
     [WorkStatus.WAITING_TO_CLOSE]: "red",
     [WorkStatus.RETURNED_FOR_CORRECTION]: "red",
     [WorkStatus.CLOSED]: "green",
@@ -34,7 +36,7 @@ export function StatusKpiStrip({ statusCountByKey, activeStatus, getHref, unread
   };
 
   return (
-    <section className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4 2xl:grid-cols-8" aria-label="Status KPI strip">
+    <section className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4 2xl:grid-cols-9" aria-label="Status KPI strip">
       {Object.values(WorkStatus).map((status) => (
         <MetricCard
           key={status}

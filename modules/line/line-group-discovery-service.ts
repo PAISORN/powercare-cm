@@ -1,9 +1,11 @@
 import { db } from "../../lib/db";
+import { DEFAULT_ORGANIZATION_ID } from "../organization/organization-foundation";
 import { createServerLineClient } from "./line-client";
 import type { LineGroupEvent } from "./line-webhook";
 
 type DiscoveryUpsert = {
   groupId: string;
+  organizationId?: string;
   eventType: string;
   displayName: string | null;
   seenAt: Date;
@@ -27,7 +29,7 @@ export function createLineGroupDiscoveryService({
   now?: () => Date;
 }) {
   return {
-    async discover(events: LineGroupEvent[]) {
+    async discover(events: LineGroupEvent[], organizationId = DEFAULT_ORGANIZATION_ID) {
       const latestByGroup = new Map(events.map((event) => [event.groupId, event]));
 
       await Promise.all(
@@ -42,6 +44,7 @@ export function createLineGroupDiscoveryService({
 
           await repository.upsert({
             groupId: event.groupId,
+            organizationId,
             eventType: event.eventType,
             displayName,
             seenAt: now(),
@@ -60,9 +63,11 @@ const prismaDiscoveryRepository: LineGroupDiscoveryRepository = {
         displayName: input.displayName ?? undefined,
         eventType: input.eventType,
         lastSeenAt: input.seenAt,
+        organizationId: input.organizationId ?? DEFAULT_ORGANIZATION_ID,
       },
       create: {
         groupId: input.groupId,
+        organizationId: input.organizationId ?? DEFAULT_ORGANIZATION_ID,
         displayName: input.displayName,
         eventType: input.eventType,
         firstSeenAt: input.seenAt,
@@ -72,15 +77,16 @@ const prismaDiscoveryRepository: LineGroupDiscoveryRepository = {
   },
 };
 
-export function discoverLineGroups(events: LineGroupEvent[]) {
+export function discoverLineGroups(events: LineGroupEvent[], organizationId = DEFAULT_ORGANIZATION_ID) {
   return createLineGroupDiscoveryService({
     repository: prismaDiscoveryRepository,
     summaryClient: createServerLineClient(),
-  }).discover(events);
+  }).discover(events, organizationId);
 }
 
-export function listLineGroupDiscoveries() {
+export function listLineGroupDiscoveries(organizationId?: string) {
   return db.lineGroupDiscovery.findMany({
+    where: { organizationId },
     include: { addedDestination: true },
     orderBy: { lastSeenAt: "desc" },
   });

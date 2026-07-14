@@ -56,6 +56,106 @@ _Avoid_: technician, staff
 A role responsible for performing CM work and providing a stored signature for completion documents.
 _Avoid_: operator, mechanic, staff
 
+**Store Officer**:
+A role responsible for controlling spare-part stock, receiving stock, and issuing approved spare parts for CM work or direct site use.
+_Avoid_: warehouse admin, stock user, engineer, site admin
+
+**Spare Part Issue**:
+A request to take one or more spare parts from site stock, either for CM work or direct site use. Stock is reduced only when a Store Officer issues the approved spare parts.
+_Avoid_: purchase request, stock adjustment, material order
+
+**Public Spare Part Issue Request**:
+A no-login spare-part issue request submitted through a site-specific link or QR code. It is allowed only when Owner Admin enables public issue requests for that site and still requires Engineer and Store Officer review before stock is reduced.
+_Avoid_: public stock issue, anonymous stock out, direct store access
+
+**Public Issue Contact Field**:
+An optional requester contact field for public spare-part issue requests. Owner Admin controls whether each site requires or hides this field.
+_Avoid_: mandatory phone number, user account, requester role
+
+**Site Store Issue QR**:
+A site-specific QR code that opens the public spare-part issue request page for that site.
+_Avoid_: spare part QR, CM request QR, tracking QR
+
+**Store Tracking**:
+A public status lookup for a spare-part issue number, showing issue status, requested spare parts, issued quantities, and latest remarks without exposing internal store controls.
+_Avoid_: CM tracking, stock report, store dashboard
+
+**Spare Part QR**:
+A QR code printed on an individual spare part label that contains the spare part code for scanner lookup.
+_Avoid_: site issue QR, full spare-part record, stock movement QR
+
+**Spare Part Issue Number**:
+A unique human-readable identifier for a spare-part issue, used to track issue status similarly to a CM work number. It follows `SI-{SITE_CODE}-{YYYY}-{MM}-{RUNNING}`, such as `SI-RTB-2026-07-0001`.
+_Avoid_: receipt number, stock movement ID, request database ID
+
+**Direct Spare Part Issue**:
+A spare-part issue that is not linked to CM work and must include an issue type and a short reason for audit clarity.
+_Avoid_: manual stock out, free issue, untracked issue
+
+**Spare Part Receive**:
+A Store Officer action that adds spare parts into site stock and records the receive document, supplier, quantities, prices, and receiver.
+_Avoid_: purchase order, approval request, stock adjustment
+
+**Stock Adjustment**:
+A reasoned correction that increases or decreases site stock after a receive, issue, count, or data-entry error. It preserves stock history instead of silently editing past stock movements.
+_Avoid_: edit stock, delete receive, hidden correction
+
+**CM-Referenced Spare Part Issue**:
+A spare-part issue created by entering a CM work number and linking the issue to CM work in the same site. CM work search must only reveal CM work inside the current site.
+_Avoid_: direct issue, cross-site issue, loose CM reference
+
+**Spare Part Code**:
+A human-readable identifier printed on spare-part QR labels and used to look up spare-part details in the system. It includes the three-letter site code, such as `SP-RTB-00001`, to prevent collisions between sites.
+_Avoid_: database ID, QR payload, barcode text
+
+**Store**:
+A named stock-holding place inside a site, such as Main Store, Electrical Store, or Mechanical Store.
+_Avoid_: site, zone, spare part category
+
+**Issue Store Selection**:
+The rule for choosing which store supplies a spare-part issue. The system selects the store automatically when only one store has stock, and asks the requester to choose when multiple stores have stock.
+_Avoid_: fixed default store, store officer only selection
+
+**Available Stock Check**:
+The rule that prevents a spare-part issue request from being submitted when the requested quantity is greater than the currently available site stock.
+_Avoid_: negative stock request, over-issue request, approval-first stock check
+
+**Store Category**:
+A grouping for stores, such as Electrical Store, Mechanical Store, Instrument Store, or Tool Room.
+_Avoid_: spare part category, zone, storage location
+
+**Spare Part Category**:
+A grouping for spare parts, such as Bearing, Valve, Electrical, Instrument, or Consumable.
+_Avoid_: store category, zone, storage location
+
+**Applicable Zone**:
+A plant zone where a spare part is commonly used. One spare part can have multiple applicable zones.
+_Avoid_: spare part category, store, storage location
+
+**Item Code**:
+An optional accounting or ERP item identifier stored on a spare part for finance and purchasing reference.
+_Avoid_: spare part code, QR code, CM work number
+
+**Latest Unit Price**:
+The most recent known unit price stored on a spare part and used for first-phase stock value and issue value reporting.
+_Avoid_: weighted average cost, FIFO cost, accounting valuation
+
+**Spare Part Sequence**:
+A site-level running number used to generate spare part codes. Each site owns its own sequence, so `SP-RTB-00001` and `SP-PTT-00001` can both exist.
+_Avoid_: global spare-part sequence, organization-wide sequence
+
+**Not Enough Stock**:
+The outcome when a Store Officer rejects an approved spare-part issue because the requested quantity is not available in site stock.
+_Avoid_: canceled issue, deleted issue, failed approval
+
+**Partial Issue**:
+The outcome when a Store Officer issues only part of the approved spare-part quantity because the full quantity is not available.
+_Avoid_: quantity edit, silent reduction, full rejection
+
+**Spare Part Issue Status**:
+The lifecycle status of a spare-part issue: Draft, Waiting Engineer Approval, Returned for Edit, Engineer Approved, Waiting Store Issue, Partially Issued, Issued, Rejected, Not Enough Stock, or Canceled.
+_Avoid_: CM work status, stock movement status, approval flag
+
 **Signature**:
 A stored image uploaded to a Technician or Engineer profile and used on printable CM completion documents.
 _Avoid_: approval stamp, initials

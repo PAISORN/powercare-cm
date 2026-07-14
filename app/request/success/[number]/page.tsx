@@ -4,11 +4,20 @@ import { AppShell } from "../../../../components/app-shell";
 import { PublicHeader } from "../../../../components/public-header";
 import { db } from "../../../../lib/db";
 import { getCurrentUser } from "../../../../lib/session";
+import { readRequestPlantScope } from "../../../../modules/organization/plant-request-scope";
 
-export default async function RequestSuccessPage({ params }: { params: Promise<{ number: string }> }) {
+export default async function RequestSuccessPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ number: string }>;
+  searchParams?: Promise<{ plant?: string }>;
+}) {
   const user = await getCurrentUser();
   const { number } = await params;
-  const work = await db.cmWork.findUnique({ where: { number }, select: { number: true } });
+  const { plant: plantCode } = (await searchParams) ?? {};
+  const plantScope = await readRequestPlantScope(plantCode);
+  const work = await db.cmWork.findFirst({ where: { number, plantId: plantScope.id }, select: { number: true } });
   const isSuccess = Boolean(work);
 
   return (
@@ -43,7 +52,7 @@ export default async function RequestSuccessPage({ params }: { params: Promise<{
 
           <div className="mt-7 flex flex-wrap justify-center gap-3">
             {isSuccess ? (
-              <Link className="rounded-2xl bg-[var(--primary)] px-5 py-3 font-bold text-white shadow-sm" href={`/tracking?number=${number}`}>
+              <Link className="rounded-2xl bg-[var(--primary)] px-5 py-3 font-bold text-white shadow-sm" href={`/tracking?plant=${plantScope.code}&number=${number}`}>
                 ติดตามสถานะ
               </Link>
             ) : null}

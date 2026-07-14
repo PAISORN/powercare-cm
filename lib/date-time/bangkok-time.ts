@@ -12,6 +12,12 @@ const thaiDateTimeFormatter = new Intl.DateTimeFormat("th-TH-u-ca-buddhist-nu-la
   hour12: false,
 });
 
+const thaiMediumDateTimeFormatter = new Intl.DateTimeFormat("th-TH-u-ca-buddhist-nu-latn", {
+  timeZone: BANGKOK_TIME_ZONE,
+  dateStyle: "medium",
+  timeStyle: "short",
+});
+
 const bangkokHourFormatter = new Intl.DateTimeFormat("en-US", {
   timeZone: BANGKOK_TIME_ZONE,
   hour: "numeric",
@@ -50,6 +56,10 @@ export function formatThaiDateTime(value: Date) {
   const parts = thaiDateTimeFormatter.formatToParts(value);
 
   return `${getDatePart(parts, "day")}/${getDatePart(parts, "month")}/${getDatePart(parts, "year")} ${getDatePart(parts, "hour")}:${getDatePart(parts, "minute")} น.`;
+}
+
+export function formatThaiMediumDateTime(value: Date) {
+  return thaiMediumDateTimeFormatter.format(value);
 }
 
 export function getBangkokHour(value = new Date()) {

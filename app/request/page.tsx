@@ -1,10 +1,12 @@
 import { redirect } from "next/navigation";
 import { AppShell } from "../../components/app-shell";
 import { PublicHeader } from "../../components/public-header";
-import { getActiveCategories, getActiveZones } from "../../lib/query-cache";
+import { getActiveCategoriesForPlantScope, getActiveZonesForScope } from "../../lib/query-cache";
 import { getCurrentUser } from "../../lib/session";
 import { repairRequestSchema } from "../../lib/validation";
 import { createRepairRequest } from "../../modules/cm-work/cm-work-service";
+import { readPlantProfile } from "../../modules/organization/plant-profile-service";
+import { readRequestPlantScope } from "../../modules/organization/plant-request-scope";
 
 async function submitRepairRequest(formData: FormData) {
   "use server";
@@ -19,17 +21,52 @@ async function submitRepairRequest(formData: FormData) {
     urgency: formData.get("urgency"),
   });
 
-  const work = await createRepairRequest(parsed);
-  redirect(`/request/success/${work.number}`);
+  const plantCode = String(formData.get("plantCode") ?? "") || null;
+  let work;
+  try {
+    work = await createRepairRequest({ ...parsed, plantCode });
+  } catch (error) {
+    if (error instanceof Error && error.message === "SITE_REQUEST_LIMIT_REACHED") {
+      redirect(`/request?plant=${encodeURIComponent(plantCode ?? "")}&error=site-limit`);
+    }
+    throw error;
+  }
+  redirect(`/request/success/${work.number}?plant=${encodeURIComponent(plantCode ?? "")}`);
 }
 
-export default async function RequestPage() {
+export default async function RequestPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ error?: string; plant?: string }>;
+}) {
+  const query = await searchParams;
+  return <RequestPageContent error={query?.error ?? null} plantCode={query?.plant ?? null} />;
+}
+
+export async function RequestPageContent({ error, plantCode }: { error?: string | null; plantCode?: string | null }) {
   const user = await getCurrentUser();
-  const [categories, zones] = await Promise.all([getActiveCategories(), getActiveZones()]);
+  const plantScope = await readRequestPlantScope(plantCode);
+  const [categories, zones, plantProfile] = await Promise.all([
+    getActiveCategoriesForPlantScope(plantScope.id, plantScope.organizationId),
+    getActiveZonesForScope(plantScope.id),
+    readPlantProfile(plantScope.id),
+  ]);
 
   return (
     <RequestShell signedIn={Boolean(user)}>
       <form action={submitRepairRequest} className="mx-auto grid max-w-3xl gap-4 px-8 py-10">
+        <input name="plantCode" type="hidden" value={plantScope.code} />
+        <SiteIdentityHeader
+          label="แจ้งซ่อมสำหรับ"
+          plantCode={plantScope.code}
+          plantName={plantScope.name}
+          title={plantProfile.displayName}
+        />
+        {error === "site-limit" ? (
+          <p className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800">
+            Site นี้มีจำนวนใบแจ้งซ่อมถึง limit แล้ว กรุณาติดต่อผู้ดูแลระบบ
+          </p>
+        ) : null}
         <h1 className="text-3xl font-bold">แจ้งซ่อม</h1>
         <input name="requesterName" required placeholder="ชื่อผู้แจ้ง" className="rounded-md border p-3 text-black" />
         <input name="requesterDepartment" required placeholder="หน่วยงาน/แผนก" className="rounded-md border p-3 text-black" />
@@ -62,6 +99,28 @@ export default async function RequestPage() {
         </button>
       </form>
     </RequestShell>
+  );
+}
+
+function SiteIdentityHeader({
+  label,
+  plantCode,
+  plantName,
+  title,
+}: {
+  label: string;
+  plantCode: string;
+  plantName: string;
+  title: string;
+}) {
+  return (
+    <section className="rounded-3xl border border-[var(--line)] bg-[var(--surface)] p-5 shadow-[var(--shadow)]">
+      <p className="text-sm font-black uppercase tracking-[0.16em] text-[var(--primary)]">{label}</p>
+      <h1 className="mt-3 text-3xl font-extrabold leading-tight text-[var(--ink)] md:text-5xl">{title}</h1>
+      <p className="mt-2 text-sm font-semibold text-[var(--muted)]">
+        Site: {plantName} · Code: {plantCode}
+      </p>
+    </section>
   );
 }
 

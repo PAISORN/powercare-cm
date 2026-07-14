@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { dispatchLineDailyReport } from "../../../../modules/line/line-daily-report-dispatcher";
+import { dispatchAllLineDailyReports } from "../../../../modules/line/line-daily-report-dispatcher";
 
 export const dynamic = "force-dynamic";
 
@@ -10,7 +10,7 @@ export async function GET(request: Request) {
 
   const url = new URL(request.url);
   const force = url.searchParams.get("force") === "1";
-  const result = await dispatchLineDailyReport({ force });
+  const result = await dispatchAllLineDailyReports({ force });
   return NextResponse.json({ ok: true, ...result });
 }
 

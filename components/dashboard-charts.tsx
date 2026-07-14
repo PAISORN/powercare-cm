@@ -20,8 +20,8 @@ export function HorizontalBarChart({ title, rows }: HorizontalBarChartProps) {
         <span className="text-sm text-[var(--muted)]">{rows.reduce((sum, row) => sum + row.count, 0)} jobs</span>
       </div>
       <div className="mt-5 grid gap-4">
-        {rows.map((row) => (
-          <div key={row.label} className="grid gap-2">
+        {rows.map((row, index) => (
+          <div key={`${row.label}-${index}`} className="grid gap-2">
             <div className="flex items-center justify-between gap-3 text-sm">
               <span className="truncate">{row.label}</span>
               <strong>{row.count}</strong>

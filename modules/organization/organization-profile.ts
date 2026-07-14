@@ -2,7 +2,7 @@ export const ORGANIZATION_PROFILE_ID = "primary";
 
 export const organizationFallback = {
   id: ORGANIZATION_PROFILE_ID,
-  companyName: "PowerCare.CM",
+  companyName: "Power Care.CM",
   logoFileName: null,
   logoMimeType: null,
   logoFileSize: null,

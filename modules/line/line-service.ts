@@ -1,4 +1,5 @@
 import { db } from "../../lib/db";
+import { DEFAULT_ORGANIZATION_ID } from "../organization/organization-foundation";
 import { createServerLineClient } from "./line-client";
 import {
   createLineDeliveryService,
@@ -6,7 +7,8 @@ import {
   type LineDeliveryRepository,
 } from "./line-delivery";
 import { selectLineDestinations } from "./line-routing";
-import type { LineDeliveryPayload, LineWorkEvent } from "./line-types";
+import type { LineDeliveryPayload, LineStoreIssueEvent, LineWorkEvent } from "./line-types";
+import { formatLineStoreIssueMessage } from "./line-store-event";
 import { formatLineWorkMessage } from "./line-work-event";
 
 function isUniqueConstraintError(error: unknown) {
@@ -71,8 +73,9 @@ export function isLineServerConfigured() {
 
 export async function dispatchLineWorkEvent(event: LineWorkEvent) {
   if (!isLineServerConfigured()) return;
+  const organizationId = event.organizationId ?? DEFAULT_ORGANIZATION_ID;
   const destinations = await db.lineDestination.findMany({
-    where: { active: true },
+    where: { active: true, organizationId },
     include: { settings: true },
     orderBy: { displayName: "asc" },
   });
@@ -81,6 +84,34 @@ export async function dispatchLineWorkEvent(event: LineWorkEvent) {
     text: formatLineWorkMessage(event),
     workId: event.workId,
     workNumber: event.workNumber,
+  };
+
+  await Promise.all(
+    selected.map((destination) =>
+      deliveryService().deliver({
+        eventId: event.eventId,
+        eventType: event.eventType,
+        destinationId: destination.id,
+        targetId: destination.targetId,
+        payload,
+      }),
+    ),
+  );
+}
+
+export async function dispatchLineStoreEvent(event: LineStoreIssueEvent) {
+  if (!isLineServerConfigured()) return;
+  const organizationId = event.organizationId ?? DEFAULT_ORGANIZATION_ID;
+  const destinations = await db.lineDestination.findMany({
+    where: { active: true, organizationId },
+    include: { settings: true },
+    orderBy: { displayName: "asc" },
+  });
+  const selected = selectLineDestinations(event, destinations);
+  const payload: LineDeliveryPayload = {
+    text: formatLineStoreIssueMessage(event),
+    issueId: event.issueId,
+    issueNumber: event.issueNumber,
   };
 
   await Promise.all(
@@ -112,9 +143,12 @@ export async function deliverLineDailyReport(input: {
   });
 }
 
-export async function retryLineDelivery(deliveryId: string) {
-  const delivery = await db.lineDeliveryLog.findUnique({
-    where: { id: deliveryId },
+export async function retryLineDelivery(deliveryId: string, organizationId?: string | null) {
+  const delivery = await db.lineDeliveryLog.findFirst({
+    where: {
+      id: deliveryId,
+      ...(organizationId ? { destination: { organizationId } } : {}),
+    },
     include: { destination: true },
   });
   if (!delivery) throw new Error("LINE delivery not found");
@@ -127,8 +161,9 @@ export async function sendLineTest(targetId: string) {
   await createServerLineClient().pushText(targetId, "PowerCare.CM ทดสอบการแจ้งเตือน LINE สำเร็จ");
 }
 
-export function listLineDeliveryHistory(take = 50) {
+export function listLineDeliveryHistory(organizationId?: string, take = 50, plantId?: string) {
   return db.lineDeliveryLog.findMany({
+    where: organizationId || plantId ? { destination: { ...(organizationId ? { organizationId } : {}), ...(plantId ? { plantId } : {}) } } : undefined,
     include: { destination: true },
     orderBy: { createdAt: "desc" },
     take,

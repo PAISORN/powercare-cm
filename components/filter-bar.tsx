@@ -1,6 +1,9 @@
+ "use client";
+
 import Link from "next/link";
 import { Search } from "lucide-react";
 import { statusLabels, urgencyLabels, Urgency, WorkStatus } from "../modules/cm-work/cm-work-types";
+import { AutoSubmitSelect } from "./auto-submit-select";
 import { CmDateFilterBar } from "./cm-date-filter-bar";
 
 type Option = {
@@ -82,14 +85,18 @@ function SelectFilter({ label, name, value, options }: { label: string; name: st
   return (
     <label className="grid gap-1 text-sm">
       <span className="text-[var(--muted)]">{label}</span>
-      <select className="rounded-2xl border border-[var(--line)] bg-[var(--soft)] px-3 py-3 outline-none" defaultValue={value ?? ""} name={name}>
+      <AutoSubmitSelect
+        className="rounded-2xl border border-[var(--line)] bg-[var(--soft)] px-3 py-3 outline-none"
+        defaultValue={value ?? ""}
+        name={name}
+      >
         <option value="">All</option>
         {options.map((option) => (
           <option key={option.id} value={option.id}>
             {option.name}
           </option>
         ))}
-      </select>
+      </AutoSubmitSelect>
     </label>
   );
 }

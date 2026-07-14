@@ -8,7 +8,7 @@ import { StatusKpiStrip } from "../../components/status-kpi-strip";
 import { UserAvatar } from "../../components/user-avatar";
 import { db } from "../../lib/db";
 import { formatThaiDateTime } from "../../lib/date-time/bangkok-time";
-import { getActiveCategories, getActiveClaimants, getActiveZones } from "../../lib/query-cache";
+import { getActiveCategoriesForPlantScope, getActiveClaimantsForReportScope, getActiveZonesForReportScope } from "../../lib/query-cache";
 import { requireUser } from "../../lib/session";
 import { canClaimWork } from "../../modules/auth/permission";
 import { claimWork } from "../../modules/cm-work/cm-work-service";
@@ -16,6 +16,7 @@ import { WorkStatus, type Actor } from "../../modules/cm-work/cm-work-types";
 import { hasExplicitCmDateFilter, parseCmDateFilter, type CmDateFilterInput, type ParsedCmDateFilter } from "../../modules/filters/cm-date-filter";
 import { getCmDatePreset } from "../../modules/filters/cm-date-filter-presets";
 import { getUnreadSummary, getUnreadWorkIds, markStatusGroupRead, markWorkRead } from "../../modules/notifications/notification-service";
+import { buildUserOperationalScope, type OperationalScope } from "../../modules/organization/user-plant-scope";
 
 type WorkSearchParams = CmDateFilterInput & {
   search?: string;
@@ -34,6 +35,7 @@ const inProcessStatuses = [
   WorkStatus.WAITING_TO_CLAIM,
   WorkStatus.CLAIMED,
   WorkStatus.IN_PROGRESS,
+  WorkStatus.BACKLOG_SHUTDOWN,
   WorkStatus.WAITING_TO_CLOSE,
   WorkStatus.RETURNED_FOR_CORRECTION,
 ];
@@ -57,11 +59,19 @@ export default async function WorkListPage({ searchParams }: { searchParams: Pro
   const filters = normalizeFilters(await searchParams);
   const hasExplicitDateFilter = hasExplicitCmDateFilter(filters);
   const dateFilter = safeParseDateFilter(filters, hasExplicitDateFilter);
-  const where = buildWorkWhere(filters, dateFilter);
-  const statusSummaryWhere = buildWorkWhere({ ...filters, status: undefined, statusGroup: undefined }, dateFilter);
+  const scope = buildUserOperationalScope(user);
+  const where = buildWorkWhere(filters, dateFilter, scope);
+  const statusSummaryWhere = buildWorkWhere({ ...filters, status: undefined, statusGroup: undefined }, dateFilter, scope);
   const currentPage = normalizePage(filters.page);
   const skip = (currentPage - 1) * pageSize;
-  const actor: Actor = { id: user.id, role: user.role as Actor["role"], categoryId: user.categoryId };
+  const actor: Actor = {
+    id: user.id,
+    role: user.role as Actor["role"],
+    categoryId: user.categoryId,
+    categoryIds: user.categories.map((category) => category.categoryId),
+    plantId: user.plantId,
+    siteAdminPermissions: user.siteAdminPermissions,
+  };
   const returnTo = buildWorkListHref(filters);
 
   async function claimFromListAction(formData: FormData) {
@@ -69,7 +79,14 @@ export default async function WorkListPage({ searchParams }: { searchParams: Pro
     const currentUser = await requireUser();
     const workId = String(formData.get("workId") ?? "");
     const safeReturnTo = String(formData.get("returnTo") ?? "/work");
-    await claimWork({ id: currentUser.id, role: currentUser.role as Actor["role"], categoryId: currentUser.categoryId }, workId);
+    await claimWork({
+      id: currentUser.id,
+      role: currentUser.role as Actor["role"],
+      categoryId: currentUser.categoryId,
+      categoryIds: currentUser.categories.map((category) => category.categoryId),
+      plantId: currentUser.plantId,
+      siteAdminPermissions: currentUser.siteAdminPermissions,
+    }, workId);
     redirect(safeReturnTo.startsWith("/work") ? safeReturnTo : "/work");
   }
 
@@ -78,8 +95,9 @@ export default async function WorkListPage({ searchParams }: { searchParams: Pro
     const currentUser = await requireUser();
     const group = String(formData.get("group") ?? "");
     const href = String(formData.get("href") ?? "/work");
+    const scope = buildUserOperationalScope(currentUser);
     if (Object.values(WorkStatus).includes(group as WorkStatus)) {
-      await markStatusGroupRead(currentUser.id, group);
+      await markStatusGroupRead(currentUser.id, group, scope);
     }
     redirect(href.startsWith("/work") ? href : "/work");
   }
@@ -87,10 +105,11 @@ export default async function WorkListPage({ searchParams }: { searchParams: Pro
   async function openWorkAction(formData: FormData) {
     "use server";
     const currentUser = await requireUser();
+    const scope = buildUserOperationalScope(currentUser);
     const workId = String(formData.get("workId") ?? "");
-    const work = await db.cmWork.findUnique({ where: { id: workId }, select: { id: true } });
+    const work = await db.cmWork.findFirst({ where: { id: workId, ...buildWorkScopeWhere(scope) }, select: { id: true } });
     if (!work) redirect("/work");
-    await markWorkRead(currentUser.id, work.id);
+    await markWorkRead(currentUser.id, work.id, scope);
     redirect(`/work/${work.id}`);
   }
 
@@ -108,13 +127,13 @@ export default async function WorkListPage({ searchParams }: { searchParams: Pro
       },
     }),
     db.cmWork.count({ where }),
-    getActiveCategories(),
-    getActiveZones(),
-    getActiveClaimants(),
+    getActiveCategoriesForPlantScope(scope.plantId, scope.organizationId ?? user.organizationId),
+    getActiveZonesForReportScope(scope),
+    getActiveClaimantsForReportScope(scope),
     db.cmWork.groupBy({ by: ["status"], where: statusSummaryWhere, _count: { _all: true } }),
-    getUnreadSummary(user.id),
+    getUnreadSummary(user.id, scope),
   ]);
-  const unreadWorkIds = await getUnreadWorkIds(user.id, works.map((work) => work.id));
+  const unreadWorkIds = await getUnreadWorkIds(user.id, works.map((work) => work.id), scope);
   const statusCountByKey = new Map<WorkStatus, number>(byStatus.map((item) => [item.status as WorkStatus, item._count._all]));
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const safeCurrentPage = Math.min(currentPage, totalPages);
@@ -200,12 +219,9 @@ export default async function WorkListPage({ searchParams }: { searchParams: Pro
                     <form action={claimFromListAction}>
                       <input name="workId" type="hidden" value={work.id} />
                       <input name="returnTo" type="hidden" value={returnTo} />
-                      <button className="rounded-full bg-[var(--primary)] px-4 py-1.5 text-xs font-bold text-white shadow-sm transition duration-300 ease-out hover:-translate-y-0.5 hover:bg-[var(--primary-strong)] active:translate-y-0 focus:outline-none focus:ring-2 focus:ring-[var(--primary)] focus:ring-offset-2 focus:ring-offset-[var(--surface)]" type="submit">
-                        <span>รับงาน</span>
-                        <span className="hidden">
-                        à¸£à¸±à¸šà¸‡à¸²à¸™
-                        </span>
-                      </button>
+                       <button className="rounded-full bg-[var(--primary)] px-4 py-1.5 text-xs font-bold text-white shadow-sm transition duration-300 ease-out hover:-translate-y-0.5 hover:bg-[var(--primary-strong)] active:translate-y-0 focus:outline-none focus:ring-2 focus:ring-[var(--primary)] focus:ring-offset-2 focus:ring-offset-[var(--surface)]" type="submit">
+                         <span>รับงาน</span>
+                       </button>
                     </form>
                   ) : null}
                 </span>
@@ -240,6 +256,8 @@ function getStatusDate(work: StatusDateInput) {
       return work.claimedAt ?? work.statusHistory[0]?.changedAt ?? work.createdAt;
     case WorkStatus.IN_PROGRESS:
       return work.inProgressAt ?? work.statusHistory[0]?.changedAt ?? work.createdAt;
+    case WorkStatus.BACKLOG_SHUTDOWN:
+      return work.statusHistory[0]?.changedAt ?? work.inProgressAt ?? work.createdAt;
     case WorkStatus.WAITING_TO_CLOSE:
       return work.waitingToCloseAt ?? work.statusHistory[0]?.changedAt ?? work.createdAt;
     case WorkStatus.CLOSED:
@@ -321,9 +339,11 @@ function normalizeFilters(params: WorkSearchParams): WorkSearchParams {
   return Object.fromEntries(Object.entries(params).map(([key, value]) => [key, typeof value === "string" ? value.trim() : ""]).filter(([, value]) => value)) as WorkSearchParams;
 }
 
-function buildWorkWhere(filters: WorkSearchParams, dateFilter: ParsedCmDateFilter): Prisma.CmWorkWhereInput {
+function buildWorkWhere(filters: WorkSearchParams, dateFilter: ParsedCmDateFilter, scope?: OperationalScope): Prisma.CmWorkWhereInput {
   const where: Prisma.CmWorkWhereInput = {};
 
+  if (scope?.organizationId) where.organizationId = scope.organizationId;
+  if (scope?.plantId) where.plantId = scope.plantId;
   if (filters.status) where.status = filters.status;
   else if (filters.statusGroup === IN_PROCESS_GROUP) where.status = { in: inProcessStatuses };
   if (filters.categoryId) where.categoryId = filters.categoryId;
@@ -344,6 +364,12 @@ function buildWorkWhere(filters: WorkSearchParams, dateFilter: ParsedCmDateFilte
   }
 
   return where;
+}
+
+function buildWorkScopeWhere(scope?: OperationalScope): Prisma.CmWorkWhereInput {
+  if (scope?.plantId) return { plantId: scope.plantId };
+  if (scope?.organizationId) return { organizationId: scope.organizationId };
+  return {};
 }
 
 function safeParseDateFilter(input: CmDateFilterInput, hasExplicitDateFilter: boolean) {

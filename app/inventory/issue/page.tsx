@@ -1,0 +1,522 @@
+import { ArrowUpFromLine, CheckCircle2, ClipboardList, PackageX, RotateCcw, XCircle } from "lucide-react";
+import { redirect } from "next/navigation";
+import { AdminScopeHiddenFields, AdminSiteScopeSelector } from "../../../components/admin-site-scope-selector";
+import { AppShell } from "../../../components/app-shell";
+import { IssueRequestForm } from "../../../components/store/issue-request-form";
+import { formatThaiMediumDateTime } from "../../../lib/date-time/bangkok-time";
+import { db } from "../../../lib/db";
+import { requireUser } from "../../../lib/session";
+import { adminScopeSearchFromFormData } from "../../../modules/admin/admin-site-scope";
+import { canUseUserPermission, PermissionKey } from "../../../modules/auth/site-admin-permissions";
+import {
+  approveStoreIssue,
+  createLoggedInStoreIssue,
+  issueStoreStock,
+  markIssueNotEnoughStock,
+} from "../../../modules/store/store-issue-prisma";
+import { resolveStorePageScope } from "../../../modules/store/store-page-scope";
+import { StoreIssueStatus } from "../../../modules/store/store-types";
+
+type PageQuery = {
+  organizationId?: string;
+  plantId?: string;
+  created?: string;
+  saved?: string;
+  error?: string;
+};
+
+async function createIssueAction(formData: FormData) {
+  "use server";
+  const user = await requireUser();
+  const scope = await resolveStorePageScope(user, adminScopeSearchFromFormData(formData));
+  const plant = await db.plant.findUniqueOrThrow({ where: { id: scope.plant.id }, select: { inventoryCode: true } });
+  const stockKeys = formData.getAll("stockKey").map(String);
+  const quantities = formData.getAll("requestedQty").map(Number);
+  const items = stockKeys.map((stockKey, index) => {
+    const [storeId, sparePartId] = stockKey.split(":");
+    return { storeId, sparePartId, requestedQty: quantities[index] };
+  });
+
+  let createdNumber: string | null = null;
+  let actionError: string | null = null;
+  try {
+    const created = await createLoggedInStoreIssue(
+      user,
+      {
+        organizationId: scope.organization.id,
+        plantId: scope.plant.id,
+        plantCode: plant.inventoryCode ?? "",
+      },
+      {
+        issueType: String(formData.get("issueType") ?? ""),
+        cmWorkNumber: optionalText(formData.get("cmWorkNumber")),
+        requesterName: user.fullName,
+        note: optionalText(formData.get("note")),
+        requestedAt: new Date(),
+        items,
+      },
+    );
+    createdNumber = created.number;
+  } catch (error) {
+    actionError = storeActionError(error);
+  }
+  redirect(issueRedirect(scope, createdNumber ? { created: createdNumber } : { error: actionError ?? "Unknown error" }));
+}
+
+async function engineerDecisionAction(formData: FormData) {
+  "use server";
+  const user = await requireUser();
+  const scope = await resolveStorePageScope(user, adminScopeSearchFromFormData(formData));
+  const issueId = String(formData.get("issueId") ?? "");
+  const decision = String(formData.get("decision") ?? "") as "APPROVE" | "REJECT" | "RETURN";
+  let actionError: string | null = null;
+  try {
+    await approveStoreIssue(user, storeScope(scope), issueId, decision, optionalText(formData.get("reason")));
+  } catch (error) {
+    actionError = storeActionError(error);
+  }
+  redirect(issueRedirect(scope, actionError ? { error: actionError } : { saved: "decision" }));
+}
+
+async function issueStockAction(formData: FormData) {
+  "use server";
+  const user = await requireUser();
+  const scope = await resolveStorePageScope(user, adminScopeSearchFromFormData(formData));
+  const itemIds = formData.getAll("itemId").map(String);
+  const quantities = formData.getAll("issueQty").map(Number);
+  let actionError: string | null = null;
+  try {
+    await issueStoreStock(
+      user,
+      storeScope(scope),
+      String(formData.get("issueId") ?? ""),
+      itemIds.map((itemId, index) => ({ itemId, quantity: quantities[index] })),
+    );
+  } catch (error) {
+    actionError = storeActionError(error);
+  }
+  redirect(issueRedirect(scope, actionError ? { error: actionError } : { saved: "issued" }));
+}
+
+async function notEnoughStockAction(formData: FormData) {
+  "use server";
+  const user = await requireUser();
+  const scope = await resolveStorePageScope(user, adminScopeSearchFromFormData(formData));
+  let actionError: string | null = null;
+  try {
+    await markIssueNotEnoughStock(
+      user,
+      storeScope(scope),
+      String(formData.get("issueId") ?? ""),
+      String(formData.get("reason") ?? ""),
+    );
+  } catch (error) {
+    actionError = storeActionError(error);
+  }
+  redirect(issueRedirect(scope, actionError ? { error: actionError } : { saved: "not-enough" }));
+}
+
+export default async function IssuePage({ searchParams }: { searchParams: Promise<PageQuery> }) {
+  const user = await requireUser();
+  const canCreate = canUseUserPermission(user, PermissionKey.CREATE_STORE_ISSUE);
+  const canApprove = canUseUserPermission(user, PermissionKey.APPROVE_STORE_ISSUE);
+  const canIssue = canUseUserPermission(user, PermissionKey.ISSUE_STOCK);
+  if (!canCreate && !canApprove && !canIssue) redirect("/dashboard");
+  const query = await searchParams;
+  const scope = await resolveStorePageScope(user, query);
+
+  const [stocks, cmWorks, issues] = await Promise.all([
+    db.storeStock.findMany({
+      where: { plantId: scope.plant.id, quantity: { gt: 0 }, store: { active: true }, sparePart: { active: true } },
+      include: {
+        store: { select: { id: true, code: true, name: true, category: { select: { name: true } } } },
+        sparePart: {
+          select: {
+            id: true,
+            code: true,
+            itemCode: true,
+            name: true,
+            unit: true,
+            minStock: true,
+            category: { select: { name: true } },
+            applicableZones: { select: { zone: { select: { name: true } } } },
+          },
+        },
+      },
+      orderBy: [{ store: { name: "asc" } }, { sparePart: { name: "asc" } }],
+    }),
+    db.cmWork.findMany({
+      where: { plantId: scope.plant.id, organizationId: scope.organization.id },
+      orderBy: { createdAt: "desc" },
+      take: 100,
+      select: { id: true, number: true, problemTitle: true, machineName: true },
+    }),
+    db.sparePartIssue.findMany({
+      where: {
+        plantId: scope.plant.id,
+        ...(!canApprove && !canIssue ? { requesterUserId: user.id } : {}),
+      },
+      include: {
+        cmWork: { select: { number: true } },
+        requesterUser: { select: { fullName: true } },
+        engineer: { select: { fullName: true } },
+        storeOfficer: { select: { fullName: true } },
+        items: {
+          include: {
+            store: { select: { code: true, name: true } },
+            sparePart: { select: { code: true, name: true, unit: true } },
+          },
+          orderBy: { id: "asc" },
+        },
+      },
+      orderBy: { requestedAt: "desc" },
+      take: 50,
+    }),
+  ]);
+
+  function CompactIssueRow({ issue }: { issue: (typeof issues)[number] }) {
+    const itemSummary = issue.items
+      .map((item) => `${item.sparePart.code} ${item.sparePart.name}`)
+      .join(", ");
+    return (
+      <article className="issue-row-two-line rounded-2xl border border-[var(--line)] bg-[var(--card)] p-3 transition hover:-translate-y-0.5 hover:border-[var(--primary)] sm:p-4">
+        <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
+          <div className="min-w-0">
+            <div className="flex min-w-0 flex-wrap items-center gap-2">
+              <p className="truncate font-mono text-base font-extrabold text-[var(--primary)]">{issue.number}</p>
+              <StoreIssueStatusBadge status={issue.status} />
+            </div>
+            <p className="mt-1 truncate text-sm text-[var(--muted)]">
+              {issue.cmWork?.number ? `CM: ${issue.cmWork.number}` : "Direct issue"} · {issue.requesterUser?.fullName ?? issue.requesterName} · {formatThaiMediumDateTime(issue.requestedAt)}
+            </p>
+            <p className="mt-1 truncate text-sm font-semibold">{itemSummary || "-"}</p>
+          </div>
+          <details className="group rounded-xl border border-[var(--line)] bg-[var(--soft)]">
+            <summary className="cursor-pointer list-none px-3 py-2 text-sm font-extrabold text-[var(--primary)]">
+              Details / Action
+            </summary>
+            <div className="grid gap-3 border-t border-[var(--line)] p-3">
+              {issue.items.map((item) => {
+                const approved = Number(item.approvedQty ?? item.requestedQty);
+                const issued = Number(item.issuedQty ?? 0);
+                return (
+                  <div className="grid gap-1 rounded-xl bg-[var(--surface)] p-3 text-sm sm:grid-cols-[1fr_auto] sm:items-center" key={item.id}>
+                    <div className="min-w-0">
+                      <p className="truncate font-bold">{item.sparePart.code} · {item.sparePart.name}</p>
+                      {item.lineNumber ? <p className="truncate font-mono text-[11px] text-[var(--primary)]">{item.lineNumber}</p> : null}
+                      <p className="text-xs text-[var(--muted)]">{item.store?.code ?? "-"} · Request {formatQty(Number(item.requestedQty))} {item.sparePart.unit}</p>
+                    </div>
+                    <p className="font-bold">Issued {formatQty(issued)} / {formatQty(approved)}</p>
+                  </div>
+                );
+              })}
+
+              {canApprove && issue.status === StoreIssueStatus.WAITING_ENGINEER_APPROVAL ? (
+                <form action={engineerDecisionAction} className="grid gap-2 rounded-xl bg-[var(--surface)] p-3 sm:grid-cols-[1fr_repeat(3,auto)] sm:items-end">
+                  <AdminScopeHiddenFields scope={scope} />
+                  <input name="issueId" type="hidden" value={issue.id} />
+                  <label className="grid gap-1 text-sm font-bold">
+                    Reason
+                    <input className={inputClass} name="reason" />
+                  </label>
+                  <DecisionButton decision="APPROVE" icon={<CheckCircle2 size={16} />} label="Approve" />
+                  <DecisionButton decision="RETURN" icon={<RotateCcw size={16} />} label="Return" />
+                  <DecisionButton decision="REJECT" icon={<XCircle size={16} />} label="Reject" />
+                </form>
+              ) : null}
+
+              {canIssue && [StoreIssueStatus.WAITING_STORE_ISSUE, StoreIssueStatus.PARTIALLY_ISSUED].includes(issue.status as never) ? (
+                <div className="grid gap-3 lg:grid-cols-[1fr_240px]">
+                  <form action={issueStockAction} className="grid gap-2 rounded-xl bg-[var(--surface)] p-3">
+                    <AdminScopeHiddenFields scope={scope} />
+                    <input name="issueId" type="hidden" value={issue.id} />
+                    {issue.items.map((item) => {
+                      const remaining = Number(item.approvedQty ?? item.requestedQty) - Number(item.issuedQty ?? 0);
+                      return (
+                        <label className="grid gap-1 text-sm font-bold sm:grid-cols-[1fr_140px] sm:items-center" key={item.id}>
+                          <span className="truncate">{item.sparePart.code} · Remain {formatQty(remaining)} {item.sparePart.unit}</span>
+                          <input name="itemId" type="hidden" value={item.id} />
+                          <input className={inputClass} defaultValue={remaining} max={remaining} min="0" name="issueQty" step="0.01" type="number" />
+                        </label>
+                      );
+                    })}
+                    <button className="min-h-11 rounded-xl bg-[var(--primary)] px-4 text-sm font-bold text-white transition hover:bg-[var(--primary-strong)]">
+                      Issue Stock
+                    </button>
+                  </form>
+                  <form action={notEnoughStockAction} className="grid content-end gap-2 rounded-xl bg-[var(--surface)] p-3">
+                    <AdminScopeHiddenFields scope={scope} />
+                    <input name="issueId" type="hidden" value={issue.id} />
+                    <label className="grid gap-1 text-sm font-bold">
+                      Not enough reason
+                      <input className={inputClass} name="reason" required />
+                    </label>
+                    <button className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-red-500/30 px-4 font-bold text-red-600 transition hover:bg-red-500/10">
+                      <PackageX size={17} />
+                      Not enough stock
+                    </button>
+                  </form>
+                </div>
+              ) : null}
+
+              {issue.rejectReason ? <p className="rounded-xl bg-red-500/10 px-3 py-2 text-sm text-red-700 dark:text-red-300">Reason: {issue.rejectReason}</p> : null}
+              {(issue.engineer || issue.storeOfficer) ? (
+                <p className="text-xs text-[var(--muted)]">
+                  Engineer: {issue.engineer?.fullName ?? "-"} · Store Officer: {issue.storeOfficer?.fullName ?? "-"}
+                </p>
+              ) : null}
+            </div>
+          </details>
+        </div>
+      </article>
+    );
+  }
+
+  return (
+    <AppShell>
+      <div className="space-y-6">
+        <section className="rounded-3xl border border-[var(--line)] bg-[var(--surface)] p-5 shadow-[var(--shadow)] sm:p-7">
+          <p className="inline-flex items-center gap-2 rounded-full bg-[var(--soft)] px-3 py-1.5 text-sm font-bold text-[var(--primary)]">
+            <ArrowUpFromLine size={16} />
+            Store Inventory
+          </p>
+          <h1 className="mt-4 text-2xl font-extrabold sm:text-3xl">Issue Stock</h1>
+          <p className="mt-2 text-sm text-[var(--muted)]">
+            เบิกอะไหล่อ้างอิง CM หรือเบิกโดยตรง ผ่าน Engineer อนุมัติก่อน Store Officer จ่ายของ
+          </p>
+        </section>
+
+        <AdminSiteScopeSelector action="/inventory/issue" scope={scope} title="Site สำหรับใบเบิก" />
+
+        {query.created ? (
+          <p className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 font-bold text-emerald-700 dark:text-emerald-300">
+            ส่งคำขอเบิกสำเร็จ เลขที่ใบเบิก: <span className="font-mono">{query.created}</span>
+          </p>
+        ) : null}
+        {query.saved ? (
+          <p className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 font-bold text-emerald-700 dark:text-emerald-300">
+            บันทึกการดำเนินการเรียบร้อยแล้ว
+          </p>
+        ) : null}
+        {query.error ? (
+          <p className="rounded-2xl border border-red-500/30 bg-red-500/10 px-4 py-3 font-bold text-red-700 dark:text-red-300" role="alert">
+            ดำเนินการไม่สำเร็จ: {query.error}
+          </p>
+        ) : null}
+
+        {canCreate ? (
+          <section className="rounded-3xl border border-[var(--line)] bg-[var(--surface)] p-5 shadow-[var(--shadow)] sm:p-6">
+            <h2 className="text-xl font-extrabold">สร้างใบขอเบิก</h2>
+            <IssueRequestForm
+              action={createIssueAction}
+              cmWorks={cmWorks.map((work) => ({
+                id: work.id,
+                number: work.number,
+                label: `${work.machineName} · ${work.problemTitle}`,
+              }))}
+              organizationId={scope.organization.id}
+              plantId={scope.plant.id}
+              stocks={stocks.map((stock) => ({
+                storeId: stock.storeId,
+                sparePartId: stock.sparePartId,
+                label: `${stock.store.code} · ${stock.sparePart.code} · ${stock.sparePart.name}`,
+                available: Number(stock.quantity),
+                unit: stock.sparePart.unit,
+                storeCode: stock.store.code,
+                storeName: stock.store.name,
+                storeCategoryName: stock.store.category?.name,
+                sparePartCode: stock.sparePart.code,
+                sparePartName: stock.sparePart.name,
+                sparePartCategoryName: stock.sparePart.category?.name,
+                itemCode: stock.sparePart.itemCode,
+                zoneNames: stock.sparePart.applicableZones.map((item) => item.zone.name),
+                stockStatus: buildStoreStockStatus(Number(stock.quantity), Number(stock.sparePart.minStock)),
+              }))}
+            />
+          </section>
+        ) : null}
+
+        <section className="rounded-3xl border border-[var(--line)] bg-[var(--surface)] p-5 shadow-[var(--shadow)] sm:p-6">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <ClipboardList className="text-[var(--primary)]" size={21} />
+              <h2 className="text-xl font-extrabold">ใบเบิกล่าสุด</h2>
+            </div>
+            <span className="rounded-full bg-[var(--soft)] px-3 py-1 text-sm font-bold">{issues.length} รายการ</span>
+          </div>
+          <div className="mt-4 grid gap-2">
+            {issues.map((issue) => (
+              <div key={issue.id}>
+                <CompactIssueRow issue={issue} />
+                <article className="hidden rounded-2xl border border-[var(--line)] bg-[var(--card)] p-4">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <p className="font-mono text-base font-extrabold text-[var(--primary)]">{issue.number}</p>
+                    <p className="mt-1 text-sm text-[var(--muted)]">
+                      {issue.cmWork?.number ? `CM: ${issue.cmWork.number}` : "เบิกโดยตรง"} · {formatThaiMediumDateTime(issue.requestedAt)}
+                    </p>
+                    <p className="mt-1 text-sm">ผู้ขอ: {issue.requesterUser?.fullName ?? issue.requesterName}</p>
+                  </div>
+                  <StoreIssueStatusBadge status={issue.status} />
+                </div>
+
+                <div className="mt-3 grid gap-2">
+                  {issue.items.map((item) => {
+                    const approved = Number(item.approvedQty ?? item.requestedQty);
+                    const issued = Number(item.issuedQty ?? 0);
+                    return (
+                      <div className="grid gap-1 rounded-xl bg-[var(--soft)] p-3 text-sm sm:grid-cols-[1fr_auto] sm:items-center" key={item.id}>
+                        <div>
+                          <p className="font-bold">{item.sparePart.code} · {item.sparePart.name}</p>
+                          {item.lineNumber ? <p className="font-mono text-[11px] text-[var(--primary)]">{item.lineNumber}</p> : null}
+                          <p className="text-xs text-[var(--muted)]">{item.store?.code ?? "-"} · ขอ {formatQty(Number(item.requestedQty))} {item.sparePart.unit}</p>
+                        </div>
+                        <p className="font-bold">จ่ายแล้ว {formatQty(issued)} / {formatQty(approved)}</p>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {canApprove && issue.status === StoreIssueStatus.WAITING_ENGINEER_APPROVAL ? (
+                  <form action={engineerDecisionAction} className="mt-4 grid gap-2 sm:grid-cols-[1fr_repeat(3,auto)] sm:items-end">
+                    <AdminScopeHiddenFields scope={scope} />
+                    <input name="issueId" type="hidden" value={issue.id} />
+                    <label className="grid gap-1 text-sm font-bold">
+                      หมายเหตุสำหรับ Reject / ส่งกลับ
+                      <input className={inputClass} name="reason" />
+                    </label>
+                    <DecisionButton decision="APPROVE" icon={<CheckCircle2 size={16} />} label="อนุมัติ" />
+                    <DecisionButton decision="RETURN" icon={<RotateCcw size={16} />} label="ส่งกลับแก้ไข" />
+                    <DecisionButton decision="REJECT" icon={<XCircle size={16} />} label="Reject" />
+                  </form>
+                ) : null}
+
+                {canIssue && [StoreIssueStatus.WAITING_STORE_ISSUE, StoreIssueStatus.PARTIALLY_ISSUED].includes(issue.status as never) ? (
+                  <div className="mt-4 grid gap-3 lg:grid-cols-[1fr_auto]">
+                    <form action={issueStockAction} className="grid gap-2">
+                      <AdminScopeHiddenFields scope={scope} />
+                      <input name="issueId" type="hidden" value={issue.id} />
+                      {issue.items.map((item) => {
+                        const remaining = Number(item.approvedQty ?? item.requestedQty) - Number(item.issuedQty ?? 0);
+                        return (
+                          <label className="grid gap-1 text-sm font-bold sm:grid-cols-[1fr_160px] sm:items-center" key={item.id}>
+                            <span>{item.sparePart.code} · คงเหลือต้องจ่าย {formatQty(remaining)} {item.sparePart.unit}</span>
+                            <input name="itemId" type="hidden" value={item.id} />
+                            <input className={inputClass} defaultValue={remaining} max={remaining} min="0" name="issueQty" step="0.01" type="number" />
+                          </label>
+                        );
+                      })}
+                      <button className="mt-1 min-h-12 rounded-xl bg-[var(--primary)] px-5 font-bold text-white transition hover:bg-[var(--primary-strong)]">
+                        จ่าย Stock ตามจำนวน
+                      </button>
+                    </form>
+                    <form action={notEnoughStockAction} className="grid gap-2 lg:w-64">
+                      <AdminScopeHiddenFields scope={scope} />
+                      <input name="issueId" type="hidden" value={issue.id} />
+                      <label className="grid gap-1 text-sm font-bold">
+                        เหตุผลของไม่พอ
+                        <input className={inputClass} name="reason" required />
+                      </label>
+                      <button className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-red-500/30 px-4 font-bold text-red-600 transition hover:bg-red-500/10">
+                        <PackageX size={17} />
+                        Not enough stock
+                      </button>
+                    </form>
+                  </div>
+                ) : null}
+
+                {issue.rejectReason ? <p className="mt-3 rounded-xl bg-red-500/10 px-3 py-2 text-sm text-red-700 dark:text-red-300">เหตุผล: {issue.rejectReason}</p> : null}
+                {(issue.engineer || issue.storeOfficer) ? (
+                  <p className="mt-3 text-xs text-[var(--muted)]">
+                    Engineer: {issue.engineer?.fullName ?? "-"} · Store Officer: {issue.storeOfficer?.fullName ?? "-"}
+                  </p>
+                ) : null}
+                </article>
+              </div>
+            ))}
+            {!issues.length ? <p className="rounded-2xl border border-dashed border-[var(--line)] p-8 text-center text-sm text-[var(--muted)]">ยังไม่มีใบเบิกใน Site นี้</p> : null}
+          </div>
+        </section>
+      </div>
+    </AppShell>
+  );
+}
+
+function DecisionButton({ decision, icon, label }: { decision: string; icon: React.ReactNode; label: string }) {
+  return (
+    <button className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-[var(--line)] px-4 text-sm font-bold transition hover:border-[var(--primary)] hover:text-[var(--primary)]" name="decision" value={decision}>
+      {icon}
+      {label}
+    </button>
+  );
+}
+
+function StoreIssueStatusBadge({ status }: { status: string }) {
+  const labels: Record<string, string> = {
+    [StoreIssueStatus.WAITING_ENGINEER_APPROVAL]: "รอ Engineer อนุมัติ",
+    [StoreIssueStatus.RETURNED_FOR_EDIT]: "ส่งกลับแก้ไข",
+    [StoreIssueStatus.ENGINEER_REJECTED]: "Engineer Reject",
+    [StoreIssueStatus.WAITING_STORE_ISSUE]: "รอ Store จ่าย",
+    [StoreIssueStatus.PARTIALLY_ISSUED]: "จ่ายบางส่วน",
+    [StoreIssueStatus.ISSUED]: "จ่ายครบแล้ว",
+    [StoreIssueStatus.NOT_ENOUGH_STOCK]: "ของไม่พอ",
+    [StoreIssueStatus.STORE_REJECTED]: "Store Reject",
+    [StoreIssueStatus.CANCELED]: "ยกเลิก",
+  };
+  return <span className="rounded-full bg-[var(--soft)] px-3 py-1.5 text-xs font-extrabold">{labels[status] ?? status}</span>;
+}
+
+function storeScope(scope: Awaited<ReturnType<typeof resolveStorePageScope>>) {
+  return {
+    organizationId: scope.organization.id,
+    plantId: scope.plant.id,
+    plantCode: scope.plant.code,
+  };
+}
+
+function issueRedirect(
+  scope: Awaited<ReturnType<typeof resolveStorePageScope>>,
+  result: Record<string, string>,
+) {
+  const params = new URLSearchParams({
+    organizationId: scope.organization.id,
+    plantId: scope.plant.id,
+    ...result,
+  });
+  return `/inventory/issue?${params}`;
+}
+
+function optionalText(value: FormDataEntryValue | null) {
+  const normalized = String(value ?? "").trim();
+  return normalized || null;
+}
+
+function storeActionError(error: unknown) {
+  if (!(error instanceof Error)) return "โปรดลองใหม่อีกครั้ง";
+  const expected = [
+    "required",
+    "invalid",
+    "not found",
+    "outside",
+    "exceeds",
+    "Not enough stock",
+    "must be",
+    "greater than zero",
+  ];
+  return expected.some((text) => error.message.includes(text))
+    ? error.message
+    : "ไม่สามารถดำเนินการได้ โปรดตรวจสอบข้อมูลและลองใหม่";
+}
+
+function buildStoreStockStatus(quantity: number, minStock: number) {
+  if (quantity <= 0) return "OUT";
+  if (quantity <= minStock) return "LOW";
+  return "ENOUGH";
+}
+
+function formatQty(value: number) {
+  return new Intl.NumberFormat("th-TH", { maximumFractionDigits: 2 }).format(value);
+}
+
+const inputClass =
+  "min-h-12 w-full rounded-xl border border-[var(--line)] bg-[var(--surface)] px-3 text-[var(--ink)] outline-none transition focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/15";

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import type { FormEvent } from "react";
 import { CmDateFilterBar } from "./cm-date-filter-bar";
+import { AutoSubmitSelect } from "./auto-submit-select";
 import type { CmDateFilterInput } from "../modules/filters/cm-date-filter";
 import type { DashboardCategoryFilter } from "../modules/dashboard/dashboard-query";
 
@@ -87,13 +88,13 @@ function SelectField({
   return (
     <label className="grid gap-1 text-sm font-semibold">
       <span className="text-[var(--muted)]">{label}</span>
-      <select className="min-h-[52px] rounded-2xl border border-[var(--line)] bg-[var(--soft)] px-3 py-3 outline-none" defaultValue={value} name={name}>
+      <AutoSubmitSelect className="min-h-[52px] rounded-2xl border border-[var(--line)] bg-[var(--soft)] px-3 py-3 outline-none" defaultValue={value} name={name}>
         {options.map((option) => (
           <option key={option.label} value={option.value}>
             {option.label}
           </option>
         ))}
-      </select>
+      </AutoSubmitSelect>
     </label>
   );
 }

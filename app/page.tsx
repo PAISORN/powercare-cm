@@ -14,7 +14,8 @@ import { getDashboardSummaryForDateFilter, type DashboardCategoryFilter } from "
 import { hasExplicitCmDateFilter, parseCmDateFilter, type CmDateFilterInput } from "../modules/filters/cm-date-filter";
 import { listPublicAnnouncements } from "../modules/announcements/announcement-service";
 import { formatOrganizationDashboardTitle } from "../modules/organization/organization-profile";
-import { readOrganizationProfile } from "../modules/organization/organization-service";
+import { readPlantProfile } from "../modules/organization/plant-profile-service";
+import { readOrganizationScope } from "../modules/organization/organization-scope-service";
 import { db } from "../lib/db";
 
 const statusColors: Record<WorkStatus, string> = {
@@ -22,6 +23,7 @@ const statusColors: Record<WorkStatus, string> = {
   [WorkStatus.WAITING_TO_CLAIM]: "#f59e0b",
   [WorkStatus.CLAIMED]: "#14b8a6",
   [WorkStatus.IN_PROGRESS]: "#8b5cf6",
+  [WorkStatus.BACKLOG_SHUTDOWN]: "#78716c",
   [WorkStatus.WAITING_TO_CLOSE]: "#ef4444",
   [WorkStatus.RETURNED_FOR_CORRECTION]: "#fb7185",
   [WorkStatus.CLOSED]: "#22c55e",
@@ -33,6 +35,7 @@ const inProcessStatuses = [
   WorkStatus.WAITING_TO_CLAIM,
   WorkStatus.CLAIMED,
   WorkStatus.IN_PROGRESS,
+  WorkStatus.BACKLOG_SHUTDOWN,
   WorkStatus.WAITING_TO_CLOSE,
   WorkStatus.RETURNED_FOR_CORRECTION,
 ];
@@ -57,9 +60,12 @@ async function submitPublicFeedback(formData: FormData) {
   const message = String(formData.get("message") ?? "").trim();
 
   if (!name || !message) redirect("/?feedback=error#feedback");
+  const scope = await readOrganizationScope();
 
   await db.publicFeedback.create({
     data: {
+      organizationId: scope.organization.id,
+      plantId: scope.plant.id,
       name: name.slice(0, 120),
       department: department ? department.slice(0, 120) : null,
       message: message.slice(0, 1500),
@@ -76,10 +82,11 @@ export default async function LandingPage({ searchParams }: { searchParams: Prom
   const activeDateFilterInput = readDateFilterInput(params);
   const hasExplicitDateFilter = hasExplicitCmDateFilter(activeDateFilterInput);
   const activeDateFilter = hasExplicitDateFilter ? safeParseDateFilter(activeDateFilterInput) : undefined;
+  const scope = await readOrganizationScope();
   const [summary, announcements, organization] = await Promise.all([
-    getDashboardSummaryForDateFilter({ category: activeCategoryFilter, dateFilter: activeDateFilter }),
-    listPublicAnnouncements(),
-    readOrganizationProfile(),
+    getDashboardSummaryForDateFilter({ category: activeCategoryFilter, dateFilter: activeDateFilter, scope: { plantId: scope.plant.id } }),
+    listPublicAnnouncements(new Date(), scope.organization.id),
+    readPlantProfile(scope.plant.id),
   ]);
   const statusCountByKey = new Map<WorkStatus, number>(summary.byStatus.map((item) => [item.status as WorkStatus, item.count]));
   const statusRows = Object.values(WorkStatus).map((status) => ({
@@ -112,7 +119,7 @@ export default async function LandingPage({ searchParams }: { searchParams: Prom
                 <Factory size={17} />
                 CM Operations Dashboard
               </p>
-              <h1 className="mt-5 max-w-5xl text-3xl font-extrabold tracking-normal sm:text-4xl">{formatOrganizationDashboardTitle(organization.companyName)}</h1>
+              <h1 className="mt-5 max-w-5xl text-3xl font-extrabold tracking-normal sm:text-4xl">{formatOrganizationDashboardTitle(organization.displayName)}</h1>
               <p className="mt-2 max-w-2xl text-white/80">Operation Command Center สำหรับดูสถานะ งานเร่งด่วน โซน และแนวโน้มรายเดือนในหน้าเดียว</p>
               <div className="mt-5 flex flex-wrap gap-4 text-sm text-white/90">
                 <span className="inline-flex items-center gap-2">
@@ -126,7 +133,7 @@ export default async function LandingPage({ searchParams }: { searchParams: Prom
                 </span>
               </div>
             </div>
-            <OrganizationHeroLogo companyName={organization.companyName} hasLogo={organization.hasLogo} />
+            <OrganizationHeroLogo companyName={organization.displayName} hasLogo={organization.hasLogo} logoSrc={`/organization-logo?plantId=${encodeURIComponent(scope.plant.id)}`} />
           </div>
         </section>
 
@@ -190,7 +197,7 @@ export default async function LandingPage({ searchParams }: { searchParams: Prom
           <Panel title="Plant Zone Workload" icon={<Factory size={22} className="text-[#f59e0b]" />} aside={hasExplicitDateFilter ? "All zones" : "Current year"}>
             <div className="mt-4 grid gap-4">
               {zoneRows.map((row, index) => (
-                <ZoneBar key={row.label} row={row} color={zoneColors[index % zoneColors.length]} />
+                <ZoneBar key={`${row.label}-${index}`} row={row} color={zoneColors[index % zoneColors.length]} />
               ))}
             </div>
           </Panel>
@@ -352,8 +359,8 @@ function Donut({ rows, total, centerLabel }: { rows: { label: string; value: num
 function Legend({ rows, total }: { rows: { label: string; value: number; color: string }[]; total: number }) {
   return (
     <div className="mx-auto grid w-full max-w-[310px] gap-1.5 lg:mx-0 lg:max-w-[230px] lg:justify-self-end">
-      {rows.map((row) => (
-        <div key={row.label} className="flex items-center justify-between gap-2 rounded-xl bg-[var(--soft)] px-2.5 py-1.5 text-sm">
+      {rows.map((row, index) => (
+        <div key={`${row.label}-${index}`} className="flex items-center justify-between gap-2 rounded-xl bg-[var(--soft)] px-2.5 py-1.5 text-sm">
           <span className="flex min-w-0 items-center gap-2">
             <i className="h-3 w-3 shrink-0 rounded-full" style={{ backgroundColor: row.color }} />
             <span className="truncate">{row.label}</span>
@@ -374,6 +381,7 @@ function MonthlyTrendPanel({ rows }: { rows: MonthlyTrendRow[] }) {
     WorkStatus.WAITING_TO_CLAIM,
     WorkStatus.CLAIMED,
     WorkStatus.IN_PROGRESS,
+    WorkStatus.BACKLOG_SHUTDOWN,
     WorkStatus.WAITING_TO_CLOSE,
     WorkStatus.RETURNED_FOR_CORRECTION,
     WorkStatus.CLOSED,
@@ -459,6 +467,7 @@ function getFollowUpStatusTotal(row: MonthlyTrendRow) {
     getStatusCount(row, WorkStatus.WAITING_TO_CLAIM) +
     getStatusCount(row, WorkStatus.CLAIMED) +
     getStatusCount(row, WorkStatus.IN_PROGRESS) +
+    getStatusCount(row, WorkStatus.BACKLOG_SHUTDOWN) +
     getStatusCount(row, WorkStatus.WAITING_TO_CLOSE) +
     getStatusCount(row, WorkStatus.RETURNED_FOR_CORRECTION) +
     getStatusCount(row, WorkStatus.CLOSED) +
@@ -485,6 +494,8 @@ function getStatusDate(work: StatusDateInput) {
       return work.claimedAt ?? work.statusHistory[0]?.changedAt ?? work.createdAt;
     case WorkStatus.IN_PROGRESS:
       return work.inProgressAt ?? work.statusHistory[0]?.changedAt ?? work.createdAt;
+    case WorkStatus.BACKLOG_SHUTDOWN:
+      return work.statusHistory[0]?.changedAt ?? work.inProgressAt ?? work.createdAt;
     case WorkStatus.WAITING_TO_CLOSE:
       return work.waitingToCloseAt ?? work.statusHistory[0]?.changedAt ?? work.createdAt;
     case WorkStatus.CLOSED:

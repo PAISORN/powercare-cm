@@ -1,11 +1,15 @@
 import { CalendarClock, MessageCircleMore, RefreshCw, Save, Send, ShieldCheck } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { AdminScopeHiddenFields, AdminSiteScopeSelector } from "../../../components/admin-site-scope-selector";
 import { AppShell } from "../../../components/app-shell";
+import type { AdminSiteScope } from "../../../modules/admin/admin-site-scope";
 import { formatThaiDateTime } from "../../../lib/date-time/bangkok-time";
 import { db } from "../../../lib/db";
+import { getActiveCategoriesForPlantScope } from "../../../lib/query-cache";
 import { requireUser } from "../../../lib/session";
-import { RoleName, type Actor } from "../../../modules/cm-work/cm-work-types";
+import { canManageLineSettings, canTestLineMessaging } from "../../../modules/auth/permission";
+import type { Actor } from "../../../modules/cm-work/cm-work-types";
 import {
   getLineDailyReportSetting,
   lineDailyReportTemplateFields,
@@ -26,6 +30,8 @@ import {
 } from "../../../modules/line/line-settings-service";
 import { isLineServerConfigured, listLineDeliveryHistory } from "../../../modules/line/line-service";
 import { LINE_EVENT_TYPES, type LineEventType } from "../../../modules/line/line-types";
+import { resolveUserOperationalPlantId } from "../../../modules/organization/user-plant-scope";
+import { adminScopeSearchFromFormData, resolveAdminSiteScope } from "../../../modules/admin/admin-site-scope";
 
 const eventLabels: Record<string, string> = {
   NEW_REQUEST: "แจ้งซ่อมใหม่",
@@ -39,16 +45,51 @@ const eventLabels: Record<string, string> = {
   DAILY_REPORT: "รายงานสรุปประจำวัน",
 };
 
-function actorFrom(user: { id: string; role: string; categoryId: string | null }): Actor {
-  return { id: user.id, role: user.role as Actor["role"], categoryId: user.categoryId };
+Object.assign(eventLabels, {
+  NEW_REQUEST: "แจ้งซ่อมใหม่",
+  CLAIMED: "รับงาน",
+  REASSIGNED: "มอบหมายงาน",
+  STATUS_CHANGED: "เปลี่ยนสถานะงาน",
+  RETURNED: "ส่งกลับให้แก้ไข",
+  WAITING_CLOSE: "รอปิดงาน",
+  CLOSED: "ปิดงานแล้ว",
+  CANCELED: "ยกเลิกงาน",
+  STORE_ISSUE_CREATED: "สร้างใบเบิกอะไหล่",
+  STORE_ISSUE_APPROVED: "Engineer อนุมัติใบเบิก",
+  STORE_ISSUE_REJECTED: "Reject ใบเบิกอะไหล่",
+  STORE_ISSUE_ISSUED: "Store Officer จ่ายอะไหล่",
+  STORE_NOT_ENOUGH_STOCK: "อะไหล่ไม่พอ",
+  DAILY_REPORT: "รายงานสรุปประจำวัน",
+});
+
+function actorFrom(
+  user: {
+    id: string;
+    role: string;
+    categoryId: string | null;
+    plantId?: string | null;
+    siteAdminPermissions?: Actor["siteAdminPermissions"];
+  },
+  organizationId: string,
+  plantId?: string | null,
+): Actor {
+  return {
+    id: user.id,
+    role: user.role as Actor["role"],
+    categoryId: user.categoryId,
+    organizationId,
+    plantId: plantId ?? user.plantId,
+    siteAdminPermissions: user.siteAdminPermissions,
+  };
 }
 
 async function saveAction(formData: FormData) {
   "use server";
   const user = await requireUser();
-  if (user.role !== RoleName.ADMIN) redirect("/dashboard");
+  if (!canManageLineSettings(user)) redirect("/dashboard");
+  const scope = await resolveAdminSiteScope(user, adminScopeSearchFromFormData(formData));
   try {
-    await saveLineDestination(actorFrom(user), {
+    await saveLineDestination(actorFrom(user, scope.organization.id, scope.plant.id), {
       id: String(formData.get("id") ?? "") || null,
       discoveryId: String(formData.get("discoveryId") ?? "") || null,
       displayName: String(formData.get("displayName") ?? ""),
@@ -58,39 +99,42 @@ async function saveAction(formData: FormData) {
       enabledEvents: formData.getAll("enabledEvents").map(String),
     });
   } catch {
-    redirect("/admin/line?error=save");
+    redirect(`${lineScopePath(scope)}&error=save`);
   }
-  redirect("/admin/line?saved=1");
+  redirect(`${lineScopePath(scope)}&saved=1`);
 }
 
 async function testAction(formData: FormData) {
   "use server";
   const user = await requireUser();
-  if (user.role !== RoleName.ADMIN) redirect("/dashboard");
+  if (!canTestLineMessaging(user)) redirect("/dashboard");
+  const scope = await resolveAdminSiteScope(user, adminScopeSearchFromFormData(formData));
   try {
-    await testLineDestination(actorFrom(user), String(formData.get("id") ?? ""));
+    await testLineDestination(actorFrom(user, scope.organization.id, scope.plant.id), String(formData.get("id") ?? ""));
   } catch {
-    redirect("/admin/line?error=test");
+    redirect(`${lineScopePath(scope)}&error=test`);
   }
-  redirect("/admin/line?tested=1");
+  redirect(`${lineScopePath(scope)}&tested=1`);
 }
 
 async function retryAction(formData: FormData) {
   "use server";
   const user = await requireUser();
-  if (user.role !== RoleName.ADMIN) redirect("/dashboard");
+  if (!canManageLineSettings(user)) redirect("/dashboard");
+  const scope = await resolveAdminSiteScope(user, adminScopeSearchFromFormData(formData));
   try {
-    await retryFailedLineDelivery(actorFrom(user), String(formData.get("id") ?? ""));
+    await retryFailedLineDelivery(actorFrom(user, scope.organization.id, scope.plant.id), String(formData.get("id") ?? ""));
   } catch {
-    redirect("/admin/line?error=retry");
+    redirect(`${lineScopePath(scope)}&error=retry`);
   }
-  redirect("/admin/line?retried=1");
+  redirect(`${lineScopePath(scope)}&retried=1`);
 }
 
 async function saveDailyReportAction(formData: FormData) {
   "use server";
   const user = await requireUser();
-  if (user.role !== RoleName.ADMIN) redirect("/dashboard");
+  if (!canManageLineSettings(user)) redirect("/dashboard");
+  const scope = await resolveAdminSiteScope(user, adminScopeSearchFromFormData(formData));
   try {
     const setting = await saveLineDailyReportSetting({
       enabled: formData.get("dailyReportEnabled") === "on",
@@ -98,10 +142,12 @@ async function saveDailyReportAction(formData: FormData) {
       sendTime: normalizeLineDailyReportSendTime(formData.get("dailyReportSendTime")),
       dateMode: normalizeLineDailyReportDateMode(formData.get("dailyReportDateMode")),
       template: templateFromFormData(formData),
-    });
+    }, scope.organization.id, scope.plant.id);
     await db.auditEvent.create({
       data: {
         actorId: user.id,
+        organizationId: scope.organization.id,
+        plantId: scope.plant.id,
         entityType: "LineDailyReportSetting",
         entityId: setting.id,
         action: "UPDATE_LINE_DAILY_REPORT_SETTING",
@@ -114,37 +160,42 @@ async function saveDailyReportAction(formData: FormData) {
       },
     });
   } catch {
-    redirect("/admin/line?error=daily-report");
+    redirect(`${lineScopePath(scope)}&error=daily-report`);
   }
-  redirect("/admin/line?dailyReportSaved=1");
+  redirect(`${lineScopePath(scope)}&dailyReportSaved=1`);
 }
 
-async function sendDailyReportNowAction() {
+async function sendDailyReportNowAction(formData: FormData) {
   "use server";
   const user = await requireUser();
-  if (user.role !== RoleName.ADMIN) redirect("/dashboard");
+  if (!canTestLineMessaging(user)) redirect("/dashboard");
+  const scope = await resolveAdminSiteScope(user, adminScopeSearchFromFormData(formData));
   let result: LineDailyReportDispatchResult;
   try {
     result = await dispatchLineDailyReport({
       force: true,
+      organizationId: scope.organization.id,
+      plantId: scope.plant.id,
       eventIdSuffix: `manual-${Date.now()}`,
     });
     await db.auditEvent.create({
       data: {
         actorId: user.id,
+        organizationId: scope.organization.id,
+        plantId: scope.plant.id,
         entityType: "LineDailyReportSetting",
-        entityId: "default",
+        entityId: scope.organization.id,
         action: "SEND_LINE_DAILY_REPORT_TEST",
         afterJson: JSON.stringify(result),
       },
     });
   } catch {
-    redirect("/admin/line?error=daily-report-test");
+    redirect(`${lineScopePath(scope)}&error=daily-report-test`);
   }
   if (result.status === "SENT") {
-    redirect("/admin/line?dailyReportTested=1");
+    redirect(`${lineScopePath(scope)}&dailyReportTested=1`);
   }
-  redirect(`/admin/line?dailyReportSkipped=${encodeURIComponent(result.reason)}`);
+  redirect(`${lineScopePath(scope)}&dailyReportSkipped=${encodeURIComponent(result.reason)}`);
 }
 
 export default async function AdminLineSettingsPage({
@@ -159,20 +210,25 @@ export default async function AdminLineSettingsPage({
     dailyReportSkipped?: string;
     error?: string;
     discovery?: string;
+    organizationId?: string;
+    plantId?: string;
   }>;
 }) {
   const user = await requireUser();
-  if (user.role !== RoleName.ADMIN) redirect("/dashboard");
-  const [destinations, categories, deliveries, discoveries, dailyReportSetting, query] = await Promise.all([
-    listLineDestinations(),
-    db.category.findMany({ where: { active: true }, orderBy: { name: "asc" } }),
-    listLineDeliveryHistory(),
-    listLineGroupDiscoveries(),
-    getLineDailyReportSetting(),
-    searchParams,
+  if (!canManageLineSettings(user)) redirect("/dashboard");
+  const query = await searchParams;
+  const scope = await resolveAdminSiteScope(user, query);
+  const plantId = scope.plant.id || resolveUserOperationalPlantId(user);
+  const [destinations, categories, deliveries, discoveries, dailyReportSetting] = await Promise.all([
+    listLineDestinations(scope.organization.id, plantId),
+    getActiveCategoriesForPlantScope(plantId, scope.organization.id),
+    listLineDeliveryHistory(scope.organization.id, 50, plantId),
+    listLineGroupDiscoveries(scope.organization.id),
+    getLineDailyReportSetting(scope.organization.id, plantId),
   ]);
   const selectedDiscovery = discoveries.find((discovery) => discovery.id === query.discovery) ?? null;
   const discoveryPrefill = selectedDiscovery ? resolveLineDiscoveryPrefill(selectedDiscovery) : null;
+  const canSendLineTest = canTestLineMessaging(user);
 
   return (
     <AppShell>
@@ -185,6 +241,14 @@ export default async function AdminLineSettingsPage({
           กำหนดกลุ่มปลายทาง Category และเหตุการณ์ที่ต้องการแจ้งเตือนผ่าน LINE Messaging API
         </p>
       </header>
+
+      <div className="mt-6">
+        <AdminSiteScopeSelector
+          scope={scope}
+          title="LINE scope"
+          description="เลือก Organization และ Site ที่ต้องการตั้งค่ากลุ่ม LINE"
+        />
+      </div>
 
       <div className={`mt-5 flex items-start gap-3 rounded-lg border px-4 py-3 ${isLineServerConfigured() ? "border-green-500/35 bg-green-500/10" : "border-amber-500/40 bg-amber-500/10"}`}>
         <ShieldCheck aria-hidden="true" className="mt-0.5 shrink-0" size={19} />
@@ -205,6 +269,8 @@ export default async function AdminLineSettingsPage({
 
       <DailyReportSettingsForm
         action={saveDailyReportAction}
+        canSendLineTest={canSendLineTest}
+        scope={scope}
         testAction={sendDailyReportNowAction}
         destinations={destinations.filter((destination) => destination.active)}
         setting={dailyReportSetting}
@@ -238,7 +304,7 @@ export default async function AdminLineSettingsPage({
               {discovery.addedDestinationId ? (
                 <p className="mt-3 text-sm font-semibold text-green-700">{discovery.addedDestination?.displayName ?? "เชื่อมกับกลุ่มแจ้งเตือนแล้ว"}</p>
               ) : (
-                <Link className="mt-3 inline-flex min-h-10 items-center rounded-md border border-[var(--line)] px-4 text-sm font-bold hover:bg-[var(--surface)]" href={`/admin/line?discovery=${encodeURIComponent(discovery.id)}#add-line-group`}>
+                <Link className="mt-3 inline-flex min-h-10 items-center rounded-md border border-[var(--line)] px-4 text-sm font-bold hover:bg-[var(--surface)]" href={`${lineScopePath(scope)}&discovery=${encodeURIComponent(discovery.id)}#add-line-group`}>
                   Add group
                 </Link>
               )}
@@ -250,7 +316,7 @@ export default async function AdminLineSettingsPage({
 
       <section className="mt-6 rounded-lg border border-[var(--line)] bg-[var(--surface)] p-5 shadow-[var(--shadow)]" id="add-line-group">
         <h2 className="text-xl font-bold">เพิ่มกลุ่ม LINE</h2>
-        <DestinationForm action={saveAction} categories={categories} prefill={discoveryPrefill ?? undefined} submitLabel="เพิ่มกลุ่ม" />
+        <DestinationForm action={saveAction} categories={categories} prefill={discoveryPrefill ?? undefined} scope={scope} submitLabel="เพิ่มกลุ่ม" />
       </section>
 
       <section className="mt-6">
@@ -275,14 +341,18 @@ export default async function AdminLineSettingsPage({
                 action={saveAction}
                 categories={categories}
                 destination={destination}
+                scope={scope}
                 submitLabel="บันทึกการแก้ไข"
               />
-              <form action={testAction} className="mt-3">
-                <input name="id" type="hidden" value={destination.id} />
-                <button className="inline-flex min-h-10 items-center gap-2 rounded-md border border-[var(--line)] px-4 text-sm font-bold hover:bg-[var(--soft)]" type="submit">
-                  <Send aria-hidden="true" size={16} /> ส่งข้อความทดสอบ
-                </button>
-              </form>
+              {canSendLineTest ? (
+                <form action={testAction} className="mt-3">
+                  <AdminScopeHiddenFields scope={scope} />
+                  <input name="id" type="hidden" value={destination.id} />
+                  <button className="inline-flex min-h-10 items-center gap-2 rounded-md border border-[var(--line)] px-4 text-sm font-bold hover:bg-[var(--soft)]" type="submit">
+                    <Send aria-hidden="true" size={16} /> ส่งข้อความทดสอบ
+                  </button>
+                </form>
+              ) : null}
             </article>
           ))}
           {!destinations.length ? <p className="rounded-lg border border-dashed border-[var(--line)] p-6 text-center text-[var(--muted)]">ยังไม่มีกลุ่ม LINE</p> : null}
@@ -308,6 +378,7 @@ export default async function AdminLineSettingsPage({
                   <td className="p-3">
                     {delivery.status === "FAILED" && delivery.attempts < 3 ? (
                       <form action={retryAction}>
+                        <AdminScopeHiddenFields scope={scope} />
                         <input name="id" type="hidden" value={delivery.id} />
                         <button className="inline-flex min-h-9 items-center gap-2 rounded-md border border-[var(--line)] px-3 font-bold" type="submit"><RefreshCw size={15} /> Retry</button>
                       </form>
@@ -326,12 +397,16 @@ export default async function AdminLineSettingsPage({
 
 function DailyReportSettingsForm({
   action,
+  canSendLineTest,
+  scope,
   testAction,
   destinations,
   setting,
 }: {
   action: (formData: FormData) => void | Promise<void>;
-  testAction: () => void | Promise<void>;
+  canSendLineTest: boolean;
+  scope: AdminSiteScope;
+  testAction: (formData: FormData) => void | Promise<void>;
   destinations: Array<{ id: string; displayName: string; category?: { name: string } | null }>;
   setting: {
     enabled: boolean;
@@ -359,6 +434,7 @@ function DailyReportSettingsForm({
       </div>
 
       <form action={action} className="mt-5 grid gap-5">
+        <AdminScopeHiddenFields scope={scope} />
         <div className="grid gap-4 lg:grid-cols-4">
           <label className="flex min-h-11 items-center gap-2 rounded-md border border-[var(--line)] bg-[var(--soft)] px-3 text-sm font-semibold">
             <input defaultChecked={setting.enabled} name="dailyReportEnabled" type="checkbox" /> เปิดรายงานประจำวัน
@@ -407,14 +483,17 @@ function DailyReportSettingsForm({
         </button>
       </form>
 
-      <form action={testAction} className="mt-3">
-        <button className="inline-flex min-h-11 w-fit items-center gap-2 rounded-md border border-[var(--primary)] bg-[var(--surface)] px-5 font-bold text-[var(--primary)] shadow-sm transition hover:-translate-y-0.5 hover:bg-[var(--soft)]" type="submit">
-          <Send aria-hidden="true" size={17} /> ส่งรายงาน LINE ทดสอบตอนนี้
-        </button>
-        <p className="mt-2 text-xs text-[var(--muted)]">
-          ใช้สำหรับทดสอบกลุ่มและรูปแบบข้อความทันที โดยไม่ต้องรอเวลาส่งรายงานประจำวัน
-        </p>
-      </form>
+      {canSendLineTest ? (
+        <form action={testAction} className="mt-3">
+          <AdminScopeHiddenFields scope={scope} />
+          <button className="inline-flex min-h-11 w-fit items-center gap-2 rounded-md border border-[var(--primary)] bg-[var(--surface)] px-5 font-bold text-[var(--primary)] shadow-sm transition hover:-translate-y-0.5 hover:bg-[var(--soft)]" type="submit">
+            <Send aria-hidden="true" size={17} /> ส่งรายงาน LINE ทดสอบตอนนี้
+          </button>
+          <p className="mt-2 text-xs text-[var(--muted)]">
+            ใช้สำหรับทดสอบกลุ่มและรูปแบบข้อความทันที โดยไม่ต้องรอเวลาส่งรายงานประจำวัน
+          </p>
+        </form>
+      ) : null}
     </section>
   );
 }
@@ -433,11 +512,16 @@ function Notice({ children, error = false }: { children: React.ReactNode; error?
   return <p className={`mt-5 rounded-lg px-4 py-3 font-semibold ${error ? "bg-red-500/10 text-red-700" : "bg-green-500/10 text-green-700"}`} role={error ? "alert" : "status"}>{children}</p>;
 }
 
+function lineScopePath(scope: AdminSiteScope) {
+  return `/admin/line?organizationId=${encodeURIComponent(scope.organization.id)}&plantId=${encodeURIComponent(scope.plant.id)}`;
+}
+
 function DestinationForm({
   action,
   categories,
   destination,
   prefill,
+  scope,
   submitLabel,
 }: {
   action: (formData: FormData) => void | Promise<void>;
@@ -455,6 +539,7 @@ function DestinationForm({
     targetId: string;
     active: boolean;
   };
+  scope: AdminSiteScope;
   submitLabel: string;
 }) {
   const enabled = new Set(
@@ -466,6 +551,7 @@ function DestinationForm({
   );
   return (
     <form action={action} className="mt-4 grid gap-4">
+      <AdminScopeHiddenFields scope={scope} />
       {destination ? <input name="id" type="hidden" value={destination.id} /> : null}
       {prefill ? <input name="discoveryId" type="hidden" value={prefill.discoveryId} /> : null}
       <div className="grid gap-4 md:grid-cols-2">

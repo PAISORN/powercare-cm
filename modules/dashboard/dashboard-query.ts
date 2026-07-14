@@ -1,10 +1,11 @@
 import type { Prisma } from "@prisma/client";
 import { db } from "../../lib/db";
-import { BANGKOK_TIME_ZONE, bangkokDayWindow } from "../../lib/date-time/bangkok-time";
-import { getAllCategories, getAllZones, getCachedDashboardSummary } from "../../lib/query-cache";
+import { BANGKOK_TIME_ZONE, bangkokDayWindow, getBangkokDateString } from "../../lib/date-time/bangkok-time";
+import { getAllCategoriesForPlantScope, getAllZonesForReportScope, getCachedDashboardSummary } from "../../lib/query-cache";
 import { Urgency, WorkStatus } from "../cm-work/cm-work-types";
 import type { ParsedCmDateFilter } from "../filters/cm-date-filter";
 import { initialCategories } from "../master-data/seed-data";
+import type { OperationalScope } from "../organization/user-plant-scope";
 import { buildMonthlyTrend } from "./dashboard-chart-data";
 
 export type DashboardCategoryFilter = "electrical" | "mechanical";
@@ -14,6 +15,15 @@ const categoryNameByFilter: Record<DashboardCategoryFilter, string> = {
   electrical: initialCategories[0],
   mechanical: initialCategories[1],
 };
+
+const inProcessDashboardStatuses = [
+  WorkStatus.WAITING_TO_CLAIM,
+  WorkStatus.CLAIMED,
+  WorkStatus.IN_PROGRESS,
+  WorkStatus.BACKLOG_SHUTDOWN,
+  WorkStatus.WAITING_TO_CLOSE,
+  WorkStatus.RETURNED_FOR_CORRECTION,
+];
 
 type DashboardDateWindow = {
   start: Date;
@@ -26,7 +36,11 @@ type DashboardTrendWindow = {
   monthCount?: number;
 };
 
-export function resolveDashboardSectionWindows(dateFilter: ParsedCmDateFilter | undefined, now = new Date()): {
+export function resolveDashboardSectionWindows(
+  dateFilter: ParsedCmDateFilter | undefined,
+  now = new Date(),
+  defaultTrendMonthCount = 6,
+): {
   summary: DashboardDateWindow | null;
   trend: DashboardTrendWindow;
   priority: DashboardDateWindow | null;
@@ -50,14 +64,15 @@ export function resolveDashboardSectionWindows(dateFilter: ParsedCmDateFilter | 
 
   const bangkokParts = getBangkokCalendarParts(now);
   const summaryStart = bangkokDayWindow(`${bangkokParts.year}-01-01`).start;
-  const trendStartMonth = new Date(Date.UTC(Number(bangkokParts.year), Number(bangkokParts.month) - 6, 1));
+  const trendMonthCount = Math.max(1, defaultTrendMonthCount);
+  const trendStartMonth = new Date(Date.UTC(Number(bangkokParts.year), Number(bangkokParts.month) - trendMonthCount, 1));
   const trendStart = bangkokDayWindow(
     `${trendStartMonth.getUTCFullYear()}-${String(trendStartMonth.getUTCMonth() + 1).padStart(2, "0")}-01`,
   ).start;
 
   return {
     summary: { start: summaryStart, endExclusive: now },
-    trend: { start: trendStart, endExclusive: now, monthCount: 6 },
+    trend: { start: trendStart, endExclusive: now, monthCount: trendMonthCount },
     priority: null,
   };
 }
@@ -68,6 +83,13 @@ export function composePriorityQueue<T>(groups: {
   statusPriority: T[];
 }) {
   return [...groups.critical, ...groups.urgent, ...groups.statusPriority].slice(0, 5);
+}
+
+export function getPreviousBangkokDayWindow(now = new Date()) {
+  const today = getBangkokDateString(now);
+  const [year, month, day] = today.split("-").map(Number);
+  const previousDate = new Date(Date.UTC(year, month - 1, day - 1)).toISOString().slice(0, 10);
+  return { date: previousDate, ...bangkokDayWindow(previousDate) };
 }
 
 export function normalizeDashboardTimeRange(value?: string): DashboardTimeRangeFilter | undefined {
@@ -93,18 +115,23 @@ export function getDashboardTimeRangeWindow(timeRange: DashboardTimeRangeFilter,
 export async function getDashboardSummary(filter?: {
   category?: DashboardCategoryFilter;
   timeRange?: DashboardTimeRangeFilter;
+  scope?: OperationalScope;
 }) {
-  const summary = await getCachedDashboardSummary(filter?.category, filter?.timeRange);
+  const summary = await getCachedDashboardSummary(filter?.category, filter?.timeRange, filter?.scope);
   return reviveDashboardSummary(summary);
 }
 
 export async function getDashboardSummaryForDateFilter(filter?: {
   category?: DashboardCategoryFilter;
   dateFilter?: ParsedCmDateFilter;
+  defaultTrendMonthCount?: number;
+  scope?: OperationalScope;
 }) {
   const summary = await loadDashboardSummary({
     category: filter?.category,
     dateFilter: filter?.dateFilter,
+    defaultTrendMonthCount: filter?.defaultTrendMonthCount,
+    scope: filter?.scope,
   });
   return reviveDashboardSummary(summary);
 }
@@ -113,9 +140,12 @@ export async function loadDashboardSummary(filter?: {
   category?: DashboardCategoryFilter;
   timeRange?: DashboardTimeRangeFilter;
   dateFilter?: ParsedCmDateFilter;
+  defaultTrendMonthCount?: number;
+  scope?: OperationalScope;
 }) {
   const activeCategoryName = filter?.category ? categoryNameByFilter[filter.category] : null;
   const categoryWhere: Prisma.CmWorkWhereInput = activeCategoryName ? { category: { name: activeCategoryName } } : {};
+  const scopeWhere: Prisma.CmWorkWhereInput = buildOperationalCmWorkWhere(filter?.scope);
   const activeTimeRange = filter?.timeRange ? normalizeDashboardTimeRange(filter.timeRange) : undefined;
   const activeDateFilter = filter?.dateFilter;
   const timeWindow = activeTimeRange ? getDashboardTimeRangeWindow(activeTimeRange) : null;
@@ -126,13 +156,19 @@ export async function loadDashboardSummary(filter?: {
         trend: { start: timeWindow.start, endExclusive: timeWindow.end, monthCount: timeWindow.monthCount },
         priority: { start: timeWindow.start, endExclusive: timeWindow.end },
       }
-    : resolveDashboardSectionWindows(activeDateFilter, now);
-  const summaryWhere: Prisma.CmWorkWhereInput = { ...categoryWhere, ...toCreatedAtWhere(sectionWindows.summary) };
-  const trendWhere: Prisma.CmWorkWhereInput = { ...categoryWhere, ...toCreatedAtWhere(sectionWindows.trend) };
+    : resolveDashboardSectionWindows(activeDateFilter, now, filter?.defaultTrendMonthCount ?? 6);
+  const summaryWhere: Prisma.CmWorkWhereInput = { ...scopeWhere, ...categoryWhere, ...toCreatedAtWhere(sectionWindows.summary) };
+  const trendWhere: Prisma.CmWorkWhereInput = { ...scopeWhere, ...categoryWhere, ...toCreatedAtWhere(sectionWindows.trend) };
   const priorityBaseWhere: Prisma.CmWorkWhereInput = {
+    ...scopeWhere,
     ...categoryWhere,
     ...toCreatedAtWhere(sectionWindows.priority),
     status: { notIn: [WorkStatus.CLOSED, WorkStatus.CANCELED] },
+  };
+  const yesterdayWindow = getPreviousBangkokDayWindow(now);
+  const yesterdayCategoryBaseWhere: Prisma.CmWorkWhereInput = {
+    ...scopeWhere,
+    ...categoryWhere,
   };
   const priorityInclude = {
     category: true,
@@ -153,6 +189,9 @@ export async function loadDashboardSummary(filter?: {
     statusPriorityWorks,
     latest,
     closedWorks,
+    yesterdayNewByCategory,
+    yesterdayInProcessByCategory,
+    yesterdayClosedByCategory,
   ] = await Promise.all([
     db.cmWork.count({ where: summaryWhere }),
     db.cmWork.groupBy({ by: ["status"], where: summaryWhere, _count: { _all: true } }),
@@ -192,6 +231,32 @@ export async function loadDashboardSummary(filter?: {
       where: { ...summaryWhere, closedAt: { not: null } },
       select: { createdAt: true, closedAt: true },
     }),
+    db.cmWork.groupBy({
+      by: ["categoryId"],
+      where: {
+        ...yesterdayCategoryBaseWhere,
+        createdAt: { gte: yesterdayWindow.start, lt: yesterdayWindow.endExclusive },
+      },
+      _count: { _all: true },
+    }),
+    db.cmWork.groupBy({
+      by: ["categoryId"],
+      where: {
+        ...yesterdayCategoryBaseWhere,
+        status: { in: inProcessDashboardStatuses },
+        createdAt: { gte: yesterdayWindow.start, lt: yesterdayWindow.endExclusive },
+      },
+      _count: { _all: true },
+    }),
+    db.cmWork.groupBy({
+      by: ["categoryId"],
+      where: {
+        ...yesterdayCategoryBaseWhere,
+        status: WorkStatus.CLOSED,
+        closedAt: { gte: yesterdayWindow.start, lt: yesterdayWindow.endExclusive },
+      },
+      _count: { _all: true },
+    }),
   ]);
 
   const priorityWorks = composePriorityQueue({
@@ -200,11 +265,26 @@ export async function loadDashboardSummary(filter?: {
     statusPriority: statusPriorityWorks,
   });
 
-  const [categories, zones] = await Promise.all([getAllCategories(), getAllZones()]);
+  const categoryOrganizationId = await getDashboardCategoriesOrganizationId(filter?.scope);
+  const [categories, zones] = await Promise.all([
+    getAllCategoriesForPlantScope(filter?.scope?.plantId, categoryOrganizationId),
+    getAllZonesForDashboardScope(filter?.scope),
+  ]);
   const categoryNameById = new Map(categories.map((category) => [category.id, category.name]));
   const zoneNameById = new Map(zones.map((zone) => [zone.id, zone.name]));
   const zoneCountById = new Map(byZoneRaw.map((item) => [item.zoneId, item._count._all]));
   const activeCategory = activeCategoryName ? categories.find((category) => category.name === activeCategoryName) ?? null : null;
+  const yesterdayNewCountByCategory = new Map(yesterdayNewByCategory.map((item) => [item.categoryId, item._count._all]));
+  const yesterdayInProcessCountByCategory = new Map(yesterdayInProcessByCategory.map((item) => [item.categoryId, item._count._all]));
+  const yesterdayClosedCountByCategory = new Map(yesterdayClosedByCategory.map((item) => [item.categoryId, item._count._all]));
+  const yesterdayCategories = activeCategory ? categories.filter((category) => category.id === activeCategory.id) : categories;
+  const yesterdayReportRows = yesterdayCategories.map((category) => ({
+    categoryId: category.id,
+    categoryName: category.name,
+    newCount: yesterdayNewCountByCategory.get(category.id) ?? 0,
+    inProcessCount: yesterdayInProcessCountByCategory.get(category.id) ?? 0,
+    closedCount: yesterdayClosedCountByCategory.get(category.id) ?? 0,
+  }));
 
   return {
     total,
@@ -223,6 +303,18 @@ export async function loadDashboardSummary(filter?: {
     priorityWorks,
     latest,
     avgCloseDays: calculateAverageCloseDays(closedWorks),
+    yesterdayReport: {
+      date: yesterdayWindow.date,
+      rows: yesterdayReportRows,
+      totals: yesterdayReportRows.reduce(
+        (sum, row) => ({
+          newCount: sum.newCount + row.newCount,
+          inProcessCount: sum.inProcessCount + row.inProcessCount,
+          closedCount: sum.closedCount + row.closedCount,
+        }),
+        { newCount: 0, inProcessCount: 0, closedCount: 0 },
+      ),
+    },
   };
 }
 
@@ -240,6 +332,30 @@ function calculateAverageCloseDays(works: { createdAt: Date; closedAt: Date | nu
 function toCreatedAtWhere(window: { start?: Date; endExclusive?: Date } | null): Prisma.CmWorkWhereInput {
   if (!window?.start || !window.endExclusive) return {};
   return { createdAt: { gte: window.start, lt: window.endExclusive } };
+}
+
+async function resolveCategoryOrganizationId(plantId?: string) {
+  if (!plantId) return undefined;
+  const plant = await db.plant.findUnique({
+    where: { id: plantId },
+    select: { organizationId: true },
+  });
+  return plant?.organizationId;
+}
+
+function buildOperationalCmWorkWhere(scope?: OperationalScope): Prisma.CmWorkWhereInput {
+  if (scope?.plantId) return { plantId: scope.plantId };
+  if (scope?.organizationId) return { organizationId: scope.organizationId };
+  return {};
+}
+
+async function getDashboardCategoriesOrganizationId(scope?: OperationalScope) {
+  if (scope?.organizationId) return scope.organizationId;
+  return resolveCategoryOrganizationId(scope?.plantId);
+}
+
+async function getAllZonesForDashboardScope(scope?: OperationalScope) {
+  return getAllZonesForReportScope(scope);
 }
 
 function getSectionTrendAnchor(window: DashboardTrendWindow, now: Date) {

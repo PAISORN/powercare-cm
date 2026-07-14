@@ -5,21 +5,24 @@ import { formatThaiDateTime } from "../../../lib/date-time/bangkok-time";
 import { AppBrand } from "../../../components/app-brand";
 import { requireUser } from "../../../lib/session";
 import { recordAudit } from "../../../modules/audit/audit-service";
-import { RoleName, statusLabels, urgencyLabels, type Urgency, type WorkStatus } from "../../../modules/cm-work/cm-work-types";
+import { canExportReports } from "../../../modules/auth/permission";
+import { statusLabels, urgencyLabels, type Urgency, type WorkStatus } from "../../../modules/cm-work/cm-work-types";
 import { parseReportFilter, reportFilterSummary } from "../../../modules/reports/report-filter";
 import { queryReportRows } from "../../../modules/reports/report-query";
+import { buildReportScope } from "../../../modules/reports/report-scope";
 
 type PrintSearchParams = Record<string, string | undefined>;
 
 export default async function PrintableReportPage({ searchParams }: { searchParams: Promise<PrintSearchParams> }) {
   const user = await requireUser();
-  if (user.role !== RoleName.ADMIN && user.role !== RoleName.ENGINEER) redirect("/reports/cm");
+  if (!canExportReports(user)) redirect("/reports");
 
   const values = await searchParams;
   const params = new URLSearchParams();
   for (const [key, value] of Object.entries(values)) if (value) params.set(key, value);
   const filter = parseReportFilter(params);
-  const works = await queryReportRows(filter);
+  const scope = buildReportScope(user);
+  const works = await queryReportRows(filter, scope);
 
   await recordAudit({
     actorId: user.id,
@@ -40,7 +43,7 @@ export default async function PrintableReportPage({ searchParams }: { searchPara
           <p className="mt-1 text-xs text-slate-500">Generated: {formatThaiDateTime(new Date())} · {works.length.toLocaleString("en-US")} records</p>
         </div>
         <div className="flex gap-2 print:hidden">
-          <Link className="inline-flex min-h-11 items-center rounded-xl border border-slate-300 px-4 py-2.5 font-semibold" href="/reports/cm">Back</Link>
+          <Link className="inline-flex min-h-11 items-center rounded-xl border border-slate-300 px-4 py-2.5 font-semibold" href="/reports">Back</Link>
           <PrintButton />
         </div>
       </header>

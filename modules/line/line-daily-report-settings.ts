@@ -1,7 +1,13 @@
 import { db } from "../../lib/db";
 import { formatThaiDateTime } from "../../lib/date-time/bangkok-time";
+import { DEFAULT_ORGANIZATION_ID } from "../organization/organization-foundation";
 
 export const lineDailyReportSettingId = "default";
+
+export function getScopedLineDailyReportSettingId(organizationId = DEFAULT_ORGANIZATION_ID, plantId?: string | null) {
+  if (plantId) return `${organizationId}:${plantId}:default`;
+  return organizationId === DEFAULT_ORGANIZATION_ID ? lineDailyReportSettingId : `${organizationId}:default`;
+}
 
 export type LineDailyReportDateMode = "TODAY" | "YESTERDAY";
 
@@ -115,13 +121,14 @@ export function normalizeLineDailyReportSendTime(value: FormDataEntryValue | nul
   return /^\d{2}:\d{2}$/.test(text) ? text : "08:00";
 }
 
-export async function getLineDailyReportSetting() {
+export async function getLineDailyReportSetting(organizationId?: string, plantId?: string | null) {
+  const id = getScopedLineDailyReportSettingId(organizationId, plantId);
   const setting = await db.lineDailyReportSetting.findUnique({
-    where: { id: lineDailyReportSettingId },
+    where: { id },
     include: { destination: true },
   });
   return {
-    id: lineDailyReportSettingId,
+    id,
     enabled: setting?.enabled ?? false,
     destinationId: setting?.destinationId ?? "",
     destination: setting?.destination ?? null,
@@ -137,11 +144,14 @@ export async function saveLineDailyReportSetting(input: {
   sendTime: string;
   dateMode: LineDailyReportDateMode;
   template: LineDailyReportTemplate;
-}) {
+}, organizationId?: string, plantId?: string | null) {
+  const id = getScopedLineDailyReportSettingId(organizationId, plantId);
   return db.lineDailyReportSetting.upsert({
-    where: { id: lineDailyReportSettingId },
+    where: { id },
     create: {
-      id: lineDailyReportSettingId,
+      id,
+      organizationId: organizationId ?? DEFAULT_ORGANIZATION_ID,
+      plantId: plantId ?? null,
       enabled: input.enabled,
       destinationId: input.destinationId,
       sendTime: input.sendTime,
@@ -149,6 +159,8 @@ export async function saveLineDailyReportSetting(input: {
       templateJson: serializeLineDailyReportTemplate(input.template),
     },
     update: {
+      organizationId: organizationId ?? DEFAULT_ORGANIZATION_ID,
+      plantId: plantId ?? null,
       enabled: input.enabled,
       destinationId: input.destinationId,
       sendTime: input.sendTime,

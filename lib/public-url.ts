@@ -23,6 +23,14 @@ export function getGeneralRequestUrl(input: PublicUrlInput) {
   return new URL("/request", getPublicBaseUrl(input)).toString();
 }
 
+export function getPlantRequestUrl(input: PublicUrlInput, plantCode: string) {
+  return new URL(`/p/${encodeURIComponent(plantCode)}/request`, getPublicBaseUrl(input)).toString();
+}
+
+export function getPlantStoreIssueUrl(input: PublicUrlInput, inventoryCode: string) {
+  return new URL(`/p/${encodeURIComponent(inventoryCode.toLowerCase())}/store/issue`, getPublicBaseUrl(input)).toString();
+}
+
 function firstHeaderValue(value?: string | null) {
   return value?.split(",")[0]?.trim() || undefined;
 }

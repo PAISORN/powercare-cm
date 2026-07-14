@@ -5,6 +5,7 @@ const colorByStatus: Record<WorkStatusValue, string> = {
   WAITING_TO_CLAIM: "bg-orange-100 text-orange-800",
   CLAIMED: "bg-blue-100 text-blue-800",
   IN_PROGRESS: "bg-sky-100 text-sky-800",
+  BACKLOG_SHUTDOWN: "bg-stone-100 text-stone-800",
   WAITING_TO_CLOSE: "bg-purple-100 text-purple-800",
   RETURNED_FOR_CORRECTION: "bg-rose-100 text-rose-800",
   CLOSED: "bg-green-100 text-green-800",

@@ -174,10 +174,10 @@ export function CmDateRangePicker({
       {open ? (
         <div
           aria-label="เลือกช่วงวันที่"
-          className="absolute left-1/2 top-full z-50 mt-2 w-[min(420px,calc(100vw-2rem))] -translate-x-1/2 overflow-hidden rounded-2xl border border-[var(--line)] bg-[var(--surface)] shadow-2xl md:left-0 md:translate-x-0"
+          className="cm-date-picker-popover absolute left-1/2 top-full z-50 mt-2 w-[min(315px,calc(100vw-2rem))] -translate-x-1/2 overflow-hidden rounded-2xl border border-[var(--line)] bg-[var(--surface)] shadow-2xl md:left-0 md:translate-x-0"
           role="dialog"
         >
-          <div className="min-w-0 p-4">
+          <div className="cm-date-picker-panel min-w-0 p-3">
               <CalendarMonth
                 draftEndDate={draftEndDate}
                 draftMode={draftMode}
@@ -188,12 +188,12 @@ export function CmDateRangePicker({
                 onChangeMonth={(amount) => setVisibleMonth((current) => addMonths(current, amount))}
                 onSelectDate={selectCalendarDate}
               />
-              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              <div className="mt-3 grid gap-2 sm:grid-cols-2">
                 <label className="grid gap-1 text-xs text-[var(--muted)]">
                   วันเริ่มต้น
                   <input
                     aria-label="วันเริ่มต้น"
-                    className="min-h-11 rounded-xl border border-[var(--line)] bg-[var(--soft)] px-3 text-sm text-[var(--ink)]"
+                    className="cm-date-picker-input min-h-9 rounded-xl border border-[var(--line)] bg-[var(--soft)] px-3 text-sm text-[var(--ink)]"
                     readOnly
                     type="text"
                     value={formatCompactThaiDate(draftStartDate)}
@@ -203,18 +203,18 @@ export function CmDateRangePicker({
                   วันสิ้นสุด
                   <input
                     aria-label="วันสิ้นสุด"
-                    className="min-h-11 rounded-xl border border-[var(--line)] bg-[var(--soft)] px-3 text-sm text-[var(--ink)]"
+                    className="cm-date-picker-input min-h-9 rounded-xl border border-[var(--line)] bg-[var(--soft)] px-3 text-sm text-[var(--ink)]"
                     readOnly
                     type="text"
                     value={formatCompactThaiDate(draftEndDate)}
                   />
                 </label>
               </div>
-              <div className="mt-4 flex justify-end gap-2">
-                <button className="min-h-11 rounded-xl border border-[var(--line)] px-4" type="button" onClick={() => setOpen(false)}>
+              <div className="mt-3 flex justify-end gap-2">
+                <button className="cm-date-picker-action min-h-9 rounded-xl border border-[var(--line)] px-3 text-sm" type="button" onClick={() => setOpen(false)}>
                   ยกเลิก
                 </button>
-                <button className="min-h-11 rounded-xl bg-[var(--primary)] px-4 text-white" type="button" onClick={applyDraft}>
+                <button className="cm-date-picker-action min-h-9 rounded-xl bg-[var(--primary)] px-3 text-sm text-white" type="button" onClick={applyDraft}>
                   ใช้ช่วงวันที่
                 </button>
               </div>
@@ -249,26 +249,26 @@ function CalendarMonth({
   const monthKey = month.slice(0, 7);
 
   return (
-    <section className={`p-2 sm:p-4 ${className}`}>
-      <div className="grid grid-cols-[40px_1fr_40px] items-center">
+    <section className={`cm-date-picker-month p-1.5 sm:p-2 ${className}`}>
+      <div className="grid grid-cols-[32px_1fr_32px] items-center">
         {showPrevious ? (
-          <button aria-label="เดือนก่อนหน้า" className="grid h-9 w-9 place-items-center rounded-full hover:bg-[var(--soft)]" type="button" onClick={() => onChangeMonth(-1)}>
-            <ChevronLeft aria-hidden="true" className="h-5 w-5" />
+          <button aria-label="เดือนก่อนหน้า" className="cm-date-picker-nav grid h-7 w-7 place-items-center rounded-full hover:bg-[var(--soft)]" type="button" onClick={() => onChangeMonth(-1)}>
+            <ChevronLeft aria-hidden="true" className="h-4 w-4" />
           </button>
         ) : (
           <span />
         )}
-        <strong className="text-center text-[var(--ink)]">{thaiMonthFormatter.format(isoDateAtUtcNoon(month))}</strong>
+        <strong className="text-center text-sm text-[var(--ink)]">{thaiMonthFormatter.format(isoDateAtUtcNoon(month))}</strong>
         {showNext ? (
-          <button aria-label="เดือนถัดไป" className="grid h-9 w-9 place-items-center rounded-full hover:bg-[var(--soft)]" type="button" onClick={() => onChangeMonth(1)}>
-            <ChevronRight aria-hidden="true" className="h-5 w-5" />
+          <button aria-label="เดือนถัดไป" className="cm-date-picker-nav grid h-7 w-7 place-items-center rounded-full hover:bg-[var(--soft)]" type="button" onClick={() => onChangeMonth(1)}>
+            <ChevronRight aria-hidden="true" className="h-4 w-4" />
           </button>
         ) : (
           <span />
         )}
       </div>
-      <div className="mt-2 grid grid-cols-7 text-center text-[11px] font-bold text-[var(--muted)]">
-        {weekDays.map((day) => <span className="py-2" key={day}>{day}</span>)}
+      <div className="mt-1 grid grid-cols-7 text-center text-[10px] font-bold text-[var(--muted)]">
+        {weekDays.map((day) => <span className="py-1.5" key={day}>{day}</span>)}
       </div>
       <div className="grid grid-cols-7">
         {monthGrid(month).map((date) => {
@@ -287,7 +287,7 @@ function CalendarMonth({
             <button
               aria-label={formatFullThaiDate(date)}
               aria-pressed={isBoundary}
-              className={`aspect-square min-h-9 text-xs transition-colors ${tone}`}
+              className={`cm-date-picker-day aspect-square min-h-7 text-[11px] transition-colors ${tone}`}
               key={date}
               type="button"
               onClick={() => onSelectDate(date)}

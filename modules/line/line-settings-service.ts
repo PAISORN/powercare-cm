@@ -1,12 +1,17 @@
 import { db } from "../../lib/db";
-import { canManageLineSettings } from "../auth/permission";
-import type { Actor } from "../cm-work/cm-work-types";
+import { canManageLineSettings, canTestLineMessaging } from "../auth/permission";
+import { RoleName, type Actor } from "../cm-work/cm-work-types";
 import { LINE_EVENT_TYPES } from "./line-types";
 import { parseLineDestinationInput } from "./line-settings";
 import { retryLineDelivery, sendLineTest } from "./line-service";
 
-export function listLineDestinations() {
+function canManageLineAcrossPlants(actor: Actor) {
+  return actor.role === RoleName.ADMIN || actor.role === RoleName.ORGANIZATION_ADMIN;
+}
+
+export function listLineDestinations(organizationId?: string, plantId?: string) {
   return db.lineDestination.findMany({
+    where: { organizationId, ...(plantId ? { plantId } : {}) },
     include: { category: true, settings: true },
     orderBy: [{ active: "desc" }, { displayName: "asc" }],
   });
@@ -24,11 +29,14 @@ export async function saveLineDestination(
     enabledEvents: string[];
   },
 ) {
-  if (!canManageLineSettings(actor.role)) throw new Error("Only Admin can manage LINE settings");
+  if (!canManageLineSettings(actor)) throw new Error("Only Admin can manage LINE settings");
+  const organizationId = actor.organizationId ?? null;
+  const scopedPlantId = canManageLineAcrossPlants(actor) ? undefined : (actor.plantId ?? null);
   const existing = input.id
-    ? await db.lineDestination.findUnique({ where: { id: input.id } })
+    ? await db.lineDestination.findFirst({ where: { id: input.id, organizationId, ...(scopedPlantId !== undefined ? { plantId: scopedPlantId } : {}) } })
     : null;
   if (input.id && !existing) throw new Error("LINE destination not found");
+  const plantId = canManageLineAcrossPlants(actor) ? (actor.plantId ?? existing?.plantId ?? null) : (actor.plantId ?? null);
   const normalized = parseLineDestinationInput({
     ...input,
     targetId: input.targetId.trim() || existing?.targetId || "",
@@ -36,7 +44,7 @@ export async function saveLineDestination(
 
   return db.$transaction(async (tx) => {
     const discovery = input.discoveryId
-      ? await tx.lineGroupDiscovery.findUnique({ where: { id: input.discoveryId } })
+      ? await tx.lineGroupDiscovery.findFirst({ where: { id: input.discoveryId, organizationId } })
       : null;
     if (input.discoveryId && !discovery) throw new Error("LINE group discovery not found");
     if (discovery?.addedDestinationId) throw new Error("LINE group discovery is already linked");
@@ -48,16 +56,20 @@ export async function saveLineDestination(
           data: {
             displayName: normalized.displayName,
             targetId: normalized.targetId,
+            plantId,
             categoryId: normalized.categoryId,
             active: normalized.active,
+            organizationId,
           },
         })
       : await tx.lineDestination.create({
           data: {
             displayName: normalized.displayName,
             targetId: normalized.targetId,
+            plantId,
             categoryId: normalized.categoryId,
             active: normalized.active,
+            organizationId,
           },
         });
 
@@ -83,6 +95,8 @@ export async function saveLineDestination(
     await tx.auditEvent.create({
       data: {
         actorId: actor.id,
+        organizationId: actor.organizationId,
+        plantId: actor.plantId,
         entityType: "LineDestination",
         entityId: destination.id,
         action: existing ? "UPDATE_LINE_DESTINATION" : "CREATE_LINE_DESTINATION",
@@ -101,12 +115,17 @@ export async function saveLineDestination(
 }
 
 export async function testLineDestination(actor: Actor, destinationId: string) {
-  if (!canManageLineSettings(actor.role)) throw new Error("Only Admin can test LINE settings");
-  const destination = await db.lineDestination.findUniqueOrThrow({ where: { id: destinationId } });
+  if (!canTestLineMessaging(actor)) throw new Error("Only permitted users can test LINE settings");
+  const scopedPlantId = canManageLineAcrossPlants(actor) ? undefined : (actor.plantId ?? null);
+  const destination = await db.lineDestination.findFirstOrThrow({
+    where: { id: destinationId, organizationId: actor.organizationId ?? null, ...(scopedPlantId !== undefined ? { plantId: scopedPlantId } : {}) },
+  });
   await sendLineTest(destination.targetId);
   await db.auditEvent.create({
     data: {
       actorId: actor.id,
+      organizationId: actor.organizationId,
+      plantId: actor.plantId,
       entityType: "LineDestination",
       entityId: destination.id,
       action: "TEST_LINE_DESTINATION",
@@ -116,11 +135,13 @@ export async function testLineDestination(actor: Actor, destinationId: string) {
 }
 
 export async function retryFailedLineDelivery(actor: Actor, deliveryId: string) {
-  if (!canManageLineSettings(actor.role)) throw new Error("Only Admin can retry LINE delivery");
-  await retryLineDelivery(deliveryId);
+  if (!canManageLineSettings(actor)) throw new Error("Only Admin can retry LINE delivery");
+  await retryLineDelivery(deliveryId, actor.organizationId);
   await db.auditEvent.create({
     data: {
       actorId: actor.id,
+      organizationId: actor.organizationId,
+      plantId: actor.plantId,
       entityType: "LineDeliveryLog",
       entityId: deliveryId,
       action: "RETRY_LINE_DELIVERY",

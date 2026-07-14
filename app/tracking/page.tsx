@@ -6,21 +6,36 @@ import { db } from "../../lib/db";
 import { formatThaiDateTime as formatThaiDate } from "../../lib/date-time/bangkok-time";
 import { getCurrentUser } from "../../lib/session";
 import { WorkStatus, statusLabels, urgencyLabels, type Urgency } from "../../modules/cm-work/cm-work-types";
+import { readPlantProfile } from "../../modules/organization/plant-profile-service";
+import { readRequestPlantScope } from "../../modules/organization/plant-request-scope";
 
 const trackingSteps: { label: string; statuses: WorkStatus[]; icon: typeof ClipboardList }[] = [
   { label: "รับเข้าระบบ", statuses: [WorkStatus.NEW], icon: ClipboardList },
-  { label: "ระหว่างดำเนินการ", statuses: [WorkStatus.WAITING_TO_CLAIM, WorkStatus.CLAIMED, WorkStatus.IN_PROGRESS], icon: Wrench },
+  { label: "ระหว่างดำเนินการ", statuses: [WorkStatus.WAITING_TO_CLAIM, WorkStatus.CLAIMED, WorkStatus.IN_PROGRESS, WorkStatus.BACKLOG_SHUTDOWN], icon: Wrench },
   { label: "รอตรวจรับ/ปิดงาน", statuses: [WorkStatus.WAITING_TO_CLOSE, WorkStatus.RETURNED_FOR_CORRECTION], icon: ClipboardCheck },
   { label: "ปิดงานสำเร็จ", statuses: [WorkStatus.CLOSED], icon: CheckCircle2 },
 ];
 
-export default async function TrackingPage({ searchParams }: { searchParams: Promise<{ number?: string }> }) {
+export default async function TrackingPage({ searchParams }: { searchParams: Promise<{ number?: string; plant?: string }> }) {
+  const query = await searchParams;
+  return <TrackingPageContent number={query.number} plantCode={query.plant} />;
+}
+
+export async function TrackingPageContent({
+  number: rawNumber,
+  plantCode,
+}: {
+  number?: string;
+  plantCode?: string | null;
+}) {
   const user = await getCurrentUser();
-  const { number: rawNumber } = await searchParams;
   const number = rawNumber?.trim();
-  const work = number
-    ? await db.cmWork.findUnique({
-        where: { number },
+  const plantScope = await readRequestPlantScope(plantCode);
+  const [plantProfile, work] = await Promise.all([
+    readPlantProfile(plantScope.id),
+    number
+      ? db.cmWork.findFirst({
+        where: { number, plantId: plantScope.id },
         include: {
           category: true,
           zone: true,
@@ -29,7 +44,8 @@ export default async function TrackingPage({ searchParams }: { searchParams: Pro
           statusHistory: { orderBy: { changedAt: "asc" } },
         },
       })
-    : null;
+      : null,
+  ]);
   const actorIds = [...new Set(work?.statusHistory.map((item) => item.changedById).filter((id): id is string => Boolean(id)) ?? [])];
   const actors = actorIds.length ? await db.user.findMany({ where: { id: { in: actorIds } }, select: { id: true, fullName: true } }) : [];
   const actorNameById = new Map(actors.map((actor) => [actor.id, actor.fullName]));
@@ -44,7 +60,11 @@ export default async function TrackingPage({ searchParams }: { searchParams: Pro
                 <Search size={16} />
                 CM Tracking
               </p>
-              <h1 className="mt-4 text-3xl font-extrabold">ติดตามสถานะงานซ่อม</h1>
+              <p className="mt-4 text-sm font-black uppercase tracking-[0.16em] text-[var(--primary)]">ติดตามงานสำหรับ</p>
+              <h1 className="mt-2 text-3xl font-extrabold leading-tight md:text-5xl">{plantProfile.displayName}</h1>
+              <p className="mt-2 text-sm font-semibold text-[var(--muted)]">
+                Site: {plantScope.name} · Code: {plantScope.code}
+              </p>
               <p className="mt-2 text-[var(--muted)]">กรอกเลขที่แจ้งซ่อมเพื่อดูขั้นตอนและประวัติการดำเนินงานแบบ timeline</p>
             </div>
             {work ? (
@@ -57,12 +77,13 @@ export default async function TrackingPage({ searchParams }: { searchParams: Pro
 
           <form className="mt-6 grid gap-3 md:grid-cols-[1fr_auto]">
             <input name="number" defaultValue={number} placeholder="CM-2026-06-0001" className="rounded-2xl border border-[var(--line)] bg-[var(--soft)] p-4 text-[var(--ink)]" />
+            <input name="plant" type="hidden" value={plantScope.code} />
             <button className="rounded-2xl bg-[var(--primary)] px-6 py-4 font-bold text-white shadow-sm">ค้นหา</button>
           </form>
         </section>
 
         {number && !work ? (
-          <p className="mt-6 rounded-3xl border border-[var(--line)] bg-[var(--surface)] p-6 text-center text-[var(--muted)] shadow-[var(--shadow)]">ไม่พบเลขที่แจ้งซ่อมนี้</p>
+          <p className="mt-6 rounded-3xl border border-[var(--line)] bg-[var(--surface)] p-6 text-center text-[var(--muted)] shadow-[var(--shadow)]">ไม่พบเลขที่แจ้งซ่อมนี้ใน Site ที่เลือก</p>
         ) : null}
 
         {work ? (

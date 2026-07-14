@@ -4,13 +4,17 @@ import { AppShell } from "../../../components/app-shell";
 import { db } from "../../../lib/db";
 import { formatThaiDateTime } from "../../../lib/date-time/bangkok-time";
 import { requireUser } from "../../../lib/session";
-import { RoleName } from "../../../modules/cm-work/cm-work-types";
+import { canManageFeedback } from "../../../modules/auth/permission";
+import { readOrganizationScope } from "../../../modules/organization/organization-scope-service";
 
 export default async function AdminFeedbackPage() {
   const user = await requireUser();
-  if (user.role !== RoleName.ADMIN) redirect("/dashboard");
+  if (!canManageFeedback(user)) redirect("/dashboard");
+  const scope = await readOrganizationScope();
 
   const feedbackItems = await db.publicFeedback.findMany({
+    where: { organizationId: scope.organization.id },
+    include: { plant: true },
     orderBy: { createdAt: "desc" },
     take: 200,
   });
@@ -53,6 +57,7 @@ export default async function AdminFeedbackPage() {
                     <div className="min-w-0">
                       <h2 className="truncate text-lg font-extrabold">{item.name}</h2>
                       <p className="mt-1 text-sm text-[var(--muted)]">{item.department || "ไม่ระบุหน่วยงาน"}</p>
+                      <p className="mt-1 text-xs font-bold text-[var(--primary)]">Site: {item.plant?.name ?? "-"}</p>
                     </div>
                   </div>
                   <time className="text-sm font-semibold text-[var(--muted)]">{formatThaiDateTime(item.createdAt)}</time>

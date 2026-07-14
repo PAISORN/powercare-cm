@@ -7,7 +7,7 @@ describe("Admin LINE group discovery wiring", () => {
 
     expect(source).toContain("listLineGroupDiscoveries");
     expect(source).toContain('name="discoveryId"');
-    expect(source).toContain("?discovery=");
+    expect(source).toContain("&discovery=");
     expect(source).toContain("maskLineTargetId(discovery.groupId)");
     expect(source).not.toContain("{discovery.groupId}</");
   });

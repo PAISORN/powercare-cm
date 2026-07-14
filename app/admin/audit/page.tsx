@@ -4,11 +4,15 @@ import { AppShell } from "../../../components/app-shell";
 import { db } from "../../../lib/db";
 import { formatThaiDateTime as formatThaiDate } from "../../../lib/date-time/bangkok-time";
 import { requireUser } from "../../../lib/session";
-import { RoleName } from "../../../modules/cm-work/cm-work-types";
+import { buildAuditEventScopeWhere } from "../../../modules/audit/audit-scope";
+import { canViewPlantAuditLog } from "../../../modules/auth/permission";
 
 const actionLabels: Record<string, string> = {
   CREATE_USER: "เพิ่มผู้ใช้",
   CREATE_REPAIR_REQUEST: "สร้างใบแจ้งซ่อม",
+  CREATE_SITE: "Create Site",
+  ACTIVATE_SITE: "Activate Site",
+  DEACTIVATE_SITE: "Deactivate Site",
   CREATE_CATEGORY: "เพิ่ม Category",
   DEACTIVATE_CATEGORY: "ปิดใช้งาน Category",
   CREATE_ZONE: "เพิ่ม Zone",
@@ -35,13 +39,15 @@ const processSteps = [
   { label: "Create", match: ["CREATE_REPAIR_REQUEST"], icon: ClipboardList },
   { label: "Work Action", match: ["CLAIM_WORK", "ASSIGN_WORK", "START_WORK", "RELEASE_WORK"], icon: UserRound },
   { label: "Review", match: ["SUBMIT_FOR_REVIEW", "RETURN_FOR_CORRECTION", "CLOSE_WORK"], icon: CheckCircle2 },
-  { label: "Admin Record", match: ["CANCEL_WORK", "UPDATE_ENGINEER_ASSIGNMENT_SETTING", "CREATE_ANNOUNCEMENT", "UPDATE_ANNOUNCEMENT", "ACTIVATE_ANNOUNCEMENT", "DEACTIVATE_ANNOUNCEMENT", "DELETE_ANNOUNCEMENT"], icon: ShieldCheck },
+  { label: "Admin Record", match: ["CANCEL_WORK", "CREATE_SITE", "ACTIVATE_SITE", "DEACTIVATE_SITE", "UPDATE_ENGINEER_ASSIGNMENT_SETTING", "CREATE_ANNOUNCEMENT", "UPDATE_ANNOUNCEMENT", "ACTIVATE_ANNOUNCEMENT", "DEACTIVATE_ANNOUNCEMENT", "DELETE_ANNOUNCEMENT"], icon: ShieldCheck },
 ];
 
 export default async function AdminAuditPage() {
   const user = await requireUser();
-  if (user.role !== RoleName.ADMIN) redirect("/dashboard");
+  if (!canViewPlantAuditLog(user)) redirect("/dashboard");
+  const auditScopeWhere = buildAuditEventScopeWhere(user);
   const events = await db.auditEvent.findMany({
+    where: { ...auditScopeWhere },
     take: 100,
     orderBy: { createdAt: "desc" },
     include: { actor: true, cmWork: true },

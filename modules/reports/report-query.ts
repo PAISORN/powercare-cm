@@ -1,9 +1,11 @@
 import type { Prisma } from "@prisma/client";
 import { db } from "../../lib/db";
 import type { ReportFilter } from "./report-filter";
+import type { ReportScope } from "./report-scope";
 
-export function buildReportWhere(filter: ReportFilter): Prisma.CmWorkWhereInput {
+export function buildReportWhere(filter: ReportFilter, scope?: ReportScope): Prisma.CmWorkWhereInput {
   return {
+    ...(scope?.plantId ? { plantId: scope.plantId } : scope?.organizationId ? { organizationId: scope.organizationId } : {}),
     ...(filter.dateFilter.start && filter.dateFilter.endExclusive
       ? { createdAt: { gte: filter.dateFilter.start, lt: filter.dateFilter.endExclusive } }
       : {}),
@@ -26,8 +28,8 @@ const reportInclude = {
   reviewer: true,
 } satisfies Prisma.CmWorkInclude;
 
-export async function queryReportPreview(filter: ReportFilter, take = 50) {
-  const where = buildReportWhere(filter);
+export async function queryReportPreview(filter: ReportFilter, take = 50, scope?: ReportScope) {
+  const where = buildReportWhere(filter, scope);
   const [rows, total] = await Promise.all([
     db.cmWork.findMany({ where, include: reportInclude, orderBy: { createdAt: "desc" }, take }),
     db.cmWork.count({ where }),
@@ -35,9 +37,9 @@ export async function queryReportPreview(filter: ReportFilter, take = 50) {
   return { rows, total };
 }
 
-export function queryReportRows(filter: ReportFilter) {
+export function queryReportRows(filter: ReportFilter, scope?: ReportScope) {
   return db.cmWork.findMany({
-    where: buildReportWhere(filter),
+    where: buildReportWhere(filter, scope),
     include: reportInclude,
     orderBy: { createdAt: "desc" },
   });

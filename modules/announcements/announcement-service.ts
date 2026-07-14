@@ -3,7 +3,8 @@ import { toZonedTime } from "date-fns-tz";
 import { db } from "../../lib/db";
 import { BANGKOK_TIME_ZONE } from "../../lib/date-time/bangkok-time";
 import { recordAudit } from "../audit/audit-service";
-import { RoleName, type Actor } from "../cm-work/cm-work-types";
+import { canManageAnnouncements } from "../auth/permission";
+import type { Actor } from "../cm-work/cm-work-types";
 import { announcementInputSchema, type AnnouncementInput } from "./announcement-types";
 
 type AnnouncementWindow = {
@@ -18,15 +19,15 @@ type CreatedAnnouncement = {
 };
 
 export type AnnouncementStore = {
-  create(data: AnnouncementInput & { authorId: string; id?: string }): Promise<CreatedAnnouncement>;
+  create(data: AnnouncementInput & { authorId: string; id?: string; organizationId?: string | null }): Promise<CreatedAnnouncement>;
   audit(
     action: string,
-    event: { actorId: string; entityId: string; before?: unknown; after?: unknown },
+    event: { actorId: string; entityId: string; organizationId?: string | null; before?: unknown; after?: unknown },
   ): Promise<unknown>;
 };
 
 function assertAdmin(actor: Actor) {
-  if (actor.role !== RoleName.ADMIN) throw new Error("Only admin can manage announcements");
+  if (!canManageAnnouncements(actor)) throw new Error("Only admin can manage announcements");
 }
 
 function validateInput(input: AnnouncementInput) {
@@ -53,6 +54,7 @@ const prismaStore: AnnouncementStore = {
   audit: (action, event) =>
     recordAudit({
       actorId: event.actorId,
+      organizationId: event.organizationId,
       entityType: "Announcement",
       entityId: event.entityId,
       action,
@@ -69,10 +71,11 @@ export async function createAnnouncementWithStore(
 ) {
   assertAdmin(actor);
   const parsed = validateInput(input);
-  const created = await store.create({ ...parsed, authorId: actor.id, ...(id ? { id } : {}) });
+  const created = await store.create({ ...parsed, authorId: actor.id, organizationId: actor.organizationId, ...(id ? { id } : {}) });
   await store.audit("CREATE_ANNOUNCEMENT", {
     actorId: actor.id,
     entityId: created.id,
+    organizationId: actor.organizationId,
     after: created,
   });
   return created;
@@ -82,9 +85,9 @@ export function createAnnouncement(actor: Actor, input: AnnouncementInput, id?: 
   return createAnnouncementWithStore(prismaStore, actor, input, id);
 }
 
-export async function listPublicAnnouncements(now = new Date()) {
+export async function listPublicAnnouncements(now = new Date(), organizationId?: string) {
   const rows = await db.announcement.findMany({
-    where: { active: true, publishStart: { lte: now }, publishEnd: { gte: now } },
+    where: { active: true, organizationId, publishStart: { lte: now }, publishEnd: { gte: now } },
     orderBy: [{ pinned: "desc" }, { publishStart: "desc" }],
     include: { author: { select: { fullName: true } } },
   });
@@ -94,10 +97,12 @@ export async function listPublicAnnouncements(now = new Date()) {
 export async function updateAnnouncement(actor: Actor, id: string, input: AnnouncementInput) {
   assertAdmin(actor);
   const parsed = validateInput(input);
-  const before = await db.announcement.findUniqueOrThrow({ where: { id } });
+  const organizationId = actor.organizationId;
+  const before = await db.announcement.findFirstOrThrow({ where: { id, organizationId } });
   const updated = await db.announcement.update({ where: { id }, data: parsed });
   await recordAudit({
     actorId: actor.id,
+    organizationId: actor.organizationId,
     entityType: "Announcement",
     entityId: id,
     action: "UPDATE_ANNOUNCEMENT",
@@ -109,10 +114,12 @@ export async function updateAnnouncement(actor: Actor, id: string, input: Announ
 
 export async function setAnnouncementActive(actor: Actor, id: string, active: boolean) {
   assertAdmin(actor);
-  const before = await db.announcement.findUniqueOrThrow({ where: { id } });
+  const organizationId = actor.organizationId;
+  const before = await db.announcement.findFirstOrThrow({ where: { id, organizationId } });
   const updated = await db.announcement.update({ where: { id }, data: { active } });
   await recordAudit({
     actorId: actor.id,
+    organizationId: actor.organizationId,
     entityType: "Announcement",
     entityId: id,
     action: active ? "ACTIVATE_ANNOUNCEMENT" : "DEACTIVATE_ANNOUNCEMENT",
@@ -124,9 +131,12 @@ export async function setAnnouncementActive(actor: Actor, id: string, active: bo
 
 export async function deleteAnnouncement(actor: Actor, id: string) {
   assertAdmin(actor);
-  const before = await db.announcement.delete({ where: { id } });
+  const organizationId = actor.organizationId;
+  const before = await db.announcement.findFirstOrThrow({ where: { id, organizationId } });
+  await db.announcement.delete({ where: { id: before.id } });
   await recordAudit({
     actorId: actor.id,
+    organizationId: actor.organizationId,
     entityType: "Announcement",
     entityId: id,
     action: "DELETE_ANNOUNCEMENT",

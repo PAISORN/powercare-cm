@@ -32,4 +32,15 @@ describe("PublicAnnouncements", () => {
     );
     expect(screen.getByText("NEW")).toBeTruthy();
   });
+
+  it("uses Site Communication wording for multi-site public notices", () => {
+    render(
+      <PublicAnnouncements
+        announcements={[{ ...base, id: "notice", title: "Site notice", pinned: false, isNew: false }]}
+      />,
+    );
+
+    expect(screen.getByText("Site Communication")).toBeTruthy();
+    expect(screen.queryByText("Plant Communication")).toBeNull();
+  });
 });

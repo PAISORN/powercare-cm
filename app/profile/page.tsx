@@ -12,6 +12,7 @@ import { cacheTags, revalidateCmData } from "../../lib/query-cache";
 import { requireUser } from "../../lib/session";
 import { recordAudit } from "../../modules/audit/audit-service";
 import { RoleName } from "../../modules/cm-work/cm-work-types";
+import { formatRoleName } from "../../modules/users/role-labels";
 
 async function uploadProfilePhoto(formData: FormData) {
   "use server";
@@ -144,7 +145,7 @@ export default async function ProfilePage({
             </div>
 
             <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-              <ProfileStat label="Role" value={user.role} />
+              <ProfileStat label="Role" value={formatRoleName(user.role)} />
               <ProfileStat label="Department" value={user.department || "-"} />
               <ProfileStat label="Category" value={user.category?.name ?? "-"} />
             </div>
@@ -239,7 +240,7 @@ export default async function ProfilePage({
             </h2>
             <div className="mt-4 grid gap-3 text-sm">
               <SummaryRow label="Username" value={user.username} />
-              <SummaryRow label="Role" value={user.role} />
+              <SummaryRow label="Role" value={formatRoleName(user.role)} />
               <SummaryRow label="Department" value={user.department || "-"} />
               <SummaryRow label="Category" value={user.category?.name ?? "-"} />
               <SummaryRow label="Photo" value={user.profilePhoto ? "มีรูปโปรไฟล์แล้ว" : "ยังไม่มีรูปโปรไฟล์"} />

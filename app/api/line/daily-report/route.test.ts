@@ -7,7 +7,7 @@ describe("LINE daily report API route", () => {
 
     expect(source).toContain("CRON_SECRET");
     expect(source).toContain("authorization");
-    expect(source).toContain("dispatchLineDailyReport");
+    expect(source).toContain("dispatchAllLineDailyReports");
     expect(source).toContain("force");
   });
 });

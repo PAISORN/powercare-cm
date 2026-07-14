@@ -83,8 +83,8 @@ export default function DashboardV2MockupPage() {
       <section className="mt-6 grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
         <Panel title="Plant Zone Workload" icon={<Factory size={22} className="text-[#f59e0b]" />} aside="Top zones">
           <div className="mt-4 grid gap-4">
-            {zoneRows.map((row) => (
-              <div key={row.label} className="grid gap-2">
+            {zoneRows.map((row, index) => (
+              <div key={`${row.label}-${index}`} className="grid gap-2">
                 <div className="flex items-center justify-between gap-3 text-sm">
                   <span className="font-semibold">{row.label}</span>
                   <strong>{row.value}</strong>
@@ -180,8 +180,8 @@ function Donut({ rows, total, centerLabel }: { rows: typeof statusRows; total: n
 function Legend({ rows, total }: { rows: typeof statusRows; total: number }) {
   return (
     <div className="grid gap-2">
-      {rows.map((row) => (
-        <div key={row.label} className="flex items-center justify-between gap-3 rounded-xl bg-[var(--soft)] px-3 py-2 text-sm">
+      {rows.map((row, index) => (
+        <div key={`${row.label}-${index}`} className="flex items-center justify-between gap-3 rounded-xl bg-[var(--soft)] px-3 py-2 text-sm">
           <span className="flex min-w-0 items-center gap-2">
             <i className="h-3 w-3 shrink-0 rounded-full" style={{ backgroundColor: row.color }} />
             <span className="truncate">{row.label}</span>

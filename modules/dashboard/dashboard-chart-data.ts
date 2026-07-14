@@ -72,6 +72,7 @@ function isPendingWork(status: string) {
   return (
     status === WorkStatus.CLAIMED ||
     status === WorkStatus.IN_PROGRESS ||
+    status === WorkStatus.BACKLOG_SHUTDOWN ||
     status === WorkStatus.WAITING_TO_CLOSE ||
     status === WorkStatus.RETURNED_FOR_CORRECTION
   );
@@ -83,6 +84,7 @@ function createEmptyStatusCounts(): Record<WorkStatus, number> {
     [WorkStatus.WAITING_TO_CLAIM]: 0,
     [WorkStatus.CLAIMED]: 0,
     [WorkStatus.IN_PROGRESS]: 0,
+    [WorkStatus.BACKLOG_SHUTDOWN]: 0,
     [WorkStatus.WAITING_TO_CLOSE]: 0,
     [WorkStatus.RETURNED_FOR_CORRECTION]: 0,
     [WorkStatus.CLOSED]: 0,

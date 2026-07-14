@@ -7,12 +7,16 @@ import { AppNavLinks } from "./app-nav-links";
 import { AppBrand } from "./app-brand";
 import { UserAvatar } from "./user-avatar";
 import type { RoleName } from "../modules/cm-work/cm-work-types";
+import type { SiteAdminPermissionRecord } from "../modules/auth/site-admin-permissions";
+import { formatRoleName } from "../modules/users/role-labels";
 
 export function MobileAppDrawer({
   userName,
   role,
   categoryName,
   userId,
+  plantId,
+  siteAdminPermissions,
   hasPhoto = false,
   version,
   unreadCount,
@@ -21,6 +25,8 @@ export function MobileAppDrawer({
   role: RoleName;
   categoryName?: string | null;
   userId?: string;
+  plantId?: string | null;
+  siteAdminPermissions?: SiteAdminPermissionRecord[];
   hasPhoto?: boolean;
   version?: number;
   unreadCount: number;
@@ -89,7 +95,7 @@ export function MobileAppDrawer({
           <div className="min-w-0">
             <p className="truncate font-bold">{userName}</p>
             <p className="mt-1 truncate text-xs text-[var(--muted)]">
-              {role}
+              {formatRoleName(role)}
               {categoryName ? ` - ${categoryName}` : ""}
             </p>
           </div>
@@ -99,7 +105,11 @@ export function MobileAppDrawer({
           className="mt-6 grid min-h-0 flex-1 content-start gap-2 overflow-y-auto overscroll-contain pr-1"
           data-testid="mobile-drawer-nav"
         >
-          <AppNavLinks role={role} onNavigate={() => setOpen(false)} />
+          <AppNavLinks
+            role={role}
+            permissionContext={{ id: userId, plantId, siteAdminPermissions }}
+            onNavigate={() => setOpen(false)}
+          />
         </nav>
       </div>
     </div>

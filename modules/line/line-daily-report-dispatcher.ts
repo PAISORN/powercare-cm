@@ -2,9 +2,11 @@ import { getBangkokDateString } from "../../lib/date-time/bangkok-time";
 import { db } from "../../lib/db";
 import { parseCmDateFilter } from "../filters/cm-date-filter";
 import { queryDailyReport } from "../reports/daily-report";
+import type { ReportScope } from "../reports/report-scope";
 import { deliverLineDailyReport } from "./line-service";
 import {
   buildLineDailyReportMessage,
+  getScopedLineDailyReportSettingId,
   parseLineDailyReportTemplate,
   type LineDailyReportDateMode,
 } from "./line-daily-report-settings";
@@ -20,12 +22,16 @@ type DailyReportSetting = {
     targetId: string;
     displayName: string;
     active: boolean;
+    organizationId: string | null;
+    plantId: string | null;
     categoryId: string | null;
   } | null;
 };
 
 type DailyReportQueryInput = {
   date: string;
+  organizationId?: string | null;
+  plantId?: string | null;
   categoryId?: string | null;
 };
 
@@ -39,6 +45,14 @@ type DailyReportDeliveryInput = {
 export type LineDailyReportDispatchResult =
   | { status: "SENT"; date: string; destinationId: string }
   | { status: "SKIPPED"; reason: "DISABLED" | "NO_DESTINATION" | "DESTINATION_INACTIVE" | "NOT_DUE" };
+
+export type LineDailyReportDispatchAllResult = {
+  status: "DONE";
+  total: number;
+  sent: number;
+  skipped: number;
+  results: LineDailyReportDispatchResult[];
+};
 
 export function createLineDailyReportDispatcher({
   getSetting,
@@ -64,7 +78,12 @@ export function createLineDailyReportDispatcher({
       }
 
       const date = resolveLineDailyReportDate(normalizeDateMode(setting.dateMode), now);
-      const report = await queryReport({ date, categoryId: setting.destination.categoryId });
+      const report = await queryReport({
+        date,
+        categoryId: setting.destination.categoryId,
+        organizationId: setting.destination.organizationId,
+        plantId: setting.destination.plantId,
+      });
       const text = buildLineDailyReportMessage(report, parseLineDailyReportTemplate(setting.templateJson));
       await deliver({
         eventId: buildLineDailyReportEventId(date, setting.destination.id, eventIdSuffix),
@@ -92,24 +111,53 @@ export function isLineDailyReportDue(sendTime: string, now = new Date()) {
   return getBangkokHourMinute(now) === sendTime;
 }
 
-export async function dispatchLineDailyReport(input: { now?: Date; force?: boolean; eventIdSuffix?: string } = {}) {
+export async function dispatchLineDailyReport(input: { now?: Date; force?: boolean; eventIdSuffix?: string; organizationId?: string; plantId?: string | null } = {}) {
+  const settingId = getScopedLineDailyReportSettingId(input.organizationId, input.plantId);
   return createLineDailyReportDispatcher({
     getSetting: () =>
       db.lineDailyReportSetting.findUnique({
-        where: { id: "default" },
+        where: { id: settingId },
         include: { destination: true },
       }),
-    queryReport: ({ date, categoryId }) =>
+    queryReport: ({ date, categoryId, organizationId, plantId }) =>
       queryDailyReport({
         mode: "range",
         startDate: date,
         endDate: date,
         categoryId: categoryId || undefined,
         dateFilter: parseCmDateFilter({ mode: "range", startDate: date, endDate: date }),
-      }),
+      }, buildDailyReportScope({ organizationId, plantId })),
     deliver: ({ eventId, destinationId, targetId, text }) =>
       deliverLineDailyReport({ eventId, destinationId, targetId, text }),
   }).dispatch(input);
+}
+
+export async function dispatchAllLineDailyReports(input: { now?: Date; force?: boolean; eventIdSuffix?: string } = {}): Promise<LineDailyReportDispatchAllResult> {
+  const settings = await db.lineDailyReportSetting.findMany({
+    where: { enabled: true },
+    select: { organizationId: true, plantId: true },
+  });
+  const results = [];
+  for (const setting of settings) {
+    results.push(await dispatchLineDailyReport({
+      ...input,
+      organizationId: setting.organizationId ?? undefined,
+      plantId: setting.plantId,
+    }));
+  }
+  return {
+    status: "DONE",
+    total: results.length,
+    sent: results.filter((result) => result.status === "SENT").length,
+    skipped: results.filter((result) => result.status === "SKIPPED").length,
+    results,
+  };
+}
+
+function buildDailyReportScope({ organizationId, plantId }: { organizationId?: string | null; plantId?: string | null }): ReportScope {
+  if (plantId) return { plantId };
+  if (organizationId) return { organizationId };
+  return {};
 }
 
 function normalizeDateMode(value: string): LineDailyReportDateMode {

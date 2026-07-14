@@ -6,6 +6,8 @@ const electricalEngineer: Actor = {
   id: "eng-electrical",
   role: RoleName.ENGINEER,
   categoryId: "electrical",
+  categoryIds: ["electrical", "instrument"],
+  plantId: "plant-a",
 };
 const admin: Actor = { id: "admin", role: RoleName.ADMIN, categoryId: null };
 
@@ -14,6 +16,8 @@ function fakeStore(
     enabled?: boolean;
     claimantId?: string | null;
     technicianActive?: boolean;
+    workPlantId?: string | null;
+    technicianPlantId?: string | null;
   } = {},
 ): AssignmentStore & { writes: string[] } {
   const writes: string[] = [];
@@ -23,6 +27,8 @@ function fakeStore(
       fullName: "Electrical Technician",
       role: RoleName.TECHNICIAN,
       categoryId: "electrical",
+      categoryIds: ["electrical"],
+      plantId: options.technicianPlantId ?? "plant-a",
       active: options.technicianActive ?? true,
     },
     "tech-mechanical": {
@@ -30,6 +36,17 @@ function fakeStore(
       fullName: "Mechanical Technician",
       role: RoleName.TECHNICIAN,
       categoryId: "mechanical",
+      categoryIds: ["mechanical"],
+      plantId: options.technicianPlantId ?? "plant-a",
+      active: true,
+    },
+    "tech-instrument": {
+      id: "tech-instrument",
+      fullName: "Instrument Technician",
+      role: RoleName.TECHNICIAN,
+      categoryId: "instrument",
+      categoryIds: ["instrument"],
+      plantId: options.technicianPlantId ?? "plant-a",
       active: true,
     },
   };
@@ -40,6 +57,8 @@ function fakeStore(
       return {
         id: "work-1",
         status: WorkStatus.NEW,
+        organizationId: "org-1",
+        plantId: options.workPlantId ?? "plant-a",
         categoryId: "electrical",
         claimantId: options.claimantId ?? null,
       };
@@ -88,6 +107,32 @@ describe("assignWorkWithStore", () => {
     await expect(
       assignWorkWithStore(fakeStore({ claimantId: "other" }), admin, "work-1", "tech-electrical"),
     ).rejects.toThrow("CM work is no longer available");
+  });
+
+  it("allows assignment when the actor and technician include the work category in additional categories", async () => {
+    const store = fakeStore({ enabled: true });
+    store.getWork = async () => ({
+      id: "work-1",
+      status: WorkStatus.NEW,
+      organizationId: "org-1",
+      plantId: "plant-a",
+      categoryId: "instrument",
+      claimantId: null,
+    });
+
+    const result = await assignWorkWithStore(store, electricalEngineer, "work-1", "tech-instrument");
+    expect(result).toMatchObject({ claimantId: "tech-instrument", status: WorkStatus.CLAIMED });
+  });
+
+  it("rejects a technician from another plant", async () => {
+    await expect(
+      assignWorkWithStore(
+        fakeStore({ workPlantId: "plant-a", technicianPlantId: "plant-b" }),
+        admin,
+        "work-1",
+        "tech-electrical",
+      ),
+    ).rejects.toThrow("Technician plant mismatch");
   });
 
   it("writes work, history, and audit only after authorization succeeds", async () => {

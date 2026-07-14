@@ -5,30 +5,37 @@ import { db } from "../../../../lib/db";
 import { requireUser } from "../../../../lib/session";
 import { canRenderCompletionDocument } from "../../../../modules/documents/completion-document";
 import { readOrganizationProfile } from "../../../../modules/organization/organization-service";
+import { readPlantProfile } from "../../../../modules/organization/plant-profile-service";
+import { buildUserOperationalScope, type OperationalScope } from "../../../../modules/organization/user-plant-scope";
 
 export default async function PrintCompletionPage({ params }: { params: Promise<{ id: string }> }) {
-  await requireUser();
+  const user = await requireUser();
   const { id } = await params;
-  const [work, organization] = await Promise.all([
-    db.cmWork.findUnique({
-      where: { id },
-      include: {
-        category: true,
-        zone: true,
-        claimant: { include: { signature: true } },
-        reviewer: { include: { signature: true } },
-      },
-    }),
-    readOrganizationProfile(),
-  ]);
+  const scope = buildUserOperationalScope(user);
+  const work = await db.cmWork.findFirst({
+    where: { id, ...buildWorkScopeWhere(scope) },
+    include: {
+      category: true,
+      zone: true,
+      claimant: { include: { signature: true } },
+      reviewer: { include: { signature: true } },
+    },
+  });
 
   if (!work || !canRenderCompletionDocument(work.status)) notFound();
+  const organization = work.plantId ? await readPlantProfile(work.plantId) : await readOrganizationProfile(work.organizationId);
+  const companyName = "displayName" in organization ? organization.displayName : organization.companyName;
+  const logoUrl = organization.hasLogo
+    ? "plantId" in organization
+      ? `/organization-logo?plantId=${encodeURIComponent(organization.plantId)}`
+      : `/organization-logo?organizationId=${encodeURIComponent(work.organizationId ?? "")}`
+    : null;
 
   return (
     <CompletionDocument
       organization={{
-        companyName: organization.companyName,
-        logoUrl: organization.hasLogo ? "/organization-logo" : null,
+        companyName,
+        logoUrl,
       }}
       work={{
         number: work.number,
@@ -65,4 +72,10 @@ export default async function PrintCompletionPage({ params }: { params: Promise<
       }}
     />
   );
+}
+
+function buildWorkScopeWhere(scope?: OperationalScope) {
+  if (scope?.plantId) return { plantId: scope.plantId };
+  if (scope?.organizationId) return { organizationId: scope.organizationId };
+  return {};
 }

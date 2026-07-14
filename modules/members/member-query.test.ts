@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { WorkStatus } from "../cm-work/cm-work-types";
-import { calculateMemberMetrics } from "./member-query";
+import { RoleName, WorkStatus } from "../cm-work/cm-work-types";
+import { buildMemberViewerRoleWhere, calculateMemberMetrics } from "./member-query";
 
 describe("calculateMemberMetrics", () => {
   const window = {
@@ -33,5 +33,16 @@ describe("calculateMemberMetrics", () => {
     );
 
     expect(result).toEqual({ active: 0, closed: 2 });
+  });
+});
+
+describe("buildMemberViewerRoleWhere", () => {
+  it("lets Owner Admin see every member role", () => {
+    expect(buildMemberViewerRoleWhere(RoleName.ADMIN)).toEqual({});
+  });
+
+  it("hides Owner Admin accounts from organization and site member lists", () => {
+    expect(buildMemberViewerRoleWhere(RoleName.ORGANIZATION_ADMIN)).toEqual({ role: { notIn: [RoleName.ADMIN] } });
+    expect(buildMemberViewerRoleWhere(RoleName.SITE_ADMIN)).toEqual({ role: { notIn: [RoleName.ADMIN] } });
   });
 });

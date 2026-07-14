@@ -1,7 +1,7 @@
 import type { Prisma } from "@prisma/client";
 import { db } from "../../lib/db";
 import { cacheTags, revalidateCmData } from "../../lib/query-cache";
-import { canAssignWork, canCancelWork, canClaimWork, canCloseWork } from "../auth/permission";
+import { canAssignWork, canCancelWork, canClaimWork, canCloseWork, canReturnWork } from "../auth/permission";
 import { recordAudit } from "../audit/audit-service";
 import { canTransition } from "./cm-work-state-machine";
 import { reserveCmWorkNumber } from "./cm-work-sequence";
@@ -10,10 +10,13 @@ import { createCmNotifications } from "../notifications/notification-service";
 import { NotificationEventType } from "../notifications/notification-types";
 import { dispatchLineWorkEvent } from "../line/line-service";
 import { mapCmNotificationToLineEvent } from "../line/line-work-event";
+import { createPrismaRequestPlantScopeStore, resolveRequestPlantScope } from "../organization/plant-request-scope";
 
 type AssignmentWork = {
   id: string;
   status: string;
+  organizationId: string | null;
+  plantId: string | null;
   categoryId: string;
   claimantId: string | null;
 };
@@ -23,18 +26,22 @@ type AssignmentTechnician = {
   fullName: string;
   role: string;
   categoryId: string | null;
+  categoryIds?: string[];
+  plantId: string | null;
   active: boolean;
 };
 
 export type AssignmentStore = {
   getWork(id: string): Promise<AssignmentWork | null>;
   getTechnician(id: string): Promise<AssignmentTechnician | null>;
-  getEngineerAssignmentEnabled(): Promise<boolean>;
+  getEngineerAssignmentEnabled(plantId?: string | null): Promise<boolean>;
   claimIfAvailable(input: {
     cmWorkId: string;
     technicianId: string;
     technicianName: string;
     actorId: string;
+    organizationId: string | null;
+    plantId: string | null;
     fromStatus: string;
   }): Promise<{ id: string; claimantId: string | null; status: string } | null>;
 };
@@ -44,14 +51,25 @@ function createPrismaAssignmentStore(tx: Prisma.TransactionClient): AssignmentSt
     getWork: (id) =>
       tx.cmWork.findUnique({
         where: { id },
-        select: { id: true, status: true, categoryId: true, claimantId: true },
+        select: { id: true, status: true, organizationId: true, plantId: true, categoryId: true, claimantId: true },
       }),
     getTechnician: (id) =>
       tx.user.findUnique({
         where: { id },
-        select: { id: true, fullName: true, role: true, categoryId: true, active: true },
-      }),
-    async getEngineerAssignmentEnabled() {
+        select: { id: true, fullName: true, role: true, categoryId: true, categories: { select: { categoryId: true } }, plantId: true, active: true },
+      }).then((technician) =>
+        technician
+          ? {
+              ...technician,
+              categoryIds: technician.categories.map((category) => category.categoryId),
+            }
+          : null,
+      ),
+    async getEngineerAssignmentEnabled(plantId) {
+      const scoped = plantId
+        ? await tx.systemSetting.findUnique({ where: { plantId } })
+        : null;
+      if (scoped) return scoped.engineerWorkAssignmentEnabled;
       return (await tx.systemSetting.findUnique({ where: { id: "global" } }))
         ?.engineerWorkAssignmentEnabled ?? false;
     },
@@ -76,6 +94,8 @@ function createPrismaAssignmentStore(tx: Prisma.TransactionClient): AssignmentSt
         data: {
           cmWorkId: input.cmWorkId,
           actorId: input.actorId,
+          organizationId: input.organizationId,
+          plantId: input.plantId,
           entityType: "CmWork",
           entityId: input.cmWorkId,
           action: "ASSIGN_WORK",
@@ -101,14 +121,24 @@ export async function createRepairRequest(input: {
   problemTitle: string;
   problemDetail: string;
   urgency: Urgency;
+  plantCode?: string | null;
 }) {
   const now = new Date();
+  const { plantCode, ...workInput } = input;
   const work = await db.$transaction(async (tx) => {
     const number = await reserveCmWorkNumber(tx, now);
+    const plantScope = await resolveRequestPlantScope(createPrismaRequestPlantScopeStore(tx), plantCode);
+    const plant = await tx.plant.findUnique({ where: { id: plantScope.id }, select: { maxWorkRequests: true } });
+    if (plant?.maxWorkRequests) {
+      const currentCount = await tx.cmWork.count({ where: { plantId: plantScope.id } });
+      if (currentCount >= plant.maxWorkRequests) throw new Error("SITE_REQUEST_LIMIT_REACHED");
+    }
 
     return tx.cmWork.create({
       data: {
-        ...input,
+        ...workInput,
+        organizationId: plantScope.organizationId,
+        plantId: plantScope.id,
         number,
         status: WorkStatus.NEW,
         statusHistory: {
@@ -124,6 +154,8 @@ export async function createRepairRequest(input: {
 
   await recordAudit({
     cmWorkId: work.id,
+    organizationId: work.organizationId,
+    plantId: work.plantId,
     entityType: "CmWork",
     entityId: work.id,
     action: "CREATE_REPAIR_REQUEST",
@@ -160,6 +192,8 @@ export async function claimWork(actor: Actor, cmWorkId: string) {
   await recordAudit({
     cmWorkId,
     actorId: actor.id,
+    organizationId: work.organizationId,
+    plantId: work.plantId,
     entityType: "CmWork",
     entityId: cmWorkId,
     action: "CLAIM_WORK",
@@ -188,13 +222,13 @@ export async function assignWorkWithStore(
   cmWorkId: string,
   technicianId: string,
 ) {
-  const [work, technician, enabled] = await Promise.all([
+  const [work, technician] = await Promise.all([
     store.getWork(cmWorkId),
     store.getTechnician(technicianId),
-    store.getEngineerAssignmentEnabled(),
   ]);
 
   if (!work) throw new Error("CM work not found");
+  const enabled = await store.getEngineerAssignmentEnabled(work.plantId);
   if (!technician || technician.role !== RoleName.TECHNICIAN) throw new Error("Technician not found");
   if (!technician.active) throw new Error("Technician is inactive");
   if (!canAssignWork(actor, work, enabled)) {
@@ -203,22 +237,33 @@ export async function assignWorkWithStore(
     }
     throw new Error("CM work is no longer available");
   }
-  if (technician.categoryId !== work.categoryId) throw new Error("Technician category mismatch");
+  if (!hasWorkCategory(technician, work.categoryId)) throw new Error("Technician category mismatch");
+  if (technician.plantId !== work.plantId) throw new Error("Technician plant mismatch");
 
   const updated = await store.claimIfAvailable({
     cmWorkId,
     technicianId,
     technicianName: technician.fullName,
     actorId: actor.id,
+    organizationId: work.organizationId,
+    plantId: work.plantId,
     fromStatus: work.status,
   });
   if (!updated) throw new Error("CM work is no longer available");
   return updated;
 }
 
+function hasWorkCategory(user: { categoryId: string | null; categoryIds?: string[] }, categoryId: string) {
+  return user.categoryId === categoryId || Boolean(user.categoryIds?.includes(categoryId));
+}
+
+function isOwnerWorkActor(actor: Actor) {
+  return actor.role === RoleName.ADMIN || actor.role === RoleName.ORGANIZATION_ADMIN;
+}
+
 export async function moveToInProgress(actor: Actor, cmWorkId: string) {
   const work = await db.cmWork.findUniqueOrThrow({ where: { id: cmWorkId } });
-  if (work.claimantId !== actor.id && actor.role !== RoleName.ADMIN) throw new Error("Only claimant can start work");
+  if (work.claimantId !== actor.id && !isOwnerWorkActor(actor)) throw new Error("Only claimant can start work");
   if (!canTransition(work.status, WorkStatus.IN_PROGRESS)) throw new Error("Invalid status transition");
 
   const updated = await db.cmWork.update({
@@ -239,6 +284,8 @@ export async function moveToInProgress(actor: Actor, cmWorkId: string) {
   await recordAudit({
     cmWorkId,
     actorId: actor.id,
+    organizationId: work.organizationId,
+    plantId: work.plantId,
     entityType: "CmWork",
     entityId: cmWorkId,
     action: "START_WORK",
@@ -252,13 +299,54 @@ export async function moveToInProgress(actor: Actor, cmWorkId: string) {
   return updated;
 }
 
+export async function moveToBacklogShutdown(actor: Actor, cmWorkId: string, reason: string) {
+  const work = await db.cmWork.findUniqueOrThrow({ where: { id: cmWorkId } });
+  if (!reason.trim()) throw new Error("Backlog shutdown reason is required");
+  if (work.status !== WorkStatus.IN_PROGRESS) throw new Error("Only in-progress work can move to shutdown backlog");
+  if (!canCancelWork(actor, work)) throw new Error("You cannot move this CM work to shutdown backlog");
+  if (!canTransition(work.status, WorkStatus.BACKLOG_SHUTDOWN)) throw new Error("Invalid status transition");
+
+  const updated = await db.cmWork.update({
+    where: { id: cmWorkId },
+    data: {
+      status: WorkStatus.BACKLOG_SHUTDOWN,
+      statusHistory: {
+        create: {
+          fromStatus: work.status,
+          toStatus: WorkStatus.BACKLOG_SHUTDOWN,
+          changedById: actor.id,
+          note: reason,
+        },
+      },
+    },
+  });
+
+  await recordAudit({
+    cmWorkId,
+    actorId: actor.id,
+    organizationId: work.organizationId,
+    plantId: work.plantId,
+    entityType: "CmWork",
+    entityId: cmWorkId,
+    action: "MOVE_TO_BACKLOG_SHUTDOWN",
+    before: work,
+    after: updated,
+    reason,
+  });
+
+  await emitWorkNotification(updated.id, actor.id, NotificationEventType.IN_PROGRESS, WorkStatus.BACKLOG_SHUTDOWN);
+
+  revalidateCmData([cacheTags.dashboardSummary]);
+  return updated;
+}
+
 export async function submitForReview(
   actor: Actor,
   cmWorkId: string,
   input: { rootCause: string; correctiveAction: string; workNote?: string },
 ) {
   const work = await db.cmWork.findUniqueOrThrow({ where: { id: cmWorkId } });
-  if (work.claimantId !== actor.id && actor.role !== RoleName.ADMIN) throw new Error("Only claimant can submit for review");
+  if (work.claimantId !== actor.id && !isOwnerWorkActor(actor)) throw new Error("Only claimant can submit for review");
   if (!canTransition(work.status, WorkStatus.WAITING_TO_CLOSE)) throw new Error("Invalid status transition");
 
   const updated = await db.cmWork.update({
@@ -282,6 +370,8 @@ export async function submitForReview(
   await recordAudit({
     cmWorkId,
     actorId: actor.id,
+    organizationId: work.organizationId,
+    plantId: work.plantId,
     entityType: "CmWork",
     entityId: cmWorkId,
     action: "SUBMIT_FOR_REVIEW",
@@ -321,6 +411,8 @@ export async function releaseWork(actor: Actor, cmWorkId: string, reason: string
   await recordAudit({
     cmWorkId,
     actorId: actor.id,
+    organizationId: work.organizationId,
+    plantId: work.plantId,
     entityType: "CmWork",
     entityId: cmWorkId,
     action: "RELEASE_WORK",
@@ -337,8 +429,7 @@ export async function releaseWork(actor: Actor, cmWorkId: string, reason: string
 
 export async function returnForCorrection(actor: Actor, cmWorkId: string, reason: string) {
   const work = await db.cmWork.findUniqueOrThrow({ where: { id: cmWorkId } });
-  if (actor.role !== RoleName.ADMIN && actor.role !== RoleName.ENGINEER) throw new Error("Only engineer or admin can return work");
-  if (actor.role === RoleName.ENGINEER && actor.categoryId !== work.categoryId) throw new Error("Engineer category mismatch");
+  if (!canReturnWork(actor, work)) throw new Error("You cannot return this CM work");
   if (!reason.trim()) throw new Error("Engineer note is required");
   if (!canTransition(work.status, WorkStatus.RETURNED_FOR_CORRECTION)) throw new Error("Invalid status transition");
 
@@ -362,6 +453,8 @@ export async function returnForCorrection(actor: Actor, cmWorkId: string, reason
   await recordAudit({
     cmWorkId,
     actorId: actor.id,
+    organizationId: work.organizationId,
+    plantId: work.plantId,
     entityType: "CmWork",
     entityId: cmWorkId,
     action: "RETURN_FOR_CORRECTION",
@@ -401,6 +494,8 @@ export async function closeWork(actor: Actor, cmWorkId: string, engineerNote?: s
   await recordAudit({
     cmWorkId,
     actorId: actor.id,
+    organizationId: work.organizationId,
+    plantId: work.plantId,
     entityType: "CmWork",
     entityId: cmWorkId,
     action: "CLOSE_WORK",
@@ -439,6 +534,8 @@ export async function cancelWork(actor: Actor, cmWorkId: string, reason: string)
   await recordAudit({
     cmWorkId,
     actorId: actor.id,
+    organizationId: work.organizationId,
+    plantId: work.plantId,
     entityType: "CmWork",
     entityId: cmWorkId,
     action: "CANCEL_WORK",
@@ -458,6 +555,8 @@ async function emitWorkNotification(cmWorkId: string, actorId: string | null, ev
     select: {
       id: true,
       number: true,
+      organizationId: true,
+      plantId: true,
       categoryId: true,
       category: { select: { name: true } },
       claimantId: true,
@@ -471,7 +570,9 @@ async function emitWorkNotification(cmWorkId: string, actorId: string | null, ev
         eventType,
         cmWorkId: work.id,
         cmNumber: work.number,
+        organizationId: work.organizationId,
         categoryId: work.categoryId,
+        plantId: work.plantId,
         claimantId: work.claimantId,
         actorId,
         targetStatus,
@@ -492,6 +593,8 @@ async function emitWorkNotification(cmWorkId: string, actorId: string | null, ev
   await dispatchLineWorkEvent({
     eventId: historyId,
     eventType: lineEventType,
+    organizationId: work.organizationId,
+    plantId: work.plantId,
     categoryId: work.categoryId,
     categoryName: work.category.name,
     workId: work.id,

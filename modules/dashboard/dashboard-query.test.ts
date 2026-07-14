@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   composePriorityQueue,
+  getPreviousBangkokDayWindow,
   getDashboardTimeRangeWindow,
   normalizeDashboardTimeRange,
   resolveDashboardSectionWindows,
@@ -8,12 +9,13 @@ import {
 
 describe("dashboard query contract", () => {
   it("keeps the dashboard contract explicit", () => {
-    const keys = ["total", "byStatus", "byCategory", "byZone", "byUrgency", "monthlyTrend", "priorityWorks", "latest", "avgCloseDays", "activeTimeRange"];
+    const keys = ["total", "byStatus", "byCategory", "byZone", "byUrgency", "monthlyTrend", "priorityWorks", "latest", "avgCloseDays", "activeTimeRange", "yesterdayReport"];
     expect(keys).toContain("monthlyTrend");
     expect(keys).toContain("priorityWorks");
     expect(keys).toContain("latest");
     expect(keys).toContain("avgCloseDays");
     expect(keys).toContain("activeTimeRange");
+    expect(keys).toContain("yesterdayReport");
   });
 
   it("normalizes supported dashboard time ranges", () => {
@@ -52,6 +54,27 @@ describe("dashboard query contract", () => {
       monthCount: 6,
     });
     expect(windows.priority).toBeNull();
+  });
+
+  it("can override the default trend window month count for dashboard layouts", () => {
+    const now = new Date("2026-06-21T03:00:00.000Z");
+    const windows = resolveDashboardSectionWindows(undefined, now, 12);
+
+    expect(windows.trend).toEqual({
+      start: new Date("2025-06-30T17:00:00.000Z"),
+      endExclusive: now,
+      monthCount: 12,
+    });
+  });
+
+  it("builds yesterday report window in Bangkok time", () => {
+    const window = getPreviousBangkokDayWindow(new Date("2026-06-21T03:00:00.000Z"));
+
+    expect(window).toEqual({
+      date: "2026-06-20",
+      start: new Date("2026-06-19T17:00:00.000Z"),
+      endExclusive: new Date("2026-06-20T17:00:00.000Z"),
+    });
   });
 
   it("applies an explicit range to every dashboard section", () => {

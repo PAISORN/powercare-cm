@@ -1,6 +1,7 @@
 ﻿import { CalendarDays, Download, FileSpreadsheet, Printer } from "lucide-react";
 import Link from "next/link";
 import { AppShell } from "../../components/app-shell";
+import { AutoSubmitSelect } from "../../components/auto-submit-select";
 import { CmDateFilterBar } from "../../components/cm-date-filter-bar";
 import { CopyDailyReportButton } from "../../components/copy-daily-report-button";
 import { ReportFilterForm } from "../../components/report-filter-form";
@@ -52,7 +53,7 @@ export function DailyReportSection({ categories, report }: { categories: Option[
         />
         <label className="grid gap-1 text-sm font-semibold">
           <span className="text-[var(--muted)]">Category</span>
-          <select
+          <AutoSubmitSelect
             aria-label="Daily report category"
             className="min-h-[52px] rounded-2xl border border-[var(--line)] bg-[var(--soft)] px-3 py-3 outline-none"
             defaultValue={report.categoryId ?? ""}
@@ -64,7 +65,7 @@ export function DailyReportSection({ categories, report }: { categories: Option[
                 {category.name}
               </option>
             ))}
-          </select>
+          </AutoSubmitSelect>
         </label>
         <button className="min-h-[52px] rounded-2xl bg-[var(--primary)] px-5 py-3 font-bold text-white shadow-sm transition hover:bg-[var(--primary-strong)]" type="submit">
           ดูรายงาน
@@ -176,15 +177,19 @@ function formatDailyCopyRows(rows: DailyReport["newWorks"], timeField: "createdA
 }
 
 export function CmReportSection({
+  canExport,
   categories,
   claimants,
+  dailyReport,
   filter,
   rows,
   total,
   zones,
 }: {
+  canExport: boolean;
   categories: Option[];
   claimants: ClaimantOption[];
+  dailyReport?: DailyReport;
   filter: ReportFilter;
   rows: ReportWorkRow[];
   total: number;
@@ -204,13 +209,15 @@ export function CmReportSection({
       </div>
 
       <ReportFilterForm
-        action="/reports/cm"
+        action="/reports"
         categories={categories}
         claimants={claimants.map((claimant) => ({ id: claimant.id, name: claimant.fullName }))}
-        clearHref="/reports/cm"
+        clearHref="/reports"
         filter={filter}
         zones={zones}
       />
+
+      {dailyReport ? <CmReportDailySummary report={dailyReport} /> : null}
 
       <div className="flex flex-col gap-3 border-b border-[var(--line)] px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
         <div>
@@ -218,20 +225,43 @@ export function CmReportSection({
           <p className="text-xl font-extrabold">{total.toLocaleString("en-US")} รายการ</p>
           <p className="text-xs text-[var(--muted)]">Preview แสดงสูงสุด 50 รายการ ส่วนไฟล์ส่งออกแสดงครบทุกผลลัพธ์</p>
         </div>
-        <div className="grid grid-cols-2 gap-2 sm:flex">
-          <a className="inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl bg-emerald-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-emerald-700" href={`/reports/export?${query}`}>
-            <Download aria-hidden="true" size={17} />
-            Excel
-          </a>
-          <Link className="inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl border border-[var(--line)] px-4 py-2.5 text-sm font-bold hover:bg-[var(--soft)]" href={`/reports/print?${query}`} target="_blank">
-            <Printer aria-hidden="true" size={17} />
-            Print / PDF
-          </Link>
-        </div>
+        {canExport ? (
+          <div className="grid grid-cols-2 gap-2 sm:flex">
+            <a className="inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl bg-emerald-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-emerald-700" href={`/reports/export?${query}`}>
+              <Download aria-hidden="true" size={17} />
+              Excel
+            </a>
+            <Link className="inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl border border-[var(--line)] px-4 py-2.5 text-sm font-bold hover:bg-[var(--soft)]" href={`/reports/print?${query}`} target="_blank">
+              <Printer aria-hidden="true" size={17} />
+              Print / PDF
+            </Link>
+          </div>
+        ) : null}
       </div>
 
       <ReportPreview rows={rows} />
     </section>
+  );
+}
+
+function CmReportDailySummary({ report }: { report: DailyReport }) {
+  return (
+    <div className="border-b border-[var(--line)] bg-[var(--surface)] px-4 py-4 sm:px-5">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <p className="text-sm font-bold text-[var(--primary)]">สรุปตามช่วงวันที่ที่เลือก</p>
+          <h2 className="mt-1 text-xl font-extrabold">แจ้งซ่อมใหม่ / ปิดงาน</h2>
+          <p className="mt-1 text-sm text-[var(--muted)]">
+            ช่วง {report.startDate} - {report.endDate} ตาม Category ที่เลือกในรายงาน
+          </p>
+        </div>
+      </div>
+
+      <div className="mt-4 grid gap-3 md:grid-cols-2">
+        <DailyMetricCard label="แจ้งซ่อมใหม่" note="งานที่ถูกสร้างในช่วงวันที่เลือก" value={report.newCount} />
+        <DailyMetricCard label="ปิดงาน" note="งานที่ปิดสำเร็จในช่วงวันที่เลือก" value={report.closedCount} />
+      </div>
+    </div>
   );
 }
 

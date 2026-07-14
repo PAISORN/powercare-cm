@@ -2,6 +2,7 @@ import { db } from "../../lib/db";
 import { getBangkokDateString } from "../../lib/date-time/bangkok-time";
 import { WorkStatus } from "../cm-work/cm-work-types";
 import { parseCmDateFilter, type ParsedCmDateFilter } from "../filters/cm-date-filter";
+import type { ReportScope } from "./report-scope";
 
 const dailyReportInclude = {
   category: true,
@@ -18,18 +19,20 @@ export type DailyReportFilter = {
   dateFilter: ParsedCmDateFilter;
 };
 
-export async function queryDailyReport(filter: DailyReportFilter) {
+export async function queryDailyReport(filter: DailyReportFilter, scope?: ReportScope) {
   const window = filter.dateFilter;
   if (!window.start || !window.endExclusive) throw new Error("Daily report requires a date range");
   const categoryWhere = filter.categoryId ? { categoryId: filter.categoryId } : {};
+  const scopeWhere = scope?.plantId ? { plantId: scope.plantId } : scope?.organizationId ? { organizationId: scope.organizationId } : {};
   const [newWorks, closedWorks] = await Promise.all([
     db.cmWork.findMany({
-      where: { ...categoryWhere, createdAt: { gte: window.start, lt: window.endExclusive } },
+      where: { ...scopeWhere, ...categoryWhere, createdAt: { gte: window.start, lt: window.endExclusive } },
       include: dailyReportInclude,
       orderBy: { createdAt: "asc" },
     }),
     db.cmWork.findMany({
       where: {
+        ...scopeWhere,
         ...categoryWhere,
         status: WorkStatus.CLOSED,
         closedAt: { gte: window.start, lt: window.endExclusive },
