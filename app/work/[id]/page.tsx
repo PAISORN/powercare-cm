@@ -113,11 +113,15 @@ export default async function WorkDetailPage({
           unit: true,
           minStock: true,
           category: { select: { name: true } },
-          applicableZones: { select: { zone: { select: { name: true } } } },
         },
       },
     },
     orderBy: [{ store: { name: "asc" } }, { sparePart: { name: "asc" } }],
+  });
+  const issueZones = await db.storeApplicableZone.findMany({
+    where: { plantId: workPlantId, active: true, zone: { active: true } },
+    select: { code: true, zone: { select: { id: true, name: true } } },
+    orderBy: { code: "asc" },
   });
   const actor: Actor = {
     id: user.id,
@@ -273,11 +277,12 @@ export default async function WorkDetailPage({
     }
 
     const stockKeys = formData.getAll("stockKey").map(String);
+    const zoneIds = formData.getAll("zoneId").map(String);
     const quantities = formData.getAll("requestedQty").map(Number);
     const items = stockKeys
       .map((stockKey, index) => {
         const [storeId, sparePartId] = stockKey.split(":");
-        return { storeId, sparePartId, requestedQty: quantities[index] };
+        return { storeId, sparePartId, zoneId: zoneIds[index], requestedQty: quantities[index] };
       })
       .filter((item) => item.storeId && item.sparePartId && Number.isFinite(item.requestedQty) && item.requestedQty > 0);
 
@@ -482,6 +487,7 @@ export default async function WorkDetailPage({
             action={createWorkStoreIssueAction}
             organizationId={workOrganizationId}
             plantId={workPlantId}
+            issueZones={issueZones.map((item) => ({ ...item.zone, code: item.code }))}
             lockedCmWork={{ id: work.id, number: work.number, label: `${work.machineName} · ${work.problemTitle}` }}
             cmWorks={[{ id: work.id, number: work.number, label: `${work.machineName} · ${work.problemTitle}` }]}
             stocks={storeStocks.map((stock) => ({
@@ -497,7 +503,6 @@ export default async function WorkDetailPage({
               sparePartName: stock.sparePart.name,
               sparePartCategoryName: stock.sparePart.category?.name,
               itemCode: stock.sparePart.itemCode,
-              zoneNames: stock.sparePart.applicableZones.map((item) => item.zone.name),
               stockStatus: buildStoreStockStatus(Number(stock.quantity), Number(stock.sparePart.minStock)),
             }))}
           />

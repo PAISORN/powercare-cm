@@ -186,78 +186,6 @@ export async function deleteSparePartType(
   });
 }
 
-export async function createSparePartStorageZone(
-  actor: PermissionUserContext & { id: string },
-  scope: StoreScope,
-  input: { code: string; name: string; description?: string | null; active?: boolean },
-) {
-  requireStorePermission(actor, PermissionKey.MANAGE_SPARE_PARTS);
-  assertActorStoreScope(actor, scope);
-  const code = normalizeMasterCode(input.code, "Storage Zone code");
-  const name = requiredText(input.name, "Storage Zone name");
-  await assertUniqueSparePartStorageZone(scope.plantId, { code, name });
-  const created = await db.sparePartStorageZone.create({
-    data: {
-      organizationId: scope.organizationId,
-      plantId: scope.plantId,
-      code,
-      name,
-      description: optionalText(input.description),
-      active: input.active ?? true,
-    },
-  });
-  await auditStoreChange(actor.id, scope, "SparePartStorageZone", created.id, "CREATE_SPARE_PART_STORAGE_ZONE", {
-    code,
-    name,
-  });
-  return created;
-}
-
-export async function updateSparePartStorageZone(
-  actor: PermissionUserContext & { id: string },
-  scope: StoreScope,
-  id: string,
-  input: { code: string; name: string; description?: string | null; active: boolean },
-) {
-  requireStorePermission(actor, PermissionKey.MANAGE_SPARE_PARTS);
-  assertActorStoreScope(actor, scope);
-  const code = normalizeMasterCode(input.code, "Storage Zone code");
-  const name = requiredText(input.name, "Storage Zone name");
-  await db.sparePartStorageZone.findFirstOrThrow({ where: { id, plantId: scope.plantId } });
-  await assertUniqueSparePartStorageZone(scope.plantId, { code, name }, id);
-  const updated = await db.sparePartStorageZone.update({
-    where: { id },
-    data: { code, name, description: optionalText(input.description), active: input.active },
-  });
-  await auditStoreChange(actor.id, scope, "SparePartStorageZone", id, "UPDATE_SPARE_PART_STORAGE_ZONE", {
-    code,
-    name,
-    active: input.active,
-  });
-  return updated;
-}
-
-export async function deleteSparePartStorageZone(
-  actor: PermissionUserContext & { id: string },
-  scope: StoreScope,
-  id: string,
-) {
-  requireStorePermission(actor, PermissionKey.MANAGE_SPARE_PARTS);
-  assertActorStoreScope(actor, scope);
-  const zone = await db.sparePartStorageZone.findFirstOrThrow({
-    where: { id, plantId: scope.plantId },
-    include: { _count: { select: { spareParts: true } } },
-  });
-  if (zone._count.spareParts) {
-    throw new Error("This Storage Zone is already in use. Set it to inactive instead.");
-  }
-  await db.sparePartStorageZone.delete({ where: { id } });
-  await auditStoreChange(actor.id, scope, "SparePartStorageZone", id, "DELETE_SPARE_PART_STORAGE_ZONE", {
-    code: zone.code,
-    name: zone.name,
-  });
-}
-
 export async function createStore(
   actor: PermissionUserContext & { id: string },
   scope: StoreScope,
@@ -356,6 +284,52 @@ export async function deleteStore(
   });
 }
 
+export async function updateStoreApplicableZones(
+  actor: PermissionUserContext & { id: string },
+  scope: StoreScope,
+  assignments: Array<{ zoneId: string; code: string; active: boolean }>,
+) {
+  requireStorePermission(actor, PermissionKey.MANAGE_SPARE_PARTS);
+  assertActorStoreScope(actor, scope);
+
+  const normalized = assignments
+    .filter((assignment) => assignment.active || assignment.code.trim())
+    .map((assignment) => ({
+      zoneId: requiredText(assignment.zoneId, "Zone"),
+      code: normalizeMasterCode(assignment.code, "Applicable Zone code"),
+      active: assignment.active,
+    }));
+  const zoneIds = normalized.map((assignment) => assignment.zoneId);
+  const codes = normalized.map((assignment) => assignment.code);
+  if (new Set(zoneIds).size !== zoneIds.length) throw new Error("Zone must not be duplicated.");
+  if (new Set(codes).size !== codes.length) throw new Error("Applicable Zone code must not be duplicated in the same Site.");
+
+  await db.$transaction(async (tx) => {
+    const zoneCount = await tx.zone.count({
+      where: { id: { in: zoneIds }, plantId: scope.plantId, active: true },
+    });
+    if (zoneCount !== zoneIds.length) throw new Error("Applicable Zone must belong to the selected Site.");
+
+    for (const assignment of normalized) {
+      await tx.storeApplicableZone.upsert({
+        where: { plantId_zoneId: { plantId: scope.plantId, zoneId: assignment.zoneId } },
+        update: { code: assignment.code, active: assignment.active },
+        create: {
+          organizationId: scope.organizationId,
+          plantId: scope.plantId,
+          zoneId: assignment.zoneId,
+          code: assignment.code,
+          active: assignment.active,
+        },
+      });
+    }
+  });
+
+  await auditStoreChange(actor.id, scope, "Plant", scope.plantId, "UPDATE_STORE_APPLICABLE_ZONES", {
+    assignments: normalized,
+  });
+}
+
 export async function createSparePart(
   actor: PermissionUserContext & { id: string },
   scope: StoreScope,
@@ -369,15 +343,6 @@ export async function createSparePart(
     const normalized = normalizeSparePartInput(input);
     await assertSparePartMasterData(tx, scope, normalized);
     await assertUniqueItemCode(tx, scope.organizationId, normalized.itemCode);
-    if (input.zoneIds?.length) {
-      const zoneCount = await tx.zone.count({
-        where: { id: { in: input.zoneIds }, plantId: scope.plantId, active: true },
-      });
-      if (zoneCount !== new Set(input.zoneIds).size) {
-        throw new Error("Applicable Zone must belong to the selected Site.");
-      }
-    }
-
     const repository: SparePartRepository = {
       async reserveNextNumber(plantId) {
         const sequence = await tx.sparePartSequence.upsert({
@@ -401,15 +366,11 @@ export async function createSparePart(
             categoryId: data.categoryId,
             typeId: data.typeId,
             defaultStoreId: data.defaultStoreId,
-            storageZoneId: data.storageZoneId,
             minStock: data.minStock,
             maxStock: data.maxStock,
             reorderPoint: data.reorderPoint,
             latestUnitPrice: data.latestUnitPrice,
             active: data.active,
-            applicableZones: {
-              create: data.zoneIds.map((zoneId) => ({ zoneId })),
-            },
           },
           select: { id: true, code: true },
         });
@@ -439,25 +400,14 @@ export async function updateSparePart(
   const sparePart = await db.$transaction(async (tx) => {
     const existing = await tx.sparePart.findFirstOrThrow({
       where: { id: sparePartId, organizationId: scope.organizationId, plantId: scope.plantId },
-      select: { id: true, categoryId: true, typeId: true, defaultStoreId: true, storageZoneId: true },
+      select: { id: true, categoryId: true, typeId: true, defaultStoreId: true },
     });
     await assertSparePartMasterData(tx, scope, normalized, {
       categoryId: existing.categoryId,
       typeId: existing.typeId,
       defaultStoreId: existing.defaultStoreId,
-      storageZoneId: existing.storageZoneId,
     });
     await assertUniqueItemCode(tx, scope.organizationId, normalized.itemCode, sparePartId);
-    if (normalized.zoneIds.length) {
-      const zoneCount = await tx.zone.count({
-        where: { id: { in: normalized.zoneIds }, plantId: scope.plantId, active: true },
-      });
-      if (zoneCount !== normalized.zoneIds.length) {
-        throw new Error("Applicable Zone must belong to the selected Site.");
-      }
-    }
-
-    await tx.sparePartApplicableZone.deleteMany({ where: { sparePartId } });
     return tx.sparePart.update({
       where: { id: sparePartId },
       data: {
@@ -468,15 +418,11 @@ export async function updateSparePart(
         categoryId: normalized.categoryId,
         typeId: normalized.typeId,
         defaultStoreId: normalized.defaultStoreId,
-        storageZoneId: normalized.storageZoneId,
         minStock: normalized.minStock,
         maxStock: normalized.maxStock,
         reorderPoint: normalized.reorderPoint,
         latestUnitPrice: normalized.latestUnitPrice,
         active: normalized.active,
-        applicableZones: {
-          create: normalized.zoneIds.map((zoneId) => ({ zoneId })),
-        },
       },
       select: { id: true, code: true, name: true },
     });
@@ -579,22 +525,6 @@ async function assertUniqueSparePartType(
   if (duplicate) throw new Error("Spare part type code or name already exists in this Site.");
 }
 
-async function assertUniqueSparePartStorageZone(
-  plantId: string,
-  input: { code: string; name: string },
-  excludeId?: string,
-) {
-  const duplicate = await db.sparePartStorageZone.findFirst({
-    where: {
-      plantId,
-      ...(excludeId ? { id: { not: excludeId } } : {}),
-      OR: [{ code: input.code }, { name: input.name }],
-    },
-    select: { id: true },
-  });
-  if (duplicate) throw new Error("Storage Zone code or name already exists in this Site.");
-}
-
 async function assertSparePartMasterData(
   tx: Prisma.TransactionClient,
   scope: StoreScope,
@@ -603,10 +533,9 @@ async function assertSparePartMasterData(
     categoryId: string | null;
     typeId: string | null;
     defaultStoreId: string | null;
-    storageZoneId: string | null;
   },
 ) {
-  const [category, type, store, storageZone] = await Promise.all([
+  const [category, type, store] = await Promise.all([
     tx.sparePartCategory.findFirst({
       where: {
         id: input.categoryId,
@@ -631,17 +560,9 @@ async function assertSparePartMasterData(
       },
       select: { id: true },
     }),
-    tx.sparePartStorageZone.findFirst({
-      where: {
-        id: input.storageZoneId,
-        plantId: scope.plantId,
-        ...(input.storageZoneId === allowInactive?.storageZoneId ? {} : { active: true }),
-      },
-      select: { id: true },
-    }),
   ]);
-  if (!category || !type || !store || !storageZone) {
-    throw new Error("Store, spare part type, category, and Storage Zone must be active and belong to the selected Site.");
+  if (!category || !type || !store) {
+    throw new Error("Store, spare part type, and category must be active and belong to the selected Site.");
   }
 }
 

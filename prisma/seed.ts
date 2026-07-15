@@ -499,6 +499,27 @@ async function seedSampleSpareParts() {
     }
   }
 
+  const configuredZoneIds = [
+    ...new Set(
+      sampleSparePartFamilies
+        .flatMap((family) => family.zones)
+        .map((zoneName) => zoneByName.get(zoneName))
+        .filter((zoneId): zoneId is string => Boolean(zoneId)),
+    ),
+  ];
+  await db.storeApplicableZone.deleteMany({ where: { plantId: defaultPlantRecord.id } });
+  if (configuredZoneIds.length) {
+    await db.storeApplicableZone.createMany({
+      data: configuredZoneIds.map((zoneId, index) => ({
+        organizationId: defaultOrganizationRecord.id,
+        plantId: defaultPlantRecord.id,
+        zoneId,
+        code: String(index + 1).padStart(2, "0"),
+        active: true,
+      })),
+    });
+  }
+
   let runningNumber = 0;
   for (const family of sampleSparePartFamilies) {
     for (const variant of sampleVariants) {
@@ -506,7 +527,6 @@ async function seedSampleSpareParts() {
       const code = `SP-${inventoryCode}-${String(runningNumber).padStart(5, "0")}`;
       const variantIndex = sampleVariants.indexOf(variant) + 1;
       const name = `${family.name} ${variant}`;
-      const applicableZoneIds = family.zones.map((zoneName) => zoneByName.get(zoneName)).filter(Boolean) as string[];
       const part = await db.sparePart.upsert({
         where: { plantId_code: { plantId: defaultPlantRecord.id, code } },
         update: {
@@ -538,13 +558,6 @@ async function seedSampleSpareParts() {
         },
         select: { id: true },
       });
-
-      await db.sparePartApplicableZone.deleteMany({ where: { sparePartId: part.id } });
-      if (applicableZoneIds.length) {
-        await db.sparePartApplicableZone.createMany({
-          data: applicableZoneIds.map((zoneId) => ({ sparePartId: part.id, zoneId })),
-        });
-      }
 
       const storeId = storeByCode.get(family.storeCode);
       if (!storeId) continue;

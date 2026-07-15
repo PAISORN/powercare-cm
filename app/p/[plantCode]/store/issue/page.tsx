@@ -11,6 +11,7 @@ async function createPublicIssueAction(formData: FormData) {
   "use server";
   const inventoryCode = String(formData.get("inventoryCode") ?? "").trim().toUpperCase();
   const stockKeys = formData.getAll("stockKey").map(String);
+  const zoneIds = formData.getAll("zoneId").map(String);
   const quantities = formData.getAll("requestedQty").map(Number);
   let created: string | null = null;
   let errorMessage: string | null = null;
@@ -19,12 +20,13 @@ async function createPublicIssueAction(formData: FormData) {
       issueType: String(formData.get("issueType") ?? ""),
       cmWorkNumber: optionalText(formData.get("cmWorkNumber")),
       requesterName: String(formData.get("requesterName") ?? ""),
+      requesterDepartment: String(formData.get("requesterDepartment") ?? ""),
       requesterContact: optionalText(formData.get("requesterContact")),
       note: optionalText(formData.get("note")),
       requestedAt: new Date(),
       items: stockKeys.map((key, index) => {
         const [storeId, sparePartId] = key.split(":");
-        return { storeId, sparePartId, requestedQty: quantities[index] };
+        return { storeId, sparePartId, zoneId: zoneIds[index], requestedQty: quantities[index] };
       }),
     });
     created = result.number;
@@ -57,7 +59,7 @@ export default async function PublicStoreIssuePage({
   });
   if (!plant) notFound();
 
-  const [stocks, cmWorks] = await Promise.all([
+  const [stocks, issueZones, cmWorks] = await Promise.all([
     db.storeStock.findMany({
       where: { plantId: plant.id, quantity: { gt: 0 }, store: { active: true }, sparePart: { active: true } },
       include: {
@@ -71,11 +73,15 @@ export default async function PublicStoreIssuePage({
             unit: true,
             minStock: true,
             category: { select: { name: true } },
-            applicableZones: { select: { zone: { select: { name: true } } } },
           },
         },
       },
       orderBy: [{ store: { name: "asc" } }, { sparePart: { name: "asc" } }],
+    }),
+    db.storeApplicableZone.findMany({
+      where: { plantId: plant.id, active: true, zone: { active: true } },
+      select: { code: true, zone: { select: { id: true, name: true } } },
+      orderBy: { code: "asc" },
     }),
     db.cmWork.findMany({
       where: { plantId: plant.id, organizationId: plant.organizationId },
@@ -130,6 +136,7 @@ export default async function PublicStoreIssuePage({
                 inventoryCode={inventoryCode}
                 organizationId={plant.organizationId}
                 plantId={plant.id}
+                issueZones={issueZones.map((item) => ({ ...item.zone, code: item.code }))}
                 publicRequester={{ contactRequired: plant.publicStoreIssueContactRequired }}
                 stocks={stocks.map((stock) => ({
                   storeId: stock.storeId,
@@ -144,7 +151,6 @@ export default async function PublicStoreIssuePage({
                   sparePartName: stock.sparePart.name,
                   sparePartCategoryName: stock.sparePart.category?.name,
                   itemCode: stock.sparePart.itemCode,
-                  zoneNames: stock.sparePart.applicableZones.map((item) => item.zone.name),
                   stockStatus: buildStoreStockStatus(Number(stock.quantity), Number(stock.sparePart.minStock)),
                 }))}
               />

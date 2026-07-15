@@ -24,6 +24,7 @@ import {
   MessageCircleMore,
   Package,
   PlusCircle,
+  QrCode,
   Search,
   Settings,
   ShieldCheck,
@@ -152,6 +153,17 @@ export function getAppLinks(role: RoleValue, permissionContext: AppPermissionCon
     inventoryLink(
       { label: "Issue", href: "/inventory/issue", icon: ArrowUpFromLine, nested: true, parentSectionId: "inventory" },
       canUseAny(PermissionKey.CREATE_STORE_ISSUE, PermissionKey.APPROVE_STORE_ISSUE, PermissionKey.ISSUE_STOCK),
+    ),
+    inventoryLink(
+      { label: "Issue Public", href: "/inventory/public-issue", icon: QrCode, nested: true, parentSectionId: "inventory" },
+      canUseAny(
+        PermissionKey.MANAGE_SPARE_PARTS,
+        PermissionKey.VIEW_STORE_STOCK,
+        PermissionKey.CREATE_STORE_ISSUE,
+        PermissionKey.APPROVE_STORE_ISSUE,
+        PermissionKey.ISSUE_STOCK,
+        PermissionKey.ENABLE_PUBLIC_STORE_ISSUE,
+      ),
     ),
     inventoryLink(
       { label: "Receive", href: "/inventory/receive", icon: ArrowDownToLine, nested: true, parentSectionId: "inventory" },

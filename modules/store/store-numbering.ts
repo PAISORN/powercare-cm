@@ -27,20 +27,18 @@ export function formatSparePartIssueLineNumber(input: {
   storeCode: string;
   typeCode: string;
   categoryCode: string;
-  storageZoneCode: string;
+  zoneCode: string;
   itemCode: string;
-  nextNumber: number;
 }) {
   const typeCode = normalizeIssueSegment(input.typeCode, "Spare part type code").replace(/^GL/, "");
   if (!typeCode) throw new Error("Spare part type code is required after removing GL prefix.");
   return [
-    normalizeStoreSiteCode(input.siteCode),
     normalizeIssueSegment(input.storeCode, "Store code"),
+    normalizeStoreSiteCode(input.siteCode),
     typeCode,
     normalizeIssueSegment(input.categoryCode, "Spare part category code"),
-    normalizeIssueSegment(input.storageZoneCode, "Storage Zone code"),
+    normalizeIssueSegment(input.zoneCode, "Applicable Zone code"),
     normalizeIssueSegment(input.itemCode, "Item Code"),
-    formatRunningNumber(input.nextNumber, 5),
   ].join("-");
 }
 

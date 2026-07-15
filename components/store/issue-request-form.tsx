@@ -1,7 +1,21 @@
 "use client";
 
-import { Minus, PackageSearch, Plus, Send } from "lucide-react";
-import { useMemo, useState } from "react";
+import {
+  ArrowLeft,
+  ArrowRight,
+  ClipboardCheck,
+  FileText,
+  FilterX,
+  Minus,
+  PackageSearch,
+  Plus,
+  Search,
+  Send,
+  ShoppingCart,
+  Wrench,
+} from "lucide-react";
+import { useMemo, useRef, useState } from "react";
+import { SparePartBarcodeScanner } from "./spare-part-barcode-scanner";
 
 type StockStatus = "ENOUGH" | "LOW" | "OUT";
 
@@ -18,9 +32,10 @@ type StockOption = {
   sparePartName?: string;
   sparePartCategoryName?: string;
   itemCode?: string | null;
-  zoneNames?: string[];
   stockStatus?: StockStatus;
 };
+
+type IssueZoneOption = { id: string; name: string; code: string };
 
 type CmOption = {
   id: string;
@@ -34,8 +49,14 @@ type StockFilters = {
   type: string;
   category: string;
   unit: string;
-  zone: string;
   stockStatus: string;
+};
+
+type IssueLine = {
+  id: number;
+  stockKey: string;
+  zoneId: string;
+  requestedQty: string;
 };
 
 const initialFilters: StockFilters = {
@@ -44,7 +65,6 @@ const initialFilters: StockFilters = {
   type: "ALL",
   category: "ALL",
   unit: "ALL",
-  zone: "ALL",
   stockStatus: "ALL",
 };
 
@@ -53,6 +73,7 @@ export function IssueRequestForm({
   organizationId,
   plantId,
   stocks,
+  issueZones,
   cmWorks,
   publicRequester,
   inventoryCode,
@@ -62,20 +83,58 @@ export function IssueRequestForm({
   organizationId: string;
   plantId: string;
   stocks: StockOption[];
+  issueZones: IssueZoneOption[];
   cmWorks: CmOption[];
   publicRequester?: { contactRequired: boolean };
   inventoryCode?: string;
   lockedCmWork?: CmOption;
 }) {
   const [issueType, setIssueType] = useState<"CM_REFERENCED" | "DIRECT">("CM_REFERENCED");
-  const [lineIds, setLineIds] = useState([1]);
+  const formRef = useRef<HTMLFormElement>(null);
+  const [lines, setLines] = useState<IssueLine[]>([{ id: 1, stockKey: "", zoneId: "", requestedQty: "" }]);
   const [filters, setFilters] = useState<StockFilters>(initialFilters);
+  const [reviewMode, setReviewMode] = useState(false);
   const selectedIssueType = lockedCmWork ? "CM_REFERENCED" : issueType;
   const filterOptions = useMemo(() => buildFilterOptions(stocks), [stocks]);
   const filteredStocks = useMemo(() => stocks.filter((stock) => matchesStockFilters(stock, filters)), [filters, stocks]);
 
+  function addLine() {
+    setLines((current) => [
+      ...current,
+      { id: Math.max(...current.map((line) => line.id)) + 1, stockKey: "", zoneId: "", requestedQty: "" },
+    ]);
+  }
+
+  function selectScannedStock(stockKey: string) {
+    setFilters(initialFilters);
+    setLines((current) => {
+      const emptyIndex = current.findIndex((line) => !line.stockKey);
+      if (emptyIndex >= 0) {
+        return current.map((line, index) => index === emptyIndex ? { ...line, stockKey, zoneId: "" } : line);
+      }
+      return [
+        ...current,
+        { id: Math.max(...current.map((line) => line.id)) + 1, stockKey, zoneId: "", requestedQty: "" },
+      ];
+    });
+  }
+
+  function resetFormView() {
+    setIssueType("CM_REFERENCED");
+    setLines([{ id: 1, stockKey: "", zoneId: "", requestedQty: "" }]);
+    setFilters(initialFilters);
+    setReviewMode(false);
+    formRef.current?.reset();
+  }
+
+  function openReview() {
+    if (!formRef.current?.reportValidity()) return;
+    setReviewMode(true);
+    formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
   return (
-    <form action={action} className="space-y-5">
+    <form action={action} className="space-y-4" ref={formRef}>
       <input name="organizationId" type="hidden" value={organizationId} />
       <input name="plantId" type="hidden" value={plantId} />
       {inventoryCode ? <input name="inventoryCode" type="hidden" value={inventoryCode} /> : null}
@@ -86,152 +145,216 @@ export function IssueRequestForm({
         </>
       ) : null}
 
-      {publicRequester ? (
-        <div className="grid gap-4 md:grid-cols-2">
-          <label className={labelClass}>
-            ชื่อผู้ขอเบิก
-            <input className={inputClass} name="requesterName" required />
-          </label>
-          <label className={labelClass}>
-            เบอร์ติดต่อ / ช่องทางติดต่อ {publicRequester.contactRequired ? "" : "(ไม่บังคับ)"}
-            <input className={inputClass} name="requesterContact" required={publicRequester.contactRequired} />
-          </label>
-        </div>
-      ) : null}
-
-      {lockedCmWork ? (
-        <div className="rounded-2xl border border-[var(--primary)]/20 bg-[var(--primary)]/10 px-4 py-3 text-sm">
-          <p className="font-extrabold text-[var(--primary)]">Store Request สำหรับงานนี้</p>
-          <p className="mt-1 text-[var(--muted)]">
-            {lockedCmWork.number} · {lockedCmWork.label}
-          </p>
-        </div>
-      ) : (
-        <div className="grid gap-4 md:grid-cols-2">
-          <fieldset className="grid gap-2">
-            <legend className={labelClass}>ประเภทการเบิก</legend>
-            <div className="grid grid-cols-2 gap-2 rounded-2xl bg-[var(--soft)] p-1.5">
-              {[
-                ["CM_REFERENCED", "อ้างอิงงาน CM"],
-                ["DIRECT", "เบิกโดยตรง"],
-              ].map(([value, label]) => (
-                <label
-                  className={`flex min-h-11 cursor-pointer items-center justify-center rounded-xl px-3 text-center text-sm font-bold transition ${
-                    issueType === value ? "bg-[var(--primary)] text-white shadow-sm" : "text-[var(--muted)]"
-                  }`}
-                  key={value}
-                >
-                  <input
-                    checked={issueType === value}
-                    className="sr-only"
-                    name="issueType"
-                    onChange={() => setIssueType(value as typeof issueType)}
-                    type="radio"
-                    value={value}
-                  />
-                  {label}
-                </label>
-              ))}
+      <section className="overflow-hidden rounded-2xl border border-[var(--line)] bg-[var(--surface)] shadow-sm">
+        <SectionHeading icon={<FileText size={19} />} title="ข้อมูลการเบิก" />
+        <div className="grid gap-4 p-4 sm:p-5">
+          {publicRequester ? (
+            <div className="grid gap-4 md:grid-cols-2">
+              <label className={labelClass}>
+                ชื่อ-นามสกุล ผู้เบิก
+                <input className={inputClass} name="requesterName" required />
+              </label>
+              <label className={labelClass}>
+                หน่วยงาน / แผนก
+                <input className={inputClass} name="requesterDepartment" required />
+              </label>
+              <label className={labelClass}>
+                เบอร์ติดต่อ / ช่องทางติดต่อ {publicRequester.contactRequired ? "" : "(ไม่บังคับ)"}
+                <input className={inputClass} name="requesterContact" required={publicRequester.contactRequired} />
+              </label>
             </div>
-          </fieldset>
+          ) : null}
 
-          {selectedIssueType === "CM_REFERENCED" ? (
-            <label className={labelClass}>
-              เลขที่ CM ภายใน Site
-              <select className={inputClass} defaultValue="" name="cmWorkNumber" required>
-                <option disabled value="">
-                  ค้นหาและเลือกเลขที่ CM
-                </option>
-                {cmWorks.map((work) => (
-                  <option key={work.id} value={work.number}>
-                    {work.number} · {work.label}
-                  </option>
-                ))}
-              </select>
-            </label>
+          {lockedCmWork ? (
+            <div className="rounded-xl border border-[var(--primary)]/25 bg-[var(--primary)]/10 px-4 py-3 text-sm">
+              <p className="font-extrabold text-[var(--primary)]">Store Request สำหรับงานนี้</p>
+              <p className="mt-1 text-[var(--muted)]">{lockedCmWork.number} · {lockedCmWork.label}</p>
+            </div>
           ) : (
-            <label className={labelClass}>
-              เหตุผลการเบิกโดยตรง
-              <input className={inputClass} name="note" required />
-            </label>
+            <div className="grid gap-4 md:grid-cols-2">
+              <fieldset className="grid gap-1.5 md:col-span-2">
+                <legend className="text-sm font-bold">ประเภทการเบิก</legend>
+                <div className="grid grid-cols-2 rounded-xl border border-[var(--line)] bg-[var(--soft)] p-1">
+                  {[
+                    ["CM_REFERENCED", "ดำเนินงาน CM", Wrench],
+                    ["DIRECT", "เบิกโดยตรง", ClipboardCheck],
+                  ].map(([value, label, Icon]) => (
+                    <label
+                      className={`flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-lg px-3 text-center text-sm font-bold ${
+                        issueType === value ? "bg-[var(--primary)] text-white shadow-sm" : "text-[var(--muted)]"
+                      }`}
+                      key={String(value)}
+                    >
+                      <input
+                        checked={issueType === value}
+                        className="sr-only"
+                        name="issueType"
+                        onChange={() => setIssueType(value as typeof issueType)}
+                        type="radio"
+                        value={String(value)}
+                      />
+                      <Icon size={16} />
+                      {String(label)}
+                    </label>
+                  ))}
+                </div>
+              </fieldset>
+
+              {selectedIssueType === "CM_REFERENCED" ? (
+                <label className={labelClass}>
+                  เลขที่ CM ภายใน Site
+                  <select className={inputClass} defaultValue="" name="cmWorkNumber" required>
+                    <option disabled value="">ค้นหาและเลือกเลขที่ CM</option>
+                    {cmWorks.map((work) => (
+                      <option key={work.id} value={work.number}>{work.number} · {work.label}</option>
+                    ))}
+                  </select>
+                </label>
+              ) : (
+                <label className={labelClass}>
+                  เหตุผลการเบิกโดยตรง
+                  <input className={inputClass} name="note" required />
+                </label>
+              )}
+
+              <div className="grid gap-1.5 text-sm font-bold">
+                วันที่ขอเบิก
+                <div className={`${inputClass} flex items-center text-[var(--muted)]`}>ระบบบันทึกอัตโนมัติ</div>
+              </div>
+            </div>
           )}
-        </div>
-      )}
 
-      <div className="space-y-3">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h3 className="font-extrabold">รายการอะไหล่</h3>
-            <p className="text-sm text-[var(--muted)]">เลือกอะไหล่ได้หลายรายการ ระบบจะตรวจยอดคงเหลือก่อนส่งคำขอ</p>
-          </div>
-          <button
-            className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-[var(--line)] px-4 text-sm font-bold transition hover:border-[var(--primary)] hover:text-[var(--primary)]"
-            onClick={() => setLineIds((current) => [...current, Math.max(...current) + 1])}
-            type="button"
-          >
-            <Plus size={17} />
-            เพิ่มรายการ
-          </button>
-        </div>
-
-        <div className="grid gap-3 rounded-2xl border border-[var(--line)] bg-[var(--soft)] p-3 md:grid-cols-4 xl:grid-cols-7">
-          <label className={labelClass}>
-            ค้นหา
-            <input
-              aria-label="Search spare parts"
-              className={inputClass}
-              onChange={(event) => setFilters((current) => ({ ...current, search: event.target.value }))}
-              placeholder="รหัส, item code, ชื่ออะไหล่"
-              value={filters.search}
-            />
-          </label>
-          <FilterSelect label="คลังอะไหล่" options={filterOptions.stores} value={filters.store} onChange={(value) => setFilters((current) => ({ ...current, store: value }))} />
-          <FilterSelect label="ประเภท" options={filterOptions.types} value={filters.type} onChange={(value) => setFilters((current) => ({ ...current, type: value }))} />
-          <FilterSelect label="หมวดหมู่" options={filterOptions.categories} value={filters.category} onChange={(value) => setFilters((current) => ({ ...current, category: value }))} />
-          <FilterSelect label="หน่วยนับ" options={filterOptions.units} value={filters.unit} onChange={(value) => setFilters((current) => ({ ...current, unit: value }))} />
-          <FilterSelect label="Zone" options={filterOptions.zones} value={filters.zone} onChange={(value) => setFilters((current) => ({ ...current, zone: value }))} />
-          <FilterSelect label="สถานะสต๊อก" options={filterOptions.stockStatuses} value={filters.stockStatus} onChange={(value) => setFilters((current) => ({ ...current, stockStatus: value }))} />
-        </div>
-
-        {lineIds.map((lineId, index) => (
-          <div
-            className="grid gap-3 rounded-2xl border border-[var(--line)] bg-[var(--soft)] p-4 md:grid-cols-[minmax(240px,1fr)_130px_auto] md:items-end"
-            key={lineId}
-          >
+          {selectedIssueType === "CM_REFERENCED" && !lockedCmWork ? (
             <label className={labelClass}>
-              Store / อะไหล่
-              <select className={inputClass} defaultValue="" name="stockKey" required>
-                <option disabled value="">
-                  เลือกอะไหล่จาก Stock
-                </option>
-                {filteredStocks.map((stock) => (
-                  <option key={`${stock.storeId}:${stock.sparePartId}`} value={`${stock.storeId}:${stock.sparePartId}`}>
-                    {stock.label} · คงเหลือ {stock.available} {stock.unit}
-                  </option>
-                ))}
-                {!filteredStocks.length ? (
-                  <option disabled value="">
-                    ไม่พบอะไหล่ตามตัวกรอง
-                  </option>
+              รายละเอียดการเบิก / เหตุผล / งานที่เกี่ยวข้อง
+              <textarea className={`${inputClass} min-h-20 resize-y py-3`} name="note" placeholder="ระบุรายละเอียดเพิ่มเติม (ไม่บังคับ)" />
+            </label>
+          ) : null}
+        </div>
+      </section>
+
+      {!reviewMode ? (
+        <section className="overflow-hidden rounded-2xl border border-[var(--line)] bg-[var(--surface)] shadow-sm">
+          <SectionHeading
+            action={(
+              <div className="flex flex-wrap gap-2">
+                {publicRequester ? (
+                  <SparePartBarcodeScanner
+                    onSelect={selectScannedStock}
+                    options={stocks.map((stock) => ({
+                      stockKey: `${stock.storeId}:${stock.sparePartId}`,
+                      itemCode: stock.itemCode,
+                      sparePartCode: stock.sparePartCode,
+                      sparePartName: stock.sparePartName,
+                    }))}
+                  />
                 ) : null}
-              </select>
-            </label>
+                <button className={secondaryButtonClass} onClick={addLine} type="button">
+                  <Plus size={17} /> เพิ่มรายการ
+                </button>
+              </div>
+            )}
+            icon={<ShoppingCart size={19} />}
+            title="รายการอะไหล่"
+          />
+
+          <div className="grid gap-3 border-b border-[var(--line)] bg-[var(--soft)]/65 p-4 sm:grid-cols-2 2xl:grid-cols-3">
             <label className={labelClass}>
-              จำนวนที่ขอ
-              <input className={inputClass} min="0.01" name="requestedQty" required step="0.01" type="number" />
+              ค้นหาอะไหล่
+              <span className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--muted)]" size={17} />
+                <input
+                  aria-label="Search spare parts"
+                  className={`${inputClass} pl-10`}
+                  onChange={(event) => setFilters((current) => ({ ...current, search: event.target.value }))}
+                  placeholder="รหัส, Item code, ชื่ออะไหล่"
+                  value={filters.search}
+                />
+              </span>
             </label>
-            <button
-              aria-label={`ลบรายการที่ ${index + 1}`}
-              className="flex size-12 items-center justify-center rounded-xl border border-red-500/30 text-red-600 transition hover:bg-red-500/10 disabled:opacity-35"
-              disabled={lineIds.length === 1}
-              onClick={() => setLineIds((current) => current.filter((item) => item !== lineId))}
-              type="button"
-            >
-              <Minus size={18} />
+            <FilterSelect label="คลังอะไหล่" options={filterOptions.stores} value={filters.store} onChange={(value) => setFilters((current) => ({ ...current, store: value }))} />
+            <FilterSelect label="ประเภท" options={filterOptions.types} value={filters.type} onChange={(value) => setFilters((current) => ({ ...current, type: value }))} />
+            <FilterSelect label="หมวดหมู่" options={filterOptions.categories} value={filters.category} onChange={(value) => setFilters((current) => ({ ...current, category: value }))} />
+            <FilterSelect label="หน่วยนับ" options={filterOptions.units} value={filters.unit} onChange={(value) => setFilters((current) => ({ ...current, unit: value }))} />
+            <FilterSelect label="สถานะสต๊อก" options={filterOptions.stockStatuses} value={filters.stockStatus} onChange={(value) => setFilters((current) => ({ ...current, stockStatus: value }))} />
+            <button className={`${secondaryButtonClass} self-end`} onClick={() => setFilters(initialFilters)} type="button">
+              <FilterX size={17} /> ล้างตัวกรอง
             </button>
           </div>
-        ))}
-      </div>
+
+          <div className="max-w-full p-3 sm:p-4">
+            <div className="w-full overflow-hidden rounded-xl border border-[var(--line)]">
+              <div className="hidden grid-cols-[40px_minmax(210px,1fr)_minmax(150px,.72fr)_90px_44px] bg-[var(--soft)] px-3 py-3 text-xs font-extrabold text-[var(--muted)] 2xl:grid">
+                <span>ลำดับ</span><span>อะไหล่ / คลัง</span><span>Zone ที่นำไปใช้งาน</span><span>จำนวน</span><span className="sr-only">จัดการ</span>
+              </div>
+              {lines.map((line, index) => {
+                const stock = stockForKey(stocks, line.stockKey);
+                return (
+                  <div className="grid gap-3 border-t border-[var(--line)] bg-[var(--surface)] p-3 2xl:grid-cols-[40px_minmax(210px,1fr)_minmax(150px,.72fr)_90px_44px] 2xl:items-end 2xl:gap-0 2xl:px-3" key={line.id}>
+                    <span className="inline-flex size-8 items-center justify-center self-center rounded-lg bg-[var(--soft)] text-sm font-extrabold text-[var(--primary)] 2xl:size-auto 2xl:justify-start 2xl:bg-transparent">{index + 1}</span>
+                    <label className={`${labelClass} 2xl:pr-3`}>
+                      <span className="text-xs text-[var(--muted)] 2xl:sr-only">อะไหล่ / คลัง</span>
+                      <select
+                        className={inputClass}
+                        name="stockKey"
+                        onChange={(event) => setLines((current) => current.map((item) => item.id === line.id ? { ...item, stockKey: event.target.value, zoneId: "" } : item))}
+                        required
+                        value={line.stockKey}
+                      >
+                        <option disabled value="">เลือกอะไหล่จาก Stock</option>
+                        {filteredStocks.map((option) => (
+                          <option key={`${option.storeId}:${option.sparePartId}`} value={`${option.storeId}:${option.sparePartId}`}>
+                            {option.label} · คงเหลือ {option.available} {option.unit}
+                          </option>
+                        ))}
+                      </select>
+                      {stock ? <span className="truncate text-xs font-medium text-[var(--muted)]">คงเหลือ {stock.available} {stock.unit} · {stock.storeName}</span> : null}
+                    </label>
+                    <label className={`${labelClass} 2xl:pr-3`}>
+                      <span className="text-xs text-[var(--muted)] 2xl:sr-only">Zone ที่นำไปใช้งาน</span>
+                      <select
+                        className={inputClass}
+                        disabled={!line.stockKey || !issueZones.length}
+                        name="zoneId"
+                        onChange={(event) => setLines((current) => current.map((item) => item.id === line.id ? { ...item, zoneId: event.target.value } : item))}
+                        required
+                        value={line.zoneId}
+                      >
+                        <option value="">{!line.stockKey ? "เลือกอะไหล่ก่อน" : issueZones.length ? "เลือก Zone" : "ไม่มี Applicable Zone"}</option>
+                        {issueZones.map((zone) => <option key={zone.id} value={zone.id}>{zone.code} · {zone.name}</option>)}
+                      </select>
+                    </label>
+                    <label className={`${labelClass} 2xl:pr-3`}>
+                      <span className="text-xs text-[var(--muted)] 2xl:sr-only">จำนวนที่ขอ</span>
+                      <input
+                        className={inputClass}
+                        min="0.01"
+                        name="requestedQty"
+                        onChange={(event) => setLines((current) => current.map((item) => item.id === line.id ? { ...item, requestedQty: event.target.value } : item))}
+                        required
+                        step="0.01"
+                        type="number"
+                        value={line.requestedQty}
+                      />
+                    </label>
+                    <button
+                      aria-label={`ลบรายการที่ ${index + 1}`}
+                      className="flex size-11 items-center justify-center rounded-lg border border-red-500/25 text-red-600 hover:bg-red-500/10 disabled:opacity-30"
+                      disabled={lines.length === 1}
+                      onClick={() => setLines((current) => current.filter((item) => item.id !== line.id))}
+                      type="button"
+                    >
+                      <Minus size={17} />
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </section>
+      ) : (
+        <ReviewPanel issueZones={issueZones} lines={lines} stocks={stocks} />
+      )}
 
       {!stocks.length ? (
         <p className="rounded-2xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm font-bold text-amber-700 dark:text-amber-300">
@@ -239,21 +362,64 @@ export function IssueRequestForm({
         </p>
       ) : null}
 
-      <div className="sticky bottom-3 z-10 flex items-center justify-between gap-3 rounded-2xl border border-[var(--line)] bg-[var(--surface)]/95 p-3 shadow-lg backdrop-blur">
-        <span className="hidden items-center gap-2 text-sm font-semibold text-[var(--muted)] sm:flex">
-          <PackageSearch size={18} />
-          ตรวจสอบรายการก่อนส่ง
-        </span>
-        <button
-          className="inline-flex min-h-12 flex-1 items-center justify-center gap-2 rounded-xl bg-[var(--primary)] px-6 font-bold text-white transition hover:-translate-y-0.5 hover:bg-[var(--primary-strong)] disabled:opacity-45 sm:flex-none"
-          disabled={!stocks.length}
-        >
-          <Send size={18} />
-          ส่งคำขอเบิก
+      <div className="sticky bottom-3 z-10 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[var(--line)] bg-[var(--surface)]/95 p-3 shadow-lg backdrop-blur">
+        <button className={secondaryButtonClass} onClick={reviewMode ? () => setReviewMode(false) : resetFormView} type="button">
+          {reviewMode ? <ArrowLeft size={18} /> : null}
+          {reviewMode ? "กลับไปแก้ไข" : "ยกเลิก"}
         </button>
+        {reviewMode ? (
+          <button className={primaryButtonClass} disabled={!stocks.length}>
+            <Send size={18} /> ยืนยันและส่งคำขอเบิก
+          </button>
+        ) : (
+          <button className={primaryButtonClass} disabled={!stocks.length} onClick={openReview} type="button">
+            ถัดไป: ตรวจสอบและยืนยัน <ArrowRight size={18} />
+          </button>
+        )}
       </div>
     </form>
   );
+}
+
+function SectionHeading({ action, icon, title }: { action?: React.ReactNode; icon: React.ReactNode; title: string }) {
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--line)] px-4 py-3 sm:px-5">
+      <h3 className="flex items-center gap-2 text-lg font-extrabold"><span className="text-[var(--primary)]">{icon}</span>{title}</h3>
+      {action}
+    </div>
+  );
+}
+
+function ReviewPanel({ issueZones, lines, stocks }: { issueZones: IssueZoneOption[]; lines: IssueLine[]; stocks: StockOption[] }) {
+  return (
+    <section className="overflow-hidden rounded-2xl border border-[var(--line)] bg-[var(--surface)] shadow-sm">
+      <SectionHeading icon={<ClipboardCheck size={19} />} title="ตรวจสอบและยืนยัน" />
+      <div className="grid gap-3 p-4 sm:p-5">
+        {lines.map((line, index) => {
+          const stock = stockForKey(stocks, line.stockKey);
+          const zone = issueZones.find((item) => item.id === line.zoneId);
+          return (
+            <article className="grid gap-3 rounded-xl border border-[var(--line)] bg-[var(--soft)] p-4 sm:grid-cols-[48px_minmax(0,1fr)_auto] sm:items-center" key={line.id}>
+              <span className="flex size-9 items-center justify-center rounded-lg bg-[var(--primary)] text-sm font-extrabold text-white">{index + 1}</span>
+              <div className="min-w-0">
+                <p className="truncate font-extrabold">{stock?.sparePartName ?? stock?.label ?? "-"}</p>
+                <p className="mt-1 text-sm text-[var(--muted)]">{stock?.sparePartCode ?? "-"} · {stock?.storeName ?? "-"} · Zone {zone ? `${zone.code} ${zone.name}` : "-"}</p>
+              </div>
+              <p className="font-extrabold text-[var(--primary)]">{line.requestedQty || "0"} {stock?.unit ?? ""}</p>
+            </article>
+          );
+        })}
+        <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-[var(--line)] p-4 text-sm font-bold">
+          <input className="mt-0.5 size-5 accent-[var(--primary)]" required type="checkbox" />
+          <span>ตรวจสอบข้อมูล เลขที่ CM, Zone และจำนวนอะไหล่ถูกต้องแล้ว</span>
+        </label>
+      </div>
+    </section>
+  );
+}
+
+function stockForKey(stocks: StockOption[], stockKey: string) {
+  return stocks.find((stock) => `${stock.storeId}:${stock.sparePartId}` === stockKey);
 }
 
 function FilterSelect({
@@ -288,7 +454,6 @@ function buildFilterOptions(stocks: StockOption[]) {
     types: uniqueSorted(stocks.map((stock) => stock.storeCategoryName ?? "")),
     categories: uniqueSorted(stocks.map((stock) => stock.sparePartCategoryName ?? "")),
     units: uniqueSorted(stocks.map((stock) => stock.unit)),
-    zones: uniqueSorted(stocks.flatMap((stock) => stock.zoneNames ?? [])),
     stockStatuses: ["ENOUGH", "LOW", "OUT"],
   };
 }
@@ -304,7 +469,6 @@ function matchesStockFilters(stock: StockOption, filters: StockFilters) {
     stock.itemCode,
     stock.sparePartCategoryName,
     stock.storeCategoryName,
-    ...(stock.zoneNames ?? []),
   ]
     .filter(Boolean)
     .join(" ")
@@ -316,8 +480,7 @@ function matchesStockFilters(stock: StockOption, filters: StockFilters) {
     matchesFilter(filters.type, stock.storeCategoryName) &&
     matchesFilter(filters.category, stock.sparePartCategoryName) &&
     matchesFilter(filters.unit, stock.unit) &&
-    matchesFilter(filters.stockStatus, stock.stockStatus) &&
-    (filters.zone === "ALL" || (stock.zoneNames ?? []).includes(filters.zone))
+    matchesFilter(filters.stockStatus, stock.stockStatus)
   );
 }
 
@@ -332,3 +495,7 @@ function uniqueSorted(values: string[]) {
 const inputClass =
   "min-h-12 w-full rounded-xl border border-[var(--line)] bg-[var(--surface)] px-3 text-[var(--ink)] outline-none transition focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/15";
 const labelClass = "grid gap-1.5 text-sm font-bold";
+const secondaryButtonClass =
+  "inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-[var(--line)] bg-[var(--surface)] px-4 text-sm font-bold hover:border-[var(--primary)] hover:text-[var(--primary)]";
+const primaryButtonClass =
+  "inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-[var(--primary)] px-6 font-bold text-white hover:-translate-y-0.5 hover:bg-[var(--primary-strong)] disabled:cursor-not-allowed disabled:opacity-45";

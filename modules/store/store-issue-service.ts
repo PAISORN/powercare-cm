@@ -14,6 +14,8 @@ export type StoreIssueActor = {
 export type StoreIssueItemInput = {
   sparePartId: string;
   storeId?: string | null;
+  zoneId: string;
+  zoneCode?: string | null;
   lineNumber?: string;
   requestedQty: number;
   note?: string | null;
@@ -24,6 +26,7 @@ export type CreateStoreIssueInput = {
   issueType: StoreIssueType;
   cmWorkId?: string | null;
   requesterName: string;
+  requesterDepartment?: string | null;
   requesterContact?: string | null;
   requesterUserId?: string | null;
   note?: string | null;
@@ -41,6 +44,8 @@ export type StoreIssueRecord = {
     lineNumber?: string | null;
     storeId: string | null;
     sparePartId: string;
+    zoneId?: string | null;
+    zoneCode?: string | null;
     requestedQty: number;
     approvedQty?: number | null;
     issuedQty?: number | null;
@@ -318,6 +323,7 @@ function assertIssueInput(input: CreateStoreIssueInput) {
   if (!input.requesterName.trim()) throw new Error("Requester name is required.");
   if (!input.items.length) throw new Error("Store issue must include at least one item.");
   for (const item of input.items) {
+    if (!item.zoneId.trim()) throw new Error("Applicable Zone is required for every spare part.");
     if (!Number.isFinite(item.requestedQty) || item.requestedQty <= 0) {
       throw new Error("Requested quantity must be greater than zero.");
     }

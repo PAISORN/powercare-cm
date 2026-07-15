@@ -1,10 +1,39 @@
 "use client";
 
-import { Minus, PackagePlus, Plus } from "lucide-react";
-import { useState } from "react";
+import { FilterX, Minus, PackagePlus, Plus, Search } from "lucide-react";
+import { useMemo, useState } from "react";
 
-type StoreOption = { id: string; name: string; code: string };
-type SparePartOption = { id: string; name: string; code: string; unit: string };
+type StoreOption = { id: string; name: string; code: string; categoryName?: string };
+type SparePartOption = {
+  id: string;
+  name: string;
+  code: string;
+  itemCode?: string | null;
+  unit: string;
+  minStock: number;
+  categoryName?: string;
+  typeName?: string;
+  stocks: Array<{ storeId: string; quantity: number }>;
+};
+type ReceiveLine = { id: number; storeId: string; sparePartId: string };
+type StockStatus = "ALL" | "ENOUGH" | "LOW" | "OUT";
+type ReceiveFilters = {
+  search: string;
+  storeId: string;
+  type: string;
+  category: string;
+  unit: string;
+  stockStatus: StockStatus;
+};
+
+const initialFilters: ReceiveFilters = {
+  search: "",
+  storeId: "ALL",
+  type: "ALL",
+  category: "ALL",
+  unit: "ALL",
+  stockStatus: "ALL",
+};
 
 type ReceiveStockFormProps = {
   action: (formData: FormData) => void | Promise<void>;
@@ -21,15 +50,32 @@ export function ReceiveStockForm({
   stores,
   spareParts,
 }: ReceiveStockFormProps) {
-  const [lineIds, setLineIds] = useState([1]);
+  const [lines, setLines] = useState<ReceiveLine[]>([{ id: 1, storeId: "", sparePartId: "" }]);
+  const [filters, setFilters] = useState<ReceiveFilters>(initialFilters);
   const canSubmit = stores.length > 0 && spareParts.length > 0;
+  const filterOptions = useMemo(() => ({
+    types: uniqueSorted(spareParts.map((part) => part.typeName ?? "")),
+    categories: uniqueSorted(spareParts.map((part) => part.categoryName ?? "")),
+    units: uniqueSorted(spareParts.map((part) => part.unit)),
+  }), [spareParts]);
+  const filteredSpareParts = useMemo(
+    () => spareParts.filter((part) => matchesReceiveFilters(part, filters)),
+    [filters, spareParts],
+  );
+  const filteredStores = filters.storeId === "ALL"
+    ? stores
+    : stores.filter((store) => store.id === filters.storeId);
 
   function addLine() {
-    setLineIds((current) => [...current, Math.max(...current) + 1]);
+    setLines((current) => [...current, {
+      id: Math.max(...current.map((line) => line.id)) + 1,
+      storeId: filters.storeId === "ALL" ? "" : filters.storeId,
+      sparePartId: "",
+    }]);
   }
 
   function removeLine(id: number) {
-    setLineIds((current) => (current.length === 1 ? current : current.filter((lineId) => lineId !== id)));
+    setLines((current) => (current.length === 1 ? current : current.filter((line) => line.id !== id)));
   }
 
   return (
@@ -74,18 +120,68 @@ export function ReceiveStockForm({
           </button>
         </div>
 
-        {lineIds.map((lineId, index) => (
+        <div className="grid gap-3 rounded-2xl border border-[var(--line)] bg-[var(--soft)] p-4 sm:grid-cols-2 xl:grid-cols-3">
+          <label className={labelClass}>
+            ค้นหาอะไหล่
+            <span className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--muted)]" size={17} />
+              <input
+                aria-label="ค้นหาอะไหล่สำหรับรับเข้า"
+                className={`${inputClass} pl-10`}
+                onChange={(event) => setFilters((current) => ({ ...current, search: event.target.value }))}
+                placeholder="รหัส, Item code, ชื่ออะไหล่"
+                value={filters.search}
+              />
+            </span>
+          </label>
+          <FilterSelect
+            label="คลังอะไหล่"
+            onChange={(storeId) => setFilters((current) => ({ ...current, storeId }))}
+            options={stores.map((store) => ({ label: `${store.code} · ${store.name}`, value: store.id }))}
+            value={filters.storeId}
+          />
+          <FilterSelect label="ประเภท" onChange={(type) => setFilters((current) => ({ ...current, type }))} options={filterOptions.types.map(toFilterOption)} value={filters.type} />
+          <FilterSelect label="หมวดหมู่" onChange={(category) => setFilters((current) => ({ ...current, category }))} options={filterOptions.categories.map(toFilterOption)} value={filters.category} />
+          <FilterSelect label="หน่วยนับ" onChange={(unit) => setFilters((current) => ({ ...current, unit }))} options={filterOptions.units.map(toFilterOption)} value={filters.unit} />
+          <FilterSelect
+            label="สถานะสต็อก"
+            onChange={(stockStatus) => setFilters((current) => ({ ...current, stockStatus: stockStatus as StockStatus }))}
+            options={[
+              { label: "เพียงพอ", value: "ENOUGH" },
+              { label: "ใกล้หมด", value: "LOW" },
+              { label: "หมดสต็อก", value: "OUT" },
+            ]}
+            value={filters.stockStatus}
+          />
+          <button className={`${secondaryButtonClass} self-end justify-center sm:col-span-2 xl:col-span-3 xl:justify-self-start`} onClick={() => setFilters(initialFilters)} type="button">
+            <FilterX size={17} /> ล้างตัวกรอง
+          </button>
+        </div>
+
+        <p className="text-xs font-semibold text-[var(--muted)]">
+          พบ {filteredSpareParts.length.toLocaleString("th-TH")} จาก {spareParts.length.toLocaleString("th-TH")} รายการ
+        </p>
+
+        {lines.map((line, index) => {
+          const lineParts = includeSelectedPart(filteredSpareParts, spareParts, line.sparePartId);
+          return (
           <div
-            key={lineId}
+            key={line.id}
             className="grid gap-3 rounded-2xl border border-[var(--line)] bg-[var(--soft)] p-4 lg:grid-cols-[minmax(160px,0.8fr)_minmax(240px,1.5fr)_110px_140px_auto]"
           >
             <label className={labelClass}>
               คลัง
-              <select className={inputClass} name="storeId" required defaultValue="">
+              <select
+                className={inputClass}
+                name="storeId"
+                onChange={(event) => setLines((current) => current.map((item) => item.id === line.id ? { ...item, storeId: event.target.value } : item))}
+                required
+                value={line.storeId}
+              >
                 <option disabled value="">
                   เลือกคลัง
                 </option>
-                {stores.map((store) => (
+                {filteredStores.map((store) => (
                   <option key={store.id} value={store.id}>
                     {store.code} · {store.name}
                   </option>
@@ -94,15 +190,22 @@ export function ReceiveStockForm({
             </label>
             <label className={labelClass}>
               อะไหล่
-              <select className={inputClass} name="sparePartId" required defaultValue="">
+              <select
+                className={inputClass}
+                name="sparePartId"
+                onChange={(event) => setLines((current) => current.map((item) => item.id === line.id ? { ...item, sparePartId: event.target.value } : item))}
+                required
+                value={line.sparePartId}
+              >
                 <option disabled value="">
                   เลือกอะไหล่
                 </option>
-                {spareParts.map((part) => (
+                {lineParts.map((part) => (
                   <option key={part.id} value={part.id}>
-                    {part.code} · {part.name} ({part.unit})
+                    {part.code} · {part.itemCode || "-"} · {part.name} ({part.unit})
                   </option>
                 ))}
+                {!lineParts.length ? <option disabled value="">ไม่พบอะไหล่ตามตัวกรอง</option> : null}
               </select>
             </label>
             <label className={labelClass}>
@@ -116,15 +219,16 @@ export function ReceiveStockForm({
             <button
               aria-label={`ลบรายการที่ ${index + 1}`}
               className="mt-auto flex size-12 items-center justify-center rounded-2xl border border-red-500/30 text-red-600 transition hover:bg-red-500/10 disabled:cursor-not-allowed disabled:opacity-35"
-              disabled={lineIds.length === 1}
-              onClick={() => removeLine(lineId)}
+              disabled={lines.length === 1}
+              onClick={() => removeLine(line.id)}
               title="ลบรายการ"
               type="button"
             >
               <Minus size={18} />
             </button>
           </div>
-        ))}
+          );
+        })}
       </div>
 
       {!canSubmit ? (
@@ -144,6 +248,64 @@ export function ReceiveStockForm({
       </div>
     </form>
   );
+}
+
+function FilterSelect({
+  label,
+  onChange,
+  options,
+  value,
+}: {
+  label: string;
+  onChange: (value: string) => void;
+  options: Array<{ label: string; value: string }>;
+  value: string;
+}) {
+  return (
+    <label className={labelClass}>
+      {label}
+      <select className={inputClass} onChange={(event) => onChange(event.target.value)} value={value}>
+        <option value="ALL">ทั้งหมด</option>
+        {options.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+      </select>
+    </label>
+  );
+}
+
+function matchesReceiveFilters(part: SparePartOption, filters: ReceiveFilters) {
+  const search = filters.search.trim().toLocaleLowerCase("th-TH");
+  const haystack = [part.code, part.itemCode, part.name, part.typeName, part.categoryName, part.unit]
+    .filter(Boolean)
+    .join(" ")
+    .toLocaleLowerCase("th-TH");
+  const relevantStocks = filters.storeId === "ALL"
+    ? part.stocks
+    : part.stocks.filter((stock) => stock.storeId === filters.storeId);
+  const quantity = relevantStocks.reduce((sum, stock) => sum + stock.quantity, 0);
+  const status = quantity <= 0 ? "OUT" : quantity <= part.minStock ? "LOW" : "ENOUGH";
+
+  return (
+    (!search || haystack.includes(search)) &&
+    (filters.storeId === "ALL" || relevantStocks.length > 0) &&
+    (filters.type === "ALL" || part.typeName === filters.type) &&
+    (filters.category === "ALL" || part.categoryName === filters.category) &&
+    (filters.unit === "ALL" || part.unit === filters.unit) &&
+    (filters.stockStatus === "ALL" || status === filters.stockStatus)
+  );
+}
+
+function includeSelectedPart(filtered: SparePartOption[], all: SparePartOption[], selectedId: string) {
+  if (!selectedId || filtered.some((part) => part.id === selectedId)) return filtered;
+  const selected = all.find((part) => part.id === selectedId);
+  return selected ? [selected, ...filtered] : filtered;
+}
+
+function toFilterOption(value: string) {
+  return { label: value, value };
+}
+
+function uniqueSorted(values: string[]) {
+  return [...new Set(values.filter(Boolean))].sort((left, right) => left.localeCompare(right, "th"));
 }
 
 function toLocalDateTimeInput(date: Date) {

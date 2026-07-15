@@ -88,9 +88,17 @@ _Avoid_: site issue QR, full spare-part record, stock movement QR
 A unique human-readable identifier for a spare-part issue, used to track issue status similarly to a CM work number. It follows `SI-{SITE_CODE}-{YYYY}-{MM}-{RUNNING}`, such as `SI-RTB-2026-07-0001`.
 _Avoid_: receipt number, stock movement ID, request database ID
 
+**Spare Part Issue Line Code**:
+A human-readable reference printed for each issued spare-part line. It follows `{STORE_CODE}-{SITE_CODE}-{TYPE_CODE}-{CATEGORY_CODE}-{ZONE_CODE}-{ITEM_CODE}`, such as `SP01-RTB-630101-EI-02-FUSE001`. It uses the Zone selected for that issue and has no trailing running number.
+_Avoid_: spare part issue number, spare part code, database line ID
+
 **Direct Spare Part Issue**:
 A spare-part issue that is not linked to CM work and must include an issue type and a short reason for audit clarity.
 _Avoid_: manual stock out, free issue, untracked issue
+
+**Issue Public**:
+A Site-scoped public spare-part issue flow for requesters who do not have a PowerCare.CM account. Each Site has its own public URL and QR code. The requester must provide a full name and department, can select CM-referenced or direct issue, and can find spare parts by filters, manual code, or mobile barcode scanning. The server derives Organization and Site scope from the public Site code; public form input must never be allowed to override that scope.
+_Avoid_: shared cross-site issue form, guest account, unrestricted stock access
 
 **Spare Part Receive**:
 A Store Officer action that adds spare parts into site stock and records the receive document, supplier, quantities, prices, and receiver.
@@ -155,6 +163,10 @@ _Avoid_: quantity edit, silent reduction, full rejection
 **Spare Part Issue Status**:
 The lifecycle status of a spare-part issue: Draft, Waiting Engineer Approval, Returned for Edit, Engineer Approved, Waiting Store Issue, Partially Issued, Issued, Rejected, Not Enough Stock, or Canceled.
 _Avoid_: CM work status, stock movement status, approval flag
+
+**Spare Part Issue Document**:
+A printable record produced only after a spare-part issue is fully issued. It records the requester, Engineer approval, Store Officer issue, requested, approved, and actually issued quantities, plus the unit price and issue value captured for that issue. Historical document values do not change when the spare part's latest price changes later. The three accountable parties are the Requester, approving Engineer, and issuing Store Officer; Supervisor, Department Manager, and Receiver are not part of the current issue workflow.
+_Avoid_: purchase request, blank material request form, CM completion document
 
 **Signature**:
 A stored image uploaded to a Technician or Engineer profile and used on printable CM completion documents.

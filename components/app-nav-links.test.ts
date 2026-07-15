@@ -153,6 +153,7 @@ describe("getAppLinks", () => {
     expect(links.some((link) => link.href === "/inventory/spare-parts" && !link.disabled)).toBe(true);
     expect(links.some((link) => link.href === "/inventory/stock" && !link.disabled)).toBe(true);
     expect(links.some((link) => link.href === "/inventory/issue" && !link.disabled)).toBe(true);
+    expect(links.some((link) => link.href === "/inventory/public-issue" && !link.disabled)).toBe(true);
     expect(links.some((link) => link.href === "/inventory/receive" && !link.disabled)).toBe(true);
     expect(links.some((link) => link.href === "/inventory/tracking" && !link.disabled)).toBe(true);
     expect(links.some((link) => link.href === "/inventory/movements" && !link.disabled)).toBe(true);

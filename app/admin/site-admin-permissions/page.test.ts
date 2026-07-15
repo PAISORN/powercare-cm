@@ -55,7 +55,7 @@ describe("SiteAdminPermissionsPage", () => {
     const source = readFileSync("app/admin/site-admin-permissions/page.tsx", "utf8");
 
     expect(source).toContain('name="organizationId"');
-    expect(source).toContain('select name="plantId"');
+    expect(source).toContain('AutoSubmitSelect name="plantId"');
     expect(source).toContain("allPlants.map((plant)");
     expect(source).toContain("OR: [{ plantId: { in: plantIdsForPermissions } }, { plantId: null }]");
     expect(source).toContain("Unassigned");

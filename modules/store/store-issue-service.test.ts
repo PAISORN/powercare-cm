@@ -22,7 +22,7 @@ function createRepository(issue?: Partial<StoreIssueRecord>): StoreIssueReposito
     status: StoreIssueStatus.WAITING_ENGINEER_APPROVAL,
     organizationId: "org-1",
     plantId: "site-rtb",
-    items: [{ id: "item-1", storeId: "store-1", sparePartId: "part-1", requestedQty: 2 }],
+    items: [{ id: "item-1", storeId: "store-1", sparePartId: "part-1", zoneId: "zone-1", requestedQty: 2 }],
     ...issue,
   };
   return {
@@ -74,7 +74,7 @@ describe("store issue service", () => {
       cmWorkId: "cm-1",
       requesterName: "Requester",
       requestedAt: new Date("2026-07-08T01:00:00.000Z"),
-      items: [{ storeId: "store-1", sparePartId: "part-1", requestedQty: 2 }],
+      items: [{ storeId: "store-1", sparePartId: "part-1", zoneId: "zone-1", requestedQty: 2 }],
     });
 
     expect(result).toEqual({ id: "issue-1" });
@@ -93,7 +93,7 @@ describe("store issue service", () => {
         issueType: StoreIssueType.DIRECT,
         requesterName: "Requester",
         requestedAt: new Date(),
-        items: [{ storeId: "store-1", sparePartId: "part-1", requestedQty: 2 }],
+        items: [{ storeId: "store-1", sparePartId: "part-1", zoneId: "zone-1", requestedQty: 2 }],
       }),
     ).rejects.toThrow("exceeds available stock");
   });
@@ -135,6 +135,7 @@ describe("store issue service", () => {
         id: "item-1",
         storeId: "store-1",
         sparePartId: "part-1",
+        zoneId: "zone-1",
         requestedQty: 4,
         approvedQty: 4,
         issuedQty: 0,

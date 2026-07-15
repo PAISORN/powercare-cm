@@ -88,6 +88,7 @@ describe("Site Admin permissions", () => {
       PermissionKey.UPDATE_OWN_PROFILE,
       PermissionKey.VIEW_STORE_DASHBOARD,
       PermissionKey.VIEW_STORE_STOCK,
+      PermissionKey.MANAGE_STORE,
       PermissionKey.MANAGE_SPARE_PARTS,
       PermissionKey.RECEIVE_STOCK,
       PermissionKey.ADJUST_STOCK,
@@ -100,7 +101,6 @@ describe("Site Admin permissions", () => {
     for (const permissionKey of allowedStorePermissions) {
       expect(canUsePermission(user, permissionKey, [])).toBe(true);
     }
-    expect(canUsePermission(user, PermissionKey.MANAGE_STORE, [])).toBe(false);
     expect(canUsePermission(user, PermissionKey.CLOSE_WORK, [])).toBe(false);
     expect(canUsePermission(user, PermissionKey.MANAGE_USERS_PLANT, [])).toBe(false);
   });

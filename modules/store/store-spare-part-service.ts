@@ -9,13 +9,11 @@ export type CreateSparePartInput = {
   categoryId: string;
   typeId: string;
   defaultStoreId: string;
-  storageZoneId: string;
   minStock: number;
   maxStock?: number | null;
   reorderPoint: number;
   latestUnitPrice?: number | null;
   active?: boolean;
-  zoneIds?: string[];
 };
 
 export type SparePartRepository = {
@@ -31,13 +29,11 @@ export type SparePartRepository = {
     categoryId: string;
     typeId: string;
     defaultStoreId: string;
-    storageZoneId: string;
     minStock: number;
     maxStock: number | null;
     reorderPoint: number;
     latestUnitPrice: number | null;
     active: boolean;
-    zoneIds: string[];
   }): Promise<{ id: string; code: string }>;
 };
 
@@ -64,7 +60,6 @@ export function normalizeSparePartInput(input: CreateSparePartInput) {
   const categoryId = requiredText(input.categoryId, "Spare part category");
   const typeId = requiredText(input.typeId, "Spare part type");
   const defaultStoreId = requiredText(input.defaultStoreId, "Spare part store");
-  const storageZoneId = requiredText(input.storageZoneId, "Storage Zone");
   if (!name) throw new Error("Spare part name is required.");
   if (!unit) throw new Error("Unit is required.");
   if (!Number.isFinite(input.minStock) || input.minStock < 0) {
@@ -97,13 +92,11 @@ export function normalizeSparePartInput(input: CreateSparePartInput) {
     categoryId,
     typeId,
     defaultStoreId,
-    storageZoneId,
     minStock: input.minStock,
     maxStock: input.maxStock ?? null,
     reorderPoint: input.reorderPoint,
     latestUnitPrice: input.latestUnitPrice ?? null,
     active: input.active ?? true,
-    zoneIds: [...new Set((input.zoneIds ?? []).map((value) => value.trim()).filter(Boolean))],
   };
 }
 

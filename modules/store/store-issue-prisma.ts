@@ -31,6 +31,7 @@ export type CreateLoggedInStoreIssueInput = {
   issueType: string;
   cmWorkNumber?: string | null;
   requesterName: string;
+  requesterDepartment?: string | null;
   requesterContact?: string | null;
   note?: string | null;
   requestedAt: Date;
@@ -69,6 +70,7 @@ export async function createLoggedInStoreIssue(
       issueType,
       cmWorkId,
       requesterName: requiredText(input.requesterName, "Requester name"),
+      requesterDepartment: optionalText(input.requesterDepartment ?? actor.department),
       requesterContact: optionalText(input.requesterContact),
       requesterUserId: actor.id,
       note: optionalText(input.note),
@@ -90,6 +92,7 @@ export async function createPublicStoreIssue(
   inventoryCode: string,
   input: Omit<CreateLoggedInStoreIssueInput, "requesterName"> & {
     requesterName: string;
+    requesterDepartment: string;
     requesterContact?: string | null;
   },
 ) {
@@ -135,6 +138,7 @@ export async function createPublicStoreIssue(
       issueType,
       cmWorkId,
       requesterName: requiredText(input.requesterName, "Requester name"),
+      requesterDepartment: requiredText(input.requesterDepartment, "Requester department"),
       requesterContact,
       requesterUserId: null,
       note: optionalText(input.note),
@@ -229,6 +233,7 @@ function createIssueRepository(tx: Prisma.TransactionClient): StoreIssueReposito
           issueType: input.issueType,
           status: input.status,
           requesterName: input.requesterName,
+          requesterDepartment: input.requesterDepartment,
           requesterContact: input.requesterContact,
           requesterUserId: input.requesterUserId,
           note: input.note,
@@ -238,6 +243,8 @@ function createIssueRepository(tx: Prisma.TransactionClient): StoreIssueReposito
               lineNumber: item.lineNumber,
               storeId: item.storeId,
               sparePartId: item.sparePartId,
+              zoneId: item.zoneId,
+              zoneCode: item.zoneCode,
               requestedQty: item.requestedQty,
               note: optionalText(item.note),
             })),
@@ -260,6 +267,8 @@ function createIssueRepository(tx: Prisma.TransactionClient): StoreIssueReposito
               lineNumber: true,
               storeId: true,
               sparePartId: true,
+              zoneId: true,
+              zoneCode: true,
               requestedQty: true,
               approvedQty: true,
               issuedQty: true,
@@ -405,16 +414,29 @@ async function assertIssueItemsInScope(
 ) {
   const storeIds = [...new Set(items.map((item) => item.storeId).filter(Boolean) as string[])];
   const sparePartIds = [...new Set(items.map((item) => item.sparePartId))];
-  const [storeCount, partCount] = await Promise.all([
+  const zoneIds = [...new Set(items.map((item) => item.zoneId).filter(Boolean) as string[])];
+  const [storeCount, partCount, applicableCount] = await Promise.all([
     tx.store.count({ where: { id: { in: storeIds }, plantId: scope.plantId, active: true } }),
     tx.sparePart.count({ where: { id: { in: sparePartIds }, plantId: scope.plantId, active: true } }),
+    tx.storeApplicableZone.count({
+      where: {
+        organizationId: scope.organizationId,
+        plantId: scope.plantId,
+        zoneId: { in: zoneIds },
+        active: true,
+        zone: { plantId: scope.plantId, active: true },
+      },
+    }),
   ]);
   if (
-    storeIds.length !== items.length ||
+    !items.length ||
+    items.some((item) => !item.storeId) ||
     storeCount !== storeIds.length ||
-    partCount !== sparePartIds.length
+    partCount !== sparePartIds.length ||
+    items.some((item) => !item.zoneId) ||
+    applicableCount !== zoneIds.length
   ) {
-    throw new Error("Store issue item is outside the selected Site.");
+    throw new Error("Store issue item or selected Applicable Zone is outside the selected Site.");
   }
 }
 
@@ -426,7 +448,8 @@ async function reserveIssueLineNumbers(
 ) {
   const sparePartIds = [...new Set(items.map((item) => item.sparePartId))];
   const storeIds = [...new Set(items.map((item) => item.storeId).filter(Boolean) as string[])];
-  const [spareParts, stores] = await Promise.all([
+  const zoneIds = [...new Set(items.map((item) => item.zoneId).filter(Boolean) as string[])];
+  const [spareParts, stores, applicableZones] = await Promise.all([
     tx.sparePart.findMany({
       where: { id: { in: sparePartIds }, organizationId: scope.organizationId, plantId: scope.plantId, active: true },
       select: {
@@ -434,51 +457,55 @@ async function reserveIssueLineNumbers(
         itemCode: true,
         type: { select: { code: true, active: true } },
         category: { select: { code: true, active: true } },
-        storageZone: { select: { code: true, active: true } },
       },
     }),
     tx.store.findMany({
       where: { id: { in: storeIds }, organizationId: scope.organizationId, plantId: scope.plantId, active: true },
       select: { id: true, code: true },
     }),
+    tx.storeApplicableZone.findMany({
+      where: {
+        organizationId: scope.organizationId,
+        plantId: scope.plantId,
+        zoneId: { in: zoneIds },
+        active: true,
+        zone: { active: true },
+      },
+      select: { zoneId: true, code: true },
+    }),
   ]);
   const partById = new Map(spareParts.map((part) => [part.id, part]));
   const storeById = new Map(stores.map((store) => [store.id, store]));
+  const applicableZoneByZoneId = new Map(applicableZones.map((assignment) => [assignment.zoneId, assignment]));
 
   const numberedItems: StoreIssueItemInput[] = [];
   for (const item of items) {
     const part = partById.get(item.sparePartId);
     const store = item.storeId ? storeById.get(item.storeId) : null;
+    const applicableZone = item.zoneId ? applicableZoneByZoneId.get(item.zoneId) : null;
     if (
       !part?.itemCode ||
       !part.type?.active ||
       !part.type.code ||
       !part.category?.active ||
       !part.category.code ||
-      !part.storageZone?.active ||
-      !part.storageZone.code ||
+      !applicableZone?.code ||
       !store
     ) {
       throw new Error(
-        "Spare part issue numbering requires an active Store, Type, Category, Storage Zone, and Item Code.",
+        "Spare part issue numbering requires an active Store, Type, Category, Applicable Zone code, and Item Code.",
       );
     }
-    const sequence = await tx.sparePartIssueItemSequence.upsert({
-      where: { sparePartId: part.id },
-      update: { lastNumber: { increment: 1 } },
-      create: { sparePartId: part.id, lastNumber: 1 },
-      select: { lastNumber: true },
-    });
     numberedItems.push({
       ...item,
+      zoneCode: applicableZone.code,
       lineNumber: formatSparePartIssueLineNumber({
         siteCode,
         storeCode: store.code,
         typeCode: part.type.code,
         categoryCode: part.category.code,
-        storageZoneCode: part.storageZone.code,
+        zoneCode: applicableZone.code,
         itemCode: part.itemCode,
-        nextNumber: sequence.lastNumber,
       }),
     });
   }

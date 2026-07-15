@@ -28,12 +28,10 @@ function validInput(overrides: Partial<CreateSparePartInput> = {}): CreateSpareP
     categoryId: "category-1",
     typeId: "type-1",
     defaultStoreId: "store-1",
-    storageZoneId: "storage-zone-1",
     minStock: 2,
     maxStock: 10,
     reorderPoint: 4,
     latestUnitPrice: 450,
-    zoneIds: ["zone-1", "zone-2"],
     ...overrides,
   };
 }
@@ -52,12 +50,11 @@ describe("store spare part service", () => {
         code: "SP-RTB-00007",
         name: "Mechanical seal",
         maxStock: 10,
-        zoneIds: ["zone-1", "zone-2"],
       },
     ]);
   });
 
-  it("normalizes codes, optional values, and removes duplicate zones", async () => {
+  it("normalizes codes and optional values", async () => {
     const repository = createRepository();
 
     await createSparePartWithRepository(
@@ -66,7 +63,6 @@ describe("store spare part service", () => {
       validInput({
         itemCode: " acc-1001 ",
         description: " ",
-        zoneIds: ["zone-1", "zone-1", ""],
       }),
     );
 
@@ -75,7 +71,6 @@ describe("store spare part service", () => {
         itemCode: "ACC-1001",
         categoryId: "category-1",
         description: null,
-        zoneIds: ["zone-1"],
       },
     ]);
   });

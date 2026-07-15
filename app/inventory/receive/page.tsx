@@ -78,12 +78,22 @@ export default async function ReceivePage({ searchParams }: { searchParams: Prom
     db.plant.findUniqueOrThrow({ where: { id: scope.plant.id }, select: { inventoryCode: true } }),
     db.store.findMany({
       where: { plantId: scope.plant.id, active: true },
-      select: { id: true, name: true, code: true },
+      select: { id: true, name: true, code: true, category: { select: { name: true } } },
       orderBy: { name: "asc" },
     }),
     db.sparePart.findMany({
       where: { plantId: scope.plant.id, active: true },
-      select: { id: true, name: true, code: true, unit: true },
+      select: {
+        id: true,
+        name: true,
+        code: true,
+        itemCode: true,
+        unit: true,
+        minStock: true,
+        category: { select: { name: true } },
+        type: { select: { name: true } },
+        stocks: { select: { storeId: true, quantity: true } },
+      },
       orderBy: { name: "asc" },
     }),
     db.sparePartReceive.findMany({
@@ -157,8 +167,23 @@ export default async function ReceivePage({ searchParams }: { searchParams: Prom
             action={receiveStockAction}
             organizationId={scope.organization.id}
             plantId={scope.plant.id}
-            spareParts={plantConfig.inventoryCode ? spareParts : []}
-            stores={plantConfig.inventoryCode ? stores : []}
+            spareParts={plantConfig.inventoryCode ? spareParts.map((part) => ({
+              id: part.id,
+              name: part.name,
+              code: part.code,
+              itemCode: part.itemCode,
+              unit: part.unit,
+              minStock: Number(part.minStock),
+              categoryName: part.category?.name,
+              typeName: part.type?.name,
+              stocks: part.stocks.map((stock) => ({ storeId: stock.storeId, quantity: Number(stock.quantity) })),
+            })) : []}
+            stores={plantConfig.inventoryCode ? stores.map((store) => ({
+              id: store.id,
+              name: store.name,
+              code: store.code,
+              categoryName: store.category?.name,
+            })) : []}
           />
         </section>
 

@@ -28,18 +28,16 @@ import { adminScopeSearchFromFormData } from "../../../modules/admin/admin-site-
 import {
   createSparePart,
   createSparePartCategory,
-  createSparePartStorageZone,
   createSparePartType,
   createStore,
   deleteSparePartCategory,
-  deleteSparePartStorageZone,
   deleteSparePartType,
   deleteStore,
   updateSparePart,
   updateSparePartCategory,
-  updateSparePartStorageZone,
   updateSparePartType,
   updateStore,
+  updateStoreApplicableZones,
   updateStoreSiteCode,
 } from "../../../modules/store/store-prisma-service";
 import { resolveStorePageScope } from "../../../modules/store/store-page-scope";
@@ -108,36 +106,6 @@ async function saveSparePartType(formData: FormData) {
   redirect(pageUrl(scope, "part-type-updated"));
 }
 
-async function addStorageZone(formData: FormData) {
-  "use server";
-  const user = await requireUser();
-  const scope = await resolveStorePageScope(user, adminScopeSearchFromFormData(formData));
-  await createSparePartStorageZone(user, await toStoreScope(scope), {
-    code: String(formData.get("code") ?? ""),
-    name: String(formData.get("name") ?? ""),
-    description: String(formData.get("description") ?? ""),
-  });
-  redirect(pageUrl(scope, "storage-zone"));
-}
-
-async function saveStorageZone(formData: FormData) {
-  "use server";
-  const user = await requireUser();
-  const scope = await resolveStorePageScope(user, adminScopeSearchFromFormData(formData));
-  const storeScope = await toStoreScope(scope);
-  const id = String(formData.get("id") ?? "");
-  if (formData.get("intent") === "delete") await deleteSparePartStorageZone(user, storeScope, id);
-  else {
-    await updateSparePartStorageZone(user, storeScope, id, {
-      code: String(formData.get("code") ?? ""),
-      name: String(formData.get("name") ?? ""),
-      description: String(formData.get("description") ?? ""),
-      active: formData.get("active") === "on",
-    });
-  }
-  redirect(pageUrl(scope, "storage-zone-updated"));
-}
-
 async function saveStore(formData: FormData) {
   "use server";
   const user = await requireUser();
@@ -182,13 +150,11 @@ async function addSparePart(formData: FormData) {
     categoryId: String(formData.get("categoryId") ?? ""),
     typeId: String(formData.get("typeId") ?? ""),
     defaultStoreId: String(formData.get("defaultStoreId") ?? ""),
-    storageZoneId: String(formData.get("storageZoneId") ?? ""),
     minStock: Number(formData.get("minStock") ?? 0),
     maxStock: optionalNumber(formData.get("maxStock")),
     reorderPoint: Number(formData.get("reorderPoint") ?? 0),
     latestUnitPrice: optionalNumber(formData.get("latestUnitPrice")),
     active: formData.get("active") === "on",
-    zoneIds: formData.getAll("zoneIds").map(String),
   });
   redirect(pageUrl(scope, "spare-part"));
 }
@@ -205,13 +171,11 @@ async function updateSparePartAction(formData: FormData) {
     categoryId: String(formData.get("categoryId") ?? ""),
     typeId: String(formData.get("typeId") ?? ""),
     defaultStoreId: String(formData.get("defaultStoreId") ?? ""),
-    storageZoneId: String(formData.get("storageZoneId") ?? ""),
     minStock: Number(formData.get("minStock") ?? 0),
     maxStock: optionalNumber(formData.get("maxStock")),
     reorderPoint: Number(formData.get("reorderPoint") ?? 0),
     latestUnitPrice: optionalNumber(formData.get("latestUnitPrice")),
     active: formData.get("active") === "on",
-    zoneIds: formData.getAll("zoneIds").map(String),
   });
   redirect(pageUrl(scope, "spare-part-updated"));
 }
@@ -228,6 +192,22 @@ async function configureStoreCode(formData: FormData) {
   redirect(pageUrl(scope, "store-code"));
 }
 
+async function saveStoreApplicableZones(formData: FormData) {
+  "use server";
+  const user = await requireUser();
+  const scope = await resolveStorePageScope(user, adminScopeSearchFromFormData(formData));
+  const assignments = formData.getAll("zoneIds").map((value) => {
+    const zoneId = String(value);
+    return {
+      zoneId,
+      code: String(formData.get(`zoneCode:${zoneId}`) ?? ""),
+      active: formData.get(`zoneActive:${zoneId}`) === "on",
+    };
+  });
+  await updateStoreApplicableZones(user, await toStoreScope(scope), assignments);
+  redirect(pageUrl(scope, "applicable-zones"));
+}
+
 export default async function SparePartsPage({ searchParams }: { searchParams: Promise<PageQuery> }) {
   const user = await requireUser();
   const query = await searchParams;
@@ -241,7 +221,7 @@ export default async function SparePartsPage({ searchParams }: { searchParams: P
     canUseUserPermission(user, PermissionKey.RECEIVE_STOCK);
   if (!canView) redirect("/dashboard");
 
-  const [plantConfig, stores, partCategories, partTypes, storageZones, zones, spareParts] = await Promise.all([
+  const [plantConfig, stores, partCategories, partTypes, zones, storeApplicableZones, spareParts] = await Promise.all([
     db.plant.findUniqueOrThrow({
       where: { id: scope.plant.id },
       select: { inventoryCode: true },
@@ -253,16 +233,14 @@ export default async function SparePartsPage({ searchParams }: { searchParams: P
     }),
     db.sparePartCategory.findMany({ where: { plantId: scope.plant.id }, orderBy: { name: "asc" } }),
     db.sparePartType.findMany({ where: { plantId: scope.plant.id }, orderBy: { name: "asc" } }),
-    db.sparePartStorageZone.findMany({ where: { plantId: scope.plant.id }, orderBy: { code: "asc" } }),
     db.zone.findMany({ where: { plantId: scope.plant.id, active: true }, orderBy: { name: "asc" } }),
+    db.storeApplicableZone.findMany({ where: { plantId: scope.plant.id }, orderBy: { code: "asc" } }),
     db.sparePart.findMany({
       where: { plantId: scope.plant.id },
       include: {
         category: true,
         type: true,
         defaultStore: true,
-        storageZone: true,
-        applicableZones: { include: { zone: true } },
         stocks: { include: { store: true } },
       },
       orderBy: { createdAt: "desc" },
@@ -272,7 +250,7 @@ export default async function SparePartsPage({ searchParams }: { searchParams: P
   const activeStores = stores.filter((store) => store.active);
   const activePartCategories = partCategories.filter((category) => category.active);
   const activePartTypes = partTypes.filter((type) => type.active);
-  const activeStorageZones = storageZones.filter((zone) => zone.active);
+  const applicableZoneByZoneId = new Map(storeApplicableZones.map((assignment) => [assignment.zoneId, assignment]));
   const scopedBaseUrl = `/inventory/spare-parts?organizationId=${encodeURIComponent(scope.organization.id)}&plantId=${encodeURIComponent(scope.plant.id)}`;
   const uncategorizedPartCount = spareParts.filter((part) => !part.categoryId).length;
   const categoryRows = [
@@ -477,31 +455,41 @@ export default async function SparePartsPage({ searchParams }: { searchParams: P
                 </div>
               </MasterPanel>
 
-              <MasterPanel icon={<Grid3X3 size={18} />} title="Zone จัดเก็บ" subtitle="เก็บรหัสเป็นข้อความ เช่น 01, 02">
-                {canManageParts ? (
-                  <form action={addStorageZone} className="grid gap-2 sm:grid-cols-[100px_1fr_1fr_auto]">
-                    <AdminScopeHiddenFields scope={scope} />
-                    <input className={inputClass} name="code" placeholder="01" required />
-                    <input className={inputClass} name="name" placeholder="ชื่อ Zone" required />
-                    <input className={inputClass} name="description" placeholder="รายละเอียด" />
-                    <button className={compactPrimaryButtonClass}>เพิ่ม</button>
-                  </form>
-                ) : null}
-                <div className="mt-3 grid gap-2">
-                  {storageZones.map((zone) => (
-                    <form action={saveStorageZone} className={masterRowWideClass} key={zone.id}>
-                      <AdminScopeHiddenFields scope={scope} />
-                      <input name="id" type="hidden" value={zone.id} />
-                      <input className={compactInputClass} defaultValue={zone.code} name="code" required />
-                      <input className={compactInputClass} defaultValue={zone.name} name="name" required />
-                      <input className={compactInputClass} defaultValue={zone.description ?? ""} name="description" placeholder="รายละเอียด" />
-                      <ActiveToggle defaultChecked={zone.active} />
-                      <MasterRowActions canEdit={canManageParts} deleteMessage={`ต้องการลบ Zone ${zone.code} หรือไม่`} />
-                    </form>
-                  ))}
-                  {!storageZones.length ? <EmptyMasterRow /> : null}
-                </div>
+              <MasterPanel icon={<Flag size={18} />} title="Applicable Zones" subtitle="ใช้เฉพาะตอนเบิกอะไหล่ เช่น 01, 02">
+                <form action={saveStoreApplicableZones} className="grid gap-2">
+                  <AdminScopeHiddenFields scope={scope} />
+                  {zones.map((zone) => {
+                    const assignment = applicableZoneByZoneId.get(zone.id);
+                    return (
+                      <div className="grid min-h-12 grid-cols-[auto_minmax(0,1fr)_88px] items-center gap-3 rounded-xl border border-[var(--line)] bg-[var(--soft)] px-3" key={zone.id}>
+                        <input name="zoneIds" type="hidden" value={zone.id} />
+                        <input
+                          aria-label={`เปิดใช้ Zone ${zone.name} สำหรับการเบิกอะไหล่`}
+                          className="size-4 accent-[var(--primary)]"
+                          defaultChecked={assignment?.active ?? false}
+                          name={`zoneActive:${zone.id}`}
+                          type="checkbox"
+                        />
+                        <span className="truncate text-sm font-bold">{zone.name}</span>
+                        <input
+                          aria-label={`รหัส Zone ${zone.name}`}
+                          className={`${compactInputClass} text-center font-mono`}
+                          defaultValue={assignment?.code ?? ""}
+                          maxLength={8}
+                          name={`zoneCode:${zone.id}`}
+                          placeholder="01"
+                        />
+                      </div>
+                    );
+                  })}
+                  {!zones.length ? <EmptyMasterRow /> : null}
+                  <button className={`${compactPrimaryButtonClass} mt-1 justify-self-end`} disabled={!zones.length}>
+                    <Save size={16} />
+                    บันทึก Applicable Zones
+                  </button>
+                </form>
               </MasterPanel>
+
             </div>
           </section>
         ) : null}
@@ -592,17 +580,6 @@ export default async function SparePartsPage({ searchParams }: { searchParams: P
                   </select>
                 </label>
                 <label className={labelClass}>
-                  Zone จัดเก็บ
-                  <select className={inputClass} name="storageZoneId" defaultValue="" required>
-                    <option value="" disabled>เลือก Zone จัดเก็บ</option>
-                    {activeStorageZones.map((zone) => (
-                      <option key={zone.id} value={zone.id}>
-                        {zone.code} · {zone.name}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label className={labelClass}>
                   หน่วยนับ
                   <input className={inputClass} name="unit" placeholder="PCS, SET, M" required />
                 </label>
@@ -626,23 +603,6 @@ export default async function SparePartsPage({ searchParams }: { searchParams: P
                   รายละเอียด
                   <textarea className={`${inputClass} min-h-24 py-3`} name="description" placeholder="ระบุรายละเอียด (ไม่บังคับ)" />
                 </label>
-                <fieldset className="rounded-2xl border border-[var(--line)] bg-[var(--soft)] p-4 lg:col-span-2">
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <legend className="text-sm font-extrabold">Applicable Zones (เลือกได้หลาย Zone)</legend>
-                    <label className="inline-flex items-center gap-2 text-xs font-bold text-[var(--muted)]">
-                      <input className="size-4 accent-[var(--primary)]" type="checkbox" />
-                      เลือกทั้งหมด
-                    </label>
-                  </div>
-                  <div className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
-                    {zones.map((zone) => (
-                      <label key={zone.id} className="flex min-h-11 items-center gap-3 rounded-xl border border-[var(--line)] bg-[var(--surface)] px-3 text-sm font-semibold">
-                        <input className="size-4 accent-[var(--primary)]" name="zoneIds" type="checkbox" value={zone.id} />
-                        {zone.name}
-                      </label>
-                    ))}
-                  </div>
-                </fieldset>
                 <div className="flex flex-wrap justify-end gap-3 border-t border-[var(--line)] pt-4 lg:col-span-2">
                   <label className="mr-auto inline-flex min-h-12 items-center gap-2 rounded-2xl bg-[var(--soft)] px-4 text-sm font-bold">
                     <input className="size-4 accent-[var(--primary)]" defaultChecked name="active" type="checkbox" />
@@ -721,7 +681,7 @@ export default async function SparePartsPage({ searchParams }: { searchParams: P
                   <td className="px-4 py-3 text-xs">
                     <p className="font-bold">{part.defaultStore?.name ?? "-"}</p>
                     <p className="text-[var(--muted)]">
-                      {part.defaultStore?.code ?? "-"} · Zone {part.storageZone?.code ?? "-"}
+                      {part.defaultStore?.code ?? "-"}
                     </p>
                   </td>
                   <td className="px-4 py-3">{part.unit}</td>
@@ -733,9 +693,6 @@ export default async function SparePartsPage({ searchParams }: { searchParams: P
                   <td className="px-4 py-3 text-right">{formatMoney(part.latestUnitPrice)}</td>
                   <td className="px-4 py-3 text-right">
                     <span className={`font-extrabold ${lowStock ? "text-red-600" : "text-emerald-600"}`}>{formatQuantity(totalStock)}</span>
-                  </td>
-                  <td className="max-w-[220px] px-4 py-3 text-xs text-[var(--muted)]">
-                    <span className="line-clamp-2">{part.applicableZones.map((item) => item.zone.name).join(", ") || "ทุก Zone"}</span>
                   </td>
                   <td className="px-4 py-3 text-right">
                     {canManageParts ? (
@@ -821,17 +778,6 @@ export default async function SparePartsPage({ searchParams }: { searchParams: P
                 </select>
               </label>
               <label className={labelClass}>
-                Zone จัดเก็บ
-                <select className={inputClass} defaultValue={editPart.storageZoneId ?? ""} name="storageZoneId" required>
-                  <option value="" disabled>เลือก Zone จัดเก็บ</option>
-                  {storageZones.map((zone) => (
-                    <option key={zone.id} value={zone.id}>
-                      {zone.code} · {zone.name}{zone.active ? "" : " (ไม่ใช้งาน)"}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className={labelClass}>
                 หน่วยนับ
                 <input className={inputClass} defaultValue={editPart.unit} name="unit" required />
               </label>
@@ -857,20 +803,6 @@ export default async function SparePartsPage({ searchParams }: { searchParams: P
                 รายละเอียด
                 <textarea className={`${inputClass} min-h-24 py-3`} defaultValue={editPart.description ?? ""} name="description" />
               </label>
-              <fieldset className="rounded-2xl border border-[var(--line)] bg-[var(--soft)] p-4">
-                <legend className="px-2 text-sm font-bold">Applicable Zones</legend>
-                <div className="grid gap-2 sm:grid-cols-2">
-                  {zones.map((zone) => {
-                    const checked = editPart.applicableZones.some((item) => item.zoneId === zone.id);
-                    return (
-                      <label key={zone.id} className="flex min-h-11 items-center gap-3 rounded-xl bg-[var(--surface)] px-3 text-sm font-semibold">
-                        <input className="size-4 accent-[var(--primary)]" defaultChecked={checked} name="zoneIds" type="checkbox" value={zone.id} />
-                        {zone.name}
-                      </label>
-                    );
-                  })}
-                </div>
-              </fieldset>
               <label className="inline-flex min-h-11 items-center gap-2 rounded-2xl bg-[var(--soft)] px-4 text-sm font-bold">
                 <input className="size-4 accent-[var(--primary)]" defaultChecked={editPart.active} name="active" type="checkbox" />
                 เปิดใช้งาน
@@ -970,7 +902,6 @@ function SparePartsTableColGroup() {
       <col className="w-[100px]" />
       <col className="w-[110px]" />
       <col className="w-[100px]" />
-      <col className="w-[170px]" />
       <col className="w-[60px]" />
     </colgroup>
   );
@@ -983,12 +914,11 @@ function SparePartsTableHeaderRow() {
       <th className="px-4 py-3">Item code</th>
       <th className="px-4 py-3">ประเภท</th>
       <th className="px-4 py-3">หมวดหมู่</th>
-      <th className="px-4 py-3">คลัง / Zone จัดเก็บ</th>
+      <th className="px-4 py-3">คลังอะไหล่</th>
       <th className="px-4 py-3">หน่วย</th>
       <th className="px-4 py-3 text-right">Max / ROP / Min</th>
       <th className="px-4 py-3 text-right">ราคาล่าสุด</th>
       <th className="px-4 py-3 text-right">คงเหลือ</th>
-      <th className="px-4 py-3">Zone</th>
       <th className="px-4 py-3" />
     </tr>
   );

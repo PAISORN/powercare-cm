@@ -8,12 +8,14 @@ import {
   ChevronRight,
   Download,
   Edit3,
+  FileSpreadsheet,
   MoreVertical,
   PackagePlus,
   Printer,
   Search,
   SlidersHorizontal,
   Warehouse,
+  X,
 } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -37,6 +39,8 @@ import { createLoggedInStoreIssue } from "../../../modules/store/store-issue-pri
 import { resolveStorePageScope } from "../../../modules/store/store-page-scope";
 import { deleteSparePart } from "../../../modules/store/store-prisma-service";
 import { receiveStock } from "../../../modules/store/store-receive-prisma";
+import { importSparePartsFromExcel } from "../../../modules/store/store-excel-import-prisma";
+import { sparePartImportErrorMessage } from "../../../modules/store/spare-part-excel-import";
 
 type PageQuery = {
   organizationId?: string;
@@ -45,7 +49,6 @@ type PageQuery = {
   storeId?: string;
   storeCategoryId?: string;
   categoryId?: string;
-  zoneId?: string;
   unit?: string;
   stockStatus?: "all" | "available" | "nearMin" | "outOfStock";
   stockAction?: "issue" | "receive" | "adjust";
@@ -53,7 +56,52 @@ type PageQuery = {
   page?: string;
   saved?: string;
   error?: string;
+  importExcel?: string;
+  imported?: string;
+  importError?: string;
 };
+
+async function importSparePartsExcelAction(formData: FormData) {
+  "use server";
+  const user = await requireUser();
+  const scope = await resolveStorePageScope(user, adminScopeSearchFromFormData(formData));
+  const plant = await db.plant.findUniqueOrThrow({
+    where: { id: scope.plant.id },
+    select: { inventoryCode: true },
+  });
+  const baseUrl = `/inventory/stock?organizationId=${encodeURIComponent(scope.organization.id)}&plantId=${encodeURIComponent(scope.plant.id)}`;
+
+  if (!plant.inventoryCode) {
+    redirect(`${baseUrl}&importExcel=1&importError=${encodeURIComponent("กรุณากำหนดรหัส Site สำหรับคลังอะไหล่ก่อนนำเข้า Excel")}`);
+  }
+
+  let importedCount = 0;
+  let importError: string | null = null;
+  try {
+    const upload = formData.get("excelFile");
+    if (!(upload instanceof File) || upload.size === 0) {
+      throw new Error("กรุณาเลือกไฟล์ Excel ที่ต้องการนำเข้า");
+    }
+    const result = await importSparePartsFromExcel(
+      user,
+      {
+        organizationId: scope.organization.id,
+        plantId: scope.plant.id,
+        plantCode: plant.inventoryCode,
+      },
+      upload,
+    );
+    importedCount = result.importedCount;
+  } catch (error) {
+    importError = sparePartImportErrorMessage(error);
+  }
+
+  redirect(
+    importError
+      ? `${baseUrl}&importExcel=1&importError=${encodeURIComponent(importError)}`
+      : `${baseUrl}&imported=${importedCount}`,
+  );
+}
 
 async function adjustStockAction(formData: FormData) {
   "use server";
@@ -157,6 +205,7 @@ async function createOneIssueAction(formData: FormData) {
         {
           storeId: storeId ?? "",
           sparePartId: sparePartId ?? "",
+          zoneId: String(formData.get("zoneId") ?? ""),
           requestedQty: Number(formData.get("quantity")),
         },
       ],
@@ -199,7 +248,7 @@ export default async function StockPage({ searchParams }: { searchParams: Promis
   const search = query.search?.trim() ?? "";
   const stockStatus = query.stockStatus ?? "all";
 
-  const [stores, storeCategories, categories, zones, units, stocks] = await Promise.all([
+  const [stores, storeCategories, categories, sparePartTypes, issueZones, units, stocks] = await Promise.all([
     db.store.findMany({
       where: { plantId: scope.plant.id, active: true },
       orderBy: { name: "asc" },
@@ -213,12 +262,17 @@ export default async function StockPage({ searchParams }: { searchParams: Promis
     db.sparePartCategory.findMany({
       where: { plantId: scope.plant.id, active: true },
       orderBy: { name: "asc" },
-      select: { id: true, name: true },
+      select: { id: true, name: true, code: true },
     }),
-    db.zone.findMany({
+    db.sparePartType.findMany({
       where: { plantId: scope.plant.id, active: true },
       orderBy: { name: "asc" },
-      select: { id: true, name: true },
+      select: { id: true, name: true, code: true },
+    }),
+    db.storeApplicableZone.findMany({
+      where: { plantId: scope.plant.id, active: true, zone: { active: true } },
+      orderBy: { code: "asc" },
+      select: { code: true, zone: { select: { id: true, name: true } } },
     }),
     db.sparePart.findMany({
       where: { plantId: scope.plant.id, active: true },
@@ -234,7 +288,6 @@ export default async function StockPage({ searchParams }: { searchParams: Promis
         sparePart: {
           active: true,
           ...(query.categoryId ? { categoryId: query.categoryId } : {}),
-          ...(query.zoneId ? { applicableZones: { some: { zoneId: query.zoneId } } } : {}),
           ...(query.unit ? { unit: query.unit } : {}),
           ...(search
             ? {
@@ -320,7 +373,6 @@ export default async function StockPage({ searchParams }: { searchParams: Promis
     if (query.storeId) params.set("storeId", query.storeId);
     if (query.storeCategoryId) params.set("storeCategoryId", query.storeCategoryId);
     if (query.categoryId) params.set("categoryId", query.categoryId);
-    if (query.zoneId) params.set("zoneId", query.zoneId);
     if (query.unit) params.set("unit", query.unit);
     if (stockStatus !== "all") params.set("stockStatus", stockStatus);
     if (page > 1) params.set("page", String(page));
@@ -349,10 +401,12 @@ export default async function StockPage({ searchParams }: { searchParams: Promis
               <PackagePlus size={17} />
               เพิ่มอะไหล่เข้าสต็อก
             </Link>
-            <button className={secondaryButtonClass} type="button">
-              <Download size={17} />
-              นำเข้า Excel
-            </button>
+            {canManageParts ? (
+              <Link className={secondaryButtonClass} href={`${scopedHref}&importExcel=1#excel-import-drawer`}>
+                <Download size={17} />
+                นำเข้า Excel
+              </Link>
+            ) : null}
             <Link className={secondaryButtonClass} href="/inventory/reports">
               <Printer size={17} />
               พิมพ์รายงาน
@@ -375,6 +429,11 @@ export default async function StockPage({ searchParams }: { searchParams: Promis
         {query.error ? (
           <p className="rounded-2xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm font-bold text-red-700 dark:text-red-300" role="alert">
             ปรับยอดไม่สำเร็จ: {query.error}
+          </p>
+        ) : null}
+        {query.imported ? (
+          <p className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm font-bold text-emerald-700 dark:text-emerald-300" role="status">
+            นำเข้าอะไหล่จาก Excel สำเร็จ {query.imported} รายการ พร้อมสร้างยอดตั้งต้นแล้ว
           </p>
         ) : null}
 
@@ -466,17 +525,6 @@ export default async function StockPage({ searchParams }: { searchParams: Promis
                 {units.map((item) => (
                   <option key={item.unit} value={item.unit}>
                     {item.unit}
-                  </option>
-                ))}
-              </AutoSubmitSelect>
-            </label>
-            <label className={labelClass}>
-              Zone
-              <AutoSubmitSelect className={inputClass} defaultValue={query.zoneId ?? ""} name="zoneId">
-                <option value="">ทั้งหมด</option>
-                {zones.map((zone) => (
-                  <option key={zone.id} value={zone.id}>
-                    {zone.name}
                   </option>
                 ))}
               </AutoSubmitSelect>
@@ -729,6 +777,26 @@ export default async function StockPage({ searchParams }: { searchParams: Promis
                 <AdminScopeHiddenFields scope={scope} />
                 <input name="stockKey" type="hidden" value={`${selectedStock.storeId}:${selectedStock.sparePartId}`} />
                 <label className={labelClass}>
+                  Zone ที่นำอะไหล่ไปใช้งาน
+                  <select
+                    className={inputClass}
+                    disabled={!issueZones.length}
+                    name="zoneId"
+                    required
+                  >
+                    <option value="">
+                      {issueZones.length
+                        ? "เลือก Zone"
+                        : "Site นี้ยังไม่มี Applicable Zone ที่เปิดใช้งาน"}
+                    </option>
+                    {issueZones.map((assignment) => (
+                      <option key={assignment.zone.id} value={assignment.zone.id}>
+                        {assignment.code} · {assignment.zone.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className={labelClass}>
                   จำนวนที่ต้องการเบิก
                   <input className={inputClass} min="0.01" name="quantity" required step="0.01" type="number" />
                 </label>
@@ -736,7 +804,12 @@ export default async function StockPage({ searchParams }: { searchParams: Promis
                   หมายเหตุ
                   <textarea className={`${inputClass} min-h-24 py-3`} name="note" placeholder="ระบุเหตุผลหรือรายละเอียดการเบิก" />
                 </label>
-                <button className={primaryButtonClass}>สร้างใบเบิก</button>
+                <button
+                  className={primaryButtonClass}
+                  disabled={!issueZones.length}
+                >
+                  สร้างใบเบิก
+                </button>
               </form>
             ) : null}
 
@@ -784,6 +857,108 @@ export default async function StockPage({ searchParams }: { searchParams: Promis
               </form>
             ) : null}
           </aside>
+        ) : null}
+
+        {query.importExcel === "1" && canManageParts ? (
+          <>
+            <Link
+              aria-label="ปิดหน้าต่างนำเข้า Excel"
+              className="fixed inset-0 z-40 bg-black/30 backdrop-blur-[1px]"
+              href={scopedHref}
+            />
+            <aside
+              className="fixed inset-y-0 right-0 z-50 w-full max-w-2xl overflow-y-auto border-l border-[var(--line)] bg-[var(--surface)] p-5 shadow-2xl sm:p-7"
+              id="excel-import-drawer"
+            >
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex min-w-0 items-start gap-3">
+                  <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-emerald-500/10 text-emerald-600">
+                    <FileSpreadsheet size={23} />
+                  </span>
+                  <div>
+                    <p className="text-sm font-bold text-[var(--primary)]">Excel Import</p>
+                    <h2 className="text-2xl font-extrabold">นำเข้ารายการอะไหล่</h2>
+                    <p className="mt-1 text-sm text-[var(--muted)]">
+                      {scope.organization.name} · {scope.plant.name}
+                    </p>
+                  </div>
+                </div>
+                <Link
+                  aria-label="ปิด"
+                  className="grid size-10 shrink-0 place-items-center rounded-full border border-[var(--line)] bg-[var(--soft)] transition hover:bg-[var(--line)]"
+                  href={scopedHref}
+                >
+                  <X size={19} />
+                </Link>
+              </div>
+
+              {query.importError ? (
+                <p className="mt-5 rounded-2xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm font-semibold text-red-700 dark:text-red-300" role="alert">
+                  {query.importError}
+                </p>
+              ) : null}
+
+              <section className="mt-5 rounded-2xl border border-[var(--line)] bg-[var(--soft)] p-4">
+                <h3 className="font-extrabold">1. ดาวน์โหลดไฟล์แม่แบบ</h3>
+                <p className="mt-1 text-sm text-[var(--muted)]">
+                  กรอกเฉพาะ Sheet Spare_Parts_Import ห้ามแก้ชื่อ Sheet หรือหัวคอลัมน์
+                </p>
+                <a
+                  className="mt-3 inline-flex min-h-11 items-center gap-2 rounded-xl border border-[var(--line)] bg-[var(--surface)] px-4 text-sm font-bold text-[var(--ink)] transition hover:-translate-y-0.5"
+                  download
+                  href="/templates/spare-parts-import-template.xlsx"
+                >
+                  <Download size={17} />
+                  ดาวน์โหลด Excel Template
+                </a>
+              </section>
+
+              <section className="mt-4 rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-4">
+                <h3 className="font-extrabold">2. รหัสที่ใช้ได้ใน Site นี้</h3>
+                <p className="mt-1 text-sm text-[var(--muted)]">ใช้รหัสตามรายการนี้เท่านั้น ระบบไม่รับชื่อแทนรหัส</p>
+                <div className="mt-4 grid gap-3 sm:grid-cols-3">
+                  <ReferenceCodeList
+                    emptyText="ยังไม่มีคลังอะไหล่"
+                    items={stores.map((store) => ({ code: store.code, name: store.name }))}
+                    title="คลังอะไหล่"
+                  />
+                  <ReferenceCodeList
+                    emptyText="ยังไม่มีประเภท"
+                    items={sparePartTypes.map((type) => ({ code: type.code, name: type.name }))}
+                    title="ประเภท"
+                  />
+                  <ReferenceCodeList
+                    emptyText="ยังไม่มีหมวดหมู่"
+                    items={categories.flatMap((category) =>
+                      category.code ? [{ code: category.code, name: category.name }] : [],
+                    )}
+                    title="หมวดหมู่"
+                  />
+                </div>
+              </section>
+
+              <form action={importSparePartsExcelAction} className="mt-4 rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-4">
+                <AdminScopeHiddenFields scope={scope} />
+                <h3 className="font-extrabold">3. เลือกไฟล์และนำเข้า</h3>
+                <label className="mt-3 grid gap-2 text-sm font-bold">
+                  ไฟล์ Excel (.xlsx หรือ .xls ไม่เกิน 5 MB)
+                  <input
+                    accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"
+                    className="block w-full rounded-xl border border-dashed border-[var(--line)] bg-[var(--soft)] p-3 text-sm file:mr-3 file:rounded-lg file:border-0 file:bg-[var(--primary)] file:px-4 file:py-2 file:font-bold file:text-white"
+                    name="excelFile"
+                    required
+                    type="file"
+                  />
+                </label>
+                <div className="mt-4 rounded-xl bg-amber-500/10 px-4 py-3 text-sm text-amber-800 dark:text-amber-200">
+                  ระบบตรวจทุกแถวก่อนบันทึก หากพบข้อผิดพลาดจะไม่เพิ่มข้อมูลใด ยอดตั้งต้นจะถูกบันทึกเป็นประวัติปรับยอดอัตโนมัติ
+                </div>
+                <button className={`${primaryButtonClass} mt-4 w-full`} type="submit">
+                  ตรวจสอบและนำเข้ารายการอะไหล่
+                </button>
+              </form>
+            </aside>
+          </>
         ) : null}
       </div>
     </AppShell>
@@ -849,6 +1024,30 @@ function StockStatusPill({ quantity, minStock }: { quantity: number; minStock: n
       <CheckCircle2 size={14} />
       เพียงพอ
     </span>
+  );
+}
+
+function ReferenceCodeList({
+  emptyText,
+  items,
+  title,
+}: {
+  emptyText: string;
+  items: Array<{ code: string; name: string }>;
+  title: string;
+}) {
+  return (
+    <div className="min-w-0 rounded-xl bg-[var(--soft)] p-3">
+      <p className="text-xs font-extrabold uppercase tracking-wide text-[var(--muted)]">{title}</p>
+      <div className="mt-2 grid max-h-40 gap-1.5 overflow-y-auto">
+        {items.length ? items.map((item) => (
+          <p className="min-w-0 text-xs" key={item.code}>
+            <span className="font-mono font-extrabold text-[var(--primary)]">{item.code}</span>
+            <span className="ml-1 text-[var(--muted)]">{item.name}</span>
+          </p>
+        )) : <p className="text-xs text-[var(--muted)]">{emptyText}</p>}
+      </div>
+    </div>
   );
 }
 

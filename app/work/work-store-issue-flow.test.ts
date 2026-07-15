@@ -17,7 +17,8 @@ describe("work detail store issue flow", () => {
 
     expect(source).toContain("storeCategoryName: stock.store.category?.name");
     expect(source).toContain("sparePartCategoryName: stock.sparePart.category?.name");
-    expect(source).toContain("zoneNames: stock.sparePart.applicableZones.map");
+    expect(source).toContain("db.storeApplicableZone.findMany");
+    expect(source).toContain("issueZones={issueZones.map");
     expect(source).toContain("stockStatus: buildStoreStockStatus");
   });
 

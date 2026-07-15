@@ -4,6 +4,7 @@ import type { AdminSiteScope } from "../modules/admin/admin-site-scope";
 
 type AdminSiteScopeSelectorProps = {
   action?: string;
+  compact?: boolean;
   scope: AdminSiteScope;
   title?: string;
   description?: string;
@@ -11,6 +12,7 @@ type AdminSiteScopeSelectorProps = {
 
 export function AdminSiteScopeSelector({
   action,
+  compact = false,
   scope,
   title = "Site scope",
   description = "เลือก Organization และ Site ที่ต้องการจัดการ",
@@ -34,7 +36,11 @@ export function AdminSiteScopeSelector({
         ) : null}
       </div>
 
-      <form action={action} className="mt-4 grid gap-3 md:grid-cols-[minmax(220px,1fr)_minmax(220px,1fr)_auto] md:items-end" method="get">
+      <form
+        action={action}
+        className={`mt-4 grid gap-3 ${compact ? "grid-cols-1" : "md:grid-cols-[minmax(220px,1fr)_minmax(220px,1fr)_auto] md:items-end"}`}
+        method="get"
+      >
         <label className="grid gap-1 text-sm font-semibold">
           <span className="flex items-center gap-2 text-[var(--muted)]">
             <Building2 aria-hidden="true" size={15} />

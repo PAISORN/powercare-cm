@@ -38,11 +38,10 @@ describe("store numbering", () => {
         storeCode: "SP01",
         typeCode: "GL630101",
         categoryCode: "EI",
-        storageZoneCode: "02",
+        zoneCode: "02",
         itemCode: "FUSE-001",
-        nextNumber: 1,
       }),
-    ).toBe("RTB-SP01-630101-EI-02-FUSE001-00001");
+    ).toBe("SP01-RTB-630101-EI-02-FUSE001");
   });
 
   it("normalizes site code safely", () => {

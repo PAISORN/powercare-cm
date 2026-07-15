@@ -442,6 +442,7 @@ const alwaysAllowedByRole: Record<PermissionRole, ReadonlySet<PermissionKey>> = 
     PermissionKey.UPDATE_OWN_PROFILE,
     PermissionKey.VIEW_STORE_DASHBOARD,
     PermissionKey.VIEW_STORE_STOCK,
+    PermissionKey.MANAGE_STORE,
     PermissionKey.MANAGE_SPARE_PARTS,
     PermissionKey.RECEIVE_STOCK,
     PermissionKey.ADJUST_STOCK,
