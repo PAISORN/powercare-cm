@@ -410,6 +410,7 @@ model LineDeliveryLog {
   updatedAt     DateTime        @updatedAt
 
   @@unique([eventId, destinationId])
+  @@index([destinationId])
   @@index([status, createdAt])
 }
 

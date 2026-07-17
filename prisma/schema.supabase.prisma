@@ -105,6 +105,7 @@ model Plant {
   feedback                PublicFeedback[]
   auditEvents             AuditEvent[]
   siteAdminPermissions    SiteAdminPermission[]
+  lineDestinations        LineDestination[]
   lineDailyReportSettings LineDailyReportSetting[]
   profile                 PlantProfile?
   slaSetting              SlaSetting?
@@ -393,6 +394,8 @@ model LineDestination {
   targetId       String        @unique
   organizationId String?
   organization   Organization? @relation(fields: [organizationId], references: [id])
+  plantId        String?
+  plant          Plant?        @relation(fields: [plantId], references: [id])
   categoryId     String?
   category       Category?     @relation(fields: [categoryId], references: [id])
   active         Boolean       @default(true)
@@ -406,6 +409,7 @@ model LineDestination {
 
   @@index([categoryId, active])
   @@index([organizationId, active])
+  @@index([plantId, active])
 }
 
 model LineEventSetting {
@@ -433,6 +437,7 @@ model LineDeliveryLog {
   updatedAt     DateTime        @updatedAt
 
   @@unique([eventId, destinationId])
+  @@index([destinationId])
   @@index([status, createdAt])
 }
 
