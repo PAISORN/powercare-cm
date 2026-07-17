@@ -724,6 +724,7 @@ model StockMovement {
   @@index([sparePartId, occurredAt])
   @@index([movementType, occurredAt])
   @@index([refType, refId])
+  @@index([actorId])
 }
 
 model SparePartReceive {
@@ -764,6 +765,7 @@ model SparePartReceiveItem {
 
   @@index([storeId])
   @@index([sparePartId])
+  @@index([receiveId])
 }
 
 model SparePartIssue {
@@ -827,6 +829,7 @@ model SparePartIssueItem {
 
   @@index([storeId])
   @@index([sparePartId])
+  @@index([issueId])
   @@index([zoneId])
   @@index([status])
 }
