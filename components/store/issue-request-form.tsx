@@ -328,11 +328,12 @@ export function IssueRequestForm({
                       <span className="text-xs text-[var(--muted)] 2xl:sr-only">จำนวนที่ขอ</span>
                       <input
                         className={inputClass}
-                        min="0.01"
+                        inputMode="numeric"
+                        min="1"
                         name="requestedQty"
                         onChange={(event) => setLines((current) => current.map((item) => item.id === line.id ? { ...item, requestedQty: event.target.value } : item))}
                         required
-                        step="0.01"
+                        step="1"
                         type="number"
                         value={line.requestedQty}
                       />

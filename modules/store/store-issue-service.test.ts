@@ -98,6 +98,20 @@ describe("store issue service", () => {
     ).rejects.toThrow("exceeds available stock");
   });
 
+  it("requires requested quantities to be positive whole numbers", async () => {
+    const repository = createRepository();
+
+    await expect(
+      createStoreIssueWithRepository(repository, scope, {
+        number: "SI-RTB-2026-07-0001",
+        issueType: StoreIssueType.DIRECT,
+        requesterName: "Requester",
+        requestedAt: new Date(),
+        items: [{ storeId: "store-1", sparePartId: "part-1", zoneId: "zone-1", requestedQty: 1.5 }],
+      }),
+    ).rejects.toThrow("positive whole number");
+  });
+
   it("lets engineer approve or reject before store issue", async () => {
     const repository = createRepository();
     await approveStoreIssueByEngineer(repository, engineer, scope, "issue-1");
@@ -161,6 +175,20 @@ describe("store issue service", () => {
     );
     expect(completed.status).toBe(StoreIssueStatus.ISSUED);
     expect(repository.balances["store-1:part-1"]).toBe(1);
+  });
+
+  it("requires issued quantities to be positive whole numbers", async () => {
+    const repository = createRepository({ status: StoreIssueStatus.WAITING_STORE_ISSUE });
+
+    await expect(
+      issueStoreIssueQuantities(
+        repository,
+        storeOfficer,
+        scope,
+        "issue-1",
+        [{ itemId: "item-1", quantity: 1.5 }],
+      ),
+    ).rejects.toThrow("approved remaining quantity");
   });
 
   it("rejects issue when stock is not enough", async () => {

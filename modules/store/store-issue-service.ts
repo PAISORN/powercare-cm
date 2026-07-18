@@ -222,7 +222,7 @@ export async function issueStoreIssueQuantities(
   for (const item of selected) {
     const issueQuantity = requestedByItem.get(item.id) ?? 0;
     const remaining = (item.approvedQty ?? item.requestedQty) - (item.issuedQty ?? 0);
-    if (!Number.isFinite(issueQuantity) || issueQuantity <= 0 || issueQuantity > remaining) {
+    if (!Number.isInteger(issueQuantity) || issueQuantity <= 0 || issueQuantity > remaining) {
       throw new Error("Issue quantity exceeds the approved remaining quantity.");
     }
     if (!item.storeId) {
@@ -324,8 +324,8 @@ function assertIssueInput(input: CreateStoreIssueInput) {
   if (!input.items.length) throw new Error("Store issue must include at least one item.");
   for (const item of input.items) {
     if (!item.zoneId.trim()) throw new Error("Applicable Zone is required for every spare part.");
-    if (!Number.isFinite(item.requestedQty) || item.requestedQty <= 0) {
-      throw new Error("Requested quantity must be greater than zero.");
+    if (!Number.isInteger(item.requestedQty) || item.requestedQty <= 0) {
+      throw new Error("Requested quantity must be a positive whole number.");
     }
   }
 }

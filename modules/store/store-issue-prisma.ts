@@ -415,12 +415,22 @@ async function assertIssueItemsInScope(
   const storeIds = [...new Set(items.map((item) => item.storeId).filter(Boolean) as string[])];
   const sparePartIds = [...new Set(items.map((item) => item.sparePartId))];
   const zoneIds = [...new Set(items.map((item) => item.zoneId).filter(Boolean) as string[])];
-  const [storeCount, partCount, applicableCount] = await Promise.all([
-    tx.store.count({ where: { id: { in: storeIds }, plantId: scope.plantId, active: true } }),
-    tx.sparePart.count({ where: { id: { in: sparePartIds }, plantId: scope.plantId, active: true } }),
-    tx.storeApplicableZone.count({
+  const stockPairs = [...new Set(items.map((item) => `${item.storeId ?? ""}:${item.sparePartId}`))];
+  const [stockRows, applicableCount] = await Promise.all([
+    tx.storeStock.findMany({
       where: {
         organizationId: scope.organizationId,
+        plantId: scope.plantId,
+        OR: items
+          .filter((item): item is StoreIssueItemInput & { storeId: string } => Boolean(item.storeId))
+          .map((item) => ({ storeId: item.storeId, sparePartId: item.sparePartId })),
+        store: { active: true },
+        sparePart: { active: true },
+      },
+      select: { storeId: true, sparePartId: true },
+    }),
+    tx.storeApplicableZone.count({
+      where: {
         plantId: scope.plantId,
         zoneId: { in: zoneIds },
         active: true,
@@ -431,8 +441,9 @@ async function assertIssueItemsInScope(
   if (
     !items.length ||
     items.some((item) => !item.storeId) ||
-    storeCount !== storeIds.length ||
-    partCount !== sparePartIds.length ||
+    storeIds.length === 0 ||
+    sparePartIds.length === 0 ||
+    stockRows.length !== stockPairs.length ||
     items.some((item) => !item.zoneId) ||
     applicableCount !== zoneIds.length
   ) {
@@ -465,11 +476,10 @@ async function reserveIssueLineNumbers(
     }),
     tx.storeApplicableZone.findMany({
       where: {
-        organizationId: scope.organizationId,
         plantId: scope.plantId,
         zoneId: { in: zoneIds },
         active: true,
-        zone: { active: true },
+        zone: { plantId: scope.plantId, active: true },
       },
       select: { zoneId: true, code: true },
     }),

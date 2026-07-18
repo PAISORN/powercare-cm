@@ -300,7 +300,7 @@ export default async function IssuePage({ searchParams }: { searchParams: Promis
                         <label className="grid gap-1 text-sm font-bold sm:grid-cols-[1fr_140px] sm:items-center" key={item.id}>
                           <span className="truncate">{item.sparePart.code} · Remain {formatQty(remaining)} {item.sparePart.unit}</span>
                           <input name="itemId" type="hidden" value={item.id} />
-                          <input className={inputClass} defaultValue={remaining} max={remaining} min="0" name="issueQty" step="0.01" type="number" />
+                          <input className={inputClass} defaultValue={remaining} inputMode="numeric" max={remaining} min="1" name="issueQty" step="1" type="number" />
                         </label>
                       );
                     })}
@@ -519,7 +519,7 @@ export default async function IssuePage({ searchParams }: { searchParams: Promis
                           <label className="grid gap-1 text-sm font-bold sm:grid-cols-[1fr_160px] sm:items-center" key={item.id}>
                             <span>{item.sparePart.code} · คงเหลือต้องจ่าย {formatQty(remaining)} {item.sparePart.unit}</span>
                             <input name="itemId" type="hidden" value={item.id} />
-                            <input className={inputClass} defaultValue={remaining} max={remaining} min="0" name="issueQty" step="0.01" type="number" />
+                            <input className={inputClass} defaultValue={remaining} inputMode="numeric" max={remaining} min="1" name="issueQty" step="1" type="number" />
                           </label>
                         );
                       })}
