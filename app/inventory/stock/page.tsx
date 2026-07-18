@@ -311,6 +311,7 @@ export default async function StockPage({ searchParams }: { searchParams: Promis
             maxStock: true,
             latestUnitPrice: true,
             category: { select: { name: true } },
+            type: { select: { code: true, name: true } },
           },
         },
       },
@@ -626,7 +627,12 @@ export default async function StockPage({ searchParams }: { searchParams: Promis
                         <span className="line-clamp-2">{stock.sparePart.description?.trim() || "-"}</span>
                       </td>
                       <td className="px-4 py-3">{stock.sparePart.category?.name ?? "-"}</td>
-                      <td className="px-4 py-3">{stock.store.category?.name ?? "-"}</td>
+                      <td className="px-4 py-3">
+                        <p className="font-mono font-bold">{stock.sparePart.type?.code ?? "-"}</p>
+                        {stock.sparePart.type?.name ? (
+                          <p className="mt-1 text-xs text-[var(--muted)]">{stock.sparePart.type.name}</p>
+                        ) : null}
+                      </td>
                       <td className="px-4 py-3">
                         <p className="font-semibold">{stock.store.name}</p>
                         <p className="text-xs text-[var(--muted)]">{stock.store.location ?? stock.store.code}</p>

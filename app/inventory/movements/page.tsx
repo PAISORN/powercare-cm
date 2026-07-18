@@ -30,7 +30,15 @@ export default async function StockMovementsPage({ searchParams }: { searchParam
     include: {
       actor: { select: { fullName: true } },
       store: { select: { code: true, name: true } },
-      sparePart: { select: { code: true, itemCode: true, name: true, unit: true } },
+      sparePart: {
+        select: {
+          code: true,
+          itemCode: true,
+          name: true,
+          unit: true,
+          type: { select: { code: true, name: true } },
+        },
+      },
     },
     orderBy: { occurredAt: "desc" },
     take: 100,
@@ -78,7 +86,12 @@ export default async function StockMovementsPage({ searchParams }: { searchParam
                 {movements.map((movement) => (
                   <tr className="border-t border-[var(--line)] transition hover:bg-[var(--soft)]/60" key={movement.id}>
                     <td className="whitespace-nowrap px-4 py-3">{formatThaiMediumDateTime(movement.occurredAt)}</td>
-                    <td className="px-4 py-3 font-bold">{movement.movementType}</td>
+                    <td className="px-4 py-3">
+                      <p className="font-mono font-bold">{movement.sparePart.type?.code ?? "-"}</p>
+                      {movement.sparePart.type?.name ? (
+                        <p className="mt-1 text-xs text-[var(--muted)]">{movement.sparePart.type.name}</p>
+                      ) : null}
+                    </td>
                     <td className="px-4 py-3">
                       <p className="font-semibold">{movement.sparePart.name}</p>
                       <p className="font-mono text-xs text-[var(--muted)]">{movement.sparePart.code}</p>
@@ -92,7 +105,8 @@ export default async function StockMovementsPage({ searchParams }: { searchParam
                     </td>
                     <td className="px-4 py-3 text-right">{formatQuantity(Number(movement.balanceAfter))}</td>
                     <td className="px-4 py-3 text-sm text-[var(--muted)]">
-                      {movement.actor?.fullName ?? "-"} {movement.note ? `· ${movement.note}` : ""}
+                      <span className="font-bold text-[var(--text)]">{movement.movementType}</span>
+                      {" · "}{movement.actor?.fullName ?? "-"} {movement.note ? `· ${movement.note}` : ""}
                     </td>
                   </tr>
                 ))}
