@@ -403,6 +403,9 @@ function ReviewPanel({ issueZones, lines, stocks }: { issueZones: IssueZoneOptio
           const zone = issueZones.find((item) => item.id === line.zoneId);
           return (
             <article className="grid gap-3 rounded-xl border border-[var(--line)] bg-[var(--soft)] p-4 sm:grid-cols-[48px_minmax(0,1fr)_auto] sm:items-center" key={line.id}>
+              <input name="stockKey" type="hidden" value={line.stockKey} />
+              <input name="zoneId" type="hidden" value={line.zoneId} />
+              <input name="requestedQty" type="hidden" value={line.requestedQty} />
               <span className="flex size-9 items-center justify-center rounded-lg bg-[var(--primary)] text-sm font-extrabold text-white">{index + 1}</span>
               <div className="min-w-0">
                 <p className="truncate font-extrabold">{stock?.sparePartName ?? stock?.label ?? "-"}</p>

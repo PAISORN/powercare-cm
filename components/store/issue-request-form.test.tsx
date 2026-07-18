@@ -139,6 +139,40 @@ describe("IssueRequestForm", () => {
     expect(quantityInput.step).toBe("1");
   });
 
+  it("keeps selected spare-part fields in the form while reviewing the request", () => {
+    const { container } = render(
+      <IssueRequestForm
+        action={vi.fn()}
+        cmWorks={[]}
+        issueZones={issueZones}
+        lockedCmWork={{ id: "cm-1", number: "CM-2026-07-0001", label: "Pump vibration" }}
+        organizationId="org-1"
+        plantId="plant-1"
+        stocks={stocks}
+      />,
+    );
+
+    fireEvent.change(container.querySelector('select[name="stockKey"]')!, {
+      target: { value: "store-main:bearing" },
+    });
+    fireEvent.change(container.querySelector('select[name="zoneId"]')!, {
+      target: { value: "zone-boiler" },
+    });
+    fireEvent.change(container.querySelector('input[name="requestedQty"]')!, {
+      target: { value: "1" },
+    });
+
+    Object.defineProperty(container.querySelector("form")!, "scrollIntoView", { value: vi.fn() });
+    const reviewButton = [...container.querySelectorAll<HTMLButtonElement>('button[type="button"]')].at(-1);
+    expect(reviewButton).toBeTruthy();
+    fireEvent.click(reviewButton!);
+
+    const formData = new FormData(container.querySelector("form")!);
+    expect(formData.getAll("stockKey")).toEqual(["store-main:bearing"]);
+    expect(formData.getAll("zoneId")).toEqual(["zone-boiler"]);
+    expect(formData.getAll("requestedQty")).toEqual(["1"]);
+  });
+
   it("collects public requester identity and exposes barcode scanning", () => {
     const { container } = render(
       <IssueRequestForm
