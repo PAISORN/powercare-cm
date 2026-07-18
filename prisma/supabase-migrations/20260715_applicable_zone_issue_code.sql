@@ -1,5 +1,6 @@
--- Move Applicable Zone codes to Site-level reference data. Run only after a
--- production backup and deploy the matching application version immediately.
+-- Move Applicable Zone codes to Site-level reference data. Legacy tables and
+-- columns are intentionally retained for rollback safety and can be removed by
+-- a later cleanup migration after Production verification.
 BEGIN;
 
 CREATE TABLE IF NOT EXISTS "StoreApplicableZone" (
@@ -54,8 +55,6 @@ CREATE INDEX IF NOT EXISTS "StoreApplicableZone_organizationId_active_idx" ON "S
 CREATE INDEX IF NOT EXISTS "StoreApplicableZone_plantId_active_idx" ON "StoreApplicableZone"("plantId", "active");
 CREATE INDEX IF NOT EXISTS "StoreApplicableZone_zoneId_idx" ON "StoreApplicableZone"("zoneId");
 
-DROP TABLE IF EXISTS "SparePartApplicableZone";
-
 ALTER TABLE "SparePartIssueItem" ADD COLUMN IF NOT EXISTS "zoneId" TEXT;
 ALTER TABLE "SparePartIssueItem" ADD COLUMN IF NOT EXISTS "zoneCode" TEXT;
 DO $$ BEGIN
@@ -64,14 +63,7 @@ DO $$ BEGIN
     FOREIGN KEY ("zoneId") REFERENCES "Zone"("id")
     ON DELETE SET NULL ON UPDATE CASCADE;
 EXCEPTION WHEN duplicate_object THEN NULL; END $$;
-DROP INDEX IF EXISTS "SparePartIssueItem_lineNumber_key";
 CREATE INDEX IF NOT EXISTS "SparePartIssueItem_zoneId_idx" ON "SparePartIssueItem"("zoneId");
-
-DROP TABLE IF EXISTS "SparePartIssueItemSequence";
-DROP INDEX IF EXISTS "SparePart_storageZoneId_active_idx";
-ALTER TABLE "SparePart" DROP CONSTRAINT IF EXISTS "SparePart_storageZoneId_fkey";
-ALTER TABLE "SparePart" DROP COLUMN IF EXISTS "storageZoneId";
-DROP TABLE IF EXISTS "SparePartStorageZone";
 
 ALTER TABLE "StoreApplicableZone" ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON TABLE "StoreApplicableZone" FROM anon, authenticated;
