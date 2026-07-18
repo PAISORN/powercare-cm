@@ -30,6 +30,7 @@ type StockOption = {
   storeCategoryName?: string;
   sparePartCode?: string;
   sparePartName?: string;
+  sparePartTypeName?: string;
   sparePartCategoryName?: string;
   itemCode?: string | null;
   stockStatus?: StockStatus;
@@ -452,7 +453,7 @@ function FilterSelect({
 function buildFilterOptions(stocks: StockOption[]) {
   return {
     stores: uniqueSorted(stocks.map((stock) => stock.storeName ?? stock.storeCode ?? "")),
-    types: uniqueSorted(stocks.map((stock) => stock.storeCategoryName ?? "")),
+    types: uniqueSorted(stocks.map((stock) => stock.sparePartTypeName ?? "")),
     categories: uniqueSorted(stocks.map((stock) => stock.sparePartCategoryName ?? "")),
     units: uniqueSorted(stocks.map((stock) => stock.unit)),
     stockStatuses: ["ENOUGH", "LOW", "OUT"],
@@ -468,6 +469,7 @@ function matchesStockFilters(stock: StockOption, filters: StockFilters) {
     stock.sparePartCode,
     stock.sparePartName,
     stock.itemCode,
+    stock.sparePartTypeName,
     stock.sparePartCategoryName,
     stock.storeCategoryName,
   ]
@@ -478,7 +480,7 @@ function matchesStockFilters(stock: StockOption, filters: StockFilters) {
   return (
     (!search || haystack.includes(search)) &&
     matchesFilter(filters.store, stock.storeName ?? stock.storeCode) &&
-    matchesFilter(filters.type, stock.storeCategoryName) &&
+    matchesFilter(filters.type, stock.sparePartTypeName) &&
     matchesFilter(filters.category, stock.sparePartCategoryName) &&
     matchesFilter(filters.unit, stock.unit) &&
     matchesFilter(filters.stockStatus, stock.stockStatus)

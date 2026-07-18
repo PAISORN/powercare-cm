@@ -14,6 +14,7 @@ const stocks = [
     storeCategoryName: "Mechanical Store",
     sparePartCode: "SP-RTB-00001",
     sparePartName: "Bearing 6208",
+    sparePartTypeName: "General spare part",
     sparePartCategoryName: "Mechanical",
     itemCode: "ACC-6208",
     stockStatus: "ENOUGH" as const,
@@ -29,6 +30,7 @@ const stocks = [
     storeCategoryName: "Electrical Store",
     sparePartCode: "SP-RTB-00002",
     sparePartName: "Cable THW",
+    sparePartTypeName: "Consumable",
     sparePartCategoryName: "Electrical",
     itemCode: null,
     stockStatus: "LOW" as const,
@@ -88,6 +90,30 @@ describe("IssueRequestForm", () => {
 
     expect(screen.getByText(/Bearing 6208/)).toBeTruthy();
     expect(screen.queryByText(/Cable THW/)).toBeNull();
+  });
+
+  it("filters issue choices by the spare part type instead of the store category", () => {
+    render(
+      <IssueRequestForm
+        action={vi.fn()}
+        cmWorks={[]}
+        issueZones={issueZones}
+        lockedCmWork={{ id: "cm-1", number: "CM-2026-07-0001", label: "Pump vibration" }}
+        organizationId="org-1"
+        plantId="plant-1"
+        stocks={stocks}
+      />,
+    );
+
+    const typeSelect = screen.getByLabelText("ประเภท") as HTMLSelectElement;
+    expect([...typeSelect.options].map((option) => option.textContent)).toEqual(
+      expect.arrayContaining(["General spare part", "Consumable"]),
+    );
+
+    fireEvent.change(typeSelect, { target: { value: "Consumable" } });
+
+    expect(screen.queryByText(/Bearing 6208/)).toBeNull();
+    expect(screen.getByText(/Cable THW/)).toBeTruthy();
   });
 
   it("collects public requester identity and exposes barcode scanning", () => {
