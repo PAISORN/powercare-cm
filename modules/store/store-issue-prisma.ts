@@ -419,13 +419,12 @@ async function assertIssueItemsInScope(
   const [stockRows, applicableCount] = await Promise.all([
     tx.storeStock.findMany({
       where: {
-        organizationId: scope.organizationId,
         plantId: scope.plantId,
         OR: items
           .filter((item): item is StoreIssueItemInput & { storeId: string } => Boolean(item.storeId))
           .map((item) => ({ storeId: item.storeId, sparePartId: item.sparePartId })),
-        store: { active: true },
-        sparePart: { active: true },
+        store: { plantId: scope.plantId, active: true },
+        sparePart: { plantId: scope.plantId, active: true },
       },
       select: { storeId: true, sparePartId: true },
     }),
@@ -438,16 +437,18 @@ async function assertIssueItemsInScope(
       },
     }),
   ]);
-  if (
-    !items.length ||
-    items.some((item) => !item.storeId) ||
-    storeIds.length === 0 ||
-    sparePartIds.length === 0 ||
-    stockRows.length !== stockPairs.length ||
-    items.some((item) => !item.zoneId) ||
-    applicableCount !== zoneIds.length
-  ) {
-    throw new Error("Store issue item or selected Applicable Zone is outside the selected Site.");
+  if (!items.length || sparePartIds.length === 0) throw new Error("At least one spare part is required.");
+  if (items.some((item) => !item.storeId) || storeIds.length === 0) {
+    throw new Error("Store is required for every spare part.");
+  }
+  if (stockRows.length !== stockPairs.length) {
+    throw new Error("Selected spare part is not available in the selected Store for this Site.");
+  }
+  if (items.some((item) => !item.zoneId)) {
+    throw new Error("Applicable Zone is required for every spare part.");
+  }
+  if (applicableCount !== zoneIds.length) {
+    throw new Error("Selected Applicable Zone is not available for this Site.");
   }
 }
 
@@ -462,7 +463,7 @@ async function reserveIssueLineNumbers(
   const zoneIds = [...new Set(items.map((item) => item.zoneId).filter(Boolean) as string[])];
   const [spareParts, stores, applicableZones] = await Promise.all([
     tx.sparePart.findMany({
-      where: { id: { in: sparePartIds }, organizationId: scope.organizationId, plantId: scope.plantId, active: true },
+      where: { id: { in: sparePartIds }, plantId: scope.plantId, active: true },
       select: {
         id: true,
         itemCode: true,
@@ -471,7 +472,7 @@ async function reserveIssueLineNumbers(
       },
     }),
     tx.store.findMany({
-      where: { id: { in: storeIds }, organizationId: scope.organizationId, plantId: scope.plantId, active: true },
+      where: { id: { in: storeIds }, plantId: scope.plantId, active: true },
       select: { id: true, code: true },
     }),
     tx.storeApplicableZone.findMany({

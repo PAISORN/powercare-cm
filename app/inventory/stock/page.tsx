@@ -47,7 +47,7 @@ type PageQuery = {
   plantId?: string;
   search?: string;
   storeId?: string;
-  storeCategoryId?: string;
+  typeId?: string;
   categoryId?: string;
   unit?: string;
   stockStatus?: "all" | "available" | "nearMin" | "outOfStock";
@@ -248,16 +248,11 @@ export default async function StockPage({ searchParams }: { searchParams: Promis
   const search = query.search?.trim() ?? "";
   const stockStatus = query.stockStatus ?? "all";
 
-  const [stores, storeCategories, categories, sparePartTypes, issueZones, units, stocks] = await Promise.all([
+  const [stores, categories, sparePartTypes, issueZones, units, stocks] = await Promise.all([
     db.store.findMany({
       where: { plantId: scope.plant.id, active: true },
       orderBy: { name: "asc" },
       select: { id: true, name: true, code: true, location: true },
-    }),
-    db.storeCategory.findMany({
-      where: { plantId: scope.plant.id, active: true },
-      orderBy: { name: "asc" },
-      select: { id: true, name: true },
     }),
     db.sparePartCategory.findMany({
       where: { plantId: scope.plant.id, active: true },
@@ -284,9 +279,11 @@ export default async function StockPage({ searchParams }: { searchParams: Promis
       where: {
         plantId: scope.plant.id,
         ...(query.storeId ? { storeId: query.storeId } : {}),
-        ...(query.storeCategoryId ? { store: { categoryId: query.storeCategoryId } } : {}),
+        store: { plantId: scope.plant.id, active: true },
         sparePart: {
+          plantId: scope.plant.id,
           active: true,
+          ...(query.typeId ? { typeId: query.typeId } : {}),
           ...(query.categoryId ? { categoryId: query.categoryId } : {}),
           ...(query.unit ? { unit: query.unit } : {}),
           ...(search
@@ -371,7 +368,7 @@ export default async function StockPage({ searchParams }: { searchParams: Promis
     });
     if (search) params.set("search", search);
     if (query.storeId) params.set("storeId", query.storeId);
-    if (query.storeCategoryId) params.set("storeCategoryId", query.storeCategoryId);
+    if (query.typeId) params.set("typeId", query.typeId);
     if (query.categoryId) params.set("categoryId", query.categoryId);
     if (query.unit) params.set("unit", query.unit);
     if (stockStatus !== "all") params.set("stockStatus", stockStatus);
@@ -498,11 +495,11 @@ export default async function StockPage({ searchParams }: { searchParams: Promis
             </label>
             <label className={labelClass}>
               ประเภท
-              <AutoSubmitSelect className={inputClass} defaultValue={query.storeCategoryId ?? ""} name="storeCategoryId">
+              <AutoSubmitSelect className={inputClass} defaultValue={query.typeId ?? ""} name="typeId">
                 <option value="">ทั้งหมด</option>
-                {storeCategories.map((category) => (
-                  <option key={category.id} value={category.id}>
-                    {category.name}
+                {sparePartTypes.map((type) => (
+                  <option key={type.id} value={type.id}>
+                    {type.name}
                   </option>
                 ))}
               </AutoSubmitSelect>
