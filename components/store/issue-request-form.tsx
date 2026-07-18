@@ -330,6 +330,7 @@ export function IssueRequestForm({
                       <input
                         className={inputClass}
                         inputMode="numeric"
+                        max={stock?.available}
                         min="1"
                         name="requestedQty"
                         onChange={(event) => setLines((current) => current.map((item) => item.id === line.id ? { ...item, requestedQty: event.target.value } : item))}

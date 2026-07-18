@@ -98,6 +98,21 @@ describe("store issue service", () => {
     ).rejects.toThrow("exceeds available stock");
   });
 
+  it("allows requesting the last item when available stock is exactly one", async () => {
+    const repository = createRepository();
+    repository.balances["store-1:part-1"] = 1;
+
+    await expect(
+      createStoreIssueWithRepository(repository, scope, {
+        number: "SI-RTB-2026-07-0001",
+        issueType: StoreIssueType.DIRECT,
+        requesterName: "Requester",
+        requestedAt: new Date(),
+        items: [{ storeId: "store-1", sparePartId: "part-1", zoneId: "zone-1", requestedQty: 1 }],
+      }),
+    ).resolves.toEqual({ id: "issue-1" });
+  });
+
   it("requires requested quantities to be positive whole numbers", async () => {
     const repository = createRepository();
 
@@ -140,6 +155,30 @@ describe("store issue service", () => {
       { movementType: StockMovementType.ISSUE, quantityChange: -2, balanceAfter: 3 },
     ]);
     expect(repository.statuses).toMatchObject([{ status: StoreIssueStatus.ISSUED }]);
+  });
+
+  it("issues the last item and allows the stock balance to reach zero", async () => {
+    const repository = createRepository({
+      status: StoreIssueStatus.WAITING_STORE_ISSUE,
+      items: [{
+        id: "item-1",
+        storeId: "store-1",
+        sparePartId: "part-1",
+        zoneId: "zone-1",
+        requestedQty: 1,
+        approvedQty: 1,
+        issuedQty: 0,
+      }],
+    });
+    repository.balances["store-1:part-1"] = 1;
+
+    const result = await issueApprovedStoreIssue(repository, storeOfficer, scope, "issue-1");
+
+    expect(result).toEqual({ status: StoreIssueStatus.ISSUED });
+    expect(repository.balances["store-1:part-1"]).toBe(0);
+    expect(repository.movements).toMatchObject([
+      { movementType: StockMovementType.ISSUE, quantityChange: -1, balanceAfter: 0 },
+    ]);
   });
 
   it("supports partial issue and completes the remaining quantity later", async () => {

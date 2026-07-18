@@ -116,6 +116,29 @@ describe("IssueRequestForm", () => {
     expect(screen.getByText(/Cable THW/)).toBeTruthy();
   });
 
+  it("allows requesting the final unit when available stock is one", () => {
+    const { container } = render(
+      <IssueRequestForm
+        action={vi.fn()}
+        cmWorks={[]}
+        issueZones={issueZones}
+        lockedCmWork={{ id: "cm-1", number: "CM-2026-07-0001", label: "Pump vibration" }}
+        organizationId="org-1"
+        plantId="plant-1"
+        stocks={stocks}
+      />,
+    );
+
+    fireEvent.change(container.querySelector('select[name="stockKey"]')!, {
+      target: { value: "store-elec:cable" },
+    });
+
+    const quantityInput = container.querySelector('input[name="requestedQty"]') as HTMLInputElement;
+    expect(quantityInput.min).toBe("1");
+    expect(quantityInput.max).toBe("1");
+    expect(quantityInput.step).toBe("1");
+  });
+
   it("collects public requester identity and exposes barcode scanning", () => {
     const { container } = render(
       <IssueRequestForm

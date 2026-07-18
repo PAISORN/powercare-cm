@@ -4,6 +4,7 @@ import {
   type StoreIssueType,
   type StoreScope,
 } from "./store-types";
+import { canIssueRequestedQuantity } from "./store-scope";
 
 export type StoreIssueActor = {
   id: string;
@@ -101,7 +102,9 @@ export async function createStoreIssueWithRepository(
       storeId: item.storeId,
       sparePartId: item.sparePartId,
     });
-    if (available < item.requestedQty) throw new Error("Requested quantity exceeds available stock.");
+    if (!canIssueRequestedQuantity(available, item.requestedQty)) {
+      throw new Error("Requested quantity exceeds available stock.");
+    }
   }
   return repository.createIssue({
     ...input,
@@ -232,7 +235,7 @@ export async function issueStoreIssueQuantities(
       storeId: item.storeId,
       sparePartId: item.sparePartId,
     });
-    if (available < issueQuantity) {
+    if (!canIssueRequestedQuantity(available, issueQuantity)) {
       await markStoreIssueNotEnoughStock(repository, storeOfficer, scope, issueId, "Not enough stock.", issuedAt);
       return { status: StoreIssueStatus.NOT_ENOUGH_STOCK };
     }

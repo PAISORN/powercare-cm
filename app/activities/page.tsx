@@ -1104,7 +1104,7 @@ function StoreIssueActivityCard({
                   <span>{item.sparePart.code} {item.sparePart.name}</span>
                   <span className="grid gap-1">
                     Issue Qty
-                    <input className={activityInputClass} defaultValue={remaining} max={remaining} min="0" name="issueQty" step="0.01" type="number" />
+                    <input className={activityInputClass} defaultValue={remaining} inputMode="numeric" max={remaining} min="1" name="issueQty" step="1" type="number" />
                   </span>
                   <input name="itemId" type="hidden" value={item.id} />
                 </label>

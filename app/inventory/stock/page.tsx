@@ -801,7 +801,16 @@ export default async function StockPage({ searchParams }: { searchParams: Promis
                 </label>
                 <label className={labelClass}>
                   จำนวนที่ต้องการเบิก
-                  <input className={inputClass} min="0.01" name="quantity" required step="0.01" type="number" />
+                  <input
+                    className={inputClass}
+                    inputMode="numeric"
+                    max={Math.floor(Number(selectedStock.quantity))}
+                    min="1"
+                    name="quantity"
+                    required
+                    step="1"
+                    type="number"
+                  />
                 </label>
                 <label className={labelClass}>
                   หมายเหตุ
