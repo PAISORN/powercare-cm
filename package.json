@@ -1,6 +1,6 @@
 {
   "name": "test-cm03",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "",
   "main": "index.js",
   "directories": {
@@ -22,6 +22,8 @@
     "db:push:supabase": "npm run db:check:development && prisma db push --schema prisma/schema.supabase.prisma",
     "db:migrate": "prisma migrate dev",
     "db:seed": "npm run db:check:development && prisma db seed",
+    "db:repair:store-zones:local": "tsx scripts/backfill-store-applicable-zones.ts",
+    "test:store-issue:local": "tsx scripts/smoke-store-issue-flow.ts",
     "import:cm-history": "tsx scripts/import-cm-history.ts",
     "test": "vitest run",
     "test:watch": "vitest",

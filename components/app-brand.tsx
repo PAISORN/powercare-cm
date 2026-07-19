@@ -1,6 +1,6 @@
 import packageJson from "../package.json";
 
-export const APP_VERSION = `v${packageJson.version}`;
+export const APP_VERSION = `V.${packageJson.version}`;
 
 export function AppBrand({
   className = "",
@@ -11,7 +11,7 @@ export function AppBrand({
 }) {
   return (
     <span className={`inline-flex flex-wrap items-baseline gap-1.5 ${className}`.trim()}>
-      <span>PowerCare.CM</span>
+      <span>PowerCare</span>
       <span className={`text-[0.58em] font-bold opacity-70 ${versionClassName}`.trim()}>{APP_VERSION}</span>
     </span>
   );

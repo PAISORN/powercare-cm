@@ -8,7 +8,8 @@ describe("Store stock page", () => {
 
     expect(source).toContain("Home &gt; Inventory &gt; Stock");
     expect(source).toContain("Stock (");
-    expect(source).toContain("storeCategoryId");
+    expect(source).toContain("typeId");
+    expect(source).toContain("categoryId");
     expect(source).toContain('name="unit"');
     expect(source).toContain("Item code");
     expect(source).toContain("Max");

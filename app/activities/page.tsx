@@ -28,7 +28,12 @@ import { canCloseWork } from "../../modules/auth/permission";
 import { canUseUserPermission, PermissionKey } from "../../modules/auth/site-admin-permissions";
 import { RoleName, WorkStatus, type Actor } from "../../modules/cm-work/cm-work-types";
 import { closeWork, moveToInProgress, returnForCorrection, submitForReview } from "../../modules/cm-work/cm-work-service";
-import { approveStoreIssue, issueStoreStock, markIssueNotEnoughStock } from "../../modules/store/store-issue-prisma";
+import {
+  approveStoreIssue,
+  cancelStoreIssue,
+  issueStoreStock,
+  markIssueNotEnoughStock,
+} from "../../modules/store/store-issue-prisma";
 import { resolveStorePageScope } from "../../modules/store/store-page-scope";
 import { StoreIssueStatus } from "../../modules/store/store-types";
 
@@ -158,6 +163,23 @@ async function notEnoughStockFromActivity(formData: FormData) {
     redirect(activityRedirect(scope, { storeError: activityActionError(error) }));
   }
   redirect(activityRedirect(scope, { storeSaved: "not-enough" }));
+}
+
+async function cancelStoreIssueFromActivity(formData: FormData) {
+  "use server";
+  const user = await requireUser();
+  const scope = await resolveStorePageScope(user, adminScopeSearchFromFormData(formData));
+  try {
+    await cancelStoreIssue(
+      user,
+      storeScopeFromActivity(scope),
+      String(formData.get("issueId") ?? ""),
+      String(formData.get("reason") ?? ""),
+    );
+  } catch (error) {
+    redirect(activityRedirect(scope, { storeError: activityActionError(error) }));
+  }
+  redirect(activityRedirect(scope, { storeSaved: "canceled" }));
 }
 
 async function startWorkFromActivity(formData: FormData) {
@@ -1073,7 +1095,8 @@ function StoreIssueActivityCard({
       </p>
 
       {isEngineerQueue ? (
-        <form action={engineerDecisionFromActivity} className="mt-4 grid gap-2 rounded-xl bg-[var(--surface)] p-3 sm:grid-cols-[1fr_repeat(3,auto)] sm:items-end">
+        <div className="mt-4 grid gap-3">
+        <form action={engineerDecisionFromActivity} className="grid gap-2 rounded-xl bg-[var(--surface)] p-3 sm:grid-cols-[1fr_repeat(3,auto)] sm:items-end">
           <AdminScopeHiddenFields scope={scope} />
           <input name="issueId" type="hidden" value={issue.id} />
           <label className="grid gap-1 text-xs font-bold text-[var(--muted)]">
@@ -1090,6 +1113,8 @@ function StoreIssueActivityCard({
             REJECT
           </button>
         </form>
+        <StoreIssueCancelForm issueId={issue.id} scope={scope} />
+        </div>
       ) : null}
 
       {isStoreQueue ? (
@@ -1103,7 +1128,7 @@ function StoreIssueActivityCard({
                 <label className="grid gap-1 text-xs font-bold text-[var(--muted)] sm:grid-cols-[1fr_140px] sm:items-center" key={item.id}>
                   <span>{item.sparePart.code} {item.sparePart.name}</span>
                   <span className="grid gap-1">
-                    Issue Qty
+                    จำนวนที่จะจ่ายครั้งนี้ (แก้ไขได้)
                     <input className={activityInputClass} defaultValue={remaining} inputMode="numeric" max={remaining} min="1" name="issueQty" step="1" type="number" />
                   </span>
                   <input name="itemId" type="hidden" value={item.id} />
@@ -1125,6 +1150,11 @@ function StoreIssueActivityCard({
               Not enough stock
             </button>
           </form>
+          {issue.items.every((item) => Number(item.issuedQty ?? 0) === 0) ? (
+            <div className="lg:col-span-2">
+              <StoreIssueCancelForm issueId={issue.id} scope={scope} />
+            </div>
+          ) : null}
         </div>
       ) : null}
 
@@ -1134,6 +1164,22 @@ function StoreIssueActivityCard({
         </p>
       ) : null}
     </article>
+  );
+}
+
+function StoreIssueCancelForm({ issueId, scope }: { issueId: string; scope: ActivityScope }) {
+  return (
+    <form action={cancelStoreIssueFromActivity} className="grid gap-2 rounded-xl border border-red-500/25 bg-red-500/5 p-3 sm:grid-cols-[1fr_auto] sm:items-end">
+      <AdminScopeHiddenFields scope={scope} />
+      <input name="issueId" type="hidden" value={issueId} />
+      <label className="grid gap-1 text-xs font-bold text-[var(--muted)]">
+        เหตุผลการยกเลิก
+        <input className={activityInputClass} name="reason" required />
+      </label>
+      <button className="min-h-11 rounded-xl border border-red-500/30 px-4 text-sm font-bold text-red-600 transition hover:bg-red-500/10">
+        ยกเลิกใบเบิก
+      </button>
+    </form>
   );
 }
 
@@ -1424,6 +1470,9 @@ function activityActionError(error: unknown) {
     "outside",
     "exceeds",
     "Not enough stock",
+    "cannot be canceled",
+    "cannot cancel",
+    "Only Engineer",
     "must be",
     "greater than zero",
   ];

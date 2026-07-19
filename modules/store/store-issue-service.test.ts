@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   approveStoreIssueByEngineer,
+  cancelStoreIssueWithRepository,
   createStoreIssueWithRepository,
   issueApprovedStoreIssue,
   issueStoreIssueQuantities,
@@ -214,6 +215,51 @@ describe("store issue service", () => {
     );
     expect(completed.status).toBe(StoreIssueStatus.ISSUED);
     expect(repository.balances["store-1:part-1"]).toBe(1);
+  });
+
+  it("lets Engineer and Store Officer cancel before any stock is issued", async () => {
+    const engineerRepository = createRepository({ status: StoreIssueStatus.WAITING_ENGINEER_APPROVAL });
+    await cancelStoreIssueWithRepository(
+      engineerRepository,
+      engineer,
+      scope,
+      "issue-1",
+      "Requester no longer needs the spare part",
+    );
+    expect(engineerRepository.statuses).toMatchObject([
+      { status: StoreIssueStatus.CANCELED, reason: "Requester no longer needs the spare part" },
+    ]);
+
+    const storeRepository = createRepository({ status: StoreIssueStatus.WAITING_STORE_ISSUE });
+    await cancelStoreIssueWithRepository(
+      storeRepository,
+      storeOfficer,
+      scope,
+      "issue-1",
+      "Canceled before issue",
+    );
+    expect(storeRepository.statuses).toMatchObject([
+      { status: StoreIssueStatus.CANCELED, reason: "Canceled before issue" },
+    ]);
+  });
+
+  it("blocks cancel after stock has been issued", async () => {
+    const repository = createRepository({
+      status: StoreIssueStatus.PARTIALLY_ISSUED,
+      items: [{
+        id: "item-1",
+        storeId: "store-1",
+        sparePartId: "part-1",
+        zoneId: "zone-1",
+        requestedQty: 4,
+        approvedQty: 4,
+        issuedQty: 1,
+      }],
+    });
+
+    await expect(
+      cancelStoreIssueWithRepository(repository, storeOfficer, scope, "issue-1", "Too late"),
+    ).rejects.toThrow("after stock has been issued");
   });
 
   it("requires issued quantities to be positive whole numbers", async () => {

@@ -309,6 +309,55 @@ export async function markStoreIssueNotEnoughStock(
   });
 }
 
+export async function cancelStoreIssueWithRepository(
+  repository: Pick<StoreIssueRepository, "readIssue" | "updateIssueStatus" | "updateIssueItem">,
+  actor: StoreIssueActor,
+  scope: StoreScope,
+  issueId: string,
+  reason: string,
+  changedAt = new Date(),
+) {
+  const issue = await readIssueInScope(repository, scope, issueId);
+  assertActorInScope(actor, scope);
+  assertReason(reason);
+
+  if (issue.items.some((item) => (item.issuedQty ?? 0) > 0)) {
+    throw new Error("A Store issue cannot be canceled after stock has been issued.");
+  }
+
+  const engineerStatuses = [
+    StoreIssueStatus.WAITING_ENGINEER_APPROVAL,
+    StoreIssueStatus.RETURNED_FOR_EDIT,
+    StoreIssueStatus.WAITING_STORE_ISSUE,
+    StoreIssueStatus.NOT_ENOUGH_STOCK,
+  ];
+  const storeOfficerStatuses = [StoreIssueStatus.WAITING_STORE_ISSUE, StoreIssueStatus.NOT_ENOUGH_STOCK];
+  const ownerStatuses = [...new Set([...engineerStatuses, ...storeOfficerStatuses])];
+  const allowedStatuses =
+    actor.role === "ENGINEER"
+      ? engineerStatuses
+      : actor.role === "STORE_OFFICER"
+        ? storeOfficerStatuses
+        : actor.role === "ADMIN"
+          ? ownerStatuses
+          : [];
+
+  if (!allowedStatuses.includes(issue.status as never)) {
+    throw new Error("This role cannot cancel the Store issue at its current status.");
+  }
+
+  for (const item of issue.items) {
+    await repository.updateIssueItem({ itemId: item.id, status: StoreIssueStatus.CANCELED });
+  }
+  await repository.updateIssueStatus({
+    issueId,
+    status: StoreIssueStatus.CANCELED,
+    actorId: actor.id,
+    reason: reason.trim(),
+    changedAt,
+  });
+}
+
 async function readIssueInScope(
   repository: Pick<StoreIssueRepository, "readIssue">,
   scope: StoreScope,

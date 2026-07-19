@@ -50,6 +50,27 @@ const siteAdmin = {
   role: "SITE_ADMIN",
 };
 
+const preferredStoreZoneOrder = [
+  "Fuel preparation",
+  "Fuel Warehouse",
+  "Boiler&Combustion",
+  "Turbine",
+  "ESP",
+  "Water Treatment Plant",
+  "Cooling Tower",
+  "Vehicle",
+  "Office",
+  "Other",
+];
+
+function storeZoneRank(name: unknown) {
+  const normalizedName = String(name ?? "");
+  const index = preferredStoreZoneOrder.findIndex(
+    (entry) => entry.localeCompare(normalizedName, undefined, { sensitivity: "base" }) === 0,
+  );
+  return index === -1 ? Number.MAX_SAFE_INTEGER : index;
+}
+
 type Snapshot = {
   exportedAt: string;
   sourceProject: string;
@@ -285,6 +306,25 @@ async function main() {
       updatedAt: asDate(row.updatedAt)!,
     })),
   });
+
+  const activeZones = snapshot.zones
+    .filter((row) => Boolean(row.active))
+    .sort(
+      (left, right) =>
+        storeZoneRank(left.name) - storeZoneRank(right.name) ||
+        String(left.name).localeCompare(String(right.name), "en"),
+    );
+  if (activeZones.length) {
+    await target.storeApplicableZone.createMany({
+      data: activeZones.map((row, index) => ({
+        organizationId: organization.id,
+        plantId: plant.id,
+        zoneId: String(row.id),
+        code: String(index + 1).padStart(2, "0"),
+        active: true,
+      })),
+    });
+  }
 
   await target.user.createMany({
     data: snapshot.users.map((row) => ({

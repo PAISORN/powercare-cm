@@ -29,4 +29,13 @@ describe("Inventory issue page", () => {
     expect(source).toContain("/inventory/issue/${issue.id}/print");
     expect(source).toContain("พิมพ์เอกสาร");
   });
+
+  it("allows authorized Engineer and Store Officer flows to cancel before issue and edit issue quantity", () => {
+    const source = readFileSync("app/inventory/issue/page.tsx", "utf8");
+
+    expect(source).toContain("cancelIssueAction");
+    expect(source).toContain("canCancelIssue");
+    expect(source).toContain("ยกเลิกใบเบิก");
+    expect(source).toContain("จำนวนที่จะจ่ายครั้งนี้ (แก้ไขได้)");
+  });
 });

@@ -23,13 +23,16 @@ export default async function PrintCompletionPage({ params }: { params: Promise<
   });
 
   if (!work || !canRenderCompletionDocument(work.status)) notFound();
-  const organization = work.plantId ? await readPlantProfile(work.plantId) : await readOrganizationProfile(work.organizationId);
-  const companyName = "displayName" in organization ? organization.displayName : organization.companyName;
-  const logoUrl = organization.hasLogo
-    ? "plantId" in organization
-      ? `/organization-logo?plantId=${encodeURIComponent(organization.plantId)}`
-      : `/organization-logo?organizationId=${encodeURIComponent(work.organizationId ?? "")}`
-    : null;
+  const [plantProfile, organizationProfile] = await Promise.all([
+    work.plantId ? readPlantProfile(work.plantId) : null,
+    readOrganizationProfile(work.organizationId),
+  ]);
+  const companyName = plantProfile?.companyName?.trim() || organizationProfile.companyName || "PowerCare";
+  const logoUrl = plantProfile?.hasLogo
+    ? `/organization-logo?plantId=${encodeURIComponent(plantProfile.plantId)}`
+    : organizationProfile.hasLogo
+      ? `/organization-logo?organizationId=${encodeURIComponent(work.organizationId ?? "")}`
+      : null;
 
   return (
     <CompletionDocument

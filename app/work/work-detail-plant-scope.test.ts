@@ -16,5 +16,8 @@ describe("work detail plant scope", () => {
     expect(detail).toContain("OR: [{ categoryId: work.categoryId }, { categories: { some: { categoryId: work.categoryId } } }]");
     expect(print).toContain("buildUserOperationalScope");
     expect(print).toContain("where: { id, ...buildWorkScopeWhere(scope) }");
+    expect(print).toContain("const [plantProfile, organizationProfile] = await Promise.all");
+    expect(print).toContain("plantProfile?.hasLogo");
+    expect(print).toContain("organizationProfile.hasLogo");
   });
 });

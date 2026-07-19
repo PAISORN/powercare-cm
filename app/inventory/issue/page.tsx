@@ -26,10 +26,12 @@ import { adminScopeSearchFromFormData } from "../../../modules/admin/admin-site-
 import { canUseUserPermission, PermissionKey } from "../../../modules/auth/site-admin-permissions";
 import {
   approveStoreIssue,
+  cancelStoreIssue,
   createLoggedInStoreIssue,
   issueStoreStock,
   markIssueNotEnoughStock,
 } from "../../../modules/store/store-issue-prisma";
+import { RoleName } from "../../../modules/cm-work/cm-work-types";
 import { resolveStorePageScope } from "../../../modules/store/store-page-scope";
 import { canPrintSparePartIssueDocument } from "../../../modules/store/store-issue-print-permission";
 import { StoreIssueStatus } from "../../../modules/store/store-types";
@@ -134,6 +136,24 @@ async function notEnoughStockAction(formData: FormData) {
     actionError = storeActionError(error);
   }
   redirect(issueRedirect(scope, actionError ? { error: actionError } : { saved: "not-enough" }));
+}
+
+async function cancelIssueAction(formData: FormData) {
+  "use server";
+  const user = await requireUser();
+  const scope = await resolveStorePageScope(user, adminScopeSearchFromFormData(formData));
+  let actionError: string | null = null;
+  try {
+    await cancelStoreIssue(
+      user,
+      storeScope(scope),
+      String(formData.get("issueId") ?? ""),
+      String(formData.get("reason") ?? ""),
+    );
+  } catch (error) {
+    actionError = storeActionError(error);
+  }
+  redirect(issueRedirect(scope, actionError ? { error: actionError } : { saved: "canceled" }));
 }
 
 export default async function IssuePage({ searchParams }: { searchParams: Promise<PageQuery> }) {
@@ -299,9 +319,12 @@ export default async function IssuePage({ searchParams }: { searchParams: Promis
                       const remaining = Number(item.approvedQty ?? item.requestedQty) - Number(item.issuedQty ?? 0);
                       return (
                         <label className="grid gap-1 text-sm font-bold sm:grid-cols-[1fr_140px] sm:items-center" key={item.id}>
-                          <span className="truncate">{item.sparePart.code} · Remain {formatQty(remaining)} {item.sparePart.unit}</span>
+                          <span className="truncate">{item.sparePart.code} · คงเหลือต้องจ่าย {formatQty(remaining)} {item.sparePart.unit}</span>
                           <input name="itemId" type="hidden" value={item.id} />
-                          <input className={inputClass} defaultValue={remaining} inputMode="numeric" max={remaining} min="1" name="issueQty" step="1" type="number" />
+                          <span className="grid gap-1">
+                            <span className="text-xs text-[var(--muted)]">จำนวนที่จะจ่ายครั้งนี้ (แก้ไขได้)</span>
+                            <input className={inputClass} defaultValue={remaining} inputMode="numeric" max={remaining} min="1" name="issueQty" step="1" type="number" />
+                          </span>
                         </label>
                       );
                     })}
@@ -322,6 +345,20 @@ export default async function IssuePage({ searchParams }: { searchParams: Promis
                     </button>
                   </form>
                 </div>
+              ) : null}
+
+              {canCancelIssue(user.role, issue.status, issue.items) ? (
+                <form action={cancelIssueAction} className="grid gap-2 rounded-xl border border-red-500/25 bg-red-500/5 p-3 sm:grid-cols-[1fr_auto] sm:items-end">
+                  <AdminScopeHiddenFields scope={scope} />
+                  <input name="issueId" type="hidden" value={issue.id} />
+                  <label className="grid gap-1 text-sm font-bold">
+                    เหตุผลการยกเลิก
+                    <input className={inputClass} name="reason" required />
+                  </label>
+                  <button className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-red-500/35 px-4 font-bold text-red-600 transition hover:bg-red-500/10">
+                    <XCircle size={17} /> ยกเลิกใบเบิก
+                  </button>
+                </form>
               ) : null}
 
               {issue.rejectReason ? <p className="rounded-xl bg-red-500/10 px-3 py-2 text-sm text-red-700 dark:text-red-300">Reason: {issue.rejectReason}</p> : null}
@@ -389,6 +426,11 @@ export default async function IssuePage({ searchParams }: { searchParams: Promis
           <p className="rounded-2xl border border-red-500/30 bg-red-500/10 px-4 py-3 font-bold text-red-700 dark:text-red-300" role="alert">
             ดำเนินการไม่สำเร็จ: {query.error}
           </p>
+        ) : null}
+        {canCreate && !issueZones.length ? (
+          <div className="rounded-2xl border border-amber-500/35 bg-amber-500/10 px-4 py-3 text-sm font-bold text-amber-800 dark:text-amber-200">
+            Site นี้ยังไม่มี Applicable Zone ที่เปิดใช้งาน จึงยังสร้างใบเบิกไม่ได้ กรุณากำหนดรหัส Zone ในหน้า Spare Parts ก่อน
+          </div>
         ) : null}
 
         {canCreate ? (
@@ -665,6 +707,31 @@ function issueStatusGroup(status: string) {
   return "CANCELED";
 }
 
+function canCancelIssue(
+  role: string,
+  status: string,
+  items: Array<{ issuedQty: unknown | null }>,
+) {
+  if (items.some((item) => Number(item.issuedQty ?? 0) > 0)) return false;
+  if (role === RoleName.ENGINEER) {
+    return [
+      StoreIssueStatus.WAITING_ENGINEER_APPROVAL,
+      StoreIssueStatus.RETURNED_FOR_EDIT,
+      StoreIssueStatus.WAITING_STORE_ISSUE,
+      StoreIssueStatus.NOT_ENOUGH_STOCK,
+    ].includes(status as never);
+  }
+  if (role === RoleName.STORE_OFFICER) {
+    return [StoreIssueStatus.WAITING_STORE_ISSUE, StoreIssueStatus.NOT_ENOUGH_STOCK].includes(status as never);
+  }
+  return role === RoleName.ADMIN && [
+    StoreIssueStatus.WAITING_ENGINEER_APPROVAL,
+    StoreIssueStatus.RETURNED_FOR_EDIT,
+    StoreIssueStatus.WAITING_STORE_ISSUE,
+    StoreIssueStatus.NOT_ENOUGH_STOCK,
+  ].includes(status as never);
+}
+
 function DecisionButton({ decision, icon, label }: { decision: string; icon: React.ReactNode; label: string }) {
   return (
     <button className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-[var(--line)] px-4 text-sm font-bold transition hover:border-[var(--primary)] hover:text-[var(--primary)]" name="decision" value={decision}>
@@ -730,6 +797,9 @@ function storeActionError(error: unknown) {
     "outside",
     "exceeds",
     "Not enough stock",
+    "cannot be canceled",
+    "cannot cancel",
+    "Only Engineer",
     "must be",
     "greater than zero",
   ];

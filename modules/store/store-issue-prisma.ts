@@ -9,6 +9,7 @@ import { dispatchLineStoreEvent } from "../line/line-service";
 import type { LineEventType } from "../line/line-types";
 import {
   approveStoreIssueByEngineer,
+  cancelStoreIssueWithRepository,
   createStoreIssueWithRepository,
   issueStoreIssueQuantities,
   markStoreIssueNotEnoughStock,
@@ -17,6 +18,7 @@ import {
   type StoreIssueItemInput,
   type StoreIssueRepository,
 } from "./store-issue-service";
+import { RoleName } from "../cm-work/cm-work-types";
 import {
   formatSparePartIssueLineNumber,
   formatSparePartIssueNumber,
@@ -221,6 +223,28 @@ export async function markIssueNotEnoughStock(
   await dispatchStoreIssueLineEvent(issueId, "STORE_NOT_ENOUGH_STOCK", actor.fullName);
 }
 
+export async function cancelStoreIssue(
+  actor: StoreActor,
+  scope: StoreScope,
+  issueId: string,
+  reason: string,
+) {
+  if (actor.role === RoleName.ENGINEER) {
+    requireStorePermission(actor, PermissionKey.APPROVE_STORE_ISSUE);
+  } else if (actor.role === RoleName.STORE_OFFICER) {
+    requireStorePermission(actor, PermissionKey.ISSUE_STOCK);
+  } else if (actor.role !== RoleName.ADMIN) {
+    throw new Error("Only Engineer, Store Officer, or Owner Admin can cancel a Store issue.");
+  }
+  assertActorStoreScope(actor, scope);
+
+  await db.$transaction(async (tx) => {
+    const repository = createIssueRepository(tx);
+    await cancelStoreIssueWithRepository(repository, actor, scope, issueId, reason, new Date());
+    await writeAudit(tx, actor.id, scope, issueId, "CANCEL_STORE_ISSUE", { reason: reason.trim() });
+  });
+}
+
 function createIssueRepository(tx: Prisma.TransactionClient): StoreIssueRepository {
   return {
     async createIssue(input) {
@@ -315,7 +339,8 @@ function createIssueRepository(tx: Prisma.TransactionClient): StoreIssueReposito
           ...(isStoreAction ? { storeOfficerId: input.actorId } : {}),
           ...(input.status === StoreIssueStatus.ISSUED ? { issuedAt: input.changedAt } : {}),
           ...(input.status === StoreIssueStatus.NOT_ENOUGH_STOCK ||
-          input.status === StoreIssueStatus.STORE_REJECTED
+          input.status === StoreIssueStatus.STORE_REJECTED ||
+          input.status === StoreIssueStatus.CANCELED
             ? { rejectedAt: input.changedAt }
             : {}),
         },

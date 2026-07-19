@@ -31,6 +31,16 @@ describe("Admin organization form", () => {
     expect(source).toContain("disabled={!canEditCompany}");
   });
 
+  it("lets a permitted Site Admin update its own Site profile and logo", () => {
+    const source = readFileSync("app/admin/organization/page.tsx", "utf8");
+
+    expect(source).toContain("canManagePlantProfile(user)");
+    expect(source).toContain("savePlantLogoFile");
+    expect(source).toContain("updatePlantProfile");
+    expect(source).toContain('name={canEditCompany ? "logo" : "plantLogo"}');
+    expect(source).toContain('name="siteCompanyName"');
+  });
+
   it("reads organization scope from the signed-in user's organization and site", () => {
     const source = readFileSync("app/admin/organization/page.tsx", "utf8");
 

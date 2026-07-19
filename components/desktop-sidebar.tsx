@@ -53,10 +53,10 @@ export function DesktopSidebar({
     >
       <div className={`flex items-center gap-2 ${collapsed ? "justify-center" : "justify-between"}`}>
         <Link
-          aria-label="PowerCare.CM Dashboard"
+          aria-label="PowerCare Dashboard"
           className={`min-w-0 font-extrabold text-[var(--primary)] ${collapsed ? "grid h-11 w-11 place-items-center rounded-2xl bg-[var(--soft)] text-base" : "text-2xl"}`}
           href="/dashboard"
-          title="PowerCare.CM"
+          title="PowerCare"
         >
           {collapsed ? "PC" : <AppBrand />}
         </Link>
