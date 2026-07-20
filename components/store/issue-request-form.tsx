@@ -325,7 +325,7 @@ export function IssueRequestForm({
           </div>
 
           <div className="max-w-full p-3 sm:p-4">
-            <div className="w-full overflow-hidden rounded-xl border border-[var(--line)]">
+            <div className="w-full overflow-visible rounded-xl border border-[var(--line)]">
               <div className="hidden grid-cols-[40px_minmax(210px,1fr)_minmax(150px,.72fr)_90px_44px] bg-[var(--soft)] px-3 py-3 text-xs font-extrabold text-[var(--muted)] 2xl:grid">
                 <span>ลำดับ</span><span>อะไหล่ / คลัง</span><span>Zone ที่นำไปใช้งาน</span><span>จำนวน</span><span className="sr-only">จัดการ</span>
               </div>
@@ -475,16 +475,30 @@ function SearchableStockSelect({ line, onChange, stocks }: {
   stocks: StockOption[];
 }) {
   const [open, setOpen] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(-1);
   const options = useMemo(
     () => stocks.filter((stock) => matchesStockSearch(stock, line.stockSearch)).slice(0, 50),
     [line.stockSearch, stocks],
   );
+
+  function selectStock(stock: StockOption) {
+    onChange({
+      stockKey: `${stock.storeId}:${stock.sparePartId}`,
+      stockSearch: stockDisplayLabel(stock),
+      zoneId: "",
+    });
+    setActiveIndex(-1);
+    setOpen(false);
+  }
 
   return (
     <div className="relative">
       <input name="stockKey" type="hidden" value={line.stockKey} />
       <Search className="pointer-events-none absolute left-3 top-1/2 z-10 -translate-y-1/2 text-[var(--muted)]" size={17} />
       <input
+        aria-activedescendant={activeIndex >= 0 ? `stock-option-${line.id}-${activeIndex}` : undefined}
+        aria-autocomplete="list"
+        aria-controls={`stock-options-${line.id}`}
         aria-expanded={open}
         aria-label={`ค้นหาและเลือกอะไหล่ รายการ ${line.id}`}
         aria-haspopup="listbox"
@@ -493,33 +507,65 @@ function SearchableStockSelect({ line, onChange, stocks }: {
         onBlur={() => window.setTimeout(() => setOpen(false), 120)}
         onChange={(event) => {
           onChange({ stockKey: "", stockSearch: event.target.value, zoneId: "" });
+          setActiveIndex(-1);
           setOpen(true);
         }}
-        onFocus={() => setOpen(true)}
+        onFocus={() => {
+          setActiveIndex(-1);
+          setOpen(true);
+        }}
+        onKeyDown={(event) => {
+          if (event.key === "Escape") {
+            setActiveIndex(-1);
+            setOpen(false);
+            return;
+          }
+
+          if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+            event.preventDefault();
+            setOpen(true);
+            setActiveIndex((current) => {
+              if (!options.length) return -1;
+              if (event.key === "ArrowDown") return current >= options.length - 1 ? 0 : current + 1;
+              return current <= 0 ? options.length - 1 : current - 1;
+            });
+            return;
+          }
+
+          if (event.key === "Enter" && open && activeIndex >= 0 && options[activeIndex]) {
+            event.preventDefault();
+            selectStock(options[activeIndex]);
+          }
+        }}
         placeholder="พิมพ์ชื่อ รหัส หรือ Item code"
         required
+        role="combobox"
         value={line.stockSearch}
       />
       {open ? (
-        <div className="absolute left-0 right-0 z-30 mt-1 max-h-72 overflow-y-auto rounded-xl border border-[var(--line)] bg-[var(--surface)] p-1 shadow-xl" role="listbox">
-          {options.length ? options.map((stock) => {
+        <div
+          className="absolute left-0 right-0 z-50 mt-1 max-h-72 overflow-y-auto rounded-xl border border-[var(--line)] bg-[var(--surface)] p-1 shadow-xl"
+          id={`stock-options-${line.id}`}
+          role="listbox"
+        >
+          {options.length ? options.map((stock, index) => {
             const stockKey = `${stock.storeId}:${stock.sparePartId}`;
+            const codes = [stock.sparePartCode, stock.itemCode].filter(Boolean).join(" · ") || "-";
             return (
               <button
                 aria-selected={line.stockKey === stockKey}
-                className="flex w-full items-start justify-between gap-3 rounded-lg px-3 py-2 text-left text-sm hover:bg-[var(--soft)]"
+                className={`flex w-full items-start justify-between gap-3 rounded-lg px-3 py-2 text-left text-sm hover:bg-[var(--soft)] ${activeIndex === index ? "bg-[var(--soft)]" : ""}`}
+                id={`stock-option-${line.id}-${index}`}
                 key={stockKey}
-                onClick={() => {
-                  onChange({ stockKey, stockSearch: stockDisplayLabel(stock), zoneId: "" });
-                  setOpen(false);
-                }}
+                onClick={() => selectStock(stock)}
                 onMouseDown={(event) => event.preventDefault()}
                 role="option"
                 type="button"
               >
                 <span className="min-w-0">
                   <span className="block truncate font-bold">{stock.sparePartName ?? stock.label}</span>
-                  <span className="block truncate text-xs text-[var(--muted)]">{stock.sparePartCode ?? stock.itemCode ?? "-"} · {stock.storeName ?? "-"}</span>
+                  <span className="block truncate text-xs text-[var(--muted)]">{codes} · {stock.storeName ?? "-"}</span>
+                  <span className="block truncate text-xs text-[var(--muted)]">{stock.sparePartTypeName ?? "-"} · {stock.sparePartCategoryName ?? "-"}</span>
                 </span>
                 <span className="shrink-0 font-bold text-[var(--primary)]">{stock.available} {stock.unit}</span>
               </button>

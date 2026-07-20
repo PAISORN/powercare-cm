@@ -206,6 +206,29 @@ describe("IssueRequestForm", () => {
     ]);
   });
 
+  it("supports keyboard search and selection in each stock autocomplete", () => {
+    const { container } = render(
+      <IssueRequestForm
+        action={vi.fn()}
+        cmWorks={[]}
+        issueZones={issueZones}
+        lockedCmWork={{ id: "cm-1", number: "CM-2026-07-0001", label: "Pump vibration" }}
+        organizationId="org-1"
+        plantId="plant-1"
+        stocks={stocks}
+      />,
+    );
+
+    const searchInput = screen.getByLabelText("ค้นหาและเลือกอะไหล่ รายการ 1");
+    fireEvent.change(searchInput, { target: { value: "ACC-6208" } });
+    fireEvent.keyDown(searchInput, { key: "ArrowDown" });
+    fireEvent.keyDown(searchInput, { key: "Enter" });
+
+    expect((searchInput as HTMLInputElement).value).toMatch(/Bearing 6208/);
+    expect(container.querySelector<HTMLInputElement>('input[name="stockKey"]')?.value).toBe("store-main:bearing");
+    expect(screen.queryByRole("listbox")).toBeNull();
+  });
+
   it("collects public requester identity and exposes barcode scanning", () => {
     const { container } = render(
       <IssueRequestForm
