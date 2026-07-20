@@ -14,7 +14,8 @@ import {
   ShoppingCart,
   Wrench,
 } from "lucide-react";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { SparePartBarcodeScanner } from "./spare-part-barcode-scanner";
 
 type StockStatus = "ENOUGH" | "LOW" | "OUT";
@@ -80,6 +81,7 @@ export function IssueRequestForm({
   publicRequester,
   inventoryCode,
   lockedCmWork,
+  singleCard = false,
 }: {
   action: (formData: FormData) => void | Promise<void>;
   organizationId: string;
@@ -90,6 +92,7 @@ export function IssueRequestForm({
   publicRequester?: { contactRequired: boolean };
   inventoryCode?: string;
   lockedCmWork?: CmOption;
+  singleCard?: boolean;
 }) {
   const [issueType, setIssueType] = useState<"CM_REFERENCED" | "DIRECT">("CM_REFERENCED");
   const formRef = useRef<HTMLFormElement>(null);
@@ -170,7 +173,8 @@ export function IssueRequestForm({
   return (
     <form
       action={action}
-      className="space-y-4"
+      className={singleCard ? "-mx-4 -mb-4 sm:-mx-5 sm:-mb-5" : "space-y-4"}
+      data-testid="issue-request-form"
       onSubmit={(event) => {
         if (reviewMode) return;
         event.preventDefault();
@@ -188,7 +192,7 @@ export function IssueRequestForm({
         </>
       ) : null}
 
-      <section className="overflow-hidden rounded-2xl border border-[var(--line)] bg-[var(--surface)] shadow-sm">
+      <section className={singleCard ? "overflow-visible" : "overflow-visible rounded-2xl border border-[var(--line)] bg-[var(--surface)] shadow-sm"}>
         <SectionHeading icon={<FileText size={19} />} title="ข้อมูลการเบิก" />
         <div className="grid gap-4 p-4 sm:p-5">
           {publicRequester ? (
@@ -276,7 +280,7 @@ export function IssueRequestForm({
         </div>
       </section>
 
-      <section className="overflow-hidden rounded-2xl border border-[var(--line)] bg-[var(--surface)] shadow-sm">
+      <section className={singleCard ? "overflow-visible border-t border-[var(--line)]" : "overflow-visible rounded-2xl border border-[var(--line)] bg-[var(--surface)] shadow-sm"}>
           <SectionHeading
             action={(
               <div className="flex flex-wrap gap-2">
@@ -389,18 +393,21 @@ export function IssueRequestForm({
       </section>
 
       {formError ? (
-        <p className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm font-bold text-red-600" role="alert">
+        <p className={`${singleCard ? "mx-4 mt-4 sm:mx-5" : ""} rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm font-bold text-red-600`} role="alert">
           {formError}
         </p>
       ) : null}
 
       {!stocks.length ? (
-        <p className="rounded-2xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm font-bold text-amber-700 dark:text-amber-300">
+        <p className={`${singleCard ? "mx-4 mt-4 sm:mx-5" : ""} rounded-2xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm font-bold text-amber-700 dark:text-amber-300`}>
           ยังไม่มี Stock ที่พร้อมให้เบิกใน Site นี้
         </p>
       ) : null}
 
-      <div className="sticky bottom-3 z-10 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[var(--line)] bg-[var(--surface)]/95 p-3 shadow-lg backdrop-blur">
+      <div className={singleCard
+        ? "mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-[var(--line)] px-4 py-4 sm:px-5"
+        : "flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-3"
+      }>
         <button className={secondaryButtonClass} onClick={resetFormView} type="button">
           ยกเลิก
         </button>
@@ -476,10 +483,42 @@ function SearchableStockSelect({ line, onChange, stocks }: {
 }) {
   const [open, setOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [menuPosition, setMenuPosition] = useState({ left: 0, top: 0, width: 0, maxHeight: 288 });
   const options = useMemo(
     () => stocks.filter((stock) => matchesStockSearch(stock, line.stockSearch)).slice(0, 50),
     [line.stockSearch, stocks],
   );
+
+  useEffect(() => {
+    if (!open) return;
+
+    function updateMenuPosition() {
+      const input = inputRef.current;
+      if (!input) return;
+      const rect = input.getBoundingClientRect();
+      const viewportHeight = window.innerHeight;
+      const spaceBelow = viewportHeight - rect.bottom - 12;
+      const spaceAbove = rect.top - 12;
+      const placeAbove = spaceBelow < 180 && spaceAbove > spaceBelow;
+      const availableHeight = Math.max(120, Math.min(288, placeAbove ? spaceAbove : spaceBelow));
+
+      setMenuPosition({
+        left: rect.left,
+        top: placeAbove ? Math.max(8, rect.top - availableHeight - 4) : rect.bottom + 4,
+        width: rect.width,
+        maxHeight: availableHeight,
+      });
+    }
+
+    updateMenuPosition();
+    window.addEventListener("resize", updateMenuPosition);
+    window.addEventListener("scroll", updateMenuPosition, true);
+    return () => {
+      window.removeEventListener("resize", updateMenuPosition);
+      window.removeEventListener("scroll", updateMenuPosition, true);
+    };
+  }, [open]);
 
   function selectStock(stock: StockOption) {
     onChange({
@@ -538,15 +577,22 @@ function SearchableStockSelect({ line, onChange, stocks }: {
           }
         }}
         placeholder="พิมพ์ชื่อ รหัส หรือ Item code"
+        ref={inputRef}
         required
         role="combobox"
         value={line.stockSearch}
       />
-      {open ? (
+      {open && typeof document !== "undefined" ? createPortal(
         <div
-          className="absolute left-0 right-0 z-50 mt-1 max-h-72 overflow-y-auto rounded-xl border border-[var(--line)] bg-[var(--surface)] p-1 shadow-xl"
+          className="fixed z-[200] overflow-y-auto rounded-xl border border-[var(--line)] bg-[var(--surface)] p-1 shadow-2xl"
           id={`stock-options-${line.id}`}
           role="listbox"
+          style={{
+            left: menuPosition.left,
+            top: menuPosition.top,
+            width: menuPosition.width,
+            maxHeight: menuPosition.maxHeight,
+          }}
         >
           {options.length ? options.map((stock, index) => {
             const stockKey = `${stock.storeId}:${stock.sparePartId}`;
@@ -573,7 +619,8 @@ function SearchableStockSelect({ line, onChange, stocks }: {
           }) : (
             <p className="px-3 py-4 text-center text-sm text-[var(--muted)]">ไม่พบอะไหล่</p>
           )}
-        </div>
+        </div>,
+        document.body,
       ) : null}
     </div>
   );

@@ -410,7 +410,7 @@ export default async function IssuePage({ searchParams }: { searchParams: Promis
           <p className="mt-1 text-sm text-[var(--muted)]">เลือกงาน CM หรือเบิกโดยตรง แล้วระบุอะไหล่ที่ต้องการ</p>
         </div>
 
-        <AdminSiteScopeSelector action="/inventory/issue" compact scope={scope} title="Site สำหรับใบเบิก" />
+        <AdminSiteScopeSelector action="/inventory/issue" compact scope={scope} title="Site สำหรับใบเบิก" unframed />
 
         {query.created ? (
           <p className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 font-bold text-emerald-700 dark:text-emerald-300">
@@ -445,6 +445,7 @@ export default async function IssuePage({ searchParams }: { searchParams: Promis
               organizationId={scope.organization.id}
               plantId={scope.plant.id}
               issueZones={issueZones.map((item) => ({ ...item.zone, code: item.code }))}
+              singleCard
               stocks={stocks.map((stock) => ({
                 storeId: stock.storeId,
                 sparePartId: stock.sparePartId,

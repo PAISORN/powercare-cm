@@ -229,6 +229,45 @@ describe("IssueRequestForm", () => {
     expect(screen.queryByRole("listbox")).toBeNull();
   });
 
+  it("renders the create page as one card with a normal form footer", () => {
+    render(
+      <IssueRequestForm
+        action={vi.fn()}
+        cmWorks={[]}
+        issueZones={issueZones}
+        lockedCmWork={{ id: "cm-1", number: "CM-2026-07-0001", label: "Pump vibration" }}
+        organizationId="org-1"
+        plantId="plant-1"
+        singleCard
+        stocks={stocks}
+      />,
+    );
+
+    const form = screen.getByTestId("issue-request-form");
+    const reviewButton = screen.getByRole("button", { name: /ถัดไป: ตรวจสอบและยืนยัน/ });
+    expect(reviewButton.parentElement?.className).not.toContain("sticky");
+    expect(form.querySelectorAll("section.rounded-2xl")).toHaveLength(0);
+  });
+
+  it("renders stock suggestions in a portal above the form", () => {
+    const { container } = render(
+      <IssueRequestForm
+        action={vi.fn()}
+        cmWorks={[]}
+        issueZones={issueZones}
+        lockedCmWork={{ id: "cm-1", number: "CM-2026-07-0001", label: "Pump vibration" }}
+        organizationId="org-1"
+        plantId="plant-1"
+        stocks={stocks}
+      />,
+    );
+
+    fireEvent.focus(screen.getByLabelText("ค้นหาและเลือกอะไหล่ รายการ 1"));
+    const listbox = screen.getByRole("listbox");
+    expect(container.contains(listbox)).toBe(false);
+    expect(listbox.className).toContain("z-[200]");
+  });
+
   it("collects public requester identity and exposes barcode scanning", () => {
     const { container } = render(
       <IssueRequestForm

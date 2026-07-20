@@ -5,6 +5,7 @@ import type { AdminSiteScope } from "../modules/admin/admin-site-scope";
 type AdminSiteScopeSelectorProps = {
   action?: string;
   compact?: boolean;
+  unframed?: boolean;
   scope: AdminSiteScope;
   title?: string;
   description?: string;
@@ -13,6 +14,7 @@ type AdminSiteScopeSelectorProps = {
 export function AdminSiteScopeSelector({
   action,
   compact = false,
+  unframed = false,
   scope,
   title = "Site scope",
   description = "เลือก Organization และ Site ที่ต้องการจัดการ",
@@ -20,7 +22,10 @@ export function AdminSiteScopeSelector({
   const locked = !scope.canSelectOrganization && !scope.canSelectPlant;
 
   return (
-    <section className="rounded-3xl border border-[var(--line)] bg-[var(--surface)] p-5 shadow-[var(--shadow)]">
+    <section className={unframed
+      ? "border-t border-[var(--line)] px-4 py-4 sm:px-5"
+      : "rounded-3xl border border-[var(--line)] bg-[var(--surface)] p-5 shadow-[var(--shadow)]"
+    }>
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <p className="inline-flex items-center gap-2 rounded-full bg-[var(--soft)] px-3 py-1.5 text-sm font-bold text-[var(--primary)]">
