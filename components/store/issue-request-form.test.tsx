@@ -43,6 +43,13 @@ const issueZones = [
 ];
 
 describe("IssueRequestForm", () => {
+  function chooseStock(searchInput: HTMLElement, query: string, optionName: RegExp) {
+    fireEvent.change(searchInput, { target: { value: query } });
+    const option = screen.getByRole("option", { name: optionName });
+    fireEvent.mouseDown(option);
+    fireEvent.click(option);
+  }
+
   it("locks CM work requests and uses the Site-level Applicable Zones at issue time", () => {
     const { container } = render(
       <IssueRequestForm
@@ -60,9 +67,7 @@ describe("IssueRequestForm", () => {
     expect(container.querySelector('input[name="cmWorkNumber"]')?.getAttribute("value")).toBe("CM-2026-07-0001");
     expect(screen.getByLabelText("Search spare parts")).toBeTruthy();
 
-    fireEvent.change(container.querySelector('select[name="stockKey"]')!, {
-      target: { value: "store-main:bearing" },
-    });
+    chooseStock(screen.getByLabelText("ค้นหาและเลือกอะไหล่ รายการ 1"), "Bearing", /Bearing 6208/);
     const zoneSelect = container.querySelector('select[name="zoneId"]') as HTMLSelectElement;
     expect(zoneSelect.disabled).toBe(false);
     expect([...zoneSelect.options].map((option) => option.textContent)).toEqual(
@@ -83,13 +88,14 @@ describe("IssueRequestForm", () => {
       />,
     );
 
-    expect(screen.getByText(/Bearing 6208/)).toBeTruthy();
-    expect(screen.getByText(/Cable THW/)).toBeTruthy();
+    fireEvent.focus(screen.getByLabelText("ค้นหาและเลือกอะไหล่ รายการ 1"));
+    expect(screen.getByRole("option", { name: /Bearing 6208/ })).toBeTruthy();
+    expect(screen.getByRole("option", { name: /Cable THW/ })).toBeTruthy();
 
     fireEvent.change(screen.getByLabelText("Search spare parts"), { target: { value: "ACC-6208" } });
 
-    expect(screen.getByText(/Bearing 6208/)).toBeTruthy();
-    expect(screen.queryByText(/Cable THW/)).toBeNull();
+    expect(screen.getByRole("option", { name: /Bearing 6208/ })).toBeTruthy();
+    expect(screen.queryByRole("option", { name: /Cable THW/ })).toBeNull();
   });
 
   it("filters issue choices by the spare part type instead of the store category", () => {
@@ -111,9 +117,10 @@ describe("IssueRequestForm", () => {
     );
 
     fireEvent.change(typeSelect, { target: { value: "Consumable" } });
+    fireEvent.focus(screen.getByLabelText("ค้นหาและเลือกอะไหล่ รายการ 1"));
 
-    expect(screen.queryByText(/Bearing 6208/)).toBeNull();
-    expect(screen.getByText(/Cable THW/)).toBeTruthy();
+    expect(screen.queryByRole("option", { name: /Bearing 6208/ })).toBeNull();
+    expect(screen.getByRole("option", { name: /Cable THW/ })).toBeTruthy();
   });
 
   it("allows requesting the final unit when available stock is one", () => {
@@ -129,9 +136,7 @@ describe("IssueRequestForm", () => {
       />,
     );
 
-    fireEvent.change(container.querySelector('select[name="stockKey"]')!, {
-      target: { value: "store-elec:cable" },
-    });
+    chooseStock(screen.getByLabelText("ค้นหาและเลือกอะไหล่ รายการ 1"), "Cable", /Cable THW/);
 
     const quantityInput = container.querySelector('input[name="requestedQty"]') as HTMLInputElement;
     expect(quantityInput.min).toBe("1");
@@ -152,9 +157,7 @@ describe("IssueRequestForm", () => {
       />,
     );
 
-    fireEvent.change(container.querySelector('select[name="stockKey"]')!, {
-      target: { value: "store-main:bearing" },
-    });
+    chooseStock(screen.getByLabelText("ค้นหาและเลือกอะไหล่ รายการ 1"), "Bearing", /Bearing 6208/);
     fireEvent.change(container.querySelector('select[name="zoneId"]')!, {
       target: { value: "zone-boiler" },
     });
@@ -162,7 +165,6 @@ describe("IssueRequestForm", () => {
       target: { value: "1" },
     });
 
-    Object.defineProperty(container.querySelector("form")!, "scrollIntoView", { value: vi.fn() });
     const reviewButton = [...container.querySelectorAll<HTMLButtonElement>('button[type="button"]')].at(-1);
     expect(reviewButton).toBeTruthy();
     fireEvent.click(reviewButton!);
@@ -171,6 +173,37 @@ describe("IssueRequestForm", () => {
     expect(formData.getAll("stockKey")).toEqual(["store-main:bearing"]);
     expect(formData.getAll("zoneId")).toEqual(["zone-boiler"]);
     expect(formData.getAll("requestedQty")).toEqual(["1"]);
+    expect(screen.getByRole("dialog")).toBeTruthy();
+    expect(screen.getByText("ยืนยันรายการเบิกอะไหล่")).toBeTruthy();
+    expect(screen.getByRole("button", { name: /ยืนยันการเบิก/ })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /ย้อนกลับไปแก้ไข/ })).toBeTruthy();
+  });
+
+  it("keeps search and selection independent for multiple issue lines", () => {
+    const { container } = render(
+      <IssueRequestForm
+        action={vi.fn()}
+        cmWorks={[]}
+        issueZones={issueZones}
+        lockedCmWork={{ id: "cm-1", number: "CM-2026-07-0001", label: "Pump vibration" }}
+        organizationId="org-1"
+        plantId="plant-1"
+        stocks={stocks}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /เพิ่มรายการ/ }));
+    const firstSearch = screen.getByLabelText("ค้นหาและเลือกอะไหล่ รายการ 1");
+    const secondSearch = screen.getByLabelText("ค้นหาและเลือกอะไหล่ รายการ 2");
+    chooseStock(firstSearch, "Bearing", /Bearing 6208/);
+    chooseStock(secondSearch, "Cable", /Cable THW/);
+
+    expect((firstSearch as HTMLInputElement).value).toMatch(/Bearing 6208/);
+    expect((secondSearch as HTMLInputElement).value).toMatch(/Cable THW/);
+    expect([...container.querySelectorAll<HTMLInputElement>('input[name="stockKey"]')].map((input) => input.value)).toEqual([
+      "store-main:bearing",
+      "store-elec:cable",
+    ]);
   });
 
   it("collects public requester identity and exposes barcode scanning", () => {

@@ -96,8 +96,18 @@ export async function createStoreIssueWithRepository(
   input: CreateStoreIssueInput,
 ) {
   assertIssueInput(input);
+  const requestedByStock = new Map<string, { storeId: string; sparePartId: string; requestedQty: number }>();
   for (const item of input.items) {
     if (!item.storeId) throw new Error("Store is required for every issue item.");
+    const key = `${item.storeId}:${item.sparePartId}`;
+    const current = requestedByStock.get(key);
+    requestedByStock.set(key, {
+      storeId: item.storeId,
+      sparePartId: item.sparePartId,
+      requestedQty: (current?.requestedQty ?? 0) + item.requestedQty,
+    });
+  }
+  for (const item of requestedByStock.values()) {
     const available = await repository.readAvailableStock({
       storeId: item.storeId,
       sparePartId: item.sparePartId,

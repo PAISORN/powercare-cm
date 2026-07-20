@@ -373,7 +373,9 @@ export default async function WorkDetailPage({
   const isClaimant = work.claimantId === user.id;
   const canReview = canCloseWork(actor, work);
   const canCancel = canCancelWork(actor, work);
-  const canMoveToBacklogShutdown = canCancel && work.status === WorkStatus.IN_PROGRESS;
+  const canMoveToBacklogShutdown = canCancel && (
+    work.status === WorkStatus.CLAIMED || work.status === WorkStatus.IN_PROGRESS
+  );
   const canRelease = isClaimant && (work.status === WorkStatus.CLAIMED || work.status === WorkStatus.IN_PROGRESS);
   const hasPendingStoreIssues = storeIssues.some((issue) =>
     pendingStoreIssueStatuses.includes(issue.status as (typeof pendingStoreIssueStatuses)[number]),

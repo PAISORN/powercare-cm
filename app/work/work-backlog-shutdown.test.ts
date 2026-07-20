@@ -4,8 +4,9 @@ import { canTransition } from "../../modules/cm-work/cm-work-state-machine";
 import { WorkStatus } from "../../modules/cm-work/cm-work-types";
 
 describe("CM backlog shutdown status", () => {
-  it("allows in-progress work to move to shutdown backlog and close from there", () => {
+  it("allows claimed or in-progress work to move to shutdown backlog and close from there", () => {
     expect(WorkStatus.BACKLOG_SHUTDOWN).toBe("BACKLOG_SHUTDOWN");
+    expect(canTransition(WorkStatus.CLAIMED, WorkStatus.BACKLOG_SHUTDOWN)).toBe(true);
     expect(canTransition(WorkStatus.IN_PROGRESS, WorkStatus.BACKLOG_SHUTDOWN)).toBe(true);
     expect(canTransition(WorkStatus.BACKLOG_SHUTDOWN, WorkStatus.CLOSED)).toBe(true);
   });
@@ -16,5 +17,6 @@ describe("CM backlog shutdown status", () => {
     expect(source).toContain("moveToBacklogShutdownAction");
     expect(source).toContain("moveToBacklogShutdown");
     expect(source).toContain("BACKLOG_SHUTDOWN");
+    expect(source).toContain("work.status === WorkStatus.CLAIMED");
   });
 });

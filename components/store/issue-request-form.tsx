@@ -56,6 +56,7 @@ type StockFilters = {
 type IssueLine = {
   id: number;
   stockKey: string;
+  stockSearch: string;
   zoneId: string;
   requestedQty: string;
 };
@@ -92,9 +93,10 @@ export function IssueRequestForm({
 }) {
   const [issueType, setIssueType] = useState<"CM_REFERENCED" | "DIRECT">("CM_REFERENCED");
   const formRef = useRef<HTMLFormElement>(null);
-  const [lines, setLines] = useState<IssueLine[]>([{ id: 1, stockKey: "", zoneId: "", requestedQty: "" }]);
+  const [lines, setLines] = useState<IssueLine[]>([{ id: 1, stockKey: "", stockSearch: "", zoneId: "", requestedQty: "" }]);
   const [filters, setFilters] = useState<StockFilters>(initialFilters);
   const [reviewMode, setReviewMode] = useState(false);
+  const [formError, setFormError] = useState("");
   const selectedIssueType = lockedCmWork ? "CM_REFERENCED" : issueType;
   const filterOptions = useMemo(() => buildFilterOptions(stocks), [stocks]);
   const filteredStocks = useMemo(() => stocks.filter((stock) => matchesStockFilters(stock, filters)), [filters, stocks]);
@@ -102,7 +104,7 @@ export function IssueRequestForm({
   function addLine() {
     setLines((current) => [
       ...current,
-      { id: Math.max(...current.map((line) => line.id)) + 1, stockKey: "", zoneId: "", requestedQty: "" },
+      { id: Math.max(...current.map((line) => line.id)) + 1, stockKey: "", stockSearch: "", zoneId: "", requestedQty: "" },
     ]);
   }
 
@@ -111,31 +113,71 @@ export function IssueRequestForm({
     setLines((current) => {
       const emptyIndex = current.findIndex((line) => !line.stockKey);
       if (emptyIndex >= 0) {
-        return current.map((line, index) => index === emptyIndex ? { ...line, stockKey, zoneId: "" } : line);
+        const stock = stockForKey(stocks, stockKey);
+        return current.map((line, index) => index === emptyIndex ? {
+          ...line,
+          stockKey,
+          stockSearch: stock ? stockDisplayLabel(stock) : "",
+          zoneId: "",
+        } : line);
       }
       return [
         ...current,
-        { id: Math.max(...current.map((line) => line.id)) + 1, stockKey, zoneId: "", requestedQty: "" },
+        {
+          id: Math.max(...current.map((line) => line.id)) + 1,
+          stockKey,
+          stockSearch: stockForKey(stocks, stockKey) ? stockDisplayLabel(stockForKey(stocks, stockKey)!) : "",
+          zoneId: "",
+          requestedQty: "",
+        },
       ];
     });
   }
 
   function resetFormView() {
     setIssueType("CM_REFERENCED");
-    setLines([{ id: 1, stockKey: "", zoneId: "", requestedQty: "" }]);
+    setLines([{ id: 1, stockKey: "", stockSearch: "", zoneId: "", requestedQty: "" }]);
     setFilters(initialFilters);
     setReviewMode(false);
+    setFormError("");
     formRef.current?.reset();
   }
 
   function openReview() {
     if (!formRef.current?.reportValidity()) return;
+    const invalidLine = lines.find((line) => {
+      const stock = stockForKey(stocks, line.stockKey);
+      const quantity = Number(line.requestedQty);
+      return !stock || !line.zoneId || !Number.isInteger(quantity) || quantity <= 0 || quantity > stock.available;
+    });
+    if (invalidLine) {
+      setFormError("กรุณาเลือกอะไหล่ Zone และระบุจำนวนเต็มที่ไม่เกินสต็อกให้ครบทุกแถว");
+      return;
+    }
+    const totalByStock = new Map<string, number>();
+    for (const line of lines) {
+      totalByStock.set(line.stockKey, (totalByStock.get(line.stockKey) ?? 0) + Number(line.requestedQty));
+    }
+    const overStock = [...totalByStock].some(([stockKey, quantity]) => quantity > (stockForKey(stocks, stockKey)?.available ?? 0));
+    if (overStock) {
+      setFormError("จำนวนรวมของอะไหล่รายการเดียวกันเกินจำนวนคงเหลือ");
+      return;
+    }
+    setFormError("");
     setReviewMode(true);
-    formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
   return (
-    <form action={action} className="space-y-4" ref={formRef}>
+    <form
+      action={action}
+      className="space-y-4"
+      onSubmit={(event) => {
+        if (reviewMode) return;
+        event.preventDefault();
+        openReview();
+      }}
+      ref={formRef}
+    >
       <input name="organizationId" type="hidden" value={organizationId} />
       <input name="plantId" type="hidden" value={plantId} />
       {inventoryCode ? <input name="inventoryCode" type="hidden" value={inventoryCode} /> : null}
@@ -234,8 +276,7 @@ export function IssueRequestForm({
         </div>
       </section>
 
-      {!reviewMode ? (
-        <section className="overflow-hidden rounded-2xl border border-[var(--line)] bg-[var(--surface)] shadow-sm">
+      <section className="overflow-hidden rounded-2xl border border-[var(--line)] bg-[var(--surface)] shadow-sm">
           <SectionHeading
             action={(
               <div className="flex flex-wrap gap-2">
@@ -295,20 +336,11 @@ export function IssueRequestForm({
                     <span className="inline-flex size-8 items-center justify-center self-center rounded-lg bg-[var(--soft)] text-sm font-extrabold text-[var(--primary)] 2xl:size-auto 2xl:justify-start 2xl:bg-transparent">{index + 1}</span>
                     <label className={`${labelClass} 2xl:pr-3`}>
                       <span className="text-xs text-[var(--muted)] 2xl:sr-only">อะไหล่ / คลัง</span>
-                      <select
-                        className={inputClass}
-                        name="stockKey"
-                        onChange={(event) => setLines((current) => current.map((item) => item.id === line.id ? { ...item, stockKey: event.target.value, zoneId: "" } : item))}
-                        required
-                        value={line.stockKey}
-                      >
-                        <option disabled value="">เลือกอะไหล่จาก Stock</option>
-                        {filteredStocks.map((option) => (
-                          <option key={`${option.storeId}:${option.sparePartId}`} value={`${option.storeId}:${option.sparePartId}`}>
-                            {option.label} · คงเหลือ {option.available} {option.unit}
-                          </option>
-                        ))}
-                      </select>
+                      <SearchableStockSelect
+                        line={line}
+                        onChange={(next) => setLines((current) => current.map((item) => item.id === line.id ? { ...item, ...next } : item))}
+                        stocks={filteredStocks}
+                      />
                       {stock ? <span className="truncate text-xs font-medium text-[var(--muted)]">คงเหลือ {stock.available} {stock.unit} · {stock.storeName}</span> : null}
                     </label>
                     <label className={`${labelClass} 2xl:pr-3`}>
@@ -354,10 +386,13 @@ export function IssueRequestForm({
               })}
             </div>
           </div>
-        </section>
-      ) : (
-        <ReviewPanel issueZones={issueZones} lines={lines} stocks={stocks} />
-      )}
+      </section>
+
+      {formError ? (
+        <p className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm font-bold text-red-600" role="alert">
+          {formError}
+        </p>
+      ) : null}
 
       {!stocks.length ? (
         <p className="rounded-2xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm font-bold text-amber-700 dark:text-amber-300">
@@ -366,20 +401,22 @@ export function IssueRequestForm({
       ) : null}
 
       <div className="sticky bottom-3 z-10 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[var(--line)] bg-[var(--surface)]/95 p-3 shadow-lg backdrop-blur">
-        <button className={secondaryButtonClass} onClick={reviewMode ? () => setReviewMode(false) : resetFormView} type="button">
-          {reviewMode ? <ArrowLeft size={18} /> : null}
-          {reviewMode ? "กลับไปแก้ไข" : "ยกเลิก"}
+        <button className={secondaryButtonClass} onClick={resetFormView} type="button">
+          ยกเลิก
         </button>
-        {reviewMode ? (
-          <button className={primaryButtonClass} disabled={!stocks.length}>
-            <Send size={18} /> ยืนยันและส่งคำขอเบิก
-          </button>
-        ) : (
-          <button className={primaryButtonClass} disabled={!stocks.length} onClick={openReview} type="button">
-            ถัดไป: ตรวจสอบและยืนยัน <ArrowRight size={18} />
-          </button>
-        )}
+        <button className={primaryButtonClass} disabled={!stocks.length} onClick={openReview} type="button">
+          ถัดไป: ตรวจสอบและยืนยัน <ArrowRight size={18} />
+        </button>
       </div>
+
+      {reviewMode ? (
+        <ReviewModal
+          issueZones={issueZones}
+          lines={lines}
+          onBack={() => setReviewMode(false)}
+          stocks={stocks}
+        />
+      ) : null}
     </form>
   );
 }
@@ -393,39 +430,125 @@ function SectionHeading({ action, icon, title }: { action?: React.ReactNode; ico
   );
 }
 
-function ReviewPanel({ issueZones, lines, stocks }: { issueZones: IssueZoneOption[]; lines: IssueLine[]; stocks: StockOption[] }) {
+function ReviewModal({ issueZones, lines, onBack, stocks }: {
+  issueZones: IssueZoneOption[];
+  lines: IssueLine[];
+  onBack: () => void;
+  stocks: StockOption[];
+}) {
   return (
-    <section className="overflow-hidden rounded-2xl border border-[var(--line)] bg-[var(--surface)] shadow-sm">
-      <SectionHeading icon={<ClipboardCheck size={19} />} title="ตรวจสอบและยืนยัน" />
-      <div className="grid gap-3 p-4 sm:p-5">
+    <div aria-modal="true" className="fixed inset-0 z-[100] grid place-items-center overflow-y-auto bg-black/45 p-4 backdrop-blur-sm" role="dialog">
+      <section className="my-auto max-h-[calc(100vh-2rem)] w-full max-w-3xl overflow-y-auto rounded-2xl border border-[var(--line)] bg-[var(--surface)] shadow-2xl">
+        <SectionHeading icon={<ClipboardCheck size={19} />} title="ยืนยันรายการเบิกอะไหล่" />
+        <div className="grid gap-3 p-4 sm:p-5">
         {lines.map((line, index) => {
           const stock = stockForKey(stocks, line.stockKey);
           const zone = issueZones.find((item) => item.id === line.zoneId);
           return (
             <article className="grid gap-3 rounded-xl border border-[var(--line)] bg-[var(--soft)] p-4 sm:grid-cols-[48px_minmax(0,1fr)_auto] sm:items-center" key={line.id}>
-              <input name="stockKey" type="hidden" value={line.stockKey} />
-              <input name="zoneId" type="hidden" value={line.zoneId} />
-              <input name="requestedQty" type="hidden" value={line.requestedQty} />
               <span className="flex size-9 items-center justify-center rounded-lg bg-[var(--primary)] text-sm font-extrabold text-white">{index + 1}</span>
               <div className="min-w-0">
                 <p className="truncate font-extrabold">{stock?.sparePartName ?? stock?.label ?? "-"}</p>
-                <p className="mt-1 text-sm text-[var(--muted)]">{stock?.sparePartCode ?? "-"} · {stock?.storeName ?? "-"} · Zone {zone ? `${zone.code} ${zone.name}` : "-"}</p>
+                <p className="mt-1 text-sm text-[var(--muted)]">รหัส {stock?.sparePartCode ?? stock?.itemCode ?? "-"} · {stock?.storeName ?? "-"} · Zone {zone ? `${zone.code} ${zone.name}` : "-"}</p>
               </div>
               <p className="font-extrabold text-[var(--primary)]">{line.requestedQty || "0"} {stock?.unit ?? ""}</p>
             </article>
           );
         })}
-        <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-[var(--line)] p-4 text-sm font-bold">
-          <input className="mt-0.5 size-5 accent-[var(--primary)]" required type="checkbox" />
-          <span>ตรวจสอบข้อมูล เลขที่ CM, Zone และจำนวนอะไหล่ถูกต้องแล้ว</span>
-        </label>
-      </div>
-    </section>
+          <div className="mt-2 flex flex-col-reverse gap-2 border-t border-[var(--line)] pt-4 sm:flex-row sm:justify-end">
+            <button className={secondaryButtonClass} onClick={onBack} type="button">
+              <ArrowLeft size={18} /> ย้อนกลับไปแก้ไข
+            </button>
+            <button className={primaryButtonClass} type="submit">
+              <Send size={18} /> ยืนยันการเบิก
+            </button>
+          </div>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function SearchableStockSelect({ line, onChange, stocks }: {
+  line: IssueLine;
+  onChange: (next: Partial<IssueLine>) => void;
+  stocks: StockOption[];
+}) {
+  const [open, setOpen] = useState(false);
+  const options = useMemo(
+    () => stocks.filter((stock) => matchesStockSearch(stock, line.stockSearch)).slice(0, 50),
+    [line.stockSearch, stocks],
+  );
+
+  return (
+    <div className="relative">
+      <input name="stockKey" type="hidden" value={line.stockKey} />
+      <Search className="pointer-events-none absolute left-3 top-1/2 z-10 -translate-y-1/2 text-[var(--muted)]" size={17} />
+      <input
+        aria-expanded={open}
+        aria-label={`ค้นหาและเลือกอะไหล่ รายการ ${line.id}`}
+        aria-haspopup="listbox"
+        autoComplete="off"
+        className={`${inputClass} pl-10`}
+        onBlur={() => window.setTimeout(() => setOpen(false), 120)}
+        onChange={(event) => {
+          onChange({ stockKey: "", stockSearch: event.target.value, zoneId: "" });
+          setOpen(true);
+        }}
+        onFocus={() => setOpen(true)}
+        placeholder="พิมพ์ชื่อ รหัส หรือ Item code"
+        required
+        value={line.stockSearch}
+      />
+      {open ? (
+        <div className="absolute left-0 right-0 z-30 mt-1 max-h-72 overflow-y-auto rounded-xl border border-[var(--line)] bg-[var(--surface)] p-1 shadow-xl" role="listbox">
+          {options.length ? options.map((stock) => {
+            const stockKey = `${stock.storeId}:${stock.sparePartId}`;
+            return (
+              <button
+                aria-selected={line.stockKey === stockKey}
+                className="flex w-full items-start justify-between gap-3 rounded-lg px-3 py-2 text-left text-sm hover:bg-[var(--soft)]"
+                key={stockKey}
+                onClick={() => {
+                  onChange({ stockKey, stockSearch: stockDisplayLabel(stock), zoneId: "" });
+                  setOpen(false);
+                }}
+                onMouseDown={(event) => event.preventDefault()}
+                role="option"
+                type="button"
+              >
+                <span className="min-w-0">
+                  <span className="block truncate font-bold">{stock.sparePartName ?? stock.label}</span>
+                  <span className="block truncate text-xs text-[var(--muted)]">{stock.sparePartCode ?? stock.itemCode ?? "-"} · {stock.storeName ?? "-"}</span>
+                </span>
+                <span className="shrink-0 font-bold text-[var(--primary)]">{stock.available} {stock.unit}</span>
+              </button>
+            );
+          }) : (
+            <p className="px-3 py-4 text-center text-sm text-[var(--muted)]">ไม่พบอะไหล่</p>
+          )}
+        </div>
+      ) : null}
+    </div>
   );
 }
 
 function stockForKey(stocks: StockOption[], stockKey: string) {
   return stocks.find((stock) => `${stock.storeId}:${stock.sparePartId}` === stockKey);
+}
+
+function stockDisplayLabel(stock: StockOption) {
+  return `${stock.sparePartName ?? stock.label} · ${stock.sparePartCode ?? stock.itemCode ?? "-"}`;
+}
+
+function matchesStockSearch(stock: StockOption, value: string) {
+  const search = value.trim().toLowerCase();
+  if (!search) return true;
+  return [stock.label, stock.sparePartName, stock.sparePartCode, stock.itemCode, stock.storeName, stock.sparePartTypeName, stock.sparePartCategoryName]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase()
+    .includes(search);
 }
 
 function FilterSelect({

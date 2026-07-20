@@ -114,6 +114,24 @@ describe("store issue service", () => {
     ).resolves.toEqual({ id: "issue-1" });
   });
 
+  it("checks the combined quantity when the same spare part appears on multiple lines", async () => {
+    const repository = createRepository();
+    repository.balances["store-1:part-1"] = 3;
+
+    await expect(
+      createStoreIssueWithRepository(repository, scope, {
+        number: "SI-RTB-2026-07-0001",
+        issueType: StoreIssueType.DIRECT,
+        requesterName: "Requester",
+        requestedAt: new Date(),
+        items: [
+          { storeId: "store-1", sparePartId: "part-1", zoneId: "zone-1", requestedQty: 2 },
+          { storeId: "store-1", sparePartId: "part-1", zoneId: "zone-1", requestedQty: 2 },
+        ],
+      }),
+    ).rejects.toThrow("exceeds available stock");
+  });
+
   it("requires requested quantities to be positive whole numbers", async () => {
     const repository = createRepository();
 
@@ -241,6 +259,25 @@ describe("store issue service", () => {
     expect(storeRepository.statuses).toMatchObject([
       { status: StoreIssueStatus.CANCELED, reason: "Canceled before issue" },
     ]);
+  });
+
+  it("keeps stock unchanged after cancel and allows requesting the same spare part again", async () => {
+    const repository = createRepository({ status: StoreIssueStatus.WAITING_ENGINEER_APPROVAL });
+    const balanceBefore = repository.balances["store-1:part-1"];
+
+    await cancelStoreIssueWithRepository(repository, engineer, scope, "issue-1", "Changed plan");
+
+    expect(repository.balances["store-1:part-1"]).toBe(balanceBefore);
+    expect(repository.movements).toHaveLength(0);
+    await expect(
+      createStoreIssueWithRepository(repository, scope, {
+        number: "SI-RTB-2026-07-0002",
+        issueType: StoreIssueType.DIRECT,
+        requesterName: "Requester",
+        requestedAt: new Date(),
+        items: [{ storeId: "store-1", sparePartId: "part-1", zoneId: "zone-1", requestedQty: 2 }],
+      }),
+    ).resolves.toEqual({ id: "issue-1" });
   });
 
   it("blocks cancel after stock has been issued", async () => {

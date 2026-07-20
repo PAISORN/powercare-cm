@@ -302,7 +302,9 @@ export async function moveToInProgress(actor: Actor, cmWorkId: string) {
 export async function moveToBacklogShutdown(actor: Actor, cmWorkId: string, reason: string) {
   const work = await db.cmWork.findUniqueOrThrow({ where: { id: cmWorkId } });
   if (!reason.trim()) throw new Error("Backlog shutdown reason is required");
-  if (work.status !== WorkStatus.IN_PROGRESS) throw new Error("Only in-progress work can move to shutdown backlog");
+  if (work.status !== WorkStatus.CLAIMED && work.status !== WorkStatus.IN_PROGRESS) {
+    throw new Error("Only claimed or in-progress work can move to shutdown backlog");
+  }
   if (!canCancelWork(actor, work)) throw new Error("You cannot move this CM work to shutdown backlog");
   if (!canTransition(work.status, WorkStatus.BACKLOG_SHUTDOWN)) throw new Error("Invalid status transition");
 
