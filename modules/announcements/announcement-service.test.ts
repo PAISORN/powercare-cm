@@ -59,6 +59,7 @@ describe("announcement scheduling", () => {
       input,
     );
     expect(store.created).toHaveLength(1);
+    expect(store.created[0]).toMatchObject({ organizationId: null });
     expect(store.audits).toEqual(["CREATE_ANNOUNCEMENT"]);
 
     await expect(

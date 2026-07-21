@@ -8,6 +8,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
   const announcement = await db.announcement.findFirst({
     where: {
       id,
+      organizationId: null,
       active: true,
       publishStart: { lte: now },
       publishEnd: { gte: now },

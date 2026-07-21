@@ -9,15 +9,13 @@ function readProjectFile(path: string) {
 }
 
 describe("chart entry motion", () => {
-  test("public and dashboard charts use shared motion hooks", () => {
-    for (const path of ["app/page.tsx", "app/dashboard/page.tsx"]) {
-      const content = readProjectFile(path);
+  test("dashboard charts use shared motion hooks", () => {
+    const content = readProjectFile("app/dashboard/page.tsx");
 
-      expect(content).toContain("cm-donut-motion");
-      expect(content).toContain("cm-donut-core");
-      expect(content).toContain("cm-monthly-bar");
-      expect(content).toContain("cm-zone-fill");
-    }
+    expect(content).toContain("cm-donut-motion");
+    expect(content).toContain("cm-donut-core");
+    expect(content).toContain("cm-monthly-bar");
+    expect(content).toContain("cm-zone-fill");
   });
 
   test("global styles define chart motion with reduced-motion fallback", () => {

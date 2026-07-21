@@ -17,17 +17,15 @@ import {
 } from "../../../modules/announcements/announcement-service";
 import type { AnnouncementInput } from "../../../modules/announcements/announcement-types";
 import type { Actor } from "../../../modules/cm-work/cm-work-types";
-import { readOrganizationScope } from "../../../modules/organization/organization-scope-service";
 
 function actorFrom(
   user: { id: string; role: string; categoryId: string | null; plantId?: string | null; siteAdminPermissions?: Actor["siteAdminPermissions"] },
-  organizationId: string,
 ): Actor {
   return {
     id: user.id,
     role: user.role as Actor["role"],
     categoryId: user.categoryId,
-    organizationId,
+    organizationId: null,
     plantId: user.plantId,
     siteAdminPermissions: user.siteAdminPermissions,
   };
@@ -66,13 +64,12 @@ async function createAction(formData: FormData) {
   "use server";
   const user = await requireUser();
   if (!canManageAnnouncements(user)) redirect("/dashboard");
-  const scope = await readOrganizationScope();
   const id = randomUUID();
   const file = formData.get("image");
   let savedImage: Awaited<ReturnType<typeof saveAnnouncementImageFile>> | null = null;
   try {
     if (file instanceof File && file.size > 0) savedImage = await saveAnnouncementImageFile(id, file);
-    await createAnnouncement(actorFrom(user, scope.organization.id), inputFrom(formData, savedImage), id);
+    await createAnnouncement(actorFrom(user), inputFrom(formData, savedImage), id);
   } catch {
     await deleteStoredFile(savedImage?.storagePath);
     redirect("/admin/announcements?error=1");
@@ -84,9 +81,8 @@ async function updateAction(formData: FormData) {
   "use server";
   const user = await requireUser();
   if (!canManageAnnouncements(user)) redirect("/dashboard");
-  const scope = await readOrganizationScope();
   const id = String(formData.get("id") ?? "");
-  const existing = await db.announcement.findFirstOrThrow({ where: { id, organizationId: scope.organization.id } });
+  const existing = await db.announcement.findFirstOrThrow({ where: { id, organizationId: null } });
   const file = formData.get("image");
   try {
     const image = file instanceof File && file.size > 0
@@ -99,7 +95,7 @@ async function updateAction(formData: FormData) {
             storagePath: existing.imageStoragePath,
           }
         : null;
-    await updateAnnouncement(actorFrom(user, scope.organization.id), id, inputFrom(formData, image));
+    await updateAnnouncement(actorFrom(user), id, inputFrom(formData, image));
   } catch {
     redirect("/admin/announcements?error=1");
   }
@@ -110,15 +106,14 @@ async function rowAction(formData: FormData) {
   "use server";
   const user = await requireUser();
   if (!canManageAnnouncements(user)) redirect("/dashboard");
-  const scope = await readOrganizationScope();
   const id = String(formData.get("id") ?? "");
   const intent = String(formData.get("intent") ?? "");
   try {
     if (intent === "delete") {
-      const deleted = await deleteAnnouncement(actorFrom(user, scope.organization.id), id);
+      const deleted = await deleteAnnouncement(actorFrom(user), id);
       await deleteStoredFile(deleted.imageStoragePath);
     } else {
-      await setAnnouncementActive(actorFrom(user, scope.organization.id), id, intent === "activate");
+      await setAnnouncementActive(actorFrom(user), id, intent === "activate");
     }
   } catch {
     redirect("/admin/announcements?error=1");
@@ -133,10 +128,9 @@ function dateInput(value: Date) {
 export default async function AdminAnnouncementsPage({ searchParams }: { searchParams: Promise<{ saved?: string; error?: string }> }) {
   const user = await requireUser();
   if (!canManageAnnouncements(user)) redirect("/dashboard");
-  const scope = await readOrganizationScope();
   const [announcements, query] = await Promise.all([
     db.announcement.findMany({
-      where: { organizationId: scope.organization.id },
+      where: { organizationId: null },
       orderBy: [{ active: "desc" }, { pinned: "desc" }, { publishStart: "desc" }],
       include: { author: true },
     }),

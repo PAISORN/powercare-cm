@@ -1,13 +1,15 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
-describe("Landing public feedback", () => {
-  it("renders a public feedback form and stores feedback records", () => {
+describe("public product landing", () => {
+  it("redirects signed-in users and stores feedback at platform scope", () => {
     const source = readFileSync("app/page.tsx", "utf8");
 
-    expect(source).toContain("submitPublicFeedback");
-    expect(source).toContain("PublicFeedbackSection");
+    expect(source).toContain("submitPlatformFeedback");
+    expect(source).toContain("PublicLanding");
     expect(source).toContain("db.publicFeedback.create");
-    expect(source).toContain("ความคิดเห็น / คำแนะนำ");
+    expect(source).toContain("organizationId: null");
+    expect(source).toContain("plantId: null");
+    expect(source).toContain("if (user) redirect(\"/dashboard\")");
   });
 });

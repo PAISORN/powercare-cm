@@ -4,6 +4,42 @@ This context defines the language for a power plant Corrective Maintenance web a
 
 ## Language
 
+**PowerCare**:
+The CMMS product umbrella for maintenance operations, covering Corrective Maintenance, spare-parts management, Preventive Maintenance, and asset management as product modules.
+_Avoid_: CM dashboard, repair-request website, Store-only system
+
+**Available Module**:
+A PowerCare product module that users can open and use for operational work.
+_Avoid_: preview, concept module, planned feature
+
+**Coming Soon Module**:
+A PowerCare product module shown to communicate the product roadmap but not yet available for operational use.
+_Avoid_: available module, disabled permission, system outage
+
+**Public Landing Page**:
+The no-login product introduction at the root route for prospective organizations evaluating PowerCare. It explains the product and provides Login, product-detail, and contact calls to action; it is not an operational requester portal.
+_Avoid_: public dashboard, repair request page, Site portal
+
+**Site Public Portal**:
+A no-login operational entry point resolved from a Site-specific URL or QR code for submitting and tracking requests within that Site. It must never infer or accept another Site from requester-entered form data.
+_Avoid_: product landing page, shared request portal, global public form
+
+**Platform Announcement**:
+The only public announcement type in PowerCare. Owner Admin publishes it for visitors on the Public Landing Page; it never belongs to an Organization or Site.
+_Avoid_: Organization announcement, Site announcement, CM status notification
+
+**Platform Feedback**:
+A no-login suggestion submitted from the Public Landing Page and reviewed by Owner Admin. It never belongs to an Organization or Site and is separate from product contact.
+_Avoid_: Organization feedback, product inquiry, support ticket, repair request
+
+**Product Contact**:
+The business contact path for a prospective organization that wants to evaluate or start using PowerCare.
+_Avoid_: public feedback, repair request, Site contact field
+
+**Soon Contact State**:
+The temporary state shown when PowerCare has no official product-contact channel. Contact and onboarding calls to action must communicate `Soon` and must not route visitors to invented or Site-specific contact information.
+_Avoid_: broken contact link, placeholder email, Site contact
+
 **Corrective Maintenance (CM)**:
 Maintenance work created after a problem, failure, or abnormal condition is reported and needs corrective action.
 _Avoid_: PM, preventive maintenance, planned maintenance

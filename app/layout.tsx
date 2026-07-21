@@ -7,8 +7,8 @@ import "./globals.css";
 export const preferredRegion = "home";
 
 export const metadata: Metadata = {
-  title: "Power Plant CM Control Center",
-  description: "ระบบแจ้งซ่อมและติดตามงาน Corrective Maintenance",
+  title: "PowerCare",
+  description: "แพลตฟอร์มบริหารงานซ่อมบำรุงและคลังอะไหล่",
 };
 
 export const themeBootScript = `
