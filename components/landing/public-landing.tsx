@@ -21,6 +21,7 @@ import {
   X,
 } from "lucide-react";
 import Link from "next/link";
+import Image from "next/image";
 import type { ReactNode } from "react";
 import { PublicAnnouncements } from "../public-announcements";
 import { LandingNavigation } from "./landing-navigation";
@@ -43,6 +44,10 @@ const modules = [
     icon: Wrench,
     tone: "blue",
     available: true,
+    media: [
+      { src: "/landing/modules/cm-laptop.png", alt: "PowerCare CM dashboard on laptop", width: 2000, height: 1414 },
+      { src: "/landing/modules/cm-mobile.png", alt: "PowerCare CM dashboard on mobile", width: 1414, height: 2000 },
+    ],
   },
   {
     id: "store",
@@ -53,6 +58,10 @@ const modules = [
     icon: Boxes,
     tone: "teal",
     available: true,
+    media: [
+      { src: "/landing/modules/store-tablet.png", alt: "PowerCare spare parts stock on tablet", width: 2000, height: 1414 },
+      { src: "/landing/modules/store-mobile.png", alt: "PowerCare maintenance tracking on mobile", width: 1414, height: 2000 },
+    ],
   },
   {
     id: "pm",
@@ -63,6 +72,9 @@ const modules = [
     icon: CalendarCheck2,
     tone: "amber",
     available: false,
+    media: [
+      { src: "/landing/modules/pm-desktop.png", alt: "PowerCare maintenance dashboard on desktop", width: 2000, height: 1414 },
+    ],
   },
   {
     id: "asset",
@@ -73,6 +85,9 @@ const modules = [
     icon: Factory,
     tone: "green",
     available: false,
+    media: [
+      { src: "/landing/modules/asset-desktop.png", alt: "PowerCare asset report on desktop", width: 2000, height: 1414 },
+    ],
   },
 ] as const;
 
@@ -223,21 +238,36 @@ function ModuleOverview() {
     <section className="landing-band" id="modules">
       <div className="landing-container">
         <SectionHeading eyebrow="One connected platform" title="ระบบ CMMS ที่ครอบคลุมทุกงานซ่อมบำรุง" description="เชื่อมข้อมูล บุคลากร อะไหล่ และทุก Site บนแพลตฟอร์มเดียว พร้อมขยายสู่ PM และ Asset อย่างเป็นระบบ" centered />
-        <div className="mt-10 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <div className="landing-module-showcase">
           {overviewModules.map((module) => {
             const Icon = module.icon;
             return (
-              <article className={`landing-module-card module-${module.tone}`} key={module.id}>
-                <div className="flex items-start justify-between gap-3">
-                  <span className="landing-module-icon"><Icon size={23} /></span>
-                  <span className={module.available ? "landing-available" : "landing-soon"}>{module.eyebrow}</span>
+              <article className={`landing-module-card module-${module.tone} module-overview-${module.id}`} key={module.id}>
+                <div className="landing-module-copy">
+                  <div className="landing-module-heading">
+                    <span className="landing-module-icon"><Icon size={21} /></span>
+                    <span className={module.available ? "landing-available" : "landing-soon"}>{module.eyebrow}</span>
+                  </div>
+                  <p className="landing-module-short-title">{module.shortTitle}</p>
+                  <h3>{module.title}</h3>
+                  <p className="landing-module-description">{module.description}</p>
+                  <a className="landing-module-link" href={`#${module.id}-details`} aria-label={`ดูรายละเอียด ${module.title}`}>
+                    <ArrowRight size={15} />
+                  </a>
                 </div>
-                <p className="mt-7 text-sm font-bold text-[var(--muted)]">{module.shortTitle}</p>
-                <h3 className="mt-1 text-xl font-extrabold">{module.title}</h3>
-                <p className="mt-3 text-sm leading-6 text-[var(--muted)]">{module.description}</p>
-                <a className="mt-6 inline-flex items-center gap-2 text-sm font-bold text-[var(--primary)]" href={`#${module.id}-details`}>
-                  ดูรายละเอียด <ArrowRight size={15} />
-                </a>
+                <div className={`landing-module-media landing-module-media-${module.id}`} aria-hidden="true">
+                  {module.media.map((media, index) => (
+                    <Image
+                      alt={media.alt}
+                      className={`landing-module-device landing-module-device-${index + 1}`}
+                      height={media.height}
+                      key={media.src}
+                      sizes="(max-width: 767px) 62vw, (max-width: 1279px) 34vw, 18vw"
+                      src={media.src}
+                      width={media.width}
+                    />
+                  ))}
+                </div>
               </article>
             );
           })}
