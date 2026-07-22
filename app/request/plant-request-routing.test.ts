@@ -11,7 +11,18 @@ describe("Plant-specific repair request routing", () => {
     expect(source).toContain("Site: {plantName}");
     expect(source).not.toContain("Plant: {plantName}");
     expect(source).toContain("getActiveZonesForScope(plantScope.id)");
-    expect(source).toContain("createRepairRequest({ ...parsed, plantCode })");
+    expect(source).toContain("createRepairRequest({ ...parsed, plantCode, submissionKey })");
+    expect(source).toContain('name="submissionKey"');
+    expect(source).toContain("RequestSubmitButton");
+
+    const submitButtonSource = readFileSync("components/request-submit-button.tsx", "utf8");
+    expect(submitButtonSource).toContain('role="dialog"');
+    expect(submitButtonSource).toContain("backdrop-blur-sm");
+    expect(submitButtonSource).toContain("form.reportValidity()");
+    expect(submitButtonSource).toContain('form.addEventListener("submit", interceptDirectSubmit)');
+    expect(submitButtonSource).toContain("form.requestSubmit(submitButtonRef.current)");
+    expect(submitButtonSource).toContain("กลับไปแก้ไข");
+    expect(submitButtonSource).toContain("ยืนยันส่งแจ้งซ่อม");
   });
 
   it("adds a clean plant route for QR links", () => {

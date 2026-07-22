@@ -42,5 +42,9 @@ describe("Spare parts page", () => {
     expect(source).toContain("SparePartsTableColGroup");
     expect(source).toContain("SparePartsTableHeaderRow");
     expect(source).toContain("sticky top-0 z-40 bg-[var(--soft)]");
+    expect(source).toContain("const sparePartsPageSize = 50");
+    expect(source).toContain("visibleSpareParts.map");
+    expect(source).toContain("SparePartsPagination");
+    expect(source).toContain('params.set("partsPage", String(page))');
   });
 });

@@ -219,6 +219,7 @@ model Zone {
 model CmWork {
   id                  String        @id @default(cuid())
   number              String        @unique
+  submissionKey       String?       @unique
   requesterName       String
   requesterDepartment String
   organizationId      String?

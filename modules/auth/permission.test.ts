@@ -39,6 +39,8 @@ describe("category permissions", () => {
 
   it("lets engineer act only in own category", () => {
     const engineer = { id: "eng", role: RoleName.ENGINEER, categoryId: electrical };
+    expect(canCancelWork(engineer, { status: WorkStatus.NEW, categoryId: electrical, claimantId: null })).toBe(true);
+    expect(canCancelWork(engineer, { status: WorkStatus.NEW, categoryId: mechanical, claimantId: null })).toBe(false);
     expect(canCloseWork(engineer, { status: WorkStatus.WAITING_TO_CLOSE, categoryId: electrical, claimantId: "tech" })).toBe(true);
     expect(canCloseWork(engineer, { status: WorkStatus.WAITING_TO_CLOSE, categoryId: mechanical, claimantId: "tech" })).toBe(false);
   });

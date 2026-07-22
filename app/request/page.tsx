@@ -1,6 +1,8 @@
+import { randomUUID } from "node:crypto";
 import { redirect } from "next/navigation";
 import { AppShell } from "../../components/app-shell";
 import { PublicHeader } from "../../components/public-header";
+import { RequestSubmitButton } from "../../components/request-submit-button";
 import { getActiveCategoriesForPlantScope, getActiveZonesForScope } from "../../lib/query-cache";
 import { getCurrentUser } from "../../lib/session";
 import { repairRequestSchema } from "../../lib/validation";
@@ -22,9 +24,10 @@ async function submitRepairRequest(formData: FormData) {
   });
 
   const plantCode = String(formData.get("plantCode") ?? "") || null;
+  const submissionKey = String(formData.get("submissionKey") ?? "");
   let work;
   try {
-    work = await createRepairRequest({ ...parsed, plantCode });
+    work = await createRepairRequest({ ...parsed, plantCode, submissionKey });
   } catch (error) {
     if (error instanceof Error && error.message === "SITE_REQUEST_LIMIT_REACHED") {
       redirect(`/request?plant=${encodeURIComponent(plantCode ?? "")}&error=site-limit`);
@@ -51,11 +54,13 @@ export async function RequestPageContent({ error, plantCode }: { error?: string 
     getActiveZonesForScope(plantScope.id),
     readPlantProfile(plantScope.id),
   ]);
+  const submissionKey = randomUUID();
 
   return (
     <RequestShell signedIn={Boolean(user)}>
       <form action={submitRepairRequest} className="mx-auto grid max-w-3xl gap-4 px-8 py-10">
         <input name="plantCode" type="hidden" value={plantScope.code} />
+        <input name="submissionKey" type="hidden" value={submissionKey} />
         <SiteIdentityHeader
           label="แจ้งซ่อมสำหรับ"
           plantCode={plantScope.code}
@@ -94,9 +99,7 @@ export async function RequestPageContent({ error, plantCode }: { error?: string 
           <option value="URGENT">เร่งด่วน</option>
           <option value="CRITICAL">วิกฤต</option>
         </select>
-        <button className="rounded-md bg-[var(--primary)] px-5 py-3 text-white" type="submit">
-          ส่งแจ้งซ่อม
-        </button>
+        <RequestSubmitButton />
       </form>
     </RequestShell>
   );

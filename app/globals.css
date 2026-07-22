@@ -367,6 +367,8 @@ html[data-stock-header-replacement="active"] .stock-replacement-header {
   --landing-navy: #071c4a;
   background: var(--bg);
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Helvetica Neue", "Segoe UI", Arial, sans-serif;
+  overflow-x: clip;
+  scroll-behavior: auto;
 }
 
 .landing-page::before {
@@ -404,11 +406,11 @@ html[data-stock-header-replacement="active"] .stock-replacement-header {
 }
 
 .landing-header nav a:hover {
-  color: var(--primary);
+  color: var(--landing-teal);
 }
 
 .landing-header nav a.is-active {
-  color: var(--primary);
+  color: var(--landing-teal);
 }
 
 .landing-header nav a.is-active::after {
@@ -419,7 +421,24 @@ html[data-stock-header-replacement="active"] .stock-replacement-header {
   left: 0;
   height: 3px;
   border-radius: 999px 999px 0 0;
-  background: var(--primary);
+  background: var(--landing-teal);
+}
+
+.landing-page section[id] {
+  scroll-margin-top: 88px;
+}
+
+html.lenis,
+html.lenis body {
+  height: auto;
+}
+
+.lenis.lenis-smooth {
+  scroll-behavior: auto !important;
+}
+
+.lenis.lenis-stopped {
+  overflow: hidden;
 }
 
 .landing-wordmark {

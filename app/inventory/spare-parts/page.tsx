@@ -1,6 +1,8 @@
 import {
   Boxes,
   Building2,
+  ChevronLeft,
+  ChevronRight,
   CirclePlus,
   Flag,
   Grid3X3,
@@ -45,6 +47,7 @@ import { resolveStorePageScope } from "../../../modules/store/store-page-scope";
 type PageQuery = {
   organizationId?: string;
   plantId?: string;
+  partsPage?: string;
   saved?: string;
   error?: string;
   editPartId?: string;
@@ -214,6 +217,8 @@ export default async function SparePartsPage({ searchParams }: { searchParams: P
   const scope = await resolveStorePageScope(user, query);
   const canManageParts = canUseUserPermission(user, PermissionKey.MANAGE_SPARE_PARTS);
   const canManageStore = canUseUserPermission(user, PermissionKey.MANAGE_STORE);
+  const canAdjustStock = canUseUserPermission(user, PermissionKey.ADJUST_STOCK);
+  const canReceiveStock = canUseUserPermission(user, PermissionKey.RECEIVE_STOCK);
   const canView =
     canManageParts ||
     canManageStore ||
@@ -251,7 +256,20 @@ export default async function SparePartsPage({ searchParams }: { searchParams: P
   const activePartCategories = partCategories.filter((category) => category.active);
   const activePartTypes = partTypes.filter((type) => type.active);
   const applicableZoneByZoneId = new Map(storeApplicableZones.map((assignment) => [assignment.zoneId, assignment]));
-  const scopedBaseUrl = `/inventory/spare-parts?organizationId=${encodeURIComponent(scope.organization.id)}&plantId=${encodeURIComponent(scope.plant.id)}`;
+  const sparePartsPageSize = 50;
+  const totalSparePartsPages = Math.max(1, Math.ceil(spareParts.length / sparePartsPageSize));
+  const requestedSparePartsPage = Number.parseInt(query.partsPage ?? "1", 10);
+  const currentSparePartsPage =
+    Number.isFinite(requestedSparePartsPage) && requestedSparePartsPage > 0
+      ? Math.min(requestedSparePartsPage, totalSparePartsPages)
+      : 1;
+  const firstVisibleSparePartIndex = (currentSparePartsPage - 1) * sparePartsPageSize;
+  const visibleSpareParts = spareParts.slice(
+    firstVisibleSparePartIndex,
+    firstVisibleSparePartIndex + sparePartsPageSize,
+  );
+  const scopedBaseUrl = sparePartsPageHref(scope, currentSparePartsPage, false);
+  const scopedStockUrl = `/inventory/stock?organizationId=${encodeURIComponent(scope.organization.id)}&plantId=${encodeURIComponent(scope.plant.id)}`;
   const uncategorizedPartCount = spareParts.filter((part) => !part.categoryId).length;
   const categoryRows = [
     ...partCategories.map((category) => ({
@@ -363,6 +381,21 @@ export default async function SparePartsPage({ searchParams }: { searchParams: P
             บันทึกข้อมูลเรียบร้อยแล้ว
           </p>
         ) : null}
+
+        <section className="flex flex-wrap items-center justify-between gap-4 rounded-3xl border border-[var(--line)] bg-[var(--surface)] p-4 shadow-[var(--shadow)] sm:px-5">
+          <div className="flex min-w-0 items-center gap-3">
+            <span className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-[var(--primary)]/10 text-[var(--primary)]">
+              <Boxes size={21} />
+            </span>
+            <div className="min-w-0">
+              <h2 className="font-extrabold">รายการอะไหล่ใน Site</h2>
+              <p className="truncate text-sm text-[var(--muted)]">{spareParts.length} รายการ · {scope.plant.name}</p>
+            </div>
+          </div>
+          <Link className={primaryButtonClass} href="#spare-parts-table-region">
+            ดูรายการอะไหล่
+          </Link>
+        </section>
 
         {(canManageParts || canManageStore) && plantConfig.inventoryCode ? (
           <section className="rounded-3xl border border-[var(--line)] bg-[var(--surface)] p-4 shadow-[var(--shadow)] sm:p-5">
@@ -658,7 +691,7 @@ export default async function SparePartsPage({ searchParams }: { searchParams: P
                 <SparePartsTableHeaderRow />
               </thead>
               <tbody>
-            {spareParts.map((part) => {
+            {visibleSpareParts.map((part) => {
               const totalStock = part.stocks.reduce((sum, stock) => sum + Number(stock.quantity), 0);
               const lowStock = totalStock <= Number(part.minStock);
               return (
@@ -716,6 +749,16 @@ export default async function SparePartsPage({ searchParams }: { searchParams: P
               </div>
             ) : null}
           </div>
+          {spareParts.length ? (
+            <SparePartsPagination
+              currentPage={currentSparePartsPage}
+              firstItem={firstVisibleSparePartIndex + 1}
+              lastItem={Math.min(firstVisibleSparePartIndex + sparePartsPageSize, spareParts.length)}
+              scope={scope}
+              totalItems={spareParts.length}
+              totalPages={totalSparePartsPages}
+            />
+          ) : null}
         </section>
 
         {editPart && canManageParts ? (
@@ -809,6 +852,46 @@ export default async function SparePartsPage({ searchParams }: { searchParams: P
               </label>
               <button className={primaryButtonClass}>บันทึกการแก้ไข</button>
             </form>
+
+            <section className="mt-6 border-t border-[var(--line)] pt-5">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <h3 className="font-extrabold">ยอดคงเหลือตามคลัง</h3>
+                  <p className="mt-1 text-sm text-[var(--muted)]">ปรับจำนวนผ่าน Stock Movement เพื่อเก็บประวัติการเปลี่ยนแปลง</p>
+                </div>
+                {!editPart.stocks.length && canReceiveStock ? (
+                  <Link className={secondaryButtonClass} href={`/inventory/receive?organizationId=${encodeURIComponent(scope.organization.id)}&plantId=${encodeURIComponent(scope.plant.id)}`}>
+                    รับอะไหล่เข้าครั้งแรก
+                  </Link>
+                ) : null}
+              </div>
+              <div className="mt-3 grid gap-2">
+                {editPart.stocks.map((stock) => (
+                  <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-[var(--line)] bg-[var(--soft)] p-3" key={`${stock.storeId}:${stock.sparePartId}`}>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-extrabold">{stock.store.name}</p>
+                      <p className="text-xs text-[var(--muted)]">คงเหลือ {formatQuantity(Number(stock.quantity))} {editPart.unit}</p>
+                    </div>
+                    {canReceiveStock ? (
+                      <Link
+                        className={secondaryButtonClass}
+                        href={`${scopedStockUrl}&stockId=${encodeURIComponent(stock.id)}&stockAction=receive#stock-action-drawer`}
+                      >
+                        รับเข้า
+                      </Link>
+                    ) : null}
+                    {canAdjustStock ? (
+                      <Link
+                        className={primaryButtonClass}
+                        href={`${scopedStockUrl}&stockId=${encodeURIComponent(stock.id)}&stockAction=adjust#stock-action-drawer`}
+                      >
+                        ปรับยอด
+                      </Link>
+                    ) : null}
+                  </div>
+                ))}
+              </div>
+            </section>
           </aside>
         ) : null}
 
@@ -946,6 +1029,122 @@ async function toStoreScope(scope: { organization: { id: string }; plant: { id: 
 
 function pageUrl(scope: { organization: { id: string }; plant: { id: string } }, saved: string) {
   return `/inventory/spare-parts?organizationId=${encodeURIComponent(scope.organization.id)}&plantId=${encodeURIComponent(scope.plant.id)}&saved=${saved}`;
+}
+
+function SparePartsPagination({
+  currentPage,
+  firstItem,
+  lastItem,
+  scope,
+  totalItems,
+  totalPages,
+}: {
+  currentPage: number;
+  firstItem: number;
+  lastItem: number;
+  scope: { organization: { id: string }; plant: { id: string } };
+  totalItems: number;
+  totalPages: number;
+}) {
+  const pageItems = paginationItems(currentPage, totalPages);
+
+  return (
+    <footer className="flex flex-wrap items-center justify-between gap-3 border-t border-[var(--line)] px-5 py-4 sm:px-6">
+      <p className="text-sm font-semibold text-[var(--muted)]">
+        แสดง {firstItem}-{lastItem} จาก {totalItems} รายการ · หน้า {currentPage}/{totalPages}
+      </p>
+      {totalPages > 1 ? (
+        <nav aria-label="Spare parts pagination" className="flex flex-wrap items-center justify-end gap-2">
+          <SparePartsPageLink
+            disabled={currentPage === 1}
+            href={sparePartsPageHref(scope, Math.max(1, currentPage - 1))}
+            label="ก่อนหน้า"
+          >
+            <ChevronLeft size={16} />
+            <span className="hidden sm:inline">ก่อนหน้า</span>
+          </SparePartsPageLink>
+          {pageItems.map((item, index) =>
+            item === "ellipsis" ? (
+              <span className="grid min-h-10 min-w-10 place-items-center text-sm font-bold text-[var(--muted)]" key={`ellipsis-${index}`}>
+                …
+              </span>
+            ) : (
+              <SparePartsPageLink
+                active={item === currentPage}
+                href={sparePartsPageHref(scope, item)}
+                key={item}
+                label={`หน้า ${item}`}
+              >
+                {item}
+              </SparePartsPageLink>
+            ),
+          )}
+          <SparePartsPageLink
+            disabled={currentPage === totalPages}
+            href={sparePartsPageHref(scope, Math.min(totalPages, currentPage + 1))}
+            label="ถัดไป"
+          >
+            <span>ถัดไป</span>
+            <ChevronRight size={16} />
+          </SparePartsPageLink>
+        </nav>
+      ) : null}
+    </footer>
+  );
+}
+
+function SparePartsPageLink({
+  active = false,
+  children,
+  disabled = false,
+  href,
+  label,
+}: {
+  active?: boolean;
+  children: ReactNode;
+  disabled?: boolean;
+  href: string;
+  label: string;
+}) {
+  const className = active
+    ? "inline-flex min-h-10 min-w-10 items-center justify-center gap-1 rounded-full bg-[var(--primary)] px-3 text-sm font-extrabold text-white shadow-sm"
+    : disabled
+      ? "pointer-events-none inline-flex min-h-10 min-w-10 items-center justify-center gap-1 rounded-full border border-[var(--line)] px-3 text-sm font-bold text-[var(--muted)] opacity-45"
+      : "inline-flex min-h-10 min-w-10 items-center justify-center gap-1 rounded-full border border-[var(--line)] bg-[var(--surface)] px-3 text-sm font-bold transition hover:border-[var(--primary)] hover:bg-[var(--soft)] hover:text-[var(--primary)]";
+
+  return (
+    <Link aria-current={active ? "page" : undefined} aria-label={label} className={className} href={href} scroll>
+      {children}
+    </Link>
+  );
+}
+
+function sparePartsPageHref(
+  scope: { organization: { id: string }; plant: { id: string } },
+  page: number,
+  includeTableAnchor = true,
+) {
+  const params = new URLSearchParams({
+    organizationId: scope.organization.id,
+    plantId: scope.plant.id,
+  });
+  if (page > 1) params.set("partsPage", String(page));
+  const url = `/inventory/spare-parts?${params.toString()}`;
+  return includeTableAnchor ? `${url}#spare-parts-table-region` : url;
+}
+
+function paginationItems(currentPage: number, totalPages: number): Array<number | "ellipsis"> {
+  if (totalPages <= 7) return Array.from({ length: totalPages }, (_, index) => index + 1);
+
+  const pages = new Set([1, totalPages, currentPage - 1, currentPage, currentPage + 1]);
+  const validPages = [...pages].filter((page) => page > 0 && page <= totalPages).sort((a, b) => a - b);
+  const items: Array<number | "ellipsis"> = [];
+  validPages.forEach((page, index) => {
+    const previousPage = validPages[index - 1];
+    if (previousPage && page - previousPage > 1) items.push("ellipsis");
+    items.push(page);
+  });
+  return items;
 }
 
 function formatMoney(value: { toString(): string } | null) {

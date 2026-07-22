@@ -1,4 +1,4 @@
-import type { Prisma } from "@prisma/client";
+import { Prisma, type CmWork } from "@prisma/client";
 import { db } from "../../lib/db";
 import { cacheTags, revalidateCmData } from "../../lib/query-cache";
 import { canAssignWork, canCancelWork, canClaimWork, canCloseWork, canReturnWork } from "../auth/permission";
@@ -113,6 +113,7 @@ function createPrismaAssignmentStore(tx: Prisma.TransactionClient): AssignmentSt
 }
 
 export async function createRepairRequest(input: {
+  submissionKey: string;
   requesterName: string;
   requesterDepartment: string;
   categoryId: string;
@@ -124,33 +125,52 @@ export async function createRepairRequest(input: {
   plantCode?: string | null;
 }) {
   const now = new Date();
-  const { plantCode, ...workInput } = input;
-  const work = await db.$transaction(async (tx) => {
-    const number = await reserveCmWorkNumber(tx, now);
-    const plantScope = await resolveRequestPlantScope(createPrismaRequestPlantScopeStore(tx), plantCode);
-    const plant = await tx.plant.findUnique({ where: { id: plantScope.id }, select: { maxWorkRequests: true } });
-    if (plant?.maxWorkRequests) {
-      const currentCount = await tx.cmWork.count({ where: { plantId: plantScope.id } });
-      if (currentCount >= plant.maxWorkRequests) throw new Error("SITE_REQUEST_LIMIT_REACHED");
-    }
+  const { plantCode, submissionKey, ...workInput } = input;
+  if (!submissionKey.trim()) throw new Error("Repair request submission key is required");
 
-    return tx.cmWork.create({
-      data: {
-        ...workInput,
-        organizationId: plantScope.organizationId,
-        plantId: plantScope.id,
-        number,
-        status: WorkStatus.NEW,
-        statusHistory: {
-          create: {
-            fromStatus: null,
-            toStatus: WorkStatus.NEW,
-            note: "Repair request submitted",
+  let transactionResult: { created: boolean; work: CmWork };
+  try {
+    transactionResult = await db.$transaction(async (tx) => {
+      const existing = await tx.cmWork.findUnique({ where: { submissionKey } });
+      if (existing) return { created: false, work: existing };
+
+      const number = await reserveCmWorkNumber(tx, now);
+      const plantScope = await resolveRequestPlantScope(createPrismaRequestPlantScopeStore(tx), plantCode);
+      const plant = await tx.plant.findUnique({ where: { id: plantScope.id }, select: { maxWorkRequests: true } });
+      if (plant?.maxWorkRequests) {
+        const currentCount = await tx.cmWork.count({ where: { plantId: plantScope.id } });
+        if (currentCount >= plant.maxWorkRequests) throw new Error("SITE_REQUEST_LIMIT_REACHED");
+      }
+
+      const work = await tx.cmWork.create({
+        data: {
+          ...workInput,
+          submissionKey,
+          organizationId: plantScope.organizationId,
+          plantId: plantScope.id,
+          number,
+          status: WorkStatus.NEW,
+          statusHistory: {
+            create: {
+              fromStatus: null,
+              toStatus: WorkStatus.NEW,
+              note: "Repair request submitted",
+            },
           },
         },
-      },
+      });
+      return { created: true, work };
     });
-  });
+  } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+      const existing = await db.cmWork.findUnique({ where: { submissionKey } });
+      if (existing) return existing;
+    }
+    throw error;
+  }
+
+  const { work } = transactionResult;
+  if (!transactionResult.created) return work;
 
   await recordAudit({
     cmWorkId: work.id,

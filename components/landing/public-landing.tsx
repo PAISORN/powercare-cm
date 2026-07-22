@@ -11,8 +11,6 @@ import {
   Database,
   Factory,
   Gauge,
-  LogIn,
-  Menu,
   PackageCheck,
   Play,
   ShieldCheck,
@@ -25,7 +23,7 @@ import {
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { PublicAnnouncements } from "../public-announcements";
-import { ThemeToggle } from "../theme-toggle";
+import { LandingNavigation } from "./landing-navigation";
 
 type LandingAnnouncement = Parameters<typeof PublicAnnouncements>[0]["announcements"][number];
 
@@ -96,8 +94,8 @@ const faqs = [
 
 export function PublicLanding({ announcements, feedbackAction, feedbackStatus }: PublicLandingProps) {
   return (
-    <main className="landing-page min-h-screen overflow-x-hidden">
-      <LandingHeader />
+    <main className="landing-page min-h-screen">
+      <LandingNavigation />
       <Hero />
       <ModuleOverview />
       <ModuleDetails />
@@ -121,47 +119,6 @@ export function PublicLanding({ announcements, feedbackAction, feedbackStatus }:
       <SoonCta />
       <LandingFooter />
     </main>
-  );
-}
-
-function LandingHeader() {
-  return (
-    <header className="landing-header">
-      <div className="landing-container flex h-full items-center justify-between gap-4">
-        <Link className="landing-wordmark" href="/" aria-label="PowerCare home">
-          <span className="landing-mark" aria-hidden="true">PC</span>
-          <span>PowerCare</span>
-        </Link>
-        <nav className="hidden items-center gap-7 lg:flex" aria-label="เมนูหลัก">
-          <a className="is-active" href="#top">หน้าแรก</a>
-          <a href="#modules">โมดูล</a>
-          <a href="#platform">แพลตฟอร์ม</a>
-          <a href="#benefits">ประโยชน์</a>
-          <a href="#faq">คำถามที่พบบ่อย</a>
-          <a href="#announcements">อัปเดต</a>
-          <a href="#feedback">ติดต่อเรา</a>
-        </nav>
-        <div className="flex items-center gap-2">
-          <ThemeToggle />
-          <Link className="landing-login-button" href="/login">
-            <LogIn size={16} />
-            <span className="hidden sm:inline">เข้าสู่ระบบ</span>
-          </Link>
-          <details className="landing-mobile-menu lg:hidden">
-            <summary aria-label="เปิดเมนู"><Menu size={19} /></summary>
-            <div>
-              <a href="#top">หน้าแรก</a>
-              <a href="#modules">โมดูล</a>
-              <a href="#platform">แพลตฟอร์ม</a>
-              <a href="#benefits">ประโยชน์</a>
-              <a href="#faq">คำถามที่พบบ่อย</a>
-              <a href="#announcements">อัปเดต</a>
-              <a href="#feedback">ติดต่อเรา</a>
-            </div>
-          </details>
-        </div>
-      </div>
-    </header>
   );
 }
 
