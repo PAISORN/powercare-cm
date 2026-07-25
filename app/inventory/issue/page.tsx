@@ -75,6 +75,7 @@ async function createIssueAction(formData: FormData) {
         requesterName: user.fullName,
         note: optionalText(formData.get("note")),
         requestedAt: new Date(),
+        submissionKey: optionalText(formData.get("submissionKey")),
         items,
       },
     );

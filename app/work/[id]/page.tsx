@@ -302,6 +302,7 @@ export default async function WorkDetailPage({
           requesterName: currentUser.fullName,
           note: optionalText(formData.get("note")) ?? `Request from ${currentWork.number}`,
           requestedAt: new Date(),
+          submissionKey: optionalText(formData.get("submissionKey")),
           items,
         },
       );

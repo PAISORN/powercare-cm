@@ -30,6 +30,7 @@ import { StoreIssueStatus, StoreIssueType, type StoreScope } from "./store-types
 type StoreActor = PermissionUserContext & { id: string; fullName?: string; department?: string | null };
 
 export type CreateLoggedInStoreIssueInput = {
+  submissionKey?: string | null;
   issueType: string;
   cmWorkNumber?: string | null;
   requesterName: string;
@@ -48,13 +49,26 @@ export async function createLoggedInStoreIssue(
   requireStorePermission(actor, PermissionKey.CREATE_STORE_ISSUE);
   assertActorStoreScope(actor, scope);
   const issueType = normalizeIssueType(input.issueType);
+  const submissionKey = optionalText(input.submissionKey);
 
-  const created = await db.$transaction(async (tx) => {
+  let created;
+  try {
+    created = await db.$transaction(async (tx) => {
     const plant = await tx.plant.findFirstOrThrow({
       where: { id: scope.plantId, organizationId: scope.organizationId, active: true },
       select: { id: true, inventoryCode: true },
     });
     if (!plant.inventoryCode) throw new Error("Store Site code must be configured before creating an issue.");
+    if (submissionKey) {
+      const existing = await tx.sparePartIssue.findUnique({
+        where: { submissionKey },
+        select: { id: true, number: true, plantId: true },
+      });
+      if (existing) {
+        if (existing.plantId !== scope.plantId) throw new Error("Invalid issue submission.");
+        return { id: existing.id, number: existing.number, wasExisting: true };
+      }
+    }
     const cmWorkId = await resolveCmWorkId(tx, scope, issueType, input.cmWorkNumber);
     await assertIssueItemsInScope(tx, scope, input.items);
     const items = await reserveIssueLineNumbers(tx, scope, plant.inventoryCode, input.items);
@@ -69,6 +83,7 @@ export async function createLoggedInStoreIssue(
     const repository = createIssueRepository(tx);
     const created = await createStoreIssueWithRepository(repository, scope, {
       number,
+      submissionKey,
       issueType,
       cmWorkId,
       requesterName: requiredText(input.requesterName, "Requester name"),
@@ -84,10 +99,20 @@ export async function createLoggedInStoreIssue(
       issueType,
       itemCount: input.items.length,
     });
-    return { ...created, number };
-  });
-  await dispatchStoreIssueLineEvent(created.id, "STORE_ISSUE_CREATED", actor.fullName);
-  return created;
+    return { ...created, number, wasExisting: false };
+    });
+  } catch (error) {
+    if (submissionKey && isSubmissionKeyConflict(error)) {
+      const existing = await findIssueBySubmissionKey(submissionKey, scope.plantId);
+      if (existing) return existing;
+    }
+    throw error;
+  }
+  if (!created.wasExisting) {
+    await dispatchStoreIssueLineEvent(created.id, "STORE_ISSUE_CREATED", actor.fullName);
+  }
+  const { wasExisting: _wasExisting, ...result } = created;
+  return result;
 }
 
 export async function createPublicStoreIssue(
@@ -98,7 +123,10 @@ export async function createPublicStoreIssue(
     requesterContact?: string | null;
   },
 ) {
-  const created = await db.$transaction(async (tx) => {
+  const submissionKey = optionalText(input.submissionKey);
+  let created;
+  try {
+    created = await db.$transaction(async (tx) => {
     const plant = await tx.plant.findFirst({
       where: {
         inventoryCode: inventoryCode.trim().toUpperCase(),
@@ -123,6 +151,16 @@ export async function createPublicStoreIssue(
       plantCode: plant.inventoryCode,
     };
     const issueType = normalizeIssueType(input.issueType);
+    if (submissionKey) {
+      const existing = await tx.sparePartIssue.findUnique({
+        where: { submissionKey },
+        select: { id: true, number: true, plantId: true },
+      });
+      if (existing) {
+        if (existing.plantId !== scope.plantId) throw new Error("Invalid issue submission.");
+        return { id: existing.id, number: existing.number, plantId: existing.plantId, wasExisting: true };
+      }
+    }
     const cmWorkId = await resolveCmWorkId(tx, scope, issueType, input.cmWorkNumber);
     await assertIssueItemsInScope(tx, scope, input.items);
     const items = await reserveIssueLineNumbers(tx, scope, plant.inventoryCode, input.items);
@@ -137,6 +175,7 @@ export async function createPublicStoreIssue(
     const repository = createIssueRepository(tx);
     const created = await createStoreIssueWithRepository(repository, scope, {
       number,
+      submissionKey,
       issueType,
       cmWorkId,
       requesterName: requiredText(input.requesterName, "Requester name"),
@@ -152,10 +191,52 @@ export async function createPublicStoreIssue(
       issueType,
       itemCount: input.items.length,
     });
-    return { ...created, number, plantId: scope.plantId };
+    return { ...created, number, plantId: scope.plantId, wasExisting: false };
+    });
+  } catch (error) {
+    if (submissionKey && isSubmissionKeyConflict(error)) {
+      const plant = await db.plant.findFirst({
+        where: {
+          inventoryCode: inventoryCode.trim().toUpperCase(),
+          active: true,
+          publicStoreIssueEnabled: true,
+        },
+        select: { id: true },
+      });
+      if (plant) {
+        const existing = await findIssueBySubmissionKey(submissionKey, plant.id);
+        if (existing) return { ...existing, plantId: plant.id };
+      }
+    }
+    throw error;
+  }
+  if (!created.wasExisting) {
+    await dispatchStoreIssueLineEvent(created.id, "STORE_ISSUE_CREATED", input.requesterName);
+  }
+  const { wasExisting: _wasExisting, ...result } = created;
+  return result;
+}
+
+async function findIssueBySubmissionKey(submissionKey: string, plantId: string) {
+  const existing = await db.sparePartIssue.findUnique({
+    where: { submissionKey },
+    select: { id: true, number: true, plantId: true },
   });
-  await dispatchStoreIssueLineEvent(created.id, "STORE_ISSUE_CREATED", input.requesterName);
-  return created;
+  if (!existing || existing.plantId !== plantId) return null;
+  return { id: existing.id, number: existing.number };
+}
+
+function isSubmissionKeyConflict(error: unknown) {
+  if (!error || typeof error !== "object" || !("code" in error) || error.code !== "P2002") {
+    return false;
+  }
+  const meta = "meta" in error && error.meta && typeof error.meta === "object"
+    ? error.meta as { target?: unknown }
+    : undefined;
+  const target = meta?.target;
+  return Array.isArray(target)
+    ? target.some((field) => String(field).includes("submissionKey"))
+    : String(target ?? "").includes("submissionKey");
 }
 
 export async function approveStoreIssue(
@@ -251,6 +332,7 @@ function createIssueRepository(tx: Prisma.TransactionClient): StoreIssueReposito
       return tx.sparePartIssue.create({
         data: {
           number: input.number,
+          submissionKey: input.submissionKey ?? null,
           organizationId: input.scope.organizationId,
           plantId: input.scope.plantId,
           cmWorkId: input.cmWorkId,

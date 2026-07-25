@@ -71,6 +71,13 @@ const initialFilters: StockFilters = {
   stockStatus: "ALL",
 };
 
+function createSubmissionKey() {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+  return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+
 export function IssueRequestForm({
   action,
   organizationId,
@@ -81,6 +88,7 @@ export function IssueRequestForm({
   publicRequester,
   inventoryCode,
   lockedCmWork,
+  directOnly = false,
   singleCard = false,
 }: {
   action: (formData: FormData) => void | Promise<void>;
@@ -92,17 +100,25 @@ export function IssueRequestForm({
   publicRequester?: { contactRequired: boolean };
   inventoryCode?: string;
   lockedCmWork?: CmOption;
+  directOnly?: boolean;
   singleCard?: boolean;
 }) {
-  const [issueType, setIssueType] = useState<"CM_REFERENCED" | "DIRECT">("CM_REFERENCED");
+  const [issueType, setIssueType] = useState<"CM_REFERENCED" | "DIRECT">(directOnly ? "DIRECT" : "CM_REFERENCED");
   const formRef = useRef<HTMLFormElement>(null);
   const [lines, setLines] = useState<IssueLine[]>([{ id: 1, stockKey: "", stockSearch: "", zoneId: "", requestedQty: "" }]);
   const [filters, setFilters] = useState<StockFilters>(initialFilters);
   const [reviewMode, setReviewMode] = useState(false);
   const [formError, setFormError] = useState("");
-  const selectedIssueType = lockedCmWork ? "CM_REFERENCED" : issueType;
+  const submittingRef = useRef(false);
+  const [submissionKey, setSubmissionKey] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const selectedIssueType = lockedCmWork ? "CM_REFERENCED" : directOnly ? "DIRECT" : issueType;
   const filterOptions = useMemo(() => buildFilterOptions(stocks), [stocks]);
   const filteredStocks = useMemo(() => stocks.filter((stock) => matchesStockFilters(stock, filters)), [filters, stocks]);
+
+  useEffect(() => {
+    setSubmissionKey(createSubmissionKey());
+  }, []);
 
   function addLine() {
     setLines((current) => [
@@ -138,11 +154,14 @@ export function IssueRequestForm({
   }
 
   function resetFormView() {
-    setIssueType("CM_REFERENCED");
+    setIssueType(directOnly ? "DIRECT" : "CM_REFERENCED");
     setLines([{ id: 1, stockKey: "", stockSearch: "", zoneId: "", requestedQty: "" }]);
     setFilters(initialFilters);
     setReviewMode(false);
     setFormError("");
+    submittingRef.current = false;
+    setIsSubmitting(false);
+    setSubmissionKey(createSubmissionKey());
     formRef.current?.reset();
   }
 
@@ -176,7 +195,15 @@ export function IssueRequestForm({
       className={singleCard ? "-mx-4 -mb-4 sm:-mx-5 sm:-mb-5" : "space-y-4"}
       data-testid="issue-request-form"
       onSubmit={(event) => {
-        if (reviewMode) return;
+        if (reviewMode) {
+          if (submittingRef.current) {
+            event.preventDefault();
+            return;
+          }
+          submittingRef.current = true;
+          setIsSubmitting(true);
+          return;
+        }
         event.preventDefault();
         openReview();
       }}
@@ -184,13 +211,14 @@ export function IssueRequestForm({
     >
       <input name="organizationId" type="hidden" value={organizationId} />
       <input name="plantId" type="hidden" value={plantId} />
+      <input name="submissionKey" type="hidden" value={submissionKey} />
       {inventoryCode ? <input name="inventoryCode" type="hidden" value={inventoryCode} /> : null}
       {lockedCmWork ? (
         <>
           <input name="issueType" type="hidden" value="CM_REFERENCED" />
           <input name="cmWorkNumber" type="hidden" value={lockedCmWork.number} />
         </>
-      ) : null}
+      ) : directOnly ? <input name="issueType" type="hidden" value="DIRECT" /> : null}
 
       <section className={singleCard ? "overflow-visible" : "overflow-visible rounded-2xl border border-[var(--line)] bg-[var(--surface)] shadow-sm"}>
         <SectionHeading icon={<FileText size={19} />} title="ข้อมูลการเบิก" />
@@ -219,7 +247,7 @@ export function IssueRequestForm({
             </div>
           ) : (
             <div className="grid gap-4 md:grid-cols-2">
-              <fieldset className="grid gap-1.5 md:col-span-2">
+              {!directOnly ? <fieldset className="grid gap-1.5 md:col-span-2">
                 <legend className="text-sm font-bold">ประเภทการเบิก</legend>
                 <div className="grid grid-cols-2 rounded-xl border border-[var(--line)] bg-[var(--soft)] p-1">
                   {[
@@ -245,7 +273,7 @@ export function IssueRequestForm({
                     </label>
                   ))}
                 </div>
-              </fieldset>
+              </fieldset> : null}
 
               {selectedIssueType === "CM_REFERENCED" ? (
                 <label className={labelClass}>
@@ -418,6 +446,7 @@ export function IssueRequestForm({
 
       {reviewMode ? (
         <ReviewModal
+          isSubmitting={isSubmitting}
           issueZones={issueZones}
           lines={lines}
           onBack={() => setReviewMode(false)}
@@ -437,7 +466,8 @@ function SectionHeading({ action, icon, title }: { action?: React.ReactNode; ico
   );
 }
 
-function ReviewModal({ issueZones, lines, onBack, stocks }: {
+function ReviewModal({ isSubmitting, issueZones, lines, onBack, stocks }: {
+  isSubmitting: boolean;
   issueZones: IssueZoneOption[];
   lines: IssueLine[];
   onBack: () => void;
@@ -463,10 +493,10 @@ function ReviewModal({ issueZones, lines, onBack, stocks }: {
           );
         })}
           <div className="mt-2 flex flex-col-reverse gap-2 border-t border-[var(--line)] pt-4 sm:flex-row sm:justify-end">
-            <button className={secondaryButtonClass} onClick={onBack} type="button">
+            <button className={secondaryButtonClass} disabled={isSubmitting} onClick={onBack} type="button">
               <ArrowLeft size={18} /> ย้อนกลับไปแก้ไข
             </button>
-            <button className={primaryButtonClass} type="submit">
+            <button aria-busy={isSubmitting} className={primaryButtonClass} disabled={isSubmitting} type="submit">
               <Send size={18} /> ยืนยันการเบิก
             </button>
           </div>

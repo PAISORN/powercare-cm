@@ -90,13 +90,15 @@ try {
   });
   stockId = stock.id;
   originalQuantity = Number(stock.quantity);
+  const submissionKey = `smoke-store-issue-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 
-  const created = await createLoggedInStoreIssue(actor, scope, {
+  const issueInput = {
     issueType: StoreIssueType.DIRECT,
     requesterName: "Store issue smoke test",
     requesterDepartment: "Development QA",
     note: "Temporary local smoke test. This record is removed automatically.",
     requestedAt,
+    submissionKey,
     items: [
       {
         storeId: stock.storeId,
@@ -105,8 +107,18 @@ try {
         requestedQty: 1,
       },
     ],
-  });
+  };
+  const created = await createLoggedInStoreIssue(actor, scope, issueInput);
   issueId = created.id;
+
+  const duplicate = await createLoggedInStoreIssue(actor, scope, issueInput);
+  if (duplicate.id !== created.id || duplicate.number !== created.number) {
+    throw new Error("Duplicate submission created a different store issue.");
+  }
+  const duplicateCount = await db.sparePartIssue.count({ where: { submissionKey } });
+  if (duplicateCount !== 1) {
+    throw new Error(`Expected one issue header for a duplicate submission, received ${duplicateCount}.`);
+  }
 
   const createdIssue = await db.sparePartIssue.findUniqueOrThrow({
     where: { id: issueId },
@@ -146,6 +158,7 @@ try {
         store: `${stock.store.code} ${stock.store.name}`,
         applicableZone: `${zone.code} ${zone.zone.name}`,
         testedQuantity: 1,
+        deduplicatedSubmission: true,
         statuses: [
           StoreIssueStatus.WAITING_ENGINEER_APPROVAL,
           StoreIssueStatus.WAITING_STORE_ISSUE,

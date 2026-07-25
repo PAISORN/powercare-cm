@@ -17,13 +17,14 @@ async function createPublicIssueAction(formData: FormData) {
   let errorMessage: string | null = null;
   try {
     const result = await createPublicStoreIssue(inventoryCode, {
-      issueType: String(formData.get("issueType") ?? ""),
-      cmWorkNumber: optionalText(formData.get("cmWorkNumber")),
+      issueType: "DIRECT",
+      cmWorkNumber: null,
       requesterName: String(formData.get("requesterName") ?? ""),
       requesterDepartment: String(formData.get("requesterDepartment") ?? ""),
       requesterContact: optionalText(formData.get("requesterContact")),
       note: optionalText(formData.get("note")),
       requestedAt: new Date(),
+      submissionKey: optionalText(formData.get("submissionKey")),
       items: stockKeys.map((key, index) => {
         const [storeId, sparePartId] = key.split(":");
         return { storeId, sparePartId, zoneId: zoneIds[index], requestedQty: quantities[index] };
@@ -59,7 +60,7 @@ export default async function PublicStoreIssuePage({
   });
   if (!plant) notFound();
 
-  const [stocks, issueZones, cmWorks] = await Promise.all([
+  const [stocks, issueZones] = await Promise.all([
     db.storeStock.findMany({
       where: { plantId: plant.id, quantity: { gt: 0 }, store: { active: true }, sparePart: { active: true } },
       include: {
@@ -83,12 +84,6 @@ export default async function PublicStoreIssuePage({
       where: { plantId: plant.id, active: true, zone: { active: true } },
       select: { code: true, zone: { select: { id: true, name: true } } },
       orderBy: { code: "asc" },
-    }),
-    db.cmWork.findMany({
-      where: { plantId: plant.id, organizationId: plant.organizationId },
-      select: { id: true, number: true, machineName: true, problemTitle: true },
-      orderBy: { createdAt: "desc" },
-      take: 100,
     }),
   ]);
 
@@ -129,16 +124,14 @@ export default async function PublicStoreIssuePage({
             <div className="mt-5">
               <IssueRequestForm
                 action={createPublicIssueAction}
-                cmWorks={cmWorks.map((work) => ({
-                  id: work.id,
-                  number: work.number,
-                  label: `${work.machineName} · ${work.problemTitle}`,
-                }))}
+                cmWorks={[]}
+                directOnly
                 inventoryCode={inventoryCode}
                 organizationId={plant.organizationId}
                 plantId={plant.id}
                 issueZones={issueZones.map((item) => ({ ...item.zone, code: item.code }))}
                 publicRequester={{ contactRequired: plant.publicStoreIssueContactRequired }}
+                singleCard
                 stocks={stocks.map((stock) => ({
                   storeId: stock.storeId,
                   sparePartId: stock.sparePartId,

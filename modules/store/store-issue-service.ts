@@ -24,6 +24,7 @@ export type StoreIssueItemInput = {
 
 export type CreateStoreIssueInput = {
   number: string;
+  submissionKey?: string | null;
   issueType: StoreIssueType;
   cmWorkId?: string | null;
   requesterName: string;
