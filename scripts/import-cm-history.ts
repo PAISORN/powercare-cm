@@ -262,10 +262,12 @@ async function main() {
     const categories = await db.category.findMany({ where: { active: true } });
     const zones = await db.zone.findMany({ where: { active: true } });
     const users = await db.user.findMany({ where: { active: true } });
+    const plants = await db.plant.findMany({ select: { id: true, code: true } });
 
     const categoryMap = new Map(categories.map((item) => [item.name, item]));
     const zoneMap = new Map(zones.map((item) => [item.name, item]));
     const userMap = new Map(users.map((item) => [item.fullName, item]));
+    const plantCodeById = new Map(plants.map((plant) => [plant.id, plant.code]));
 
     for (const row of rows) {
       if (!categoryMap.has(row.category)) {
@@ -322,7 +324,11 @@ async function main() {
           const zone = zoneMap.get(row.zone)!;
           const claimant = row.claimantName ? userMap.get(row.claimantName) ?? null : null;
           const reviewer = row.reviewerName ? userMap.get(row.reviewerName) ?? null : null;
-          const number = await reserveCmWorkNumber(tx, row.createdAt);
+          const number = await reserveCmWorkNumber(
+            tx,
+            (category.plantId ? plantCodeById.get(category.plantId) : null) ?? "RTB",
+            row.createdAt,
+          );
           const importedNote = [row.workNote, row.legacyNumber ? `Legacy CM Number: ${row.legacyNumber}` : null]
             .filter(Boolean)
             .join(" | ");

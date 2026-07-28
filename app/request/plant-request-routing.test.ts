@@ -2,9 +2,12 @@ import { existsSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 describe("Plant-specific repair request routing", () => {
-  it("keeps the general request page compatible while submitting plant code when provided", () => {
+  it("redirects the general request URL to the canonical RTB request page", () => {
     const source = readFileSync("app/request/page.tsx", "utf8");
-    expect(source).toContain("searchParams");
+    expect(source).toContain('permanentRedirect("/p/rtb/request")');
+    expect(source).toContain("user?.plant?.code");
+    expect(source).toContain("RoleName.ADMIN");
+    expect(source).toContain('redirect("/dashboard")');
     expect(source).toContain('formData.get("plantCode")');
     expect(source).toContain('name="plantCode"');
     expect(source).toContain("plantName={plantScope.name}");

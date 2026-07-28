@@ -1,11 +1,12 @@
 import { CheckCircle2, ClipboardCheck, ClipboardList, Search, Wrench, XCircle } from "lucide-react";
+import { permanentRedirect, redirect } from "next/navigation";
 import { AppShell } from "../../components/app-shell";
 import { PublicHeader } from "../../components/public-header";
 import { StatusBadge } from "../../components/status-badge";
 import { db } from "../../lib/db";
 import { formatThaiDateTime as formatThaiDate } from "../../lib/date-time/bangkok-time";
 import { getCurrentUser } from "../../lib/session";
-import { WorkStatus, statusLabels, urgencyLabels, type Urgency } from "../../modules/cm-work/cm-work-types";
+import { RoleName, WorkStatus, statusLabels, urgencyLabels, type Urgency } from "../../modules/cm-work/cm-work-types";
 import { readPlantProfile } from "../../modules/organization/plant-profile-service";
 import { readRequestPlantScope } from "../../modules/organization/plant-request-scope";
 
@@ -18,7 +19,13 @@ const trackingSteps: { label: string; statuses: WorkStatus[]; icon: typeof Clipb
 
 export default async function TrackingPage({ searchParams }: { searchParams: Promise<{ number?: string; plant?: string }> }) {
   const query = await searchParams;
-  return <TrackingPageContent number={query.number} plantCode={query.plant} />;
+  const user = await getCurrentUser();
+  if (user?.role === RoleName.ADMIN) redirect("/dashboard");
+  const siteCode = user?.plant?.code ?? query.plant ?? "rtb";
+  const params = new URLSearchParams();
+  if (query.number) params.set("number", query.number);
+  const search = params.size ? `?${params.toString()}` : "";
+  permanentRedirect(`/p/${encodeURIComponent(siteCode.toLowerCase())}/tracking${search}`);
 }
 
 export async function TrackingPageContent({
@@ -29,6 +36,13 @@ export async function TrackingPageContent({
   plantCode?: string | null;
 }) {
   const user = await getCurrentUser();
+  if (user?.role === RoleName.ADMIN) redirect("/dashboard");
+  if (user?.plant?.code && user.plant.code.toLowerCase() !== plantCode?.toLowerCase()) {
+    const params = new URLSearchParams();
+    if (rawNumber) params.set("number", rawNumber);
+    const search = params.size ? `?${params.toString()}` : "";
+    redirect(`/p/${encodeURIComponent(user.plant.code.toLowerCase())}/tracking${search}`);
+  }
   const number = rawNumber?.trim();
   const plantScope = await readRequestPlantScope(plantCode);
   const [plantProfile, work] = await Promise.all([
@@ -76,7 +90,7 @@ export async function TrackingPageContent({
           </div>
 
           <form className="mt-6 grid gap-3 md:grid-cols-[1fr_auto]">
-            <input name="number" defaultValue={number} placeholder="CM-2026-06-0001" className="rounded-2xl border border-[var(--line)] bg-[var(--soft)] p-4 text-[var(--ink)]" />
+            <input name="number" defaultValue={number} placeholder={`CM-${plantScope.code.toUpperCase()}-2026-06-0001`} className="rounded-2xl border border-[var(--line)] bg-[var(--soft)] p-4 text-[var(--ink)]" />
             <input name="plant" type="hidden" value={plantScope.code} />
             <button className="rounded-2xl bg-[var(--primary)] px-6 py-4 font-bold text-white shadow-sm">ค้นหา</button>
           </form>

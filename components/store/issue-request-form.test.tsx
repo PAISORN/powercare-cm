@@ -65,7 +65,7 @@ describe("IssueRequestForm", () => {
 
     expect(container.querySelector('input[name="issueType"]')?.getAttribute("value")).toBe("CM_REFERENCED");
     expect(container.querySelector('input[name="cmWorkNumber"]')?.getAttribute("value")).toBe("CM-2026-07-0001");
-    expect(screen.getByLabelText("Search spare parts")).toBeTruthy();
+    expect(screen.queryByLabelText("Search spare parts")).toBeNull();
 
     chooseStock(screen.getByLabelText("ค้นหาและเลือกอะไหล่ รายการ 1"), "Bearing", /Bearing 6208/);
     const zoneSelect = container.querySelector('select[name="zoneId"]') as HTMLSelectElement;
@@ -75,7 +75,7 @@ describe("IssueRequestForm", () => {
     );
   });
 
-  it("filters stock choices by search text before requesting parts", () => {
+  it("filters stock choices in the spare part selector before requesting parts", () => {
     render(
       <IssueRequestForm
         action={vi.fn()}
@@ -88,11 +88,12 @@ describe("IssueRequestForm", () => {
       />,
     );
 
-    fireEvent.focus(screen.getByLabelText("ค้นหาและเลือกอะไหล่ รายการ 1"));
+    const sparePartSelect = screen.getByLabelText("ค้นหาและเลือกอะไหล่ รายการ 1");
+    fireEvent.focus(sparePartSelect);
     expect(screen.getByRole("option", { name: /Bearing 6208/ })).toBeTruthy();
     expect(screen.getByRole("option", { name: /Cable THW/ })).toBeTruthy();
 
-    fireEvent.change(screen.getByLabelText("Search spare parts"), { target: { value: "ACC-6208" } });
+    fireEvent.change(sparePartSelect, { target: { value: "ACC-6208" } });
 
     expect(screen.getByRole("option", { name: /Bearing 6208/ })).toBeTruthy();
     expect(screen.queryByRole("option", { name: /Cable THW/ })).toBeNull();

@@ -1,7 +1,9 @@
-import { History } from "lucide-react";
+import { ChevronLeft, ChevronRight, History } from "lucide-react";
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { AdminSiteScopeSelector } from "../../../components/admin-site-scope-selector";
 import { AppShell } from "../../../components/app-shell";
+import { StockHeaderReplacementController } from "../../../components/stock-header-replacement-controller";
 import { formatThaiMediumDateTime } from "../../../lib/date-time/bangkok-time";
 import { db } from "../../../lib/db";
 import { requireUser } from "../../../lib/session";
@@ -11,6 +13,7 @@ import { resolveStorePageScope } from "../../../modules/store/store-page-scope";
 type PageQuery = {
   organizationId?: string;
   plantId?: string;
+  page?: string;
 };
 
 export default async function StockMovementsPage({ searchParams }: { searchParams: Promise<PageQuery> }) {
@@ -25,24 +28,43 @@ export default async function StockMovementsPage({ searchParams }: { searchParam
 
   const query = await searchParams;
   const scope = await resolveStorePageScope(user, query);
+  const where = { organizationId: scope.organization.id, plantId: scope.plant.id };
+  const pageSize = 50;
+  const totalItems = await db.stockMovement.count({ where });
+  const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+  const requestedPage = Number.parseInt(query.page ?? "1", 10);
+  const currentPage = Number.isFinite(requestedPage) && requestedPage > 0
+    ? Math.min(requestedPage, totalPages)
+    : 1;
   const movements = await db.stockMovement.findMany({
-    where: { organizationId: scope.organization.id, plantId: scope.plant.id },
-    include: {
-      actor: { select: { fullName: true } },
-      store: { select: { code: true, name: true } },
-      sparePart: {
-        select: {
-          code: true,
-          itemCode: true,
-          name: true,
-          unit: true,
-          type: { select: { code: true, name: true } },
+      where,
+      include: {
+        actor: { select: { fullName: true } },
+        store: { select: { code: true, name: true } },
+        sparePart: {
+          select: {
+            code: true,
+            itemCode: true,
+            name: true,
+            unit: true,
+            type: { select: { code: true, name: true } },
+          },
         },
       },
-    },
-    orderBy: { occurredAt: "desc" },
-    take: 100,
-  });
+      orderBy: { occurredAt: "desc" },
+      skip: (currentPage - 1) * pageSize,
+      take: pageSize,
+    });
+  const firstItem = totalItems ? (currentPage - 1) * pageSize + 1 : 0;
+  const lastItem = Math.min(currentPage * pageSize, totalItems);
+  const movementPageHref = (page: number) => {
+    const params = new URLSearchParams({
+      organizationId: scope.organization.id,
+      plantId: scope.plant.id,
+    });
+    if (page > 1) params.set("page", String(page));
+    return `/inventory/movements?${params.toString()}#stock-movement-table-region`;
+  };
 
   return (
     <AppShell>
@@ -67,20 +89,27 @@ export default async function StockMovementsPage({ searchParams }: { searchParam
           title="Stock movement scope"
         />
 
-        <section className="overflow-hidden rounded-3xl border border-[var(--line)] bg-[var(--surface)] shadow-[var(--shadow)]">
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[920px] text-left text-sm">
+        <StockHeaderReplacementController regionId="stock-movement-table-region" />
+        <section
+          className="rounded-3xl border border-[var(--line)] bg-[var(--surface)] shadow-[var(--shadow)]"
+          id="stock-movement-table-region"
+        >
+          <div aria-hidden="true" className="stock-replacement-header" data-stock-replacement-header>
+            <table className="w-full min-w-[920px] table-fixed text-left text-sm">
+              <MovementTableColGroup />
               <thead className="bg-[var(--soft)] text-xs font-extrabold text-[var(--muted)]">
-                <tr>
-                  <th className="px-4 py-4">เวลา</th>
-                  <th className="px-4 py-4">ประเภท</th>
-                  <th className="px-4 py-4">อะไหล่</th>
-                  <th className="px-4 py-4">Item code</th>
-                  <th className="px-4 py-4">Store</th>
-                  <th className="px-4 py-4 text-right">เปลี่ยนแปลง</th>
-                  <th className="px-4 py-4 text-right">คงเหลือ</th>
-                  <th className="px-4 py-4">ดำเนินการ / หมายเหตุ</th>
-                </tr>
+                <MovementTableHeaderRow />
+              </thead>
+            </table>
+          </div>
+          <div className="relative overflow-x-auto rounded-t-3xl bg-[var(--surface)]" data-stock-table-scroll>
+            <table className="w-full min-w-[920px] table-fixed text-left text-sm">
+              <MovementTableColGroup />
+              <thead
+                className="sticky top-0 z-40 bg-[var(--soft)] text-xs font-extrabold text-[var(--muted)] shadow-[0_1px_0_var(--line)]"
+                data-stock-table-header
+              >
+                <MovementTableHeaderRow />
               </thead>
               <tbody>
                 {movements.map((movement) => (
@@ -116,10 +145,89 @@ export default async function StockMovementsPage({ searchParams }: { searchParam
               <div className="p-10 text-center text-sm text-[var(--muted)]">ยังไม่มี Stock Movement ใน Site นี้</div>
             ) : null}
           </div>
+          <footer className="flex flex-wrap items-center justify-between gap-3 rounded-b-3xl border-t border-[var(--line)] px-4 py-3 text-sm text-[var(--muted)]">
+            <span>แสดง {firstItem}-{lastItem} จาก {totalItems} รายการ · หน้า {currentPage}/{totalPages}</span>
+            {totalPages > 1 ? (
+              <nav aria-label="Stock movement pagination" className="flex items-center gap-1">
+                <Link
+                  aria-disabled={currentPage === 1}
+                  aria-label="หน้าก่อนหน้า"
+                  className={paginationArrowClass(currentPage === 1)}
+                  href={movementPageHref(Math.max(1, currentPage - 1))}
+                >
+                  <ChevronLeft size={16} />
+                </Link>
+                {Array.from({ length: totalPages }, (_, index) => index + 1).map((pageNumber) => (
+                  <Link
+                    aria-current={pageNumber === currentPage ? "page" : undefined}
+                    className={paginationPageClass(pageNumber === currentPage)}
+                    href={movementPageHref(pageNumber)}
+                    key={pageNumber}
+                  >
+                    {pageNumber}
+                  </Link>
+                ))}
+                <Link
+                  aria-disabled={currentPage === totalPages}
+                  aria-label="หน้าถัดไป"
+                  className={paginationArrowClass(currentPage === totalPages)}
+                  href={movementPageHref(Math.min(totalPages, currentPage + 1))}
+                >
+                  <ChevronRight size={16} />
+                </Link>
+              </nav>
+            ) : null}
+          </footer>
         </section>
       </div>
     </AppShell>
   );
+}
+
+function MovementTableColGroup() {
+  return (
+    <colgroup>
+      <col style={{ width: "145px" }} />
+      <col style={{ width: "110px" }} />
+      <col style={{ width: "205px" }} />
+      <col style={{ width: "105px" }} />
+      <col style={{ width: "155px" }} />
+      <col style={{ width: "115px" }} />
+      <col style={{ width: "95px" }} />
+      <col style={{ width: "235px" }} />
+    </colgroup>
+  );
+}
+
+function MovementTableHeaderRow() {
+  return (
+    <tr>
+      <th className="px-4 py-4">เวลา</th>
+      <th className="px-4 py-4">ประเภท</th>
+      <th className="px-4 py-4">อะไหล่</th>
+      <th className="px-4 py-4">Item code</th>
+      <th className="px-4 py-4">Store</th>
+      <th className="px-4 py-4 text-right">เปลี่ยนแปลง</th>
+      <th className="px-4 py-4 text-right">คงเหลือ</th>
+      <th className="px-4 py-4">ดำเนินการ / หมายเหตุ</th>
+    </tr>
+  );
+}
+
+function paginationPageClass(isActive: boolean) {
+  return [
+    "inline-flex size-9 items-center justify-center rounded-xl text-sm font-extrabold transition",
+    isActive
+      ? "bg-[var(--primary)] text-white shadow-sm"
+      : "border border-[var(--line)] bg-[var(--surface)] text-[var(--ink)] hover:bg-[var(--soft)]",
+  ].join(" ");
+}
+
+function paginationArrowClass(isDisabled: boolean) {
+  return [
+    "inline-flex size-9 items-center justify-center rounded-xl border border-[var(--line)] bg-[var(--surface)] text-[var(--ink)] transition hover:bg-[var(--soft)]",
+    isDisabled ? "pointer-events-none opacity-45" : "",
+  ].join(" ");
 }
 
 function formatQuantity(value: number) {

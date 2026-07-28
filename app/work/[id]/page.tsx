@@ -74,11 +74,27 @@ export default async function WorkDetailPage({
   const [work, query] = await Promise.all([
     db.cmWork.findFirstOrThrow({
       where: { id, ...buildWorkScopeWhere(scope) },
-      include: { category: true, zone: true, claimant: true, reviewer: true, statusHistory: true, auditEvents: true },
+      include: {
+        category: true,
+        zone: true,
+        claimant: true,
+        reviewer: true,
+        statusHistory: { orderBy: { changedAt: "asc" } },
+      },
     }),
     searchParams,
   ]);
   if (!work.organizationId || !work.plantId) redirect("/dashboard");
+  const statusActorIds = [...new Set(work.statusHistory
+    .map((event) => event.changedById)
+    .filter((actorId): actorId is string => Boolean(actorId)))];
+  const statusActors = statusActorIds.length
+    ? await db.user.findMany({
+      where: { id: { in: statusActorIds } },
+      select: { id: true, fullName: true },
+    })
+    : [];
+  const statusActorNameById = new Map(statusActors.map((statusActor) => [statusActor.id, statusActor.fullName]));
   const workOrganizationId = work.organizationId;
   const workPlantId = work.plantId;
   const engineerAssignmentEnabled = await readEngineerAssignmentSetting(workPlantId);
@@ -656,20 +672,21 @@ export default async function WorkDetailPage({
         </form>
       ) : null}
 
-          <section className="work-audit-timeline mt-5 rounded-2xl border border-[var(--line)] bg-[var(--soft)]/55 p-5">
+          <section className="work-audit-timeline mt-5 rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-5 shadow-sm">
             <h2 className="inline-flex items-center gap-2 text-xl font-extrabold">
               <History className="text-[var(--primary)]" size={22} />
-              ประวัติการดำเนินงาน
+              ประวัติสถานะ
             </h2>
-            <div className="mt-5 grid gap-3">
-              {work.auditEvents.map((event) => (
-                <div key={event.id} className="relative rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-4 pl-14 text-sm">
-                  <span className="absolute left-4 top-4 flex size-9 items-center justify-center rounded-full border border-[var(--primary)]/30 bg-[var(--primary)]/10 text-[var(--primary)]">
-                    <Wrench size={17} />
-                  </span>
-                  <p className="font-mono text-xs font-extrabold uppercase tracking-wide">{event.action}</p>
-                  <p className="mt-1 text-[var(--muted)]">{formatThaiDateTime(event.createdAt)}</p>
-                </div>
+            <div className="mt-5 grid gap-0">
+              {work.statusHistory.map((event, index) => (
+                <WorkStatusTimelineRow
+                  active={index === work.statusHistory.length - 1}
+                  actor={event.changedById ? (statusActorNameById.get(event.changedById) ?? "ผู้ใช้งาน") : "ระบบ"}
+                  key={event.id}
+                  note={event.note}
+                  time={event.changedAt}
+                  title={statusLabels[event.toStatus as WorkStatus] ?? event.toStatus}
+                />
               ))}
             </div>
           </section>
@@ -708,6 +725,37 @@ function ReviewDetail({ label, value }: { label: string; value: string | null })
     <div className="rounded-2xl bg-[var(--soft)] p-4">
       <p className="text-sm font-semibold text-[var(--muted)]">{label}</p>
       <p className="mt-2 whitespace-pre-wrap font-semibold">{value?.trim() || "-"}</p>
+    </div>
+  );
+}
+
+function WorkStatusTimelineRow({
+  active,
+  actor,
+  note,
+  time,
+  title,
+}: {
+  active: boolean;
+  actor: string;
+  note?: string | null;
+  time: Date;
+  title: string;
+}) {
+  return (
+    <div className="grid grid-cols-[28px_1fr] gap-3">
+      <div className="grid justify-center">
+        <span className={active ? "mt-1 h-4 w-4 rounded-full bg-emerald-500" : "mt-1 h-4 w-4 rounded-full border-2 border-emerald-500 bg-[var(--surface)]"} />
+        <span className="mx-auto h-full min-h-10 w-0.5 bg-emerald-500/45" />
+      </div>
+      <div className="pb-5">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <strong>{title}</strong>
+          <span className="text-sm text-[var(--muted)]">{formatThaiDateTime(time)}</span>
+        </div>
+        <p className="mt-1 text-sm text-[var(--muted)]">โดย {actor}</p>
+        {note ? <p className="mt-2 rounded-xl bg-[var(--soft)] px-3 py-2 text-sm">{note}</p> : null}
+      </div>
     </div>
   );
 }

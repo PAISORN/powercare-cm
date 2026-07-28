@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { redirect } from "next/navigation";
+import { permanentRedirect, redirect } from "next/navigation";
 import { AppShell } from "../../components/app-shell";
 import { PublicHeader } from "../../components/public-header";
 import { RequestSubmitButton } from "../../components/request-submit-button";
@@ -7,11 +7,14 @@ import { getActiveCategoriesForPlantScope, getActiveZonesForScope } from "../../
 import { getCurrentUser } from "../../lib/session";
 import { repairRequestSchema } from "../../lib/validation";
 import { createRepairRequest } from "../../modules/cm-work/cm-work-service";
+import { RoleName } from "../../modules/cm-work/cm-work-types";
 import { readPlantProfile } from "../../modules/organization/plant-profile-service";
 import { readRequestPlantScope } from "../../modules/organization/plant-request-scope";
 
 async function submitRepairRequest(formData: FormData) {
   "use server";
+  const currentUser = await getCurrentUser();
+  if (currentUser?.role === RoleName.ADMIN) redirect("/dashboard");
   const parsed = repairRequestSchema.parse({
     requesterName: formData.get("requesterName"),
     requesterDepartment: formData.get("requesterDepartment"),
@@ -23,31 +26,39 @@ async function submitRepairRequest(formData: FormData) {
     urgency: formData.get("urgency"),
   });
 
-  const plantCode = String(formData.get("plantCode") ?? "") || null;
+  const submittedPlantCode = String(formData.get("plantCode") ?? "") || null;
+  const plantCode = currentUser?.plant?.code ?? submittedPlantCode;
+  const requestPath = plantCode
+    ? `/p/${encodeURIComponent(plantCode.toLowerCase())}/request`
+    : "/p/rtb/request";
   const submissionKey = String(formData.get("submissionKey") ?? "");
   let work;
   try {
     work = await createRepairRequest({ ...parsed, plantCode, submissionKey });
   } catch (error) {
     if (error instanceof Error && error.message === "SITE_REQUEST_LIMIT_REACHED") {
-      redirect(`/request?plant=${encodeURIComponent(plantCode ?? "")}&error=site-limit`);
+      redirect(`${requestPath}?error=site-limit`);
     }
     throw error;
   }
   redirect(`/request/success/${work.number}?plant=${encodeURIComponent(plantCode ?? "")}`);
 }
 
-export default async function RequestPage({
-  searchParams,
-}: {
-  searchParams?: Promise<{ error?: string; plant?: string }>;
-}) {
-  const query = await searchParams;
-  return <RequestPageContent error={query?.error ?? null} plantCode={query?.plant ?? null} />;
+export default async function RequestPage() {
+  const user = await getCurrentUser();
+  if (user?.role === RoleName.ADMIN) redirect("/dashboard");
+  if (user?.plant?.code) {
+    permanentRedirect(`/p/${encodeURIComponent(user.plant.code.toLowerCase())}/request`);
+  }
+  permanentRedirect("/p/rtb/request");
 }
 
 export async function RequestPageContent({ error, plantCode }: { error?: string | null; plantCode?: string | null }) {
   const user = await getCurrentUser();
+  if (user?.role === RoleName.ADMIN) redirect("/dashboard");
+  if (user?.plant?.code && user.plant.code.toLowerCase() !== plantCode?.toLowerCase()) {
+    redirect(`/p/${encodeURIComponent(user.plant.code.toLowerCase())}/request`);
+  }
   const plantScope = await readRequestPlantScope(plantCode);
   const [categories, zones, plantProfile] = await Promise.all([
     getActiveCategoriesForPlantScope(plantScope.id, plantScope.organizationId),

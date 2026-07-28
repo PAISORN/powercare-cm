@@ -27,7 +27,7 @@ export function ReportFilterForm({
   return (
     <form action={action} className="border-b border-[var(--line)] bg-[var(--surface)] p-4 sm:p-5" method="get">
       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-        <TextFilter icon={Search} label="CM Number" name="number" placeholder="CM-2026-06-0001" value={filter.number} />
+        <TextFilter icon={Search} label="CM Number" name="number" placeholder="CM-RTB-2026-06-0001" value={filter.number} />
         <TextFilter label="Machine Name" name="machineName" placeholder="Pump, fan, conveyor" value={filter.machineName} />
         <TextFilter label="Requester" name="requester" placeholder="Requester name" value={filter.requester} />
         <TextFilter label="Department" name="department" placeholder="Operations" value={filter.department} />

@@ -28,6 +28,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
         categoryName={user.category?.name}
         fullName={displayName}
         hasPhoto={Boolean(user.profilePhoto)}
+        plantCode={user.plant?.code}
         plantId={user.plantId}
         role={user.role as RoleNameValue}
         siteAdminPermissions={user.siteAdminPermissions}
@@ -48,6 +49,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
                 categoryName={user.category?.name}
                 userId={user.id}
                 plantId={user.plantId}
+                plantCode={user.plant?.code}
                 siteAdminPermissions={user.siteAdminPermissions}
                 hasPhoto={Boolean(user.profilePhoto)}
                 version={user.profilePhoto?.updatedAt.getTime()}

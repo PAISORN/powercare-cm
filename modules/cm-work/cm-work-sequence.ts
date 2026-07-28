@@ -19,12 +19,19 @@ type CmNumberSequenceClient = {
   };
 };
 
-export async function reserveCmWorkNumber(tx: CmNumberSequenceClient, date = new Date()) {
+export async function reserveCmWorkNumber(tx: CmNumberSequenceClient, siteCode: string, date = new Date()) {
+  const normalizedSiteCode = siteCode
+    .trim()
+    .toUpperCase()
+    .replace(/[^A-Z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  if (!normalizedSiteCode) throw new Error("Site code is required for CM work numbering");
   const year = date.getUTCFullYear();
   const month = String(date.getUTCMonth() + 1).padStart(2, "0");
   const yearMonth = `${year}-${month}`;
-  const prefix = `CM-${yearMonth}-`;
-  const existingSequence = await tx.cmNumberSequence.findUnique({ where: { yearMonth } });
+  const siteYearMonth = `${normalizedSiteCode}:${yearMonth}`;
+  const prefix = `CM-${normalizedSiteCode}-${yearMonth}-`;
+  const existingSequence = await tx.cmNumberSequence.findUnique({ where: { yearMonth: siteYearMonth } });
   let initialNumber = 1;
 
   if (!existingSequence) {
@@ -40,10 +47,10 @@ export async function reserveCmWorkNumber(tx: CmNumberSequenceClient, date = new
   }
 
   const sequence = await tx.cmNumberSequence.upsert({
-    where: { yearMonth },
-    create: { yearMonth, lastNumber: initialNumber },
+    where: { yearMonth: siteYearMonth },
+    create: { yearMonth: siteYearMonth, lastNumber: initialNumber },
     update: { lastNumber: { increment: 1 } },
   });
 
-  return formatCmWorkNumber(date, sequence.lastNumber);
+  return formatCmWorkNumber(normalizedSiteCode, date, sequence.lastNumber);
 }

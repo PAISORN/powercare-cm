@@ -16,6 +16,7 @@ export function DesktopSidebar({
   categoryName,
   fullName,
   hasPhoto,
+  plantCode,
   plantId,
   role,
   siteAdminPermissions,
@@ -25,6 +26,7 @@ export function DesktopSidebar({
   categoryName?: string | null;
   fullName: string;
   hasPhoto: boolean;
+  plantCode?: string | null;
   plantId?: string | null;
   role: RoleName;
   siteAdminPermissions?: SiteAdminPermissionRecord[];
@@ -99,6 +101,7 @@ export function DesktopSidebar({
           role={role}
           permissionContext={{
             id: userId,
+            plantCode,
             plantId,
             siteAdminPermissions,
           }}

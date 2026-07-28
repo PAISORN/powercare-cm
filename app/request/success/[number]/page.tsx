@@ -52,11 +52,11 @@ export default async function RequestSuccessPage({
 
           <div className="mt-7 flex flex-wrap justify-center gap-3">
             {isSuccess ? (
-              <Link className="rounded-2xl bg-[var(--primary)] px-5 py-3 font-bold text-white shadow-sm" href={`/tracking?plant=${plantScope.code}&number=${number}`}>
+              <Link className="rounded-2xl bg-[var(--primary)] px-5 py-3 font-bold text-white shadow-sm" href={`/p/${plantScope.code.toLowerCase()}/tracking?number=${number}`}>
                 ติดตามสถานะ
               </Link>
             ) : null}
-            <Link className="rounded-2xl border border-[var(--line)] px-5 py-3 font-bold" href="/request">
+            <Link className="rounded-2xl border border-[var(--line)] px-5 py-3 font-bold" href={`/p/${plantScope.code.toLowerCase()}/request`}>
               แจ้งซ่อมรายการใหม่
             </Link>
           </div>

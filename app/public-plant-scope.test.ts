@@ -10,9 +10,11 @@ describe("public plant scope", () => {
     expect(request).toContain("redirect(`/request/success/${work.number}?plant=${encodeURIComponent(plantCode ?? \"\")}`)");
     expect(success).toContain("readRequestPlantScope(plantCode)");
     expect(success).toContain("where: { number, plantId: plantScope.id }");
-    expect(success).toContain("href={`/tracking?plant=${plantScope.code}&number=${number}`}");
+    expect(success).toContain("href={`/p/${plantScope.code.toLowerCase()}/tracking?number=${number}`}");
     expect(tracking).toContain("readRequestPlantScope(plantCode)");
     expect(tracking).toContain("where: { number, plantId: plantScope.id }");
+    expect(tracking).toContain('permanentRedirect(`/p/${encodeURIComponent(siteCode.toLowerCase())}/tracking${search}`)');
+    expect(tracking).toContain("RoleName.ADMIN");
   });
 
   it("offers plant-code tracking route for QR based public access", () => {

@@ -58,6 +58,7 @@ type AppLink = {
 export type AppPermissionContext = {
   id?: string;
   plantId?: string | null;
+  plantCode?: string | null;
   siteAdminPermissions?: SiteAdminPermissionRecord[];
 };
 
@@ -94,12 +95,32 @@ export function getAppLinks(role: RoleValue, permissionContext: AppPermissionCon
     maintenanceLinks.push({ label: "All Work", href: "/work", icon: Wrench, nested: true, parentSectionId: "maintenance" });
   }
 
-  if (canUse(PermissionKey.CREATE_INTERNAL_REQUEST)) {
-    maintenanceLinks.push({ label: "Create Request", href: "/request", icon: PlusCircle, nested: true, parentSectionId: "maintenance" });
+  if (
+    role !== RoleName.ADMIN &&
+    permissionContext.plantCode &&
+    canUse(PermissionKey.CREATE_INTERNAL_REQUEST)
+  ) {
+    maintenanceLinks.push({
+      label: "Create Request",
+      href: `/p/${encodeURIComponent(permissionContext.plantCode.toLowerCase())}/request`,
+      icon: PlusCircle,
+      nested: true,
+      parentSectionId: "maintenance",
+    });
   }
 
-  if (canUse(PermissionKey.TRACK_WORK)) {
-    maintenanceLinks.push({ label: "Track Work", href: "/tracking", icon: Search, nested: true, parentSectionId: "maintenance" });
+  if (
+    role !== RoleName.ADMIN &&
+    permissionContext.plantCode &&
+    canUse(PermissionKey.TRACK_WORK)
+  ) {
+    maintenanceLinks.push({
+      label: "Track Work",
+      href: `/p/${encodeURIComponent(permissionContext.plantCode.toLowerCase())}/tracking`,
+      icon: Search,
+      nested: true,
+      parentSectionId: "maintenance",
+    });
   }
 
   if (canUse(PermissionKey.VIEW_NOTIFICATIONS)) {

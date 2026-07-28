@@ -333,19 +333,6 @@ export function IssueRequestForm({
           />
 
           <div className="grid gap-3 border-b border-[var(--line)] bg-[var(--soft)]/65 p-4 sm:grid-cols-2 2xl:grid-cols-3">
-            <label className={labelClass}>
-              ค้นหาอะไหล่
-              <span className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--muted)]" size={17} />
-                <input
-                  aria-label="Search spare parts"
-                  className={`${inputClass} pl-10`}
-                  onChange={(event) => setFilters((current) => ({ ...current, search: event.target.value }))}
-                  placeholder="รหัส, Item code, ชื่ออะไหล่"
-                  value={filters.search}
-                />
-              </span>
-            </label>
             <FilterSelect label="คลังอะไหล่" options={filterOptions.stores} value={filters.store} onChange={(value) => setFilters((current) => ({ ...current, store: value }))} />
             <FilterSelect label="ประเภท" options={filterOptions.types} value={filters.type} onChange={(value) => setFilters((current) => ({ ...current, type: value }))} />
             <FilterSelect label="หมวดหมู่" options={filterOptions.categories} value={filters.category} onChange={(value) => setFilters((current) => ({ ...current, category: value }))} />
@@ -358,13 +345,13 @@ export function IssueRequestForm({
 
           <div className="max-w-full p-3 sm:p-4">
             <div className="w-full overflow-visible rounded-xl border border-[var(--line)]">
-              <div className="hidden grid-cols-[40px_minmax(210px,1fr)_minmax(150px,.72fr)_90px_44px] bg-[var(--soft)] px-3 py-3 text-xs font-extrabold text-[var(--muted)] 2xl:grid">
+              <div className="hidden grid-cols-[40px_minmax(300px,1.45fr)_minmax(130px,.55fr)_90px_44px] bg-[var(--soft)] px-3 py-3 text-xs font-extrabold text-[var(--muted)] 2xl:grid">
                 <span>ลำดับ</span><span>อะไหล่ / คลัง</span><span>Zone ที่นำไปใช้งาน</span><span>จำนวน</span><span className="sr-only">จัดการ</span>
               </div>
               {lines.map((line, index) => {
                 const stock = stockForKey(stocks, line.stockKey);
                 return (
-                  <div className="grid gap-3 border-t border-[var(--line)] bg-[var(--surface)] p-3 2xl:grid-cols-[40px_minmax(210px,1fr)_minmax(150px,.72fr)_90px_44px] 2xl:items-end 2xl:gap-0 2xl:px-3" key={line.id}>
+                  <div className="grid gap-3 border-t border-[var(--line)] bg-[var(--surface)] p-3 2xl:grid-cols-[40px_minmax(300px,1.45fr)_minmax(130px,.55fr)_90px_44px] 2xl:items-end 2xl:gap-0 2xl:px-3" key={line.id}>
                     <span className="inline-flex size-8 items-center justify-center self-center rounded-lg bg-[var(--soft)] text-sm font-extrabold text-[var(--primary)] 2xl:size-auto 2xl:justify-start 2xl:bg-transparent">{index + 1}</span>
                     <label className={`${labelClass} 2xl:pr-3`}>
                       <span className="text-xs text-[var(--muted)] 2xl:sr-only">อะไหล่ / คลัง</span>

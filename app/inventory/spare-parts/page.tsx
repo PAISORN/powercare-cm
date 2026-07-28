@@ -48,6 +48,11 @@ type PageQuery = {
   organizationId?: string;
   plantId?: string;
   partsPage?: string;
+  search?: string;
+  storeId?: string;
+  typeId?: string;
+  categoryId?: string;
+  unit?: string;
   saved?: string;
   error?: string;
   editPartId?: string;
@@ -255,20 +260,34 @@ export default async function SparePartsPage({ searchParams }: { searchParams: P
   const activeStores = stores.filter((store) => store.active);
   const activePartCategories = partCategories.filter((category) => category.active);
   const activePartTypes = partTypes.filter((type) => type.active);
+  const search = query.search?.trim().toLocaleLowerCase("th") ?? "";
+  const units = [...new Set(spareParts.map((part) => part.unit).filter(Boolean))].sort((left, right) =>
+    left.localeCompare(right, "th"),
+  );
+  const filteredSpareParts = spareParts.filter((part) => {
+    if (query.storeId && part.defaultStoreId !== query.storeId) return false;
+    if (query.typeId && part.typeId !== query.typeId) return false;
+    if (query.categoryId && part.categoryId !== query.categoryId) return false;
+    if (query.unit && part.unit !== query.unit) return false;
+    if (!search) return true;
+    return [part.code, part.itemCode, part.name, part.description]
+      .filter(Boolean)
+      .some((value) => String(value).toLocaleLowerCase("th").includes(search));
+  });
   const applicableZoneByZoneId = new Map(storeApplicableZones.map((assignment) => [assignment.zoneId, assignment]));
   const sparePartsPageSize = 50;
-  const totalSparePartsPages = Math.max(1, Math.ceil(spareParts.length / sparePartsPageSize));
+  const totalSparePartsPages = Math.max(1, Math.ceil(filteredSpareParts.length / sparePartsPageSize));
   const requestedSparePartsPage = Number.parseInt(query.partsPage ?? "1", 10);
   const currentSparePartsPage =
     Number.isFinite(requestedSparePartsPage) && requestedSparePartsPage > 0
       ? Math.min(requestedSparePartsPage, totalSparePartsPages)
       : 1;
   const firstVisibleSparePartIndex = (currentSparePartsPage - 1) * sparePartsPageSize;
-  const visibleSpareParts = spareParts.slice(
+  const visibleSpareParts = filteredSpareParts.slice(
     firstVisibleSparePartIndex,
     firstVisibleSparePartIndex + sparePartsPageSize,
   );
-  const scopedBaseUrl = sparePartsPageHref(scope, currentSparePartsPage, false);
+  const scopedBaseUrl = sparePartsPageHref(scope, currentSparePartsPage, false, query);
   const scopedStockUrl = `/inventory/stock?organizationId=${encodeURIComponent(scope.organization.id)}&plantId=${encodeURIComponent(scope.plant.id)}`;
   const uncategorizedPartCount = spareParts.filter((part) => !part.categoryId).length;
   const categoryRows = [
@@ -669,8 +688,51 @@ export default async function SparePartsPage({ searchParams }: { searchParams: P
               <h2 className="text-xl font-extrabold">รายการอะไหล่</h2>
               <p className="mt-1 text-sm text-[var(--muted)]">{scope.plant.name}</p>
             </div>
-            <span className="mr-5 rounded-full bg-[var(--soft)] px-3 py-1.5 text-sm font-bold sm:mr-6">{spareParts.length} รายการ</span>
+            <span className="mr-5 rounded-full bg-[var(--soft)] px-3 py-1.5 text-sm font-bold sm:mr-6">{filteredSpareParts.length} รายการ</span>
           </div>
+
+          <form action="/inventory/spare-parts" className="mx-5 mb-5 grid gap-3 rounded-2xl border border-[var(--line)] bg-[var(--soft)] p-4 sm:mx-6 lg:grid-cols-3 xl:grid-cols-6" method="get">
+            <input name="organizationId" type="hidden" value={scope.organization.id} />
+            <input name="plantId" type="hidden" value={scope.plant.id} />
+            <label className={`${labelClass} lg:col-span-2`}>
+              ค้นหาอะไหล่
+              <input className={inputClass} defaultValue={query.search ?? ""} name="search" placeholder="รหัส, Item code, ชื่อ หรือรายละเอียดอะไหล่" />
+            </label>
+            <label className={labelClass}>
+              คลังอะไหล่
+              <select className={inputClass} defaultValue={query.storeId ?? ""} name="storeId">
+                <option value="">ทั้งหมด</option>
+                {activeStores.map((store) => <option key={store.id} value={store.id}>{store.code} · {store.name}</option>)}
+              </select>
+            </label>
+            <label className={labelClass}>
+              ประเภท
+              <select className={inputClass} defaultValue={query.typeId ?? ""} name="typeId">
+                <option value="">ทั้งหมด</option>
+                {activePartTypes.map((type) => <option key={type.id} value={type.id}>{type.code} · {type.name}</option>)}
+              </select>
+            </label>
+            <label className={labelClass}>
+              หมวดหมู่
+              <select className={inputClass} defaultValue={query.categoryId ?? ""} name="categoryId">
+                <option value="">ทั้งหมด</option>
+                {activePartCategories.map((category) => <option key={category.id} value={category.id}>{category.code} · {category.name}</option>)}
+              </select>
+            </label>
+            <label className={labelClass}>
+              หน่วยนับ
+              <select className={inputClass} defaultValue={query.unit ?? ""} name="unit">
+                <option value="">ทั้งหมด</option>
+                {units.map((unit) => <option key={unit} value={unit}>{unit}</option>)}
+              </select>
+            </label>
+            <div className="flex gap-2 sm:col-span-2 lg:col-span-3 xl:col-span-6">
+              <button className={primaryButtonClass}>ค้นหา</button>
+              <Link className={secondaryButtonClass} href={sparePartsPageHref(scope, 1, true)}>
+                ล้างตัวกรอง
+              </Link>
+            </div>
+          </form>
 
           <div aria-hidden="true" className="stock-replacement-header" data-stock-replacement-header>
             <table className="w-full min-w-[1370px] table-fixed border-separate border-spacing-0 text-left text-sm">
@@ -755,8 +817,9 @@ export default async function SparePartsPage({ searchParams }: { searchParams: P
               firstItem={firstVisibleSparePartIndex + 1}
               lastItem={Math.min(firstVisibleSparePartIndex + sparePartsPageSize, spareParts.length)}
               scope={scope}
-              totalItems={spareParts.length}
+              totalItems={filteredSpareParts.length}
               totalPages={totalSparePartsPages}
+              query={query}
             />
           ) : null}
         </section>
@@ -1038,6 +1101,7 @@ function SparePartsPagination({
   scope,
   totalItems,
   totalPages,
+  query,
 }: {
   currentPage: number;
   firstItem: number;
@@ -1045,6 +1109,7 @@ function SparePartsPagination({
   scope: { organization: { id: string }; plant: { id: string } };
   totalItems: number;
   totalPages: number;
+  query: PageQuery;
 }) {
   const pageItems = paginationItems(currentPage, totalPages);
 
@@ -1057,7 +1122,7 @@ function SparePartsPagination({
         <nav aria-label="Spare parts pagination" className="flex flex-wrap items-center justify-end gap-2">
           <SparePartsPageLink
             disabled={currentPage === 1}
-            href={sparePartsPageHref(scope, Math.max(1, currentPage - 1))}
+            href={sparePartsPageHref(scope, Math.max(1, currentPage - 1), true, query)}
             label="ก่อนหน้า"
           >
             <ChevronLeft size={16} />
@@ -1071,7 +1136,7 @@ function SparePartsPagination({
             ) : (
               <SparePartsPageLink
                 active={item === currentPage}
-                href={sparePartsPageHref(scope, item)}
+                href={sparePartsPageHref(scope, item, true, query)}
                 key={item}
                 label={`หน้า ${item}`}
               >
@@ -1081,7 +1146,7 @@ function SparePartsPagination({
           )}
           <SparePartsPageLink
             disabled={currentPage === totalPages}
-            href={sparePartsPageHref(scope, Math.min(totalPages, currentPage + 1))}
+            href={sparePartsPageHref(scope, Math.min(totalPages, currentPage + 1), true, query)}
             label="ถัดไป"
           >
             <span>ถัดไป</span>
@@ -1123,11 +1188,17 @@ function sparePartsPageHref(
   scope: { organization: { id: string }; plant: { id: string } },
   page: number,
   includeTableAnchor = true,
+  query?: Pick<PageQuery, "search" | "storeId" | "typeId" | "categoryId" | "unit">,
 ) {
   const params = new URLSearchParams({
     organizationId: scope.organization.id,
     plantId: scope.plant.id,
   });
+  if (query?.search) params.set("search", query.search);
+  if (query?.storeId) params.set("storeId", query.storeId);
+  if (query?.typeId) params.set("typeId", query.typeId);
+  if (query?.categoryId) params.set("categoryId", query.categoryId);
+  if (query?.unit) params.set("unit", query.unit);
   if (page > 1) params.set("partsPage", String(page));
   const url = `/inventory/spare-parts?${params.toString()}`;
   return includeTableAnchor ? `${url}#spare-parts-table-region` : url;

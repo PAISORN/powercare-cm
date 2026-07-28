@@ -18,6 +18,10 @@ describe("work detail compact layout", () => {
     expect(source).toContain("work-operations-grid");
     expect(source).toContain("work-operation-tabs");
     expect(source).toContain("work-audit-timeline");
+    expect(source).toContain("ประวัติสถานะ");
+    expect(source).toContain("WorkStatusTimelineRow");
+    expect(source).toContain("work.statusHistory.map");
+    expect(source).not.toContain("work.auditEvents.map");
   });
 
   it("keeps the modern work detail layout in the original minimalist surface style", () => {

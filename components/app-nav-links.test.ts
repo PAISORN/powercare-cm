@@ -9,6 +9,7 @@ import { PermissionKey, type SiteAdminPermissionRecord } from "../modules/auth/s
 const plantAdminContext = (...permissionKeys: string[]) => ({
   id: "plant-admin-1",
   plantId: "plant-1",
+  plantCode: "RTB",
   siteAdminPermissions: permissionKeys.map(
     (permissionKey): SiteAdminPermissionRecord => ({
       userId: "plant-admin-1",
@@ -20,6 +21,22 @@ const plantAdminContext = (...permissionKeys: string[]) => ({
 });
 
 describe("getAppLinks", () => {
+  it("uses the signed-in user's Site request URL and disables it for Owner Admin", () => {
+    const siteLinks = getAppLinks(RoleName.ENGINEER, {
+      plantId: "plant-rayong",
+      plantCode: "RYG",
+    });
+    const ownerLinks = getAppLinks(RoleName.ADMIN, {
+      plantId: "plant-rtb",
+      plantCode: "RTB",
+    });
+
+    expect(siteLinks.some((link) => link.href === "/p/ryg/request")).toBe(true);
+    expect(siteLinks.some((link) => link.href === "/p/ryg/tracking")).toBe(true);
+    expect(ownerLinks.some((link) => link.label === "Create Request")).toBe(false);
+    expect(ownerLinks.some((link) => link.label === "Track Work")).toBe(false);
+  });
+
   it.each([RoleName.ADMIN, RoleName.ORGANIZATION_ADMIN, RoleName.SITE_ADMIN, RoleName.ENGINEER, RoleName.TECHNICIAN, RoleName.VISITOR])("shows Members to %s", (role) => {
     expect(getAppLinks(role).some((link) => link.href === "/members")).toBe(true);
   });

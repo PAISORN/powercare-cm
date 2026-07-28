@@ -37,7 +37,7 @@ import {
 import { adjustStock } from "../../../modules/store/store-adjustment-prisma";
 import { createLoggedInStoreIssue } from "../../../modules/store/store-issue-prisma";
 import { resolveStorePageScope } from "../../../modules/store/store-page-scope";
-import { deleteSparePart } from "../../../modules/store/store-prisma-service";
+import { deleteSparePart, updateSparePart } from "../../../modules/store/store-prisma-service";
 import { receiveStock } from "../../../modules/store/store-receive-prisma";
 import { importSparePartsFromExcel } from "../../../modules/store/store-excel-import-prisma";
 import { sparePartImportErrorMessage } from "../../../modules/store/spare-part-excel-import";
@@ -59,7 +59,47 @@ type PageQuery = {
   importExcel?: string;
   imported?: string;
   importError?: string;
+  editPartId?: string;
 };
+
+async function updateSparePartFromStockAction(formData: FormData) {
+  "use server";
+  const user = await requireUser();
+  const scope = await resolveStorePageScope(user, adminScopeSearchFromFormData(formData));
+  const plant = await db.plant.findUniqueOrThrow({
+    where: { id: scope.plant.id },
+    select: { inventoryCode: true },
+  });
+  if (!plant.inventoryCode) throw new Error("Store Site code must be configured before editing spare parts.");
+  const optionalNumber = (value: FormDataEntryValue | null) => {
+    const text = String(value ?? "").trim();
+    return text ? Number(text) : null;
+  };
+  await updateSparePart(
+    user,
+    {
+      organizationId: scope.organization.id,
+      plantId: scope.plant.id,
+      plantCode: plant.inventoryCode,
+    },
+    String(formData.get("sparePartId") ?? ""),
+    {
+      name: String(formData.get("name") ?? ""),
+      itemCode: String(formData.get("itemCode") ?? ""),
+      description: String(formData.get("description") ?? ""),
+      unit: String(formData.get("unit") ?? ""),
+      categoryId: String(formData.get("categoryId") ?? ""),
+      typeId: String(formData.get("typeId") ?? ""),
+      defaultStoreId: String(formData.get("defaultStoreId") ?? ""),
+      minStock: Number(formData.get("minStock") ?? 0),
+      maxStock: optionalNumber(formData.get("maxStock")),
+      reorderPoint: Number(formData.get("reorderPoint") ?? 0),
+      latestUnitPrice: optionalNumber(formData.get("latestUnitPrice")),
+      active: formData.get("active") === "on",
+    },
+  );
+  redirect(`/inventory/stock?organizationId=${encodeURIComponent(scope.organization.id)}&plantId=${encodeURIComponent(scope.plant.id)}&saved=spare-part-updated`);
+}
 
 async function importSparePartsExcelAction(formData: FormData) {
   "use server";
@@ -311,6 +351,11 @@ export default async function StockPage({ searchParams }: { searchParams: Promis
             minStock: true,
             maxStock: true,
             latestUnitPrice: true,
+            reorderPoint: true,
+            categoryId: true,
+            typeId: true,
+            defaultStoreId: true,
+            active: true,
             category: { select: { name: true } },
             type: { select: { code: true, name: true } },
           },
@@ -361,8 +406,6 @@ export default async function StockPage({ searchParams }: { searchParams: Promis
     stockRowNumbers.set(stock.id, categoryRunning);
   });
   const scopedHref = `/inventory/stock?organizationId=${encodeURIComponent(scope.organization.id)}&plantId=${encodeURIComponent(scope.plant.id)}`;
-  const sparePartEditHref = (sparePartId: string) =>
-    `/inventory/spare-parts?organizationId=${encodeURIComponent(scope.organization.id)}&plantId=${encodeURIComponent(scope.plant.id)}&editPartId=${encodeURIComponent(sparePartId)}#edit-spare-part`;
   const stockPageHref = (page: number) => {
     const params = new URLSearchParams({
       organizationId: scope.organization.id,
@@ -377,6 +420,11 @@ export default async function StockPage({ searchParams }: { searchParams: Promis
     if (page > 1) params.set("page", String(page));
     return `/inventory/stock?${params.toString()}`;
   };
+  const sparePartEditHref = (sparePartId: string) =>
+    `${stockPageHref(currentPage)}&editPartId=${encodeURIComponent(sparePartId)}#edit-spare-part`;
+  const editPart = query.editPartId
+    ? stocks.find((stock) => stock.sparePart.id === query.editPartId)?.sparePart ?? null
+    : null;
   const selectedStock = query.stockId ? stocks.find((stock) => stock.id === query.stockId) : null;
   const requestedStockAction = selectedStock ? query.stockAction : undefined;
   const stockAction = requestedStockAction === "adjust" && !canAdjust ? undefined : requestedStockAction;
@@ -755,6 +803,90 @@ export default async function StockPage({ searchParams }: { searchParams: Promis
           </footer>
         </section>
 
+        {editPart && canManageParts ? (
+          <aside
+            className="fixed inset-y-0 right-0 z-50 w-full max-w-xl overflow-y-auto border-l border-[var(--line)] bg-[var(--surface)] p-5 shadow-2xl sm:p-6"
+            id="edit-spare-part"
+          >
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-sm font-bold text-[var(--primary)]">Edit Spare Part</p>
+                <h2 className="mt-1 text-2xl font-extrabold">{editPart.name}</h2>
+                <p className="mt-1 font-mono text-xs text-[var(--muted)]">{editPart.code}</p>
+              </div>
+              <Link className="rounded-full bg-[var(--soft)] px-3 py-1.5 text-sm font-bold" href={stockPageHref(currentPage)}>
+                ปิด
+              </Link>
+            </div>
+            <form action={updateSparePartFromStockAction} className="mt-5 grid gap-4">
+              <AdminScopeHiddenFields scope={scope} />
+              <input name="sparePartId" type="hidden" value={editPart.id} />
+              <label className={labelClass}>
+                ชื่ออะไหล่
+                <input className={inputClass} defaultValue={editPart.name} name="name" required />
+              </label>
+              <label className={labelClass}>
+                Item code
+                <input className={inputClass} defaultValue={editPart.itemCode ?? ""} maxLength={20} name="itemCode" required />
+              </label>
+              <label className={labelClass}>
+                คลังอะไหล่
+                <select className={inputClass} defaultValue={editPart.defaultStoreId ?? ""} name="defaultStoreId" required>
+                  <option value="" disabled>เลือกคลังอะไหล่</option>
+                  {stores.map((store) => <option key={store.id} value={store.id}>{store.code} · {store.name}</option>)}
+                </select>
+              </label>
+              <label className={labelClass}>
+                ประเภทอะไหล่ / ค่าใช้จ่าย
+                <select className={inputClass} defaultValue={editPart.typeId ?? ""} name="typeId" required>
+                  <option value="" disabled>เลือกประเภท</option>
+                  {sparePartTypes.map((type) => <option key={type.id} value={type.id}>{type.code} · {type.name}</option>)}
+                </select>
+              </label>
+              <label className={labelClass}>
+                หมวดหมู่อะไหล่
+                <select className={inputClass} defaultValue={editPart.categoryId ?? ""} name="categoryId" required>
+                  <option value="" disabled>เลือกหมวดหมู่</option>
+                  {categories.map((category) => <option key={category.id} value={category.id}>{category.code} · {category.name}</option>)}
+                </select>
+              </label>
+              <label className={labelClass}>
+                หน่วยนับ
+                <input className={inputClass} defaultValue={editPart.unit} name="unit" required />
+              </label>
+              <div className="grid gap-4 sm:grid-cols-3">
+                <label className={labelClass}>
+                  Min
+                  <input className={inputClass} defaultValue={Number(editPart.minStock)} min="0" name="minStock" step="0.01" type="number" />
+                </label>
+                <label className={labelClass}>
+                  Max
+                  <input className={inputClass} defaultValue={editPart.maxStock == null ? "" : Number(editPart.maxStock)} min="0" name="maxStock" step="0.01" type="number" />
+                </label>
+                <label className={labelClass}>
+                  Reorder Point
+                  <input className={inputClass} defaultValue={Number(editPart.reorderPoint)} min="0" name="reorderPoint" step="0.01" type="number" required />
+                </label>
+              </div>
+              <label className={labelClass}>
+                ราคาล่าสุด
+                <input className={inputClass} defaultValue={editPart.latestUnitPrice == null ? "" : Number(editPart.latestUnitPrice)} min="0" name="latestUnitPrice" step="0.01" type="number" />
+              </label>
+              <label className={labelClass}>
+                รายละเอียด
+                <textarea className={`${inputClass} min-h-24 py-3`} defaultValue={editPart.description ?? ""} name="description" />
+              </label>
+              <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[var(--line)] pt-4">
+                <label className="inline-flex min-h-12 items-center gap-2 rounded-2xl bg-[var(--soft)] px-4 text-sm font-bold">
+                  <input className="size-4 accent-[var(--primary)]" defaultChecked={editPart.active} name="active" type="checkbox" />
+                  เปิดใช้งาน
+                </label>
+                <button className={primaryButtonClass}>บันทึกอะไหล่</button>
+              </div>
+            </form>
+          </aside>
+        ) : null}
+
         {selectedStock && stockAction ? (
           <aside
             className="fixed inset-y-0 right-0 z-50 w-full max-w-lg overflow-y-auto border-l border-[var(--line)] bg-[var(--surface)] p-5 shadow-2xl sm:p-6"
@@ -1103,16 +1235,16 @@ function StockTableColGroup() {
   return (
     <colgroup>
       <col style={{ width: "60px" }} />
-      <col style={{ width: "205px" }} />
+      <col style={{ width: "270px" }} />
       <col style={{ width: "100px" }} />
       <col style={{ width: "170px" }} />
       <col style={{ width: "105px" }} />
       <col style={{ width: "110px" }} />
-      <col style={{ width: "180px" }} />
+      <col style={{ width: "145px" }} />
       <col style={{ width: "75px" }} />
       <col style={{ width: "75px" }} />
       <col style={{ width: "120px" }} />
-      <col style={{ width: "140px" }} />
+      <col style={{ width: "110px" }} />
       <col style={{ width: "120px" }} />
     </colgroup>
   );

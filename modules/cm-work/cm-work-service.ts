@@ -134,8 +134,8 @@ export async function createRepairRequest(input: {
       const existing = await tx.cmWork.findUnique({ where: { submissionKey } });
       if (existing) return { created: false, work: existing };
 
-      const number = await reserveCmWorkNumber(tx, now);
       const plantScope = await resolveRequestPlantScope(createPrismaRequestPlantScopeStore(tx), plantCode);
+      const number = await reserveCmWorkNumber(tx, plantScope.code, now);
       const plant = await tx.plant.findUnique({ where: { id: plantScope.id }, select: { maxWorkRequests: true } });
       if (plant?.maxWorkRequests) {
         const currentCount = await tx.cmWork.count({ where: { plantId: plantScope.id } });

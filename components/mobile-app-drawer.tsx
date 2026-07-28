@@ -16,6 +16,7 @@ export function MobileAppDrawer({
   categoryName,
   userId,
   plantId,
+  plantCode,
   siteAdminPermissions,
   hasPhoto = false,
   version,
@@ -26,6 +27,7 @@ export function MobileAppDrawer({
   categoryName?: string | null;
   userId?: string;
   plantId?: string | null;
+  plantCode?: string | null;
   siteAdminPermissions?: SiteAdminPermissionRecord[];
   hasPhoto?: boolean;
   version?: number;
@@ -107,7 +109,7 @@ export function MobileAppDrawer({
         >
           <AppNavLinks
             role={role}
-            permissionContext={{ id: userId, plantId, siteAdminPermissions }}
+            permissionContext={{ id: userId, plantCode, plantId, siteAdminPermissions }}
             onNavigate={() => setOpen(false)}
           />
         </nav>
