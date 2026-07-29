@@ -9,6 +9,7 @@ describe("MobileAppDrawer", () => {
     fireEvent.click(screen.getByRole("button", { name: "Open menu" }));
     const dialog = screen.getByRole("dialog", { name: "Application menu" });
     expect(dialog).toBeTruthy();
+    expect(dialog.className).toContain("guardian-sidebar");
     expect(dialog.className).toContain("fixed inset-0");
     expect(dialog.className).toContain("w-screen");
     expect(dialog.className).toContain("sm:w-[86vw]");

@@ -159,7 +159,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         <DashboardFilterBar activeCategory={activeCategoryFilter} activeDateFilter={hasExplicitDateFilter ? activeDateFilterInput : undefined} clearHref="/dashboard" />
       </section>
 
-      <section className="mt-6 grid gap-5 md:grid-cols-2 xl:grid-cols-5">
+      <section className="mt-6 grid grid-cols-2 gap-3 sm:gap-5 md:grid-cols-2 xl:grid-cols-5">
         <KpiCard href={buildWorkHref(workCategoryParam)} group="ALL_CM" unreadCount={unreadSummary.total} readAction={markDashboardGroupReadAction} label="Total CM" value={String(summary.total)} note="งานซ่อมทั้งหมด" icon={<ClipboardList size={34} />} color="#3b82f6" />
         <KpiCard href={buildWorkHref(workCategoryParam, { status: WorkStatus.NEW })} group="NEW" unreadCount={unreadSummary.newRequest} readAction={markDashboardGroupReadAction} label="New Request" value={String(newCount)} note="แจ้งซ่อมใหม่" icon={<CircleDot size={34} />} color="#06b6d4" />
         <KpiCard href={buildWorkHref(workCategoryParam, { statusGroup: "IN_PROCESS" })} group="IN_PROCESS" unreadCount={unreadSummary.inProcess} readAction={markDashboardGroupReadAction} label="In Process" value={String(inProcessCount)} note="งานอยู่ระหว่างดำเนินการ" icon={<Wrench size={34} />} color="#14b8a6" />
@@ -278,24 +278,24 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
 
 function KpiCard({ href, group, unreadCount, readAction, label, value, note, icon, color }: { href: string; group: NotificationGroup; unreadCount: number; readAction: (formData: FormData) => void | Promise<void>; label: string; value: string; note: string; icon: React.ReactNode; color: string }) {
   return (
-    <form action={readAction}>
+    <form action={readAction} className="h-full min-w-0">
       <input name="group" type="hidden" value={group} />
       <input name="href" type="hidden" value={href} />
       <button
       type="submit"
-      className="relative block h-full w-full rounded-2xl p-5 text-left text-white shadow-[var(--shadow)] transition duration-300 ease-out hover:-translate-y-1 hover:shadow-lg active:translate-y-0 focus:outline-none focus:ring-2 focus:ring-white/60 focus:ring-offset-2 focus:ring-offset-[var(--bg)]"
+      className="relative block min-h-[148px] h-full w-full min-w-0 rounded-2xl p-3 text-left text-white shadow-[var(--shadow)] transition duration-300 ease-out hover:-translate-y-1 hover:shadow-lg active:translate-y-0 focus:outline-none focus:ring-2 focus:ring-white/60 focus:ring-offset-2 focus:ring-offset-[var(--bg)] sm:min-h-0 sm:p-5"
       style={{ background: `linear-gradient(135deg, ${color}, color-mix(in srgb, ${color} 78%, white))` }}
       aria-label={`KPI ${label}`}
       >
       <UnreadBadge count={unreadCount} />
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="text-sm font-bold text-white/80">{label}</p>
-          <strong className="mt-2 block text-4xl">{value}</strong>
+          <p className="text-xs font-bold leading-tight text-white/80 sm:text-sm">{label}</p>
+          <strong className="mt-2 block text-3xl leading-none sm:text-4xl">{value}</strong>
         </div>
-        <div className="text-white/75">{icon}</div>
+        <div className="origin-top-right scale-75 text-white/75 sm:scale-100">{icon}</div>
       </div>
-      <p className="mt-4 text-sm text-white/80">{note}</p>
+      <p className="mt-4 text-xs leading-snug text-white/80 sm:text-sm">{note}</p>
       </button>
     </form>
   );
@@ -388,13 +388,13 @@ function StatusOverviewContent({
   const activeTotal = activeRows.reduce((sum, row) => sum + row.value, 0);
 
   return (
-    <div className="mt-5 flex min-h-[470px] flex-1 flex-col">
-      <div className="grid items-center gap-2 sm:grid-cols-[minmax(0,5fr)_minmax(200px,2fr)]">
-        <div className="rounded-2xl bg-[var(--soft)]/55 p-3 text-center">
+    <div className="mt-5 flex min-h-0 flex-1 flex-col sm:min-h-[470px]">
+      <div className="grid items-center gap-3 sm:grid-cols-[minmax(0,5fr)_minmax(200px,2fr)]">
+        <div className="min-w-0 overflow-hidden rounded-2xl bg-[var(--soft)]/55 p-3 text-center">
           <h3 className="text-sm font-extrabold">สถานะทั้งหมด</h3>
           <Donut variant="overviewPrimary" rows={rows} total={total} centerLabel="Total CM" />
         </div>
-        <div className="rounded-2xl bg-[var(--soft)]/55 p-3 text-center">
+        <div className="min-w-0 overflow-hidden rounded-2xl bg-[var(--soft)]/55 p-3 text-center">
           <h3 className="text-xs font-extrabold">งานที่ยังต้องดำเนินการ</h3>
           <Donut variant="overviewSecondary" rows={activeRows} total={activeTotal} centerLabel="Active Work" />
         </div>
@@ -503,13 +503,13 @@ function Donut({
     });
   const sizeClass =
     variant === "overviewPrimary"
-      ? "aspect-square h-auto w-[400px]"
+      ? "aspect-square h-auto w-full max-w-[280px] min-[430px]:max-w-[320px] sm:max-w-[400px]"
       : variant === "overviewSecondary"
-        ? "aspect-square h-auto w-[200px]"
+        ? "aspect-square h-auto w-full max-w-[190px] sm:max-w-[200px]"
         : "h-[340px] w-[340px] sm:h-[500px] sm:w-[500px] xl:h-[560px] xl:w-[560px]";
   const valueClass = variant === "overviewPrimary" ? "text-5xl" : variant === "overviewSecondary" ? "text-3xl" : "text-5xl sm:text-6xl";
   const labelClass = "text-sm";
-  const widthConstraintClass = variant === "overviewPrimary" ? "" : "max-w-full";
+  const widthConstraintClass = variant === "default" ? "max-w-full" : "";
   const alignmentClass =
     variant === "overviewPrimary"
       ? "mx-auto sm:-ml-6 sm:mr-auto"
@@ -659,7 +659,7 @@ function MonthlyBar({ row, max, index, hiddenOnMobile }: { row: MonthlyTrendRow;
       role="img"
       tabIndex={0}
     >
-      <div className="pointer-events-none absolute left-1/2 top-8 z-30 w-60 -translate-x-1/2 rounded-2xl border border-[var(--line)] bg-[var(--surface)] px-4 py-3 text-left text-xs opacity-0 shadow-xl transition duration-200 group-hover:opacity-100 group-focus:opacity-100">
+      <div className="pointer-events-none absolute right-0 top-8 z-30 w-60 rounded-2xl border border-[var(--line)] bg-[var(--surface)] px-4 py-3 text-left text-xs opacity-0 shadow-xl transition duration-200 group-hover:opacity-100 group-focus:opacity-100">
         <p className="font-black text-[var(--ink)]">{row.label}</p>
         <p className="mt-1 text-[var(--muted)]">Total {row.total} jobs</p>
         <div className="mt-3 grid gap-1.5">

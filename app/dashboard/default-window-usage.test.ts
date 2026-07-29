@@ -17,6 +17,9 @@ describe("dashboard default window wiring", () => {
     expect(source).toContain(".filter((item) => item.value > 0)");
     expect(source).toContain("latestWorkActivities");
     expect(source).toContain("latestStoreIssues");
+    expect(source).toContain("grid grid-cols-2 gap-3");
+    expect(source).toContain("max-w-[280px]");
+    expect(source).toContain("sm:min-h-[470px]");
     expect(source).toContain("ความเคลื่อนไหวล่าสุด");
   });
 

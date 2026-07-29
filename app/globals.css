@@ -330,26 +330,26 @@ input[type="checkbox"]:not(.sr-only):disabled {
   color: #ffffff;
 }
 
-.guardian-sidebar [data-testid="desktop-sidebar-nav"] :is(a, button) {
+.guardian-sidebar :is([data-testid="desktop-sidebar-nav"], [data-testid="mobile-drawer-nav"]) :is(a, button) {
   color: #dce7f5;
 }
 
-.guardian-sidebar [data-testid="desktop-sidebar-nav"] :is(a, button):hover {
+.guardian-sidebar :is([data-testid="desktop-sidebar-nav"], [data-testid="mobile-drawer-nav"]) :is(a, button):hover {
   background: rgb(255 255 255 / 8%);
   color: #ffffff;
 }
 
-.guardian-sidebar [data-testid="desktop-sidebar-nav"] a[aria-current="page"] {
+.guardian-sidebar :is([data-testid="desktop-sidebar-nav"], [data-testid="mobile-drawer-nav"]) a[aria-current="page"] {
   background: linear-gradient(135deg, #1565ff, #0d55df);
   box-shadow: 0 10px 24px rgb(0 0 0 / 22%), inset 3px 0 0 #2db4ff;
   color: #ffffff;
 }
 
-.guardian-sidebar [data-testid="desktop-sidebar-nav"] a[aria-label="Logout"] {
+.guardian-sidebar :is([data-testid="desktop-sidebar-nav"], [data-testid="mobile-drawer-nav"]) a[aria-label="Logout"] {
   color: #fca5a5;
 }
 
-.guardian-sidebar [data-testid="desktop-sidebar-nav"] a[aria-label="Logout"]:hover {
+.guardian-sidebar :is([data-testid="desktop-sidebar-nav"], [data-testid="mobile-drawer-nav"]) a[aria-label="Logout"]:hover {
   background: rgb(239 68 68 / 14%);
   color: #fecaca;
 }
