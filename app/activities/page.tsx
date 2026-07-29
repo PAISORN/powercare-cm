@@ -9,6 +9,8 @@ import {
   Building2,
   ClipboardCheck,
   Clock3,
+  LayoutGrid,
+  List,
   ListFilter,
   Search,
   ShoppingCart,
@@ -247,7 +249,7 @@ export default async function ActivitiesPage({
   const user = await requireUser();
   const query = await searchParams;
   const scope = await resolveStorePageScope(user, query);
-  const activityView: ActivityView = "current";
+  const activityView: ActivityView = query.activityView === "current" ? "current" : "visual";
   const actor: Actor = {
     id: user.id,
     role: user.role as Actor["role"],
@@ -404,9 +406,22 @@ export default async function ActivitiesPage({
         ) : null}
 
         <section className="reveal-on-scroll mt-6 rounded-3xl border border-[var(--line)] bg-[var(--surface)] p-4 shadow-[var(--shadow)] sm:p-5">
-          <SectionTitle icon={<Clock3 size={18} />} title="กิจกรรมทั้งหมด" count={combinedActivities.length} />
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <SectionTitle icon={<Clock3 size={18} />} title="กิจกรรมทั้งหมด" count={combinedActivities.length} />
+            <ActivityViewToggle activeView={activityView} scope={scope} />
+          </div>
           <div className="mt-4">
-            <UnifiedActivityList items={combinedActivities} scope={scope} selectedKey={selectedItem?.key} />
+            {activityView === "visual" ? (
+              <ActivityBoardView
+                allItems={combinedActivities}
+                filters={activityBoardFilters}
+                items={filteredBoardActivities}
+                scope={scope}
+                selectedKey={selectedItem?.key}
+              />
+            ) : (
+              <UnifiedActivityList items={combinedActivities} scope={scope} selectedKey={selectedItem?.key} />
+            )}
           </div>
         </section>
 
@@ -505,6 +520,35 @@ function storeFeedItem(issue: StoreIssueActivity, sectionKey: StoreSectionKey): 
     issue,
     sectionKey,
   };
+}
+
+function ActivityViewToggle({ activeView, scope }: { activeView: ActivityView; scope: ActivityScope }) {
+  const options: Array<{ icon: typeof List; label: string; value: ActivityView }> = [
+    { icon: List, label: "รายการ", value: "current" },
+    { icon: LayoutGrid, label: "การ์ด", value: "visual" },
+  ];
+
+  return (
+    <div aria-label="รูปแบบการแสดงกิจกรรม" className="inline-flex rounded-2xl border border-[var(--line)] bg-[var(--soft)] p-1" role="group">
+      {options.map((option) => {
+        const Icon = option.icon;
+        const active = activeView === option.value;
+        return (
+          <Link
+            aria-current={active ? "page" : undefined}
+            className={`inline-flex min-h-11 items-center gap-2 rounded-xl px-3 text-sm font-extrabold transition ${
+              active ? "bg-[var(--primary)] text-white shadow-sm" : "text-[var(--muted)] hover:bg-[var(--surface)] hover:text-[var(--ink)]"
+            }`}
+            href={activityRedirect(scope, { activityView: option.value })}
+            key={option.value}
+          >
+            <Icon size={18} />
+            {option.label}
+          </Link>
+        );
+      })}
+    </div>
+  );
 }
 
 function ActivityBoardView({
@@ -610,7 +654,7 @@ function ActivityBoardView({
         </form>
       </div>
 
-      <div className="mt-4 grid gap-3 lg:grid-cols-2 2xl:grid-cols-3">
+      <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-[repeat(auto-fill,minmax(280px,300px))]">
         {visibleItems.length ? (
           visibleItems.map((item) => (
             <ActivityBoardCard
@@ -693,14 +737,14 @@ function ActivityBoardCard({
 
   return (
     <Link
-      className={`activity-board-card group relative block min-h-36 overflow-hidden rounded-2xl border p-5 shadow-sm transition duration-300 hover:-translate-y-1 hover:shadow-[var(--shadow)] ${toneClass} ${
+      className={`activity-board-card group relative block h-36 w-full overflow-hidden rounded-2xl border p-5 shadow-sm transition duration-300 hover:-translate-y-1 hover:shadow-[var(--shadow)] ${toneClass} ${
         selected ? "ring-2 ring-white/80 ring-offset-2 ring-offset-[var(--bg)]" : ""
       }`}
       href={selectionHref}
     >
-      <div className="grid grid-cols-[64px_minmax(0,1fr)_auto] gap-4">
-        <div className="flex size-14 items-center justify-center rounded-2xl border border-white/30 bg-white/15 text-white">
-          <Icon size={31} />
+      <div className="grid grid-cols-[48px_minmax(0,1fr)] gap-3 pr-8">
+        <div className="flex size-12 items-center justify-center rounded-2xl border border-white/30 bg-white/15 text-white">
+          <Icon size={27} />
         </div>
         <div className="min-w-0">
           <p className="truncate font-mono text-sm font-semibold text-white/80">{item.title}</p>
@@ -713,8 +757,8 @@ function ActivityBoardCard({
             ครบกำหนด {formatThaiDateTime(item.occurredAt)}
           </p>
         </div>
-        <div className="flex flex-col items-end justify-between gap-4">
-          <span className="rounded-xl border border-white/30 bg-white/20 px-3 py-1 text-xs font-extrabold text-white">
+        <div className="absolute inset-y-4 right-3 flex flex-col items-end justify-between">
+          <span className="max-w-24 truncate rounded-xl border border-white/30 bg-white/20 px-2 py-1 text-xs font-extrabold text-white">
             {type === "store" ? "Store" : activityStatusLabel(item.status)}
           </span>
           <span

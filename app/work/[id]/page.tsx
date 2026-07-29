@@ -683,7 +683,7 @@ export default async function WorkDetailPage({
                   active={index === work.statusHistory.length - 1}
                   actor={event.changedById ? (statusActorNameById.get(event.changedById) ?? "ผู้ใช้งาน") : "ระบบ"}
                   key={event.id}
-                  note={event.note}
+                  note={event.note ?? technicianCompletionTimelineNote(event.toStatus, work)}
                   time={event.changedAt}
                   title={statusLabels[event.toStatus as WorkStatus] ?? event.toStatus}
                 />
@@ -729,6 +729,19 @@ function ReviewDetail({ label, value }: { label: string; value: string | null })
   );
 }
 
+function technicianCompletionTimelineNote(
+  status: string,
+  work: { rootCause: string | null; correctiveAction: string | null; workNote: string | null },
+) {
+  if (status !== WorkStatus.WAITING_TO_CLOSE) return null;
+  const details = [
+    work.rootCause?.trim() ? `สาเหตุ: ${work.rootCause.trim()}` : null,
+    work.correctiveAction?.trim() ? `วิธีการแก้ไข: ${work.correctiveAction.trim()}` : null,
+    work.workNote?.trim() ? `หมายเหตุช่าง: ${work.workNote.trim()}` : null,
+  ].filter(Boolean);
+  return details.length ? details.join("\n") : null;
+}
+
 function WorkStatusTimelineRow({
   active,
   actor,
@@ -754,7 +767,7 @@ function WorkStatusTimelineRow({
           <span className="text-sm text-[var(--muted)]">{formatThaiDateTime(time)}</span>
         </div>
         <p className="mt-1 text-sm text-[var(--muted)]">โดย {actor}</p>
-        {note ? <p className="mt-2 rounded-xl bg-[var(--soft)] px-3 py-2 text-sm">{note}</p> : null}
+        {note ? <p className="mt-2 whitespace-pre-wrap rounded-xl bg-[var(--soft)] px-3 py-2 text-sm">{note}</p> : null}
       </div>
     </div>
   );

@@ -384,6 +384,11 @@ export async function submitForReview(
           fromStatus: work.status,
           toStatus: WorkStatus.WAITING_TO_CLOSE,
           changedById: actor.id,
+          note: [
+            `สาเหตุ: ${input.rootCause}`,
+            `วิธีการแก้ไข: ${input.correctiveAction}`,
+            input.workNote?.trim() ? `หมายเหตุช่าง: ${input.workNote.trim()}` : null,
+          ].filter(Boolean).join("\n"),
         },
       },
     },

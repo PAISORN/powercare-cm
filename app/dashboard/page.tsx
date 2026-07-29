@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { AlertTriangle, Archive, BarChart3, CalendarDays, CheckCircle2, CircleDot, ClipboardList, Factory, Flame, Gauge, Wrench } from "lucide-react";
+import { Activity, AlertTriangle, Archive, BarChart3, CalendarDays, CheckCircle2, CircleDot, ClipboardList, Factory, Flame, Gauge, ShoppingCart, Wrench } from "lucide-react";
 import { AppShell } from "../../components/app-shell";
 import { DashboardFilterBar } from "../../components/dashboard-filter-bar";
 import { OrganizationHeroLogo } from "../../components/organization-hero-logo";
@@ -104,6 +104,28 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const inProcessCount = inProcessStatuses.reduce((sum, status) => sum + (statusCountByKey.get(status) ?? 0), 0);
   const waitingCloseCount = statusCountByKey.get(WorkStatus.WAITING_TO_CLOSE) ?? 0;
   const recentMonthlyTrend = summary.monthlyTrend.slice(-6);
+  const latestActivities = [
+    ...summary.latestWorkActivities.map((activity) => ({
+      id: activity.id,
+      href: `/work/${activity.cmWork.id}`,
+      kind: "cm" as const,
+      number: activity.cmWork.number,
+      title: activity.note?.trim() || activity.cmWork.problemTitle,
+      status: statusLabels[activity.toStatus as WorkStatus] ?? activity.toStatus,
+      occurredAt: activity.changedAt,
+    })),
+    ...summary.latestStoreIssues.map((issue) => ({
+      id: issue.id,
+      href: `/inventory/tracking?number=${encodeURIComponent(issue.number)}`,
+      kind: "store" as const,
+      number: issue.number,
+      title: issue.items.map((item) => item.sparePart.name).join(", ") || issue.requesterName,
+      status: formatStoreActivityStatus(issue.status),
+      occurredAt: issue.updatedAt,
+    })),
+  ]
+    .sort((a, b) => b.occurredAt.getTime() - a.occurredAt.getTime())
+    .slice(0, 10);
   const categoryTotal = summary.byCategory.reduce((sum, row) => sum + row.count, 0);
   const topCategory = [...summary.byCategory].sort((a, b) => b.count - a.count)[0];
   const topCategoryPercent = topCategory && categoryTotal > 0 ? Math.round((topCategory.count / categoryTotal) * 100) : 0;
@@ -188,6 +210,32 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
               ))
             ) : (
               <p className="rounded-2xl bg-[var(--soft)] p-4 text-sm text-[var(--muted)]">No urgent work waiting right now.</p>
+            )}
+          </div>
+        </Panel>
+      </section>
+
+      <section className="mt-6">
+        <Panel title="ความเคลื่อนไหวล่าสุด" icon={<Activity size={22} className="text-[#3b82f6]" />} aside="CM และ Store">
+          <div className="mt-4 grid gap-x-6 md:grid-cols-2">
+            {latestActivities.length ? (
+              latestActivities.map((item) => {
+                const Icon = item.kind === "cm" ? Wrench : ShoppingCart;
+                return (
+                  <Link className="group grid grid-cols-[42px_minmax(0,1fr)_auto] items-center gap-3 border-b border-[var(--line)] py-3" href={item.href} key={`${item.kind}-${item.id}`}>
+                    <span className={`grid size-10 place-items-center rounded-xl ${item.kind === "cm" ? "bg-blue-500/10 text-blue-600" : "bg-violet-500/10 text-violet-600"}`}>
+                      <Icon size={20} />
+                    </span>
+                    <span className="min-w-0">
+                      <strong className="block truncate text-sm">{item.number} · {item.title}</strong>
+                      <span className="mt-1 block text-xs text-[var(--muted)]">{formatThaiDateTime(item.occurredAt)}</span>
+                    </span>
+                    <span className="max-w-28 truncate text-xs font-bold text-[var(--muted)] group-hover:text-[var(--primary)]">{item.status}</span>
+                  </Link>
+                );
+              })
+            ) : (
+              <p className="py-4 text-sm text-[var(--muted)]">ยังไม่มีความเคลื่อนไหวล่าสุด</p>
             )}
           </div>
         </Panel>
@@ -602,7 +650,7 @@ function MonthlyBar({ row, max, index, hiddenOnMobile }: { row: MonthlyTrendRow;
     label: statusLabels[status],
     value: getStatusCount(row, status),
     color: statusColors[status],
-  }));
+  })).filter((item) => item.value > 0);
 
   return (
     <div
@@ -661,6 +709,20 @@ function getFollowUpStatusTotal(row: MonthlyTrendRow) {
     getStatusCount(row, WorkStatus.CLOSED) +
     getStatusCount(row, WorkStatus.CANCELED)
   );
+}
+
+function formatStoreActivityStatus(status: string) {
+  const labels: Record<string, string> = {
+    WAITING_ENGINEER_APPROVAL: "รออนุมัติ",
+    WAITING_STORE_ISSUE: "รอจ่ายอะไหล่",
+    PARTIALLY_ISSUED: "จ่ายบางส่วน",
+    ISSUED: "จ่ายแล้ว",
+    RETURNED_FOR_EDIT: "ส่งกลับแก้ไข",
+    NOT_ENOUGH_STOCK: "อะไหล่ไม่พอ",
+    REJECTED: "ไม่อนุมัติ",
+    CANCELED: "ยกเลิก",
+  };
+  return labels[status] ?? status.replaceAll("_", " ");
 }
 
 type StatusDateInput = {

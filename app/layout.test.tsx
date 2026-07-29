@@ -2,7 +2,8 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import RootLayout, { themeBootScript } from "./layout";
+import RootLayout from "./layout";
+import { themeBootScript } from "./theme-boot-script";
 
 describe("RootLayout theme boot script", () => {
   it("keeps a saved-theme initializer available to the root layout", () => {

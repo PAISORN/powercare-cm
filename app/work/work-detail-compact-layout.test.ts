@@ -21,6 +21,8 @@ describe("work detail compact layout", () => {
     expect(source).toContain("ประวัติสถานะ");
     expect(source).toContain("WorkStatusTimelineRow");
     expect(source).toContain("work.statusHistory.map");
+    expect(source).toContain("technicianCompletionTimelineNote");
+    expect(source).toContain("whitespace-pre-wrap");
     expect(source).not.toContain("work.auditEvents.map");
   });
 

@@ -169,6 +169,11 @@ export async function loadDashboardSummary(filter?: {
     ...summaryWhere,
     status: { not: WorkStatus.BACKLOG_SHUTDOWN },
   };
+  const storeIssueWhere: Prisma.SparePartIssueWhereInput = filter?.scope?.plantId
+    ? { plantId: filter.scope.plantId }
+    : filter?.scope?.organizationId
+      ? { organizationId: filter.scope.organizationId }
+      : {};
   const yesterdayWindow = getPreviousBangkokDayWindow(now);
   const yesterdayCategoryBaseWhere: Prisma.CmWorkWhereInput = {
     ...scopeWhere,
@@ -193,6 +198,8 @@ export async function loadDashboardSummary(filter?: {
     statusPriorityWorks,
     backlogWorks,
     latest,
+    latestWorkActivities,
+    latestStoreIssues,
     closedWorks,
     yesterdayNewByCategory,
     yesterdayInProcessByCategory,
@@ -237,6 +244,28 @@ export async function loadDashboardSummary(filter?: {
       where: summaryWhere,
       orderBy: { createdAt: "desc" },
       include: { category: true, zone: true },
+    }),
+    db.statusHistory.findMany({
+      take: 10,
+      where: { cmWork: summaryWhere },
+      orderBy: { changedAt: "desc" },
+      include: { cmWork: { include: { category: true, zone: true } } },
+    }),
+    db.sparePartIssue.findMany({
+      take: 10,
+      where: storeIssueWhere,
+      orderBy: { updatedAt: "desc" },
+      select: {
+        id: true,
+        number: true,
+        status: true,
+        requesterName: true,
+        updatedAt: true,
+        items: {
+          take: 2,
+          select: { sparePart: { select: { code: true, name: true } } },
+        },
+      },
     }),
     db.cmWork.findMany({
       where: { ...summaryWhere, closedAt: { not: null } },
@@ -314,6 +343,8 @@ export async function loadDashboardSummary(filter?: {
     priorityWorks,
     backlogWorks,
     latest,
+    latestWorkActivities,
+    latestStoreIssues,
     avgCloseDays: calculateAverageCloseDays(closedWorks),
     yesterdayReport: {
       date: yesterdayWindow.date,
@@ -492,6 +523,33 @@ function reviveDashboardSummary(summary: Awaited<ReturnType<typeof loadDashboard
         createdAt: ensureDate(work.zone.createdAt),
         updatedAt: ensureDate(work.zone.updatedAt),
       },
+    })),
+    latestWorkActivities: summary.latestWorkActivities.map((activity) => ({
+      ...activity,
+      changedAt: ensureDate(activity.changedAt),
+      cmWork: {
+        ...activity.cmWork,
+        createdAt: ensureDate(activity.cmWork.createdAt),
+        claimedAt: ensureNullableDate(activity.cmWork.claimedAt),
+        inProgressAt: ensureNullableDate(activity.cmWork.inProgressAt),
+        waitingToCloseAt: ensureNullableDate(activity.cmWork.waitingToCloseAt),
+        closedAt: ensureNullableDate(activity.cmWork.closedAt),
+        canceledAt: ensureNullableDate(activity.cmWork.canceledAt),
+        category: {
+          ...activity.cmWork.category,
+          createdAt: ensureDate(activity.cmWork.category.createdAt),
+          updatedAt: ensureDate(activity.cmWork.category.updatedAt),
+        },
+        zone: {
+          ...activity.cmWork.zone,
+          createdAt: ensureDate(activity.cmWork.zone.createdAt),
+          updatedAt: ensureDate(activity.cmWork.zone.updatedAt),
+        },
+      },
+    })),
+    latestStoreIssues: summary.latestStoreIssues.map((issue) => ({
+      ...issue,
+      updatedAt: ensureDate(issue.updatedAt),
     })),
     activeCategory: summary.activeCategory,
     activeDateFilter: summary.activeDateFilter,
