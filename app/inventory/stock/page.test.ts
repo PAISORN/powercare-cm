@@ -2,6 +2,16 @@ import { existsSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 describe("Store stock page", () => {
+  it("uses distinct color surfaces for important stock summary cards", () => {
+    const source = readFileSync("app/inventory/stock/page.tsx", "utf8");
+
+    expect(source).toContain("surfaceClass");
+    expect(source).toContain("from-blue-500 to-blue-600");
+    expect(source).toContain("from-emerald-500 to-green-500");
+    expect(source).toContain("from-amber-400 to-orange-500");
+    expect(source).toContain("from-rose-500 to-red-600");
+  });
+
   it("renders an enterprise stock dashboard with filters, inventory table, and row actions", () => {
     expect(existsSync("app/inventory/stock/page.tsx")).toBe(true);
     const source = readFileSync("app/inventory/stock/page.tsx", "utf8");

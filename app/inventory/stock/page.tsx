@@ -1123,25 +1123,25 @@ function SummaryCard({
   sublabel: string;
   value: string;
 }) {
-  const colorClass = {
-    blue: "from-blue-500 to-blue-600",
-    green: "from-emerald-500 to-emerald-600",
-    violet: "from-violet-500 to-violet-600",
-    orange: "from-orange-500 to-orange-600",
-    red: "from-red-500 to-red-600",
+  const surfaceClass = {
+    blue: "border-blue-400 bg-gradient-to-br from-blue-500 to-blue-600",
+    green: "border-emerald-400 bg-gradient-to-br from-emerald-500 to-green-500",
+    violet: "border-violet-400 bg-gradient-to-br from-violet-500 to-purple-600",
+    orange: "border-orange-400 bg-gradient-to-br from-amber-400 to-orange-500",
+    red: "border-red-400 bg-gradient-to-br from-rose-500 to-red-600",
   }[color];
 
   return (
-    <article className="rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-4 shadow-sm">
-      <div className="flex items-center gap-4">
-        <span className={`grid size-14 shrink-0 place-items-center rounded-full bg-gradient-to-br text-white ${colorClass}`}>
+    <article className={`min-h-36 rounded-2xl border p-5 text-white shadow-sm transition duration-300 hover:-translate-y-0.5 hover:shadow-[var(--shadow)] ${surfaceClass}`}>
+      <div className="flex h-full items-start justify-between gap-4">
+        <div className="min-w-0">
+          <p className="truncate text-sm font-extrabold text-white/90">{label}</p>
+          <p className="mt-3 truncate text-3xl font-black">{value}</p>
+          <p className="mt-2 text-xs font-bold text-white/80">{sublabel}</p>
+        </div>
+        <span className="grid size-12 shrink-0 place-items-center text-white/80">
           {icon}
         </span>
-        <div className="min-w-0">
-          <p className="truncate text-sm font-bold text-[var(--muted)]">{label}</p>
-          <p className="mt-1 truncate text-2xl font-extrabold">{value}</p>
-          <p className="text-xs font-bold text-[var(--muted)]">{sublabel}</p>
-        </div>
       </div>
     </article>
   );

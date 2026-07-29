@@ -9,9 +9,10 @@ import {
 
 describe("dashboard query contract", () => {
   it("keeps the dashboard contract explicit", () => {
-    const keys = ["total", "byStatus", "byCategory", "byZone", "byUrgency", "monthlyTrend", "priorityWorks", "latest", "avgCloseDays", "activeTimeRange", "yesterdayReport"];
+    const keys = ["total", "byStatus", "byCategory", "byZone", "byUrgency", "monthlyTrend", "priorityWorks", "backlogWorks", "latest", "avgCloseDays", "activeTimeRange", "yesterdayReport"];
     expect(keys).toContain("monthlyTrend");
     expect(keys).toContain("priorityWorks");
+    expect(keys).toContain("backlogWorks");
     expect(keys).toContain("latest");
     expect(keys).toContain("avgCloseDays");
     expect(keys).toContain("activeTimeRange");

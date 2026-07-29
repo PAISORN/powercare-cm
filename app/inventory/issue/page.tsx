@@ -1,6 +1,7 @@
 import {
   CheckCircle2,
   ChevronDown,
+  ChevronLeft,
   ChevronRight,
   ClipboardList,
   Clock3,
@@ -44,6 +45,7 @@ type PageQuery = {
   error?: string;
   q?: string;
   status?: string;
+  trackingPage?: string;
 };
 
 async function createIssueAction(formData: FormData) {
@@ -244,6 +246,26 @@ export default async function IssuePage({ searchParams }: { searchParams: Promis
       .toLocaleLowerCase("th-TH");
     return haystack.includes(trackingSearch);
   });
+  const trackingPageSize = 5;
+  const totalTrackingPages = Math.max(1, Math.ceil(filteredIssues.length / trackingPageSize));
+  const requestedTrackingPage = Number.parseInt(query.trackingPage ?? "1", 10);
+  const currentTrackingPage = Number.isFinite(requestedTrackingPage) && requestedTrackingPage > 0
+    ? Math.min(requestedTrackingPage, totalTrackingPages)
+    : 1;
+  const pagedFilteredIssues = filteredIssues.slice(
+    (currentTrackingPage - 1) * trackingPageSize,
+    currentTrackingPage * trackingPageSize,
+  );
+  const trackingPageHref = (page: number) => {
+    const params = new URLSearchParams({
+      organizationId: scope.organization.id,
+      plantId: scope.plant.id,
+    });
+    if (query.q) params.set("q", query.q);
+    if (selectedTrackingStatus !== "ALL") params.set("status", selectedTrackingStatus);
+    if (page > 1) params.set("trackingPage", String(page));
+    return `/inventory/issue?${params.toString()}#issue-tracking`;
+  };
 
   function CompactIssueRow({ issue }: { issue: (typeof issues)[number] }) {
     const itemSummary = issue.items
@@ -378,7 +400,7 @@ export default async function IssuePage({ searchParams }: { searchParams: Promis
 
   return (
     <AppShell>
-      <div className="grid items-start gap-5 xl:grid-cols-2">
+      <div className="grid items-stretch gap-5 xl:grid-cols-2">
         <header className="flex flex-wrap items-start justify-between gap-4 xl:col-span-2">
           <div>
             <div className="flex items-center gap-3">
@@ -400,7 +422,7 @@ export default async function IssuePage({ searchParams }: { searchParams: Promis
         </header>
 
         <section
-          className="space-y-5 rounded-3xl border border-[var(--line)] bg-[var(--surface)] p-4 shadow-[var(--shadow)] sm:p-5"
+          className="h-full space-y-5 rounded-3xl border border-[var(--line)] bg-[var(--surface)] p-4 shadow-[var(--shadow)] sm:p-5"
           data-testid="issue-create-workspace"
         >
         <div>
@@ -468,7 +490,7 @@ export default async function IssuePage({ searchParams }: { searchParams: Promis
         ) : null}
         </section>
 
-        <section className="rounded-3xl border border-[var(--line)] bg-[var(--surface)] p-4 shadow-[var(--shadow)] sm:p-5" id="issue-tracking">
+        <section className="h-full rounded-3xl border border-[var(--line)] bg-[var(--surface)] p-4 shadow-[var(--shadow)] sm:p-5" id="issue-tracking">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-2">
               <ClipboardList className="text-[var(--primary)]" size={21} />
@@ -508,7 +530,7 @@ export default async function IssuePage({ searchParams }: { searchParams: Promis
             </button>
           </form>
           <div className="mt-4 grid gap-2">
-            {filteredIssues.map((issue) => (
+            {pagedFilteredIssues.map((issue) => (
               <div key={issue.id}>
                 <CompactIssueRow issue={issue} />
                 <article className="hidden rounded-2xl border border-[var(--line)] bg-[var(--card)] p-4">
@@ -599,10 +621,61 @@ export default async function IssuePage({ searchParams }: { searchParams: Promis
             ))}
             {!filteredIssues.length ? <p className="rounded-2xl border border-dashed border-[var(--line)] p-8 text-center text-sm text-[var(--muted)]">ไม่พบใบเบิกตามเงื่อนไขที่เลือก</p> : null}
           </div>
+          {totalTrackingPages > 1 ? (
+            <nav aria-label="Issue tracking pagination" className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-[var(--line)] pt-4">
+              <span className="text-sm font-semibold text-[var(--muted)]">
+                หน้า {currentTrackingPage} จาก {totalTrackingPages}
+              </span>
+              <div className="flex flex-wrap items-center gap-1">
+                <Link
+                  aria-disabled={currentTrackingPage === 1}
+                  aria-label="หน้าก่อนหน้า"
+                  className={trackingPaginationArrowClass(currentTrackingPage === 1)}
+                  href={trackingPageHref(Math.max(1, currentTrackingPage - 1))}
+                >
+                  <ChevronLeft size={16} />
+                </Link>
+                {Array.from({ length: totalTrackingPages }, (_, index) => index + 1).map((pageNumber) => (
+                  <Link
+                    aria-current={pageNumber === currentTrackingPage ? "page" : undefined}
+                    className={trackingPaginationPageClass(pageNumber === currentTrackingPage)}
+                    href={trackingPageHref(pageNumber)}
+                    key={pageNumber}
+                  >
+                    {pageNumber}
+                  </Link>
+                ))}
+                <Link
+                  aria-disabled={currentTrackingPage === totalTrackingPages}
+                  aria-label="หน้าถัดไป"
+                  className={trackingPaginationArrowClass(currentTrackingPage === totalTrackingPages)}
+                  href={trackingPageHref(Math.min(totalTrackingPages, currentTrackingPage + 1))}
+                >
+                  <ChevronRight size={16} />
+                </Link>
+              </div>
+            </nav>
+          ) : null}
         </section>
       </div>
     </AppShell>
   );
+}
+
+function trackingPaginationPageClass(isActive: boolean) {
+  return [
+    "inline-flex size-9 items-center justify-center rounded-xl text-sm font-extrabold transition",
+    isActive
+      ? "bg-[var(--primary)] text-white shadow-sm"
+      : "border border-[var(--line)] bg-[var(--surface)] text-[var(--ink)] hover:bg-[var(--soft)]",
+  ].join(" ");
+}
+
+function trackingPaginationArrowClass(isDisabled: boolean) {
+  return [
+    "inline-flex size-9 items-center justify-center rounded-xl border border-[var(--line)] bg-[var(--surface)] text-[var(--ink)] transition hover:bg-[var(--soft)]",
+    isDisabled ? "pointer-events-none opacity-45" : "",
+  ].join(" ");
 }
 
 function TrackingStat({

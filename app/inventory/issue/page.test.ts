@@ -11,6 +11,10 @@ describe("Inventory issue page", () => {
     expect(source).toContain("TrackingStat");
     expect(source).toContain("IssueProgress");
     expect(source).toContain("filteredIssues");
+    expect(source).toContain("const trackingPageSize = 5");
+    expect(source).toContain("pagedFilteredIssues.map");
+    expect(source).toContain("Issue tracking pagination");
+    expect(source).toContain('params.set("trackingPage", String(page))');
   });
 
   it("renders the latest issue list as compact two-line rows", () => {

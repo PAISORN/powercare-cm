@@ -80,6 +80,20 @@ type Snapshot = {
   works: Record<string, unknown>[];
   statusHistory: Record<string, unknown>[];
   sequences: Record<string, unknown>[];
+  storeCategories: Record<string, unknown>[];
+  stores: Record<string, unknown>[];
+  sparePartCategories: Record<string, unknown>[];
+  sparePartTypes: Record<string, unknown>[];
+  spareParts: Record<string, unknown>[];
+  storeApplicableZones: Record<string, unknown>[];
+  sparePartSequences: Record<string, unknown>[];
+  storeIssueSequences: Record<string, unknown>[];
+  storeStocks: Record<string, unknown>[];
+  stockMovements: Record<string, unknown>[];
+  receives: Record<string, unknown>[];
+  receiveItems: Record<string, unknown>[];
+  issues: Record<string, unknown>[];
+  issueItems: Record<string, unknown>[];
 };
 
 function sqliteUrl(filePath: string) {
@@ -88,6 +102,14 @@ function sqliteUrl(filePath: string) {
 
 function asDate(value: unknown) {
   return value == null ? null : new Date(String(value));
+}
+
+function withDates(row: Record<string, unknown>, fields: string[]) {
+  const result = { ...row };
+  for (const field of fields) {
+    if (result[field] != null) result[field] = asDate(result[field]);
+  }
+  return result;
 }
 
 function requireFile(filePath: string, label: string) {
@@ -307,22 +329,30 @@ async function main() {
     })),
   });
 
-  const activeZones = snapshot.zones
-    .filter((row) => Boolean(row.active))
-    .sort(
-      (left, right) =>
-        storeZoneRank(left.name) - storeZoneRank(right.name) ||
-        String(left.name).localeCompare(String(right.name), "en"),
-    );
-  if (activeZones.length) {
+  const activeZones = snapshot.zones.filter((row) => Boolean(row.active));
+  if (snapshot.storeApplicableZones.length) {
     await target.storeApplicableZone.createMany({
-      data: activeZones.map((row, index) => ({
+      data: snapshot.storeApplicableZones.map((row) => ({
+        ...withDates(row, ["createdAt", "updatedAt"]),
         organizationId: organization.id,
         plantId: plant.id,
-        zoneId: String(row.id),
-        code: String(index + 1).padStart(2, "0"),
-        active: true,
-      })),
+      })) as never,
+    });
+  } else if (activeZones.length) {
+    await target.storeApplicableZone.createMany({
+      data: activeZones
+        .sort(
+          (left, right) =>
+            storeZoneRank(left.name) - storeZoneRank(right.name) ||
+            String(left.name).localeCompare(String(right.name), "en"),
+        )
+        .map((row, index) => ({
+          organizationId: organization.id,
+          plantId: plant.id,
+          zoneId: String(row.id),
+          code: String(index + 1).padStart(2, "0"),
+          active: true,
+        })),
     });
   }
 
@@ -350,6 +380,65 @@ async function main() {
   if (userCategoryRows.length) await target.userCategory.createMany({ data: userCategoryRows });
 
   const memberIds = new Set(snapshot.users.map((row) => String(row.id)));
+
+  await target.storeCategory.createMany({
+    data: snapshot.storeCategories.map((row) => ({
+      ...withDates(row, ["createdAt", "updatedAt"]),
+      organizationId: organization.id,
+      plantId: plant.id,
+    })) as never,
+  });
+  await target.store.createMany({
+    data: snapshot.stores.map((row) => ({
+      ...withDates(row, ["createdAt", "updatedAt"]),
+      organizationId: organization.id,
+      plantId: plant.id,
+    })) as never,
+  });
+  await target.sparePartCategory.createMany({
+    data: snapshot.sparePartCategories.map((row) => ({
+      ...withDates(row, ["createdAt", "updatedAt"]),
+      organizationId: organization.id,
+      plantId: plant.id,
+    })) as never,
+  });
+  await target.sparePartType.createMany({
+    data: snapshot.sparePartTypes.map((row) => ({
+      ...withDates(row, ["createdAt", "updatedAt"]),
+      organizationId: organization.id,
+      plantId: plant.id,
+    })) as never,
+  });
+  await target.sparePart.createMany({
+    data: snapshot.spareParts.map((row) => {
+      const { storageZoneId: _productionOnlyStorageZoneId, ...supportedRow } = row;
+      return {
+        ...withDates(supportedRow, ["createdAt", "updatedAt"]),
+        organizationId: organization.id,
+        plantId: plant.id,
+      };
+    }) as never,
+  });
+  await target.sparePartSequence.createMany({
+    data: snapshot.sparePartSequences.map((row) => ({
+      ...withDates(row, ["createdAt", "updatedAt"]),
+      plantId: plant.id,
+    })) as never,
+  });
+  await target.storeIssueSequence.createMany({
+    data: snapshot.storeIssueSequences.map((row) => ({
+      ...withDates(row, ["createdAt", "updatedAt"]),
+      plantId: plant.id,
+    })) as never,
+  });
+  await target.storeStock.createMany({
+    data: snapshot.storeStocks.map((row) => ({
+      ...withDates(row, ["updatedAt"]),
+      organizationId: organization.id,
+      plantId: plant.id,
+    })) as never,
+  });
+
   await target.cmWork.createMany({
     data: snapshot.works.map((row) => ({
       id: String(row.id),
@@ -410,6 +499,44 @@ async function main() {
       })),
     });
   }
+
+  await target.sparePartReceive.createMany({
+    data: snapshot.receives.map((row) => ({
+      ...withDates(row, ["receivedAt", "createdAt", "updatedAt"]),
+      organizationId: organization.id,
+      plantId: plant.id,
+      receivedById: row.receivedById != null && memberIds.has(String(row.receivedById)) ? row.receivedById : siteAdmin.id,
+    })) as never,
+  });
+  await target.sparePartReceiveItem.createMany({ data: snapshot.receiveItems as never });
+  await target.sparePartIssue.createMany({
+    data: snapshot.issues.map((row) => ({
+      ...withDates(row, [
+        "requestedAt",
+        "engineerApprovedAt",
+        "issuedAt",
+        "rejectedAt",
+        "createdAt",
+        "updatedAt",
+      ]),
+      organizationId: organization.id,
+      plantId: plant.id,
+      requesterUserId:
+        row.requesterUserId != null && memberIds.has(String(row.requesterUserId)) ? row.requesterUserId : null,
+      engineerId: row.engineerId != null && memberIds.has(String(row.engineerId)) ? row.engineerId : null,
+      storeOfficerId:
+        row.storeOfficerId != null && memberIds.has(String(row.storeOfficerId)) ? row.storeOfficerId : null,
+    })) as never,
+  });
+  await target.sparePartIssueItem.createMany({ data: snapshot.issueItems as never });
+  await target.stockMovement.createMany({
+    data: snapshot.stockMovements.map((row) => ({
+      ...withDates(row, ["occurredAt", "createdAt"]),
+      organizationId: organization.id,
+      plantId: plant.id,
+      actorId: row.actorId != null && memberIds.has(String(row.actorId)) ? row.actorId : siteAdmin.id,
+    })) as never,
+  });
 
   await target.siteAdminPermission.createMany({
     data: SITE_ADMIN_CONFIGURABLE_PERMISSIONS.map((permissionKey) => ({
@@ -479,8 +606,15 @@ async function main() {
     throw new Error("CM synchronization count mismatch.");
   }
   if (importedWorksOutsideScope) throw new Error("CM scope verification failed.");
-  if (counts.stores || counts.spareParts || counts.stocks || counts.stockMovements || counts.issues || counts.receives) {
-    throw new Error("Inventory test data was not fully reset.");
+  if (
+    counts.stores !== snapshot.stores.length ||
+    counts.spareParts !== snapshot.spareParts.length ||
+    counts.stocks !== snapshot.storeStocks.length ||
+    counts.stockMovements !== snapshot.stockMovements.length ||
+    counts.issues !== snapshot.issues.length ||
+    counts.receives !== snapshot.receives.length
+  ) {
+    throw new Error("Inventory synchronization count mismatch.");
   }
 
   await target.$disconnect();

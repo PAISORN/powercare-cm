@@ -309,28 +309,7 @@ export function IssueRequestForm({
       </section>
 
       <section className={singleCard ? "overflow-visible border-t border-[var(--line)]" : "overflow-visible rounded-2xl border border-[var(--line)] bg-[var(--surface)] shadow-sm"}>
-          <SectionHeading
-            action={(
-              <div className="flex flex-wrap gap-2">
-                {publicRequester ? (
-                  <SparePartBarcodeScanner
-                    onSelect={selectScannedStock}
-                    options={stocks.map((stock) => ({
-                      stockKey: `${stock.storeId}:${stock.sparePartId}`,
-                      itemCode: stock.itemCode,
-                      sparePartCode: stock.sparePartCode,
-                      sparePartName: stock.sparePartName,
-                    }))}
-                  />
-                ) : null}
-                <button className={secondaryButtonClass} onClick={addLine} type="button">
-                  <Plus size={17} /> เพิ่มรายการ
-                </button>
-              </div>
-            )}
-            icon={<ShoppingCart size={19} />}
-            title="รายการอะไหล่"
-          />
+          <SectionHeading icon={<ShoppingCart size={19} />} title="รายการอะไหล่" />
 
           <div className="grid gap-3 border-b border-[var(--line)] bg-[var(--soft)]/65 p-4 sm:grid-cols-2 2xl:grid-cols-3">
             <FilterSelect label="คลังอะไหล่" options={filterOptions.stores} value={filters.store} onChange={(value) => setFilters((current) => ({ ...current, store: value }))} />
@@ -403,6 +382,22 @@ export function IssueRequestForm({
                   </div>
                 );
               })}
+            </div>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {publicRequester ? (
+                <SparePartBarcodeScanner
+                  onSelect={selectScannedStock}
+                  options={stocks.map((stock) => ({
+                    stockKey: `${stock.storeId}:${stock.sparePartId}`,
+                    itemCode: stock.itemCode,
+                    sparePartCode: stock.sparePartCode,
+                    sparePartName: stock.sparePartName,
+                  }))}
+                />
+              ) : null}
+              <button className={secondaryButtonClass} onClick={addLine} type="button">
+                <Plus size={17} /> เพิ่มรายการ
+              </button>
             </div>
           </div>
       </section>

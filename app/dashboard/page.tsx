@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { AlertTriangle, BarChart3, CalendarDays, CheckCircle2, CircleDot, ClipboardList, Factory, Flame, Gauge, Wrench } from "lucide-react";
+import { AlertTriangle, Archive, BarChart3, CalendarDays, CheckCircle2, CircleDot, ClipboardList, Factory, Flame, Gauge, Wrench } from "lucide-react";
 import { AppShell } from "../../components/app-shell";
 import { DashboardFilterBar } from "../../components/dashboard-filter-bar";
 import { OrganizationHeroLogo } from "../../components/organization-hero-logo";
@@ -42,6 +42,14 @@ const inProcessStatuses = [
   WorkStatus.WAITING_TO_CLOSE,
   WorkStatus.RETURNED_FOR_CORRECTION,
 ];
+const activeBreakdownStatuses = new Set<WorkStatus>([
+  WorkStatus.WAITING_TO_CLAIM,
+  WorkStatus.CLAIMED,
+  WorkStatus.IN_PROGRESS,
+  WorkStatus.BACKLOG_SHUTDOWN,
+  WorkStatus.WAITING_TO_CLOSE,
+  WorkStatus.RETURNED_FOR_CORRECTION,
+]);
 
 type DashboardSearchParams = {
   category?: string;
@@ -84,6 +92,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   }
   const statusCountByKey = new Map<WorkStatus, number>(summary.byStatus.map((item) => [item.status as WorkStatus, item.count]));
   const statusRows = Object.values(WorkStatus).map((status) => ({
+    status,
     label: statusLabels[status],
     value: statusCountByKey.get(status) ?? 0,
     color: statusColors[status],
@@ -94,6 +103,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const canceledCount = statusCountByKey.get(WorkStatus.CANCELED) ?? 0;
   const inProcessCount = inProcessStatuses.reduce((sum, status) => sum + (statusCountByKey.get(status) ?? 0), 0);
   const waitingCloseCount = statusCountByKey.get(WorkStatus.WAITING_TO_CLOSE) ?? 0;
+  const recentMonthlyTrend = summary.monthlyTrend.slice(-6);
   const categoryTotal = summary.byCategory.reduce((sum, row) => sum + row.count, 0);
   const topCategory = [...summary.byCategory].sort((a, b) => b.count - a.count)[0];
   const topCategoryPercent = topCategory && categoryTotal > 0 ? Math.round((topCategory.count / categoryTotal) * 100) : 0;
@@ -123,7 +133,9 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         </div>
       </section>
 
-      <DashboardFilterBar activeCategory={activeCategoryFilter} activeDateFilter={hasExplicitDateFilter ? activeDateFilterInput : undefined} clearHref="/dashboard" />
+      <section className="relative z-20 -mt-7">
+        <DashboardFilterBar activeCategory={activeCategoryFilter} activeDateFilter={hasExplicitDateFilter ? activeDateFilterInput : undefined} clearHref="/dashboard" />
+      </section>
 
       <section className="mt-6 grid gap-5 md:grid-cols-2 xl:grid-cols-5">
         <KpiCard href={buildWorkHref(workCategoryParam)} group="ALL_CM" unreadCount={unreadSummary.total} readAction={markDashboardGroupReadAction} label="Total CM" value={String(summary.total)} note="งานซ่อมทั้งหมด" icon={<ClipboardList size={34} />} color="#3b82f6" />
@@ -133,19 +145,13 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         <KpiCard href={buildWorkHref(workCategoryParam, { status: WorkStatus.CANCELED })} group="CANCELED" unreadCount={unreadSummary.canceled} readAction={markDashboardGroupReadAction} label="Cancel" value={String(canceledCount)} note="ยกเลิก" icon={<AlertTriangle size={34} />} color="#8b5cf6" />
       </section>
 
-      <section className="mt-6">
-        <Panel title="Monthly CM Trend" icon={<BarChart3 size={22} className="text-[#14b8a6]" />} aside={hasExplicitDateFilter ? `${summary.monthlyTrend.length}-month view` : "Latest 12 months"}>
-          <MonthlyTrendPanel rows={summary.monthlyTrend} />
-        </Panel>
-      </section>
-
-      <section className="mt-6 grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
+      <section className="mt-6 grid gap-6 xl:grid-cols-[2fr_3fr]">
         <Panel title="Status Overview" icon={<CircleDot size={22} className="text-[#3b82f6]" />} aside={hasExplicitDateFilter ? `${statusTotal} jobs` : "Current year"}>
           <StatusOverviewContent rows={statusRows} total={statusTotal} />
         </Panel>
 
-        <Panel title="Report เมื่อวาน" icon={<CalendarDays size={22} className="text-[#14b8a6]" />} aside={formatDashboardIsoDate(summary.yesterdayReport.date)}>
-          <YesterdayCategoryReport report={summary.yesterdayReport} />
+        <Panel title="Monthly CM Trend" icon={<BarChart3 size={22} className="text-[#14b8a6]" />} aside={`${recentMonthlyTrend.length}-month view`}>
+          <MonthlyTrendPanel rows={recentMonthlyTrend} />
         </Panel>
       </section>
 
@@ -187,6 +193,32 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         </Panel>
       </section>
 
+      <section className="mt-6 grid gap-6 xl:grid-cols-2">
+        <Panel title="รายการงาน Backlog Shutdown" icon={<Archive size={22} className="text-[#78716c]" />} aside="ล่าสุด 5 งาน">
+          <div className="mt-4 divide-y divide-[var(--line)]">
+            {summary.backlogWorks.length ? (
+              summary.backlogWorks.map((work) => (
+                <Link className="grid gap-2 py-3 transition hover:bg-[var(--soft)] sm:grid-cols-[1fr_auto] sm:px-2" href={`/work/${work.id}`} key={work.id}>
+                  <span className="min-w-0">
+                    <strong className="block">{work.number}</strong>
+                    <span className="mt-1 block truncate text-sm text-[var(--muted)]">
+                      {work.problemTitle} · {work.zone.name}
+                    </span>
+                  </span>
+                  <StatusBadge status={work.status} />
+                </Link>
+              ))
+            ) : (
+              <p className="py-4 text-sm text-[var(--muted)]">ไม่มีงาน Backlog Shutdown</p>
+            )}
+          </div>
+        </Panel>
+
+        <Panel title="Report เมื่อวาน" icon={<CalendarDays size={22} className="text-[#14b8a6]" />} aside={formatDashboardIsoDate(summary.yesterdayReport.date)}>
+          <YesterdayCategoryReport report={summary.yesterdayReport} />
+        </Panel>
+      </section>
+
       <section className="hidden">
         <MiniPanel label="Category Split" value={`${topCategoryPercent}%`} note={topCategory ? `${topCategory.categoryName} work share` : "No category data"} color="#f59e0b" />
         <MiniPanel label="Average Close Time" value={`${summary.avgCloseDays}d`} note="จากงานที่ปิดแล้ว" color="#14b8a6" />
@@ -223,7 +255,7 @@ function KpiCard({ href, group, unreadCount, readAction, label, value, note, ico
 
 function Panel({ title, icon, aside, children }: { title: string; icon: React.ReactNode; aside: string; children: React.ReactNode }) {
   return (
-    <section className="min-w-0 rounded-3xl border border-[var(--line)] bg-[var(--surface)] p-4 shadow-[var(--shadow)] sm:p-6">
+    <section className="flex h-full min-w-0 flex-col rounded-3xl border border-[var(--line)] bg-[var(--surface)] p-4 shadow-[var(--shadow)] sm:p-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="flex min-w-0 items-center gap-3 text-xl font-bold sm:text-2xl">
           {icon}
@@ -295,29 +327,47 @@ function buildWorkHref(categoryParam: string, filters: { status?: WorkStatus; st
   return query ? `/work?${query}` : "/work";
 }
 
-function StatusOverviewContent({ rows, total }: { rows: { label: string; value: number; color: string }[]; total: number }) {
+function StatusOverviewContent({
+  rows,
+  total,
+}: {
+  rows: { status: WorkStatus; label: string; value: number; color: string }[];
+  total: number;
+}) {
   const visibleRows = rows.filter((row) => row.value > 0);
   const legendRows = visibleRows.length ? visibleRows : rows;
+  const activeRows = rows.filter((row) => activeBreakdownStatuses.has(row.status));
+  const activeTotal = activeRows.reduce((sum, row) => sum + row.value, 0);
 
   return (
-    <div className="mt-5 grid min-h-[560px] items-center gap-7 lg:grid-cols-[minmax(240px,0.54fr)_minmax(460px,1fr)] xl:grid-cols-[minmax(260px,0.56fr)_minmax(520px,1fr)]">
-      <div className="grid gap-2.5">
+    <div className="mt-5 flex min-h-[470px] flex-1 flex-col">
+      <div className="grid items-center gap-2 sm:grid-cols-[minmax(0,5fr)_minmax(200px,2fr)]">
+        <div className="rounded-2xl bg-[var(--soft)]/55 p-3 text-center">
+          <h3 className="text-sm font-extrabold">สถานะทั้งหมด</h3>
+          <Donut variant="overviewPrimary" rows={rows} total={total} centerLabel="Total CM" />
+        </div>
+        <div className="rounded-2xl bg-[var(--soft)]/55 p-3 text-center">
+          <h3 className="text-xs font-extrabold">งานที่ยังต้องดำเนินการ</h3>
+          <Donut variant="overviewSecondary" rows={activeRows} total={activeTotal} centerLabel="Active Work" />
+        </div>
+      </div>
+      <div className="mt-auto grid grid-cols-2 gap-x-4 gap-y-3 pt-2 md:grid-cols-4">
         {legendRows.map((row, index) => {
           const percent = total === 0 ? 0 : Math.round((row.value / total) * 100);
           return (
-            <div key={`${row.label}-${index}`} className="flex min-w-0 items-center justify-between gap-2 rounded-xl bg-[var(--soft)] px-2.5 py-2 text-xs font-semibold">
-              <span className="flex min-w-0 items-center gap-2.5">
-                <span className="grid h-6 w-6 shrink-0 place-items-center rounded-lg bg-[var(--surface)]">
-                  <i className="h-3 w-3 rounded-sm" style={{ backgroundColor: row.color }} />
-                </span>
+            <div key={`${row.label}-${index}`} className="min-w-0 text-xs">
+              <div className="flex min-w-0 items-center gap-2 font-semibold text-[var(--muted)]">
+                <i className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: row.color }} />
                 <span className="min-w-0 truncate">{row.label}</span>
-              </span>
-              <span className="shrink-0 text-xs font-black tabular-nums text-[var(--ink)]">{percent}%</span>
+              </div>
+              <div className="mt-0.5 flex items-baseline gap-2 pl-[18px] tabular-nums">
+                <strong className="text-sm font-black text-[var(--ink)]">{row.value} งาน</strong>
+                <span className="font-bold text-[var(--muted)]">{percent}%</span>
+              </div>
             </div>
           );
         })}
       </div>
-      <Donut rows={rows} total={total} centerLabel="Total CM" />
     </div>
   );
 }
@@ -372,10 +422,20 @@ function YesterdayMetric({ label, value, color }: { label: string; value: number
   );
 }
 
-function Donut({ rows, total, centerLabel }: { rows: { label: string; value: number; color: string }[]; total: number; centerLabel: string }) {
+function Donut({
+  rows,
+  total,
+  centerLabel,
+  variant = "default",
+}: {
+  rows: { label: string; value: number; color: string }[];
+  total: number;
+  centerLabel: string;
+  variant?: "default" | "overviewPrimary" | "overviewSecondary";
+}) {
   const size = 260;
   const center = size / 2;
-  const radius = 86;
+  const radius = variant === "overviewPrimary" ? 96 : 86;
   const strokeWidth = 30;
   const circumference = 2 * Math.PI * radius;
   const gap = 5;
@@ -393,9 +453,24 @@ function Donut({ rows, total, centerLabel }: { rows: { label: string; value: num
       offset += segmentLength;
       return segment;
     });
+  const sizeClass =
+    variant === "overviewPrimary"
+      ? "aspect-square h-auto w-[400px]"
+      : variant === "overviewSecondary"
+        ? "aspect-square h-auto w-[200px]"
+        : "h-[340px] w-[340px] sm:h-[500px] sm:w-[500px] xl:h-[560px] xl:w-[560px]";
+  const valueClass = variant === "overviewPrimary" ? "text-5xl" : variant === "overviewSecondary" ? "text-3xl" : "text-5xl sm:text-6xl";
+  const labelClass = "text-sm";
+  const widthConstraintClass = variant === "overviewPrimary" ? "" : "max-w-full";
+  const alignmentClass =
+    variant === "overviewPrimary"
+      ? "mx-auto sm:-ml-6 sm:mr-auto"
+      : variant === "overviewSecondary"
+        ? "mx-auto sm:-mr-4 sm:ml-auto"
+        : "mx-auto";
 
   return (
-    <div className="cm-donut-motion relative mx-auto grid h-[340px] w-[340px] max-w-full place-items-center sm:h-[500px] sm:w-[500px] xl:h-[560px] xl:w-[560px]">
+    <div className={`cm-donut-motion relative grid place-items-center ${alignmentClass} ${widthConstraintClass} ${sizeClass}`}>
       <svg aria-hidden="true" className="h-full w-full -rotate-90" viewBox={`0 0 ${size} ${size}`}>
         <circle cx={center} cy={center} fill="none" r={radius} stroke="var(--soft)" strokeWidth={strokeWidth} />
         {segments.length ? (
@@ -419,8 +494,8 @@ function Donut({ rows, total, centerLabel }: { rows: { label: string; value: num
       </svg>
       <div className="absolute inset-0 z-10 grid place-items-center text-center">
         <span className="cm-donut-core">
-          <small className="block text-sm font-semibold text-[var(--muted)]">{centerLabel}</small>
-          <strong className="block text-5xl font-black sm:text-6xl">{total}</strong>
+          <small className={`block font-semibold text-[var(--muted)] ${labelClass}`}>{centerLabel}</small>
+          <strong className={`block font-black ${valueClass}`}>{total}</strong>
         </span>
       </div>
     </div>

@@ -7,6 +7,11 @@ describe("Activities page", () => {
     const source = readFileSync("app/activities/page.tsx", "utf8");
 
     expect(source).toContain("My Activities");
+    expect(source).toContain("activityFeedToneClass");
+    expect(source).toContain("from-blue-500 to-blue-600");
+    expect(source).toContain("from-violet-500 to-purple-600");
+    expect(source).toContain("activity-board-card group relative block min-h-36");
+    expect(source).toContain("border-white/30 bg-white/15 text-white");
     expect(source).toContain("requireUser");
     expect(source).toContain("WAITING_TO_CLOSE");
     expect(source).toContain("CLAIMED");
@@ -27,7 +32,6 @@ describe("Activities page", () => {
     const source = readFileSync("app/activities/page.tsx", "utf8");
 
     expect(source).toContain("งานที่ต้องดำเนินการ");
-    expect(source).toContain("ควรอัปเดตงาน");
     expect(source).toContain("งานรอตรวจรับ/ปิดงาน");
     expect(source).toContain("กิจกรรม Store / ใบเบิกอะไหล่");
     expect(source).not.toContain("à¸");
@@ -71,19 +75,14 @@ describe("Activities page", () => {
     expect(source).not.toContain("storeSections.map((section)");
   });
 
-  it("lets users switch all activities between the current list and a visual card view", () => {
+  it("shows all activities as a simple list without summary metrics or a card-view toggle", () => {
     const source = readFileSync("app/activities/page.tsx", "utf8");
 
-    expect(source).toContain("activityView");
-    expect(source).toContain("ActivityViewToggle");
-    expect(source).toContain("LayoutGrid");
-    expect(source).toContain("List view");
-    expect(source).toContain("Card view");
-    expect(source).toContain("ActivityBoardView");
-    expect(source).toContain("activity-board-toolbar");
-    expect(source).toContain("activity-board-card");
-    expect(source).toContain("activity-board-tabs");
-    expect(source).toContain("activityBoardRedirect");
+    expect(source).toContain('const activityView: ActivityView = "current"');
+    expect(source).toContain("divide-y divide-[var(--line)]");
+    expect(source).toContain("activity-row-two-line group transition");
+    expect(source).not.toContain("ActivityViewToggle");
+    expect(source).not.toContain("<ActivityMetric");
   });
 
   it("opens activity work directly in a right-side action drawer instead of navigating away", () => {

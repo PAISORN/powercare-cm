@@ -22,6 +22,12 @@ describe("Spare parts page", () => {
     expect(source).toContain("ใช้เฉพาะตอนเบิกอะไหล่");
     expect(source).not.toContain("zoneAssignments:");
     expect(source).toContain("Spare Parts Master Data");
+    expect(source).toContain("<details");
+    expect(source).toContain("group-open:hidden");
+    expect(source).toContain("ข้อมูลพื้นฐานและรหัสอ้างอิง");
+    expect(source).toContain("หมวดอะไหล่");
+    expect(source).toContain("เพิ่มอะไหล่");
+    expect(source).not.toContain('shadow-[var(--shadow)]" open');
     expect(source).toContain("saveSparePartCategory");
     expect(source).toContain("saveSparePartType");
     expect(source).not.toContain("saveStorageZone");

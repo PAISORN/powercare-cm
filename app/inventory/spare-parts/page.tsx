@@ -1,6 +1,7 @@
 import {
   Boxes,
   Building2,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
   CirclePlus,
@@ -417,8 +418,8 @@ export default async function SparePartsPage({ searchParams }: { searchParams: P
         </section>
 
         {(canManageParts || canManageStore) && plantConfig.inventoryCode ? (
-          <section className="rounded-3xl border border-[var(--line)] bg-[var(--surface)] p-4 shadow-[var(--shadow)] sm:p-5">
-            <div className="flex flex-wrap items-start justify-between gap-3">
+          <details className="group rounded-3xl border border-[var(--line)] bg-[var(--surface)] shadow-[var(--shadow)]">
+            <summary className="flex cursor-pointer list-none flex-wrap items-start justify-between gap-3 rounded-3xl p-4 outline-none transition hover:bg-[var(--soft)] focus-visible:ring-2 focus-visible:ring-[var(--primary)] sm:p-5 [&::-webkit-details-marker]:hidden">
               <div>
                 <p className="text-xs font-extrabold uppercase text-[var(--primary)]">Spare Parts Master Data</p>
                 <h2 className="mt-1 text-xl font-extrabold">ข้อมูลพื้นฐานและรหัสอ้างอิง</h2>
@@ -426,12 +427,19 @@ export default async function SparePartsPage({ searchParams }: { searchParams: P
                   รหัสเหล่านี้ใช้สร้างรหัสรายการเบิกอัตโนมัติ แก้ไขได้ตาม Site และปิดใช้งานข้อมูลเดิมได้
                 </p>
               </div>
-              <span className="rounded-full bg-[var(--soft)] px-3 py-1.5 text-xs font-bold text-[var(--muted)]">
-                Site: {scope.plant.name}
+              <span className="inline-flex items-center gap-2">
+                <span className="rounded-full bg-[var(--soft)] px-3 py-1.5 text-xs font-bold text-[var(--muted)]">
+                  Site: {scope.plant.name}
+                </span>
+                <span className={collapseButtonClass}>
+                  <span className="group-open:hidden">ขยาย</span>
+                  <span className="hidden group-open:inline">ย่อ</span>
+                  <ChevronDown className="transition-transform duration-200 group-open:rotate-180" size={18} />
+                </span>
               </span>
-            </div>
+            </summary>
 
-            <div className="mt-4 grid gap-4 xl:grid-cols-2">
+            <div className="grid gap-4 border-t border-[var(--line)] p-4 sm:p-5 xl:grid-cols-2">
               <MasterPanel icon={<Warehouse size={18} />} title="คลังอะไหล่" subtitle="รหัสคลัง เช่น SP01">
                 {canManageStore ? (
                   <form action={addStore} className="grid gap-2 sm:grid-cols-[120px_1fr_1fr_auto]">
@@ -543,16 +551,24 @@ export default async function SparePartsPage({ searchParams }: { searchParams: P
               </MasterPanel>
 
             </div>
-          </section>
+          </details>
         ) : null}
 
         {canManageParts && plantConfig.inventoryCode ? (
           <section className="grid gap-4 xl:grid-cols-[0.8fr_1.9fr]">
-            <aside className="flex min-h-[520px] flex-col rounded-3xl border border-[var(--line)] bg-[var(--surface)] p-4 shadow-[var(--shadow)] sm:p-5">
-              <div className="flex items-center gap-2">
-                <Tags className="text-[var(--primary)]" size={22} />
-                <h2 className="text-xl font-extrabold">หมวดอะไหล่</h2>
-              </div>
+            <details className="group rounded-3xl border border-[var(--line)] bg-[var(--surface)] shadow-[var(--shadow)]">
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-3 rounded-3xl p-4 outline-none transition hover:bg-[var(--soft)] focus-visible:ring-2 focus-visible:ring-[var(--primary)] sm:p-5 [&::-webkit-details-marker]:hidden">
+                <span className="flex items-center gap-2">
+                  <Tags className="text-[var(--primary)]" size={22} />
+                  <span className="text-xl font-extrabold">หมวดอะไหล่</span>
+                </span>
+                <span className={collapseButtonClass}>
+                  <span className="group-open:hidden">ขยาย</span>
+                  <span className="hidden group-open:inline">ย่อ</span>
+                  <ChevronDown className="transition-transform duration-200 group-open:rotate-180" size={18} />
+                </span>
+              </summary>
+              <div className="flex min-h-[430px] flex-col border-t border-[var(--line)] p-4 sm:p-5">
               <p className="mt-2 text-sm text-[var(--muted)]">สรุปรายการแยกตามหมวดที่ตั้งค่าไว้ด้านบน</p>
               <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
                 {categoryRows.map((category, index) => (
@@ -581,14 +597,22 @@ export default async function SparePartsPage({ searchParams }: { searchParams: P
               <p className="mt-auto pt-5 text-xs font-semibold text-[var(--muted)]">
                 รวม {formatQuantity(spareParts.length)} รายการ · มูลค่าอะไหล่ {formatMoney(totalPartValue)}
               </p>
-            </aside>
-
-            <section className="rounded-3xl border border-[var(--line)] bg-[var(--surface)] p-4 shadow-[var(--shadow)] sm:p-5">
-              <div className="flex items-center gap-2">
-                <CirclePlus className="text-[var(--primary)]" size={22} />
-                <h2 className="text-xl font-extrabold">เพิ่มอะไหล่</h2>
               </div>
-              <form action={addSparePart} className="mt-4 grid gap-4 lg:grid-cols-2">
+            </details>
+
+            <details className="group rounded-3xl border border-[var(--line)] bg-[var(--surface)] shadow-[var(--shadow)]">
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-3 rounded-3xl p-4 outline-none transition hover:bg-[var(--soft)] focus-visible:ring-2 focus-visible:ring-[var(--primary)] sm:p-5 [&::-webkit-details-marker]:hidden">
+                <span className="flex items-center gap-2">
+                  <CirclePlus className="text-[var(--primary)]" size={22} />
+                  <span className="text-xl font-extrabold">เพิ่มอะไหล่</span>
+                </span>
+                <span className={collapseButtonClass}>
+                  <span className="group-open:hidden">ขยาย</span>
+                  <span className="hidden group-open:inline">ย่อ</span>
+                  <ChevronDown className="transition-transform duration-200 group-open:rotate-180" size={18} />
+                </span>
+              </summary>
+              <form action={addSparePart} className="grid gap-4 border-t border-[var(--line)] p-4 sm:p-5 lg:grid-cols-2">
                 <AdminScopeHiddenFields scope={scope} />
                 <label className={labelClass}>
                   ชื่ออะไหล่
@@ -670,7 +694,7 @@ export default async function SparePartsPage({ searchParams }: { searchParams: P
                   </button>
                 </div>
               </form>
-            </section>
+            </details>
           </section>
         ) : canManageParts ? (
           <p className="rounded-2xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm font-semibold text-amber-700 dark:text-amber-300">
@@ -1236,6 +1260,8 @@ const primaryButtonClass =
   "inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-[var(--primary)] px-5 font-bold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-[var(--primary-strong)]";
 const secondaryButtonClass =
   "inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl border border-[var(--line)] bg-[var(--soft)] px-5 font-bold text-[var(--ink)] transition hover:-translate-y-0.5 hover:border-[var(--primary)] hover:text-[var(--primary)]";
+const collapseButtonClass =
+  "inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl border border-[var(--line)] bg-[var(--surface)] px-3 text-sm font-extrabold text-[var(--ink)] shadow-sm transition hover:border-[var(--primary)] hover:text-[var(--primary)]";
 const compactPrimaryButtonClass =
   "inline-flex min-h-12 items-center justify-center rounded-2xl bg-[var(--primary)] px-4 font-bold text-white transition hover:-translate-y-0.5 hover:bg-[var(--primary-strong)]";
 const compactInputClass =

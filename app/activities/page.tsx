@@ -9,8 +9,6 @@ import {
   Building2,
   ClipboardCheck,
   Clock3,
-  LayoutGrid,
-  List,
   ListFilter,
   Search,
   ShoppingCart,
@@ -249,7 +247,7 @@ export default async function ActivitiesPage({
   const user = await requireUser();
   const query = await searchParams;
   const scope = await resolveStorePageScope(user, query);
-  const activityView = query.activityView === "current" ? "current" : "visual";
+  const activityView: ActivityView = "current";
   const actor: Actor = {
     id: user.id,
     role: user.role as Actor["role"],
@@ -405,30 +403,10 @@ export default async function ActivitiesPage({
           </p>
         ) : null}
 
-        <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          <ActivityMetric label="รับผิดชอบอยู่" value={ownedWorks.length} tone="blue" />
-          <ActivityMetric label="ควรอัปเดตงาน" value={progressWorks.length} tone="amber" />
-          <ActivityMetric label="งานรอตรวจรับ/ปิดงาน" value={reviewWorks.length} tone="green" />
-          <ActivityMetric label="กิจกรรม Store" value={totalStoreActivities} tone="purple" />
-        </div>
-
         <section className="reveal-on-scroll mt-6 rounded-3xl border border-[var(--line)] bg-[var(--surface)] p-4 shadow-[var(--shadow)] sm:p-5">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <SectionTitle icon={<Clock3 size={18} />} title="กิจกรรมทั้งหมด" count={combinedActivities.length} />
-            <ActivityViewToggle currentView={activityView} scope={scope} />
-          </div>
+          <SectionTitle icon={<Clock3 size={18} />} title="กิจกรรมทั้งหมด" count={combinedActivities.length} />
           <div className="mt-4">
-            {activityView === "visual" ? (
-              <ActivityBoardView
-                allItems={combinedActivities}
-                filters={activityBoardFilters}
-                items={filteredBoardActivities}
-                scope={scope}
-                selectedKey={selectedItem?.key}
-              />
-            ) : (
-              <UnifiedActivityList items={combinedActivities} scope={scope} selectedKey={selectedItem?.key} />
-            )}
+            <UnifiedActivityList items={combinedActivities} scope={scope} selectedKey={selectedItem?.key} />
           </div>
         </section>
 
@@ -527,42 +505,6 @@ function storeFeedItem(issue: StoreIssueActivity, sectionKey: StoreSectionKey): 
     issue,
     sectionKey,
   };
-}
-
-function ActivityViewToggle({
-  currentView,
-  scope,
-}: {
-  currentView: ActivityView;
-  scope: ActivityScope;
-}) {
-  const options: Array<{ label: string; value: ActivityView }> = [
-    { label: "แบบปัจจุบัน", value: "current" },
-    { label: "แบบการ์ด", value: "visual" },
-  ];
-  return (
-    <div className="inline-flex rounded-2xl border border-[var(--line)] bg-[var(--soft)] p-1 text-sm font-bold">
-      {options.map((option) => {
-        const active = currentView === option.value;
-        const Icon = option.value === "current" ? List : LayoutGrid;
-        return (
-          <Link
-            aria-label={option.value === "current" ? "List view" : "Card view"}
-            className={`inline-flex size-11 items-center justify-center rounded-xl transition ${
-              active
-                ? "bg-[var(--primary)] text-white shadow-sm"
-                : "text-[var(--muted)] hover:bg-[var(--surface)] hover:text-[var(--ink)]"
-            }`}
-            href={activityRedirect(scope, { activityView: option.value })}
-            key={option.value}
-            title={option.value === "current" ? "List view" : "Card view"}
-          >
-            <Icon size={20} />
-          </Link>
-        );
-      })}
-    </div>
-  );
 }
 
 function ActivityBoardView({
@@ -739,11 +681,7 @@ function ActivityBoardCard({
   scope: ActivityScope;
 }) {
   const type = activityBoardType(item);
-  const accentClass = {
-    cm: "from-cyan-400 to-blue-500",
-    review: "from-emerald-400 to-green-500",
-    store: "from-violet-400 to-fuchsia-500",
-  }[type];
+  const toneClass = activityFeedToneClass(item.status, item.kind);
   const iconClass = {
     cm: Wrench,
     review: ClipboardCheck,
@@ -755,20 +693,19 @@ function ActivityBoardCard({
 
   return (
     <Link
-      className={`activity-board-card group relative block overflow-hidden rounded-3xl border bg-[var(--surface)] p-5 text-[var(--ink)] shadow-sm transition duration-300 hover:-translate-y-1 hover:border-[var(--primary)] hover:shadow-[var(--shadow)] ${
-        selected ? "border-[var(--primary)] ring-2 ring-[var(--primary)]/20" : "border-[var(--line)]"
+      className={`activity-board-card group relative block min-h-36 overflow-hidden rounded-2xl border p-5 shadow-sm transition duration-300 hover:-translate-y-1 hover:shadow-[var(--shadow)] ${toneClass} ${
+        selected ? "ring-2 ring-white/80 ring-offset-2 ring-offset-[var(--bg)]" : ""
       }`}
       href={selectionHref}
     >
-      <span className={`absolute inset-y-0 left-0 w-1.5 bg-gradient-to-b ${accentClass}`} />
       <div className="grid grid-cols-[64px_minmax(0,1fr)_auto] gap-4">
-        <div className="flex size-14 items-center justify-center rounded-2xl border border-[var(--line)] bg-[var(--soft)] text-[var(--ink)]">
+        <div className="flex size-14 items-center justify-center rounded-2xl border border-white/30 bg-white/15 text-white">
           <Icon size={31} />
         </div>
         <div className="min-w-0">
-          <p className="truncate font-mono text-sm font-semibold text-[var(--muted)]">{item.title}</p>
+          <p className="truncate font-mono text-sm font-semibold text-white/80">{item.title}</p>
           <h3 className="mt-1 line-clamp-2 text-xl font-extrabold leading-tight">{title}</h3>
-          <p className="mt-2 truncate text-sm font-semibold text-[var(--muted)]">
+          <p className="mt-2 truncate text-sm font-semibold text-white/80">
             {scope.plant.name} <span className="mx-2">•</span> {subline}
           </p>
           <p className="hidden">
@@ -777,11 +714,11 @@ function ActivityBoardCard({
           </p>
         </div>
         <div className="flex flex-col items-end justify-between gap-4">
-          <span className={`rounded-xl border px-3 py-1 text-xs font-extrabold ${activityStatusPillClass(item.status, type)}`}>
+          <span className="rounded-xl border border-white/30 bg-white/20 px-3 py-1 text-xs font-extrabold text-white">
             {type === "store" ? "Store" : activityStatusLabel(item.status)}
           </span>
           <span
-            className="inline-flex size-11 items-center justify-center rounded-xl border border-[var(--line)] bg-[var(--soft)] transition group-hover:border-[var(--primary)] group-hover:text-[var(--primary)]"
+            className="inline-flex size-11 items-center justify-center rounded-xl border border-white/30 bg-white/15 text-white transition group-hover:bg-white/25"
           >
             <ArrowRight size={22} />
           </span>
@@ -804,7 +741,7 @@ function UnifiedActivityList({
 }) {
   if (!items.length) return <EmptyState text="ยังไม่มีกิจกรรมที่ต้องดำเนินการ" />;
   return (
-    <div className={variant === "visual" ? "activity-card-view grid gap-3 xl:grid-cols-2" : "grid gap-2"}>
+    <div className={variant === "visual" ? "activity-card-view grid gap-3 xl:grid-cols-2" : "divide-y divide-[var(--line)] border-y border-[var(--line)]"}>
       {items.map((item) => (
         <ActivityFeedRow item={item} key={item.key} scope={scope} selected={selectedKey === item.key} variant={variant} />
       ))}
@@ -824,31 +761,42 @@ function ActivityFeedRow({
   variant?: ActivityView;
 }) {
   const selectionHref = activitySelectionHref(scope, undefined, item.key, "current");
+  const toneClass = activityFeedToneClass(item.status, item.kind);
   const rowClass =
     variant === "visual"
-      ? "activity-card-view group rounded-3xl border border-[var(--line)] bg-[var(--soft)]/70 transition duration-300 hover:-translate-y-1 hover:border-[var(--primary)] hover:shadow-[var(--shadow)]"
-      : "activity-row-two-line group rounded-2xl border border-[var(--line)] bg-[var(--soft)] transition hover:-translate-y-0.5 hover:border-[var(--primary)]";
+      ? `activity-card-view group rounded-3xl border transition duration-300 hover:-translate-y-1 hover:shadow-[var(--shadow)] ${toneClass}`
+      : "activity-row-two-line group transition duration-200 hover:bg-[var(--soft)]";
+  const selectedClass =
+    selected && variant === "visual"
+      ? "border-[var(--primary)] ring-2 ring-[var(--primary)]/20"
+      : selected
+        ? "bg-[var(--primary)]/5"
+        : "";
   return (
     <Link
-      className={`${rowClass} block text-[var(--ink)] ${selected ? "border-[var(--primary)] ring-2 ring-[var(--primary)]/20" : ""}`}
+      className={`${rowClass} ${selectedClass} block text-[var(--ink)]`}
       href={selectionHref}
     >
-      <div className={variant === "visual" ? "grid gap-3 p-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start" : "grid gap-2 p-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center"}>
+      <div className={variant === "visual" ? "grid gap-3 p-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start" : "grid min-h-16 gap-3 px-2 py-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center"}>
         <div className="min-w-0">
           <p className="truncate text-base font-extrabold">{item.title}</p>
-          <p className="mt-1 truncate text-sm text-[var(--muted)]">{item.subtitle}</p>
+          <p className="mt-1 line-clamp-2 text-sm text-[var(--muted)]">{item.subtitle}</p>
           {variant === "visual" ? (
             <p className="hidden">{formatThaiDateTime(item.occurredAt)}</p>
           ) : null}
         </div>
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center justify-between gap-2">
           {item.kind === "work" && item.highlight ? (
             <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-bold text-amber-800">ควรอัปเดต</span>
           ) : null}
           {item.kind === "work" ? <StatusBadge status={item.status} /> : (
             <span className="rounded-full bg-[var(--surface)] px-3 py-1 text-xs font-bold text-[var(--primary)]">Store</span>
           )}
-          <span className="inline-flex size-9 items-center justify-center rounded-xl border border-[var(--line)] bg-[var(--surface)] transition group-hover:border-[var(--primary)] group-hover:text-[var(--primary)]">
+          <span className={`inline-flex size-9 items-center justify-center rounded-xl border transition ${
+            variant === "current"
+              ? "border-[var(--line)] bg-transparent text-[var(--muted)] group-hover:border-[var(--primary)] group-hover:text-[var(--primary)]"
+              : "border-[var(--line)] bg-[var(--surface)] group-hover:border-[var(--primary)] group-hover:text-[var(--primary)]"
+          }`}>
             <ArrowRight size={18} />
           </span>
         </div>
@@ -1030,29 +978,6 @@ function InfoLine({ label, value }: { label: string; value: string }) {
     <div className="grid gap-1 rounded-xl border border-[var(--line)] bg-[var(--surface)] px-3 py-2">
       <span className="text-xs font-bold text-[var(--muted)]">{label}</span>
       <span className="font-extrabold text-[var(--ink)]">{value}</span>
-    </div>
-  );
-}
-
-function ActivityMetric({
-  label,
-  value,
-  tone,
-}: {
-  label: string;
-  value: number;
-  tone: "blue" | "amber" | "green" | "purple";
-}) {
-  const toneClass = {
-    blue: "from-blue-500 to-cyan-500",
-    amber: "from-amber-400 to-orange-500",
-    green: "from-emerald-500 to-teal-500",
-    purple: "from-violet-500 to-fuchsia-500",
-  }[tone];
-  return (
-    <div className={`rounded-3xl bg-gradient-to-br ${toneClass} p-5 text-white shadow-[var(--shadow)]`}>
-      <p className="text-sm font-bold opacity-90">{label}</p>
-      <p className="mt-2 text-4xl font-extrabold">{value}</p>
     </div>
   );
 }
@@ -1380,6 +1305,31 @@ function activityStatusPillClass(status: string, type: ActivityBoardItemType) {
     return "border-cyan-400/35 bg-cyan-500/15 text-cyan-500";
   }
   return "border-amber-400/35 bg-amber-500/15 text-amber-500";
+}
+
+function activityFeedToneClass(status: string, kind: ActivityFeedItem["kind"]) {
+  if (kind === "store") {
+    return "border-violet-400 bg-gradient-to-br from-violet-500 to-purple-600 text-white hover:border-violet-300";
+  }
+  if (status === WorkStatus.NEW) {
+    return "border-blue-400 bg-gradient-to-br from-blue-500 to-blue-600 text-white hover:border-blue-300";
+  }
+  if (status === WorkStatus.WAITING_TO_CLAIM) {
+    return "border-amber-400 bg-gradient-to-br from-amber-400 to-orange-500 text-white hover:border-amber-300";
+  }
+  if (status === WorkStatus.CLAIMED || status === WorkStatus.IN_PROGRESS) {
+    return "border-cyan-400 bg-gradient-to-br from-cyan-500 to-teal-500 text-white hover:border-cyan-300";
+  }
+  if (status === WorkStatus.WAITING_TO_CLOSE || status === WorkStatus.CLOSED) {
+    return "border-emerald-400 bg-gradient-to-br from-emerald-500 to-green-500 text-white hover:border-emerald-300";
+  }
+  if (status === WorkStatus.RETURNED_FOR_CORRECTION) {
+    return "border-rose-400 bg-gradient-to-br from-rose-500 to-red-500 text-white hover:border-rose-300";
+  }
+  if (status === WorkStatus.CANCELED || status === WorkStatus.BACKLOG_SHUTDOWN) {
+    return "border-slate-500 bg-gradient-to-br from-slate-500 to-slate-700 text-white hover:border-slate-400";
+  }
+  return "border-orange-400 bg-gradient-to-br from-orange-500 to-red-500 text-white hover:border-orange-300";
 }
 
 function storeScopeFromActivity(scope: ActivityScope) {

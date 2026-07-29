@@ -163,7 +163,11 @@ export async function loadDashboardSummary(filter?: {
     ...scopeWhere,
     ...categoryWhere,
     ...toCreatedAtWhere(sectionWindows.priority),
-    status: { notIn: [WorkStatus.CLOSED, WorkStatus.CANCELED] },
+    status: { notIn: [WorkStatus.CLOSED, WorkStatus.CANCELED, WorkStatus.BACKLOG_SHUTDOWN] },
+  };
+  const zoneWhere: Prisma.CmWorkWhereInput = {
+    ...summaryWhere,
+    status: { not: WorkStatus.BACKLOG_SHUTDOWN },
   };
   const yesterdayWindow = getPreviousBangkokDayWindow(now);
   const yesterdayCategoryBaseWhere: Prisma.CmWorkWhereInput = {
@@ -187,6 +191,7 @@ export async function loadDashboardSummary(filter?: {
     criticalWorks,
     urgentWorks,
     statusPriorityWorks,
+    backlogWorks,
     latest,
     closedWorks,
     yesterdayNewByCategory,
@@ -196,7 +201,7 @@ export async function loadDashboardSummary(filter?: {
     db.cmWork.count({ where: summaryWhere }),
     db.cmWork.groupBy({ by: ["status"], where: summaryWhere, _count: { _all: true } }),
     db.cmWork.groupBy({ by: ["categoryId"], where: summaryWhere, _count: { _all: true } }),
-    db.cmWork.groupBy({ by: ["zoneId"], where: summaryWhere, _count: { _all: true } }),
+    db.cmWork.groupBy({ by: ["zoneId"], where: zoneWhere, _count: { _all: true } }),
     db.cmWork.groupBy({ by: ["urgency"], where: summaryWhere, _count: { _all: true } }),
     db.cmWork.findMany({ where: trendWhere, select: { createdAt: true, status: true } }),
     db.cmWork.findMany({
@@ -219,6 +224,12 @@ export async function loadDashboardSummary(filter?: {
         status: { in: [WorkStatus.WAITING_TO_CLOSE, WorkStatus.RETURNED_FOR_CORRECTION] },
       },
       orderBy: { createdAt: "asc" },
+      include: priorityInclude,
+    }),
+    db.cmWork.findMany({
+      take: 5,
+      where: { ...summaryWhere, status: WorkStatus.BACKLOG_SHUTDOWN },
+      orderBy: { createdAt: "desc" },
       include: priorityInclude,
     }),
     db.cmWork.findMany({
@@ -301,6 +312,7 @@ export async function loadDashboardSummary(filter?: {
       getSectionTrendMonthCount(sectionWindows.trend, monthlyWorks, now),
     ),
     priorityWorks,
+    backlogWorks,
     latest,
     avgCloseDays: calculateAverageCloseDays(closedWorks),
     yesterdayReport: {
@@ -389,6 +401,43 @@ function reviveDashboardSummary(summary: Awaited<ReturnType<typeof loadDashboard
   return {
     ...summary,
     priorityWorks: summary.priorityWorks.map((work) => ({
+      ...work,
+      createdAt: ensureDate(work.createdAt),
+      claimedAt: ensureNullableDate(work.claimedAt),
+      inProgressAt: ensureNullableDate(work.inProgressAt),
+      waitingToCloseAt: ensureNullableDate(work.waitingToCloseAt),
+      closedAt: ensureNullableDate(work.closedAt),
+      canceledAt: ensureNullableDate(work.canceledAt),
+      statusHistory: work.statusHistory.map((entry) => ({
+        ...entry,
+        changedAt: ensureDate(entry.changedAt),
+      })),
+      claimant: work.claimant
+        ? {
+            ...work.claimant,
+            createdAt: ensureDate(work.claimant.createdAt),
+            updatedAt: ensureDate(work.claimant.updatedAt),
+            profilePhoto: work.claimant.profilePhoto
+              ? {
+                  ...work.claimant.profilePhoto,
+                  uploadedAt: ensureDate(work.claimant.profilePhoto.uploadedAt),
+                  updatedAt: ensureDate(work.claimant.profilePhoto.updatedAt),
+                }
+              : null,
+          }
+        : null,
+      category: {
+        ...work.category,
+        createdAt: ensureDate(work.category.createdAt),
+        updatedAt: ensureDate(work.category.updatedAt),
+      },
+      zone: {
+        ...work.zone,
+        createdAt: ensureDate(work.zone.createdAt),
+        updatedAt: ensureDate(work.zone.updatedAt),
+      },
+    })),
+    backlogWorks: summary.backlogWorks.map((work) => ({
       ...work,
       createdAt: ensureDate(work.createdAt),
       claimedAt: ensureNullableDate(work.claimedAt),
