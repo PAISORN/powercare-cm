@@ -27,6 +27,7 @@ import { AppShell } from "../../../components/app-shell";
 import { AutoSubmitSelect } from "../../../components/auto-submit-select";
 import { ConfirmSubmitButton } from "../../../components/confirm-submit-button";
 import { StockHeaderReplacementController } from "../../../components/stock-header-replacement-controller";
+import { SparePartClassificationFields } from "../../../components/store/spare-part-classification-fields";
 import { db } from "../../../lib/db";
 import { requireUser } from "../../../lib/session";
 import { adminScopeSearchFromFormData } from "../../../modules/admin/admin-site-scope";
@@ -49,6 +50,7 @@ type PageQuery = {
   storeId?: string;
   typeId?: string;
   categoryId?: string;
+  materialGroupId?: string;
   unit?: string;
   stockStatus?: "all" | "available" | "nearMin" | "outOfStock";
   stockAction?: "issue" | "receive" | "adjust";
@@ -89,6 +91,7 @@ async function updateSparePartFromStockAction(formData: FormData) {
       description: String(formData.get("description") ?? ""),
       unit: String(formData.get("unit") ?? ""),
       categoryId: String(formData.get("categoryId") ?? ""),
+      materialGroupId: String(formData.get("materialGroupId") ?? ""),
       typeId: String(formData.get("typeId") ?? ""),
       defaultStoreId: String(formData.get("defaultStoreId") ?? ""),
       minStock: Number(formData.get("minStock") ?? 0),
@@ -289,7 +292,7 @@ export default async function StockPage({ searchParams }: { searchParams: Promis
   const search = query.search?.trim() ?? "";
   const stockStatus = query.stockStatus ?? "all";
 
-  const [stores, categories, sparePartTypes, issueZones, units, stocks] = await Promise.all([
+  const [stores, categories, materialGroups, sparePartTypes, issueZones, units, stocks] = await Promise.all([
     db.store.findMany({
       where: { plantId: scope.plant.id, active: true },
       orderBy: { name: "asc" },
@@ -299,6 +302,11 @@ export default async function StockPage({ searchParams }: { searchParams: Promis
       where: { plantId: scope.plant.id, active: true },
       orderBy: { name: "asc" },
       select: { id: true, name: true, code: true },
+    }),
+    db.sparePartMaterialGroup.findMany({
+      where: { plantId: scope.plant.id, active: true },
+      orderBy: { name: "asc" },
+      select: { id: true, categoryId: true, name: true, code: true },
     }),
     db.sparePartType.findMany({
       where: { plantId: scope.plant.id, active: true },
@@ -326,6 +334,7 @@ export default async function StockPage({ searchParams }: { searchParams: Promis
           active: true,
           ...(query.typeId ? { typeId: query.typeId } : {}),
           ...(query.categoryId ? { categoryId: query.categoryId } : {}),
+          ...(query.materialGroupId ? { materialGroupId: query.materialGroupId } : {}),
           ...(query.unit ? { unit: query.unit } : {}),
           ...(search
             ? {
@@ -353,10 +362,12 @@ export default async function StockPage({ searchParams }: { searchParams: Promis
             latestUnitPrice: true,
             reorderPoint: true,
             categoryId: true,
+            materialGroupId: true,
             typeId: true,
             defaultStoreId: true,
             active: true,
             category: { select: { name: true } },
+            materialGroup: { select: { name: true } },
             type: { select: { code: true, name: true } },
           },
         },
@@ -415,6 +426,7 @@ export default async function StockPage({ searchParams }: { searchParams: Promis
     if (query.storeId) params.set("storeId", query.storeId);
     if (query.typeId) params.set("typeId", query.typeId);
     if (query.categoryId) params.set("categoryId", query.categoryId);
+    if (query.materialGroupId) params.set("materialGroupId", query.materialGroupId);
     if (query.unit) params.set("unit", query.unit);
     if (stockStatus !== "all") params.set("stockStatus", stockStatus);
     if (page > 1) params.set("page", String(page));
@@ -554,17 +566,14 @@ export default async function StockPage({ searchParams }: { searchParams: Promis
                 ))}
               </AutoSubmitSelect>
             </label>
-            <label className={labelClass}>
-              หมวดหมู่
-              <AutoSubmitSelect className={inputClass} defaultValue={query.categoryId ?? ""} name="categoryId">
-                <option value="">ทั้งหมด</option>
-                {categories.map((category) => (
-                  <option key={category.id} value={category.id}>
-                    {category.name}
-                  </option>
-                ))}
-              </AutoSubmitSelect>
-            </label>
+            <SparePartClassificationFields
+              categories={categories}
+              className={inputClass}
+              defaultCategoryId={query.categoryId ?? ""}
+              defaultMaterialGroupId={query.materialGroupId ?? ""}
+              filter
+              groups={materialGroups}
+            />
             <label className={labelClass}>
               หน่วยนับ
               <AutoSubmitSelect className={inputClass} defaultValue={query.unit ?? ""} name="unit">
@@ -853,6 +862,13 @@ export default async function StockPage({ searchParams }: { searchParams: Promis
               <label className={labelClass}>
                 หน่วยนับ
                 <input className={inputClass} defaultValue={editPart.unit} name="unit" required />
+              </label>
+              <label className={labelClass}>
+                กลุ่มอะไหล่/วัสดุ
+                <select className={inputClass} defaultValue={editPart.materialGroupId ?? ""} name="materialGroupId" required>
+                  <option value="" disabled>เลือกกลุ่มอะไหล่/วัสดุ</option>
+                  {materialGroups.map((group) => <option key={group.id} value={group.id}>{group.code} · {group.name}</option>)}
+                </select>
               </label>
               <div className="grid gap-4 sm:grid-cols-3">
                 <label className={labelClass}>

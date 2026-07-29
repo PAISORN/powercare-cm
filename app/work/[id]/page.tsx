@@ -36,6 +36,7 @@ import {
   submitForReview,
 } from "../../../modules/cm-work/cm-work-service";
 import { RoleName, WorkStatus, statusLabels, urgencyLabels, type Actor, type Urgency } from "../../../modules/cm-work/cm-work-types";
+import { needsProgressUpdateReminder } from "../../../modules/cm-work/progress-update-reminder";
 import { buildUserOperationalScope, type OperationalScope } from "../../../modules/organization/user-plant-scope";
 import { readEngineerAssignmentSetting } from "../../../modules/settings/system-settings-service";
 import { createLoggedInStoreIssue } from "../../../modules/store/store-issue-prisma";
@@ -129,6 +130,7 @@ export default async function WorkDetailPage({
           unit: true,
           minStock: true,
           category: { select: { name: true } },
+          materialGroup: { select: { name: true } },
         },
       },
     },
@@ -403,7 +405,8 @@ export default async function WorkDetailPage({
     isClaimant &&
     canUseUserPermission(user, PermissionKey.CREATE_STORE_ISSUE) &&
     (work.status === WorkStatus.CLAIMED || work.status === WorkStatus.IN_PROGRESS || work.status === WorkStatus.RETURNED_FOR_CORRECTION);
-  const shouldUpdateProgress = isClaimant && needsProgressUpdate(work);
+  const latestWorkActivityAt = work.statusHistory.at(-1)?.changedAt ?? null;
+  const shouldUpdateProgress = isClaimant && needsProgressUpdateReminder(work, latestWorkActivityAt);
   const mayAssign = canAssignWork(actor, work, engineerAssignmentEnabled);
   const technicians = mayAssign
     ? await db.user.findMany({
@@ -521,6 +524,7 @@ export default async function WorkDetailPage({
               sparePartCode: stock.sparePart.code,
               sparePartName: stock.sparePart.name,
               sparePartCategoryName: stock.sparePart.category?.name,
+              sparePartMaterialGroupName: stock.sparePart.materialGroup?.name,
               itemCode: stock.sparePart.itemCode,
               stockStatus: buildStoreStockStatus(Number(stock.quantity), Number(stock.sparePart.minStock)),
             }))}
@@ -619,7 +623,7 @@ export default async function WorkDetailPage({
           <div>
             <p className="text-sm font-bold uppercase tracking-wide">Progress Update</p>
             <h2 className="mt-1 text-xl font-bold">อัปเดตงาน</h2>
-            <p className="mt-1 text-sm font-semibold opacity-80">งานนี้รับไว้เกิน 1 วันแล้ว กรุณาบันทึกความคืบหน้าเพื่อให้ทีมเห็นสถานะล่าสุด</p>
+            <p className="mt-1 text-sm font-semibold opacity-80">งานนี้ไม่มีการอัปเดตหรือดำเนินการมาแล้ว 7 วัน กรุณาบันทึกความคืบหน้าเพื่อให้ทีมเห็นสถานะล่าสุด</p>
           </div>
           <textarea name="progressNote" required placeholder="บันทึกความคืบหน้า เช่น รออะไหล่, ตรวจสอบหน้างานแล้ว, นัดหยุดเครื่องเพื่อซ่อม" className="min-h-28 rounded-md border border-amber-200 bg-white p-3 text-black" />
           <button className="w-fit rounded-md bg-amber-600 px-4 py-2 font-bold text-white shadow-sm transition hover:bg-amber-700">บันทึกอัปเดตงาน</button>
@@ -902,12 +906,6 @@ function buildStoreStockStatus(quantity: number, minStock: number) {
   if (quantity <= 0) return "OUT";
   if (quantity <= minStock) return "LOW";
   return "ENOUGH";
-}
-
-function needsProgressUpdate(work: { status: string; claimedAt: Date | null; inProgressAt: Date | null; createdAt: Date }) {
-  if (work.status !== WorkStatus.CLAIMED && work.status !== WorkStatus.IN_PROGRESS) return false;
-  const anchor = work.inProgressAt ?? work.claimedAt ?? work.createdAt;
-  return Date.now() - anchor.getTime() >= 24 * 60 * 60 * 1000;
 }
 
 function buildWorkScopeWhere(scope?: OperationalScope) {

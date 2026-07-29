@@ -24,6 +24,7 @@ import { AppShell } from "../../../components/app-shell";
 import { AutoSubmitSelect } from "../../../components/auto-submit-select";
 import { ConfirmSubmitButton } from "../../../components/confirm-submit-button";
 import { StockHeaderReplacementController } from "../../../components/stock-header-replacement-controller";
+import { SparePartClassificationFields } from "../../../components/store/spare-part-classification-fields";
 import { db } from "../../../lib/db";
 import { requireUser } from "../../../lib/session";
 import { canUseUserPermission, PermissionKey } from "../../../modules/auth/site-admin-permissions";
@@ -31,13 +32,16 @@ import { adminScopeSearchFromFormData } from "../../../modules/admin/admin-site-
 import {
   createSparePart,
   createSparePartCategory,
+  createSparePartMaterialGroup,
   createSparePartType,
   createStore,
   deleteSparePartCategory,
+  deleteSparePartMaterialGroup,
   deleteSparePartType,
   deleteStore,
   updateSparePart,
   updateSparePartCategory,
+  updateSparePartMaterialGroup,
   updateSparePartType,
   updateStore,
   updateStoreApplicableZones,
@@ -53,6 +57,7 @@ type PageQuery = {
   storeId?: string;
   typeId?: string;
   categoryId?: string;
+  materialGroupId?: string;
   unit?: string;
   saved?: string;
   error?: string;
@@ -96,6 +101,34 @@ async function addSparePartType(formData: FormData) {
     name: String(formData.get("name") ?? ""),
   });
   redirect(pageUrl(scope, "part-type"));
+}
+
+async function addSparePartMaterialGroup(formData: FormData) {
+  "use server";
+  const user = await requireUser();
+  const scope = await resolveStorePageScope(user, adminScopeSearchFromFormData(formData));
+  await createSparePartMaterialGroup(user, await toStoreScope(scope), {
+    categoryId: String(formData.get("categoryId") ?? ""),
+    code: String(formData.get("code") ?? ""),
+    name: String(formData.get("name") ?? ""),
+  });
+  redirect(pageUrl(scope, "material-group"));
+}
+
+async function saveSparePartMaterialGroup(formData: FormData) {
+  "use server";
+  const user = await requireUser();
+  const scope = await resolveStorePageScope(user, adminScopeSearchFromFormData(formData));
+  const storeScope = await toStoreScope(scope);
+  const id = String(formData.get("id") ?? "");
+  if (formData.get("intent") === "delete") await deleteSparePartMaterialGroup(user, storeScope, id);
+  else await updateSparePartMaterialGroup(user, storeScope, id, {
+    categoryId: String(formData.get("categoryId") ?? ""),
+    code: String(formData.get("code") ?? ""),
+    name: String(formData.get("name") ?? ""),
+    active: formData.get("active") === "on",
+  });
+  redirect(pageUrl(scope, "material-group-updated"));
 }
 
 async function saveSparePartType(formData: FormData) {
@@ -157,6 +190,7 @@ async function addSparePart(formData: FormData) {
     description: String(formData.get("description") ?? ""),
     unit: String(formData.get("unit") ?? ""),
     categoryId: String(formData.get("categoryId") ?? ""),
+    materialGroupId: String(formData.get("materialGroupId") ?? ""),
     typeId: String(formData.get("typeId") ?? ""),
     defaultStoreId: String(formData.get("defaultStoreId") ?? ""),
     minStock: Number(formData.get("minStock") ?? 0),
@@ -178,6 +212,7 @@ async function updateSparePartAction(formData: FormData) {
     description: String(formData.get("description") ?? ""),
     unit: String(formData.get("unit") ?? ""),
     categoryId: String(formData.get("categoryId") ?? ""),
+    materialGroupId: String(formData.get("materialGroupId") ?? ""),
     typeId: String(formData.get("typeId") ?? ""),
     defaultStoreId: String(formData.get("defaultStoreId") ?? ""),
     minStock: Number(formData.get("minStock") ?? 0),
@@ -232,7 +267,7 @@ export default async function SparePartsPage({ searchParams }: { searchParams: P
     canUseUserPermission(user, PermissionKey.RECEIVE_STOCK);
   if (!canView) redirect("/dashboard");
 
-  const [plantConfig, stores, partCategories, partTypes, zones, storeApplicableZones, spareParts] = await Promise.all([
+  const [plantConfig, stores, partCategories, materialGroups, partTypes, zones, storeApplicableZones, spareParts] = await Promise.all([
     db.plant.findUniqueOrThrow({
       where: { id: scope.plant.id },
       select: { inventoryCode: true },
@@ -243,6 +278,7 @@ export default async function SparePartsPage({ searchParams }: { searchParams: P
       orderBy: { name: "asc" },
     }),
     db.sparePartCategory.findMany({ where: { plantId: scope.plant.id }, orderBy: { name: "asc" } }),
+    db.sparePartMaterialGroup.findMany({ where: { plantId: scope.plant.id }, include: { category: true }, orderBy: { name: "asc" } }),
     db.sparePartType.findMany({ where: { plantId: scope.plant.id }, orderBy: { name: "asc" } }),
     db.zone.findMany({ where: { plantId: scope.plant.id, active: true }, orderBy: { name: "asc" } }),
     db.storeApplicableZone.findMany({ where: { plantId: scope.plant.id }, orderBy: { code: "asc" } }),
@@ -250,6 +286,7 @@ export default async function SparePartsPage({ searchParams }: { searchParams: P
       where: { plantId: scope.plant.id },
       include: {
         category: true,
+        materialGroup: true,
         type: true,
         defaultStore: true,
         stocks: { include: { store: true } },
@@ -260,6 +297,7 @@ export default async function SparePartsPage({ searchParams }: { searchParams: P
   const editPart = query.editPartId ? spareParts.find((part) => part.id === query.editPartId) : null;
   const activeStores = stores.filter((store) => store.active);
   const activePartCategories = partCategories.filter((category) => category.active);
+  const activeMaterialGroups = materialGroups.filter((group) => group.active);
   const activePartTypes = partTypes.filter((type) => type.active);
   const search = query.search?.trim().toLocaleLowerCase("th") ?? "";
   const units = [...new Set(spareParts.map((part) => part.unit).filter(Boolean))].sort((left, right) =>
@@ -269,6 +307,7 @@ export default async function SparePartsPage({ searchParams }: { searchParams: P
     if (query.storeId && part.defaultStoreId !== query.storeId) return false;
     if (query.typeId && part.typeId !== query.typeId) return false;
     if (query.categoryId && part.categoryId !== query.categoryId) return false;
+    if (query.materialGroupId && part.materialGroupId !== query.materialGroupId) return false;
     if (query.unit && part.unit !== query.unit) return false;
     if (!search) return true;
     return [part.code, part.itemCode, part.name, part.description]
@@ -515,6 +554,37 @@ export default async function SparePartsPage({ searchParams }: { searchParams: P
                 </div>
               </MasterPanel>
 
+              <MasterPanel icon={<Grid3X3 size={18} />} title="กลุ่มอะไหล่/วัสดุ" subtitle="กลุ่มย่อยภายใต้หมวดหมู่ เช่น Electrical → ท่อ">
+                {canManageParts ? (
+                  <form action={addSparePartMaterialGroup} className="grid gap-2 sm:grid-cols-[1fr_100px_1fr_auto]">
+                    <AdminScopeHiddenFields scope={scope} />
+                    <select className={inputClass} name="categoryId" required defaultValue="">
+                      <option disabled value="">เลือกหมวดหมู่</option>
+                      {activePartCategories.map((category) => <option key={category.id} value={category.id}>{category.code} · {category.name}</option>)}
+                    </select>
+                    <input className={inputClass} name="code" placeholder="PIPE" required />
+                    <input className={inputClass} name="name" placeholder="ชื่อกลุ่ม เช่น ท่อ" required />
+                    <button className={compactPrimaryButtonClass}>เพิ่ม</button>
+                  </form>
+                ) : null}
+                <div className="mt-3 grid gap-2">
+                  {materialGroups.map((group) => (
+                    <form action={saveSparePartMaterialGroup} className="grid gap-2 rounded-xl border border-[var(--line)] bg-[var(--soft)] p-2 sm:grid-cols-[1fr_100px_1fr_auto_auto]" key={group.id}>
+                      <AdminScopeHiddenFields scope={scope} />
+                      <input name="id" type="hidden" value={group.id} />
+                      <select className={compactInputClass} defaultValue={group.categoryId} name="categoryId" required>
+                        {partCategories.map((category) => <option key={category.id} value={category.id}>{category.code} · {category.name}</option>)}
+                      </select>
+                      <input className={compactInputClass} defaultValue={group.code} name="code" required />
+                      <input className={compactInputClass} defaultValue={group.name} name="name" required />
+                      <ActiveToggle defaultChecked={group.active} />
+                      <MasterRowActions canEdit={canManageParts} deleteMessage={`ต้องการลบกลุ่ม ${group.name} หรือไม่`} />
+                    </form>
+                  ))}
+                  {!materialGroups.length ? <EmptyMasterRow /> : null}
+                </div>
+              </MasterPanel>
+
               <MasterPanel icon={<Flag size={18} />} title="Applicable Zones" subtitle="ใช้เฉพาะตอนเบิกอะไหล่ เช่น 01, 02">
                 <form action={saveStoreApplicableZones} className="grid gap-2">
                   <AdminScopeHiddenFields scope={scope} />
@@ -644,17 +714,11 @@ export default async function SparePartsPage({ searchParams }: { searchParams: P
                     ))}
                   </select>
                 </label>
-                <label className={labelClass}>
-                  หมวดหมู่อะไหล่
-                  <select className={inputClass} name="categoryId" defaultValue="" required>
-                    <option value="" disabled>เลือกหมวดหมู่</option>
-                    {activePartCategories.map((category) => (
-                      <option key={category.id} value={category.id}>
-                        {category.code} · {category.name}
-                      </option>
-                    ))}
-                  </select>
-                </label>
+                <SparePartClassificationFields
+                  categories={activePartCategories}
+                  className={inputClass}
+                  groups={activeMaterialGroups}
+                />
                 <label className={labelClass}>
                   หน่วยนับ
                   <input className={inputClass} name="unit" placeholder="PCS, SET, M" required />
@@ -736,13 +800,14 @@ export default async function SparePartsPage({ searchParams }: { searchParams: P
                 {activePartTypes.map((type) => <option key={type.id} value={type.id}>{type.code} · {type.name}</option>)}
               </select>
             </label>
-            <label className={labelClass}>
-              หมวดหมู่
-              <select className={inputClass} defaultValue={query.categoryId ?? ""} name="categoryId">
-                <option value="">ทั้งหมด</option>
-                {activePartCategories.map((category) => <option key={category.id} value={category.id}>{category.code} · {category.name}</option>)}
-              </select>
-            </label>
+            <SparePartClassificationFields
+              categories={activePartCategories}
+              className={inputClass}
+              defaultCategoryId={query.categoryId ?? ""}
+              defaultMaterialGroupId={query.materialGroupId ?? ""}
+              filter
+              groups={activeMaterialGroups}
+            />
             <label className={labelClass}>
               หน่วยนับ
               <select className={inputClass} defaultValue={query.unit ?? ""} name="unit">
@@ -896,17 +961,13 @@ export default async function SparePartsPage({ searchParams }: { searchParams: P
                   ))}
                 </select>
               </label>
-              <label className={labelClass}>
-                หมวดหมู่อะไหล่
-                <select className={inputClass} defaultValue={editPart.categoryId ?? ""} name="categoryId" required>
-                  <option value="" disabled>เลือกหมวดหมู่</option>
-                  {partCategories.map((category) => (
-                    <option key={category.id} value={category.id}>
-                      {category.code} · {category.name}{category.active ? "" : " (ไม่ใช้งาน)"}
-                    </option>
-                  ))}
-                </select>
-              </label>
+              <SparePartClassificationFields
+                categories={partCategories}
+                className={inputClass}
+                defaultCategoryId={editPart.categoryId ?? ""}
+                defaultMaterialGroupId={editPart.materialGroupId ?? ""}
+                groups={materialGroups}
+              />
               <label className={labelClass}>
                 หน่วยนับ
                 <input className={inputClass} defaultValue={editPart.unit} name="unit" required />
@@ -1212,7 +1273,7 @@ function sparePartsPageHref(
   scope: { organization: { id: string }; plant: { id: string } },
   page: number,
   includeTableAnchor = true,
-  query?: Pick<PageQuery, "search" | "storeId" | "typeId" | "categoryId" | "unit">,
+  query?: Pick<PageQuery, "search" | "storeId" | "typeId" | "categoryId" | "materialGroupId" | "unit">,
 ) {
   const params = new URLSearchParams({
     organizationId: scope.organization.id,
@@ -1222,6 +1283,7 @@ function sparePartsPageHref(
   if (query?.storeId) params.set("storeId", query.storeId);
   if (query?.typeId) params.set("typeId", query.typeId);
   if (query?.categoryId) params.set("categoryId", query.categoryId);
+  if (query?.materialGroupId) params.set("materialGroupId", query.materialGroupId);
   if (query?.unit) params.set("unit", query.unit);
   if (page > 1) params.set("partsPage", String(page));
   const url = `/inventory/spare-parts?${params.toString()}`;

@@ -66,6 +66,7 @@ model Organization {
   storeCategories         StoreCategory[]
   stores                  Store[]
   sparePartCategories     SparePartCategory[]
+  sparePartMaterialGroups SparePartMaterialGroup[]
   sparePartTypes          SparePartType[]
   spareParts              SparePart[]
   storeApplicableZones    StoreApplicableZone[]
@@ -107,6 +108,7 @@ model Plant {
   storeCategories         StoreCategory[]
   stores                  Store[]
   sparePartCategories     SparePartCategory[]
+  sparePartMaterialGroups SparePartMaterialGroup[]
   sparePartTypes          SparePartType[]
   spareParts              SparePart[]
   storeApplicableZones    StoreApplicableZone[]
@@ -541,12 +543,36 @@ model SparePartCategory {
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
 
-  spareParts SparePart[]
+  spareParts     SparePart[]
+  materialGroups SparePartMaterialGroup[]
 
   @@unique([plantId, name])
   @@unique([plantId, code])
   @@index([organizationId, active])
   @@index([plantId, active])
+}
+
+model SparePartMaterialGroup {
+  id             String            @id @default(cuid())
+  organizationId String
+  organization   Organization      @relation(fields: [organizationId], references: [id])
+  plantId        String
+  plant          Plant             @relation(fields: [plantId], references: [id], onDelete: Cascade)
+  categoryId     String
+  category       SparePartCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  code           String
+  name           String
+  active         Boolean           @default(true)
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  spareParts SparePart[]
+
+  @@unique([categoryId, code])
+  @@unique([categoryId, name])
+  @@index([organizationId, active])
+  @@index([plantId, active])
+  @@index([categoryId, active])
 }
 
 model SparePartType {
@@ -570,29 +596,31 @@ model SparePartType {
 }
 
 model SparePart {
-  id              String             @id @default(cuid())
+  id              String                  @id @default(cuid())
   organizationId  String
-  organization    Organization       @relation(fields: [organizationId], references: [id])
+  organization    Organization            @relation(fields: [organizationId], references: [id])
   plantId         String
-  plant           Plant              @relation(fields: [plantId], references: [id], onDelete: Cascade)
+  plant           Plant                   @relation(fields: [plantId], references: [id], onDelete: Cascade)
   categoryId      String?
-  category        SparePartCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  category        SparePartCategory?      @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  materialGroupId String?
+  materialGroup   SparePartMaterialGroup? @relation(fields: [materialGroupId], references: [id], onDelete: SetNull)
   typeId          String?
-  type            SparePartType?     @relation(fields: [typeId], references: [id], onDelete: SetNull)
+  type            SparePartType?          @relation(fields: [typeId], references: [id], onDelete: SetNull)
   defaultStoreId  String?
-  defaultStore    Store?             @relation(fields: [defaultStoreId], references: [id], onDelete: SetNull)
+  defaultStore    Store?                  @relation(fields: [defaultStoreId], references: [id], onDelete: SetNull)
   code            String
   itemCode        String?
   name            String
   description     String?
   unit            String
   latestUnitPrice Decimal?
-  minStock        Decimal            @default(0)
+  minStock        Decimal                 @default(0)
   maxStock        Decimal?
-  reorderPoint    Decimal            @default(0)
-  active          Boolean            @default(true)
-  createdAt       DateTime           @default(now())
-  updatedAt       DateTime           @updatedAt
+  reorderPoint    Decimal                 @default(0)
+  active          Boolean                 @default(true)
+  createdAt       DateTime                @default(now())
+  updatedAt       DateTime                @updatedAt
 
   stocks       StoreStock[]
   movements    StockMovement[]
@@ -605,6 +633,7 @@ model SparePart {
   @@index([plantId, active])
   @@index([plantId, itemCode])
   @@index([categoryId, active])
+  @@index([materialGroupId, active])
   @@index([typeId, active])
   @@index([defaultStoreId, active])
 }

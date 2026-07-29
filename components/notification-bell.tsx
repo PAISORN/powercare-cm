@@ -31,7 +31,7 @@ export function NotificationBell({ unreadCount, notifications }: { unreadCount: 
       </button>
 
       {open ? (
-        <div className="absolute right-0 top-12 z-50 w-[min(22rem,calc(100vw-2rem))] overflow-hidden rounded-2xl border border-[var(--line)] bg-[var(--surface)] shadow-xl">
+        <div className="absolute right-0 top-12 z-50 w-[min(22rem,calc(100vw-2rem))] overflow-hidden rounded-2xl border border-[var(--line)] bg-[var(--surface-raised)] shadow-[var(--shadow-raised)]">
           <div className="flex items-center justify-between gap-3 border-b border-[var(--line)] px-4 py-3">
             <div>
               <p className="font-bold">Notifications</p>

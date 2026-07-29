@@ -144,6 +144,60 @@ export async function createSparePartType(
   return created;
 }
 
+export async function createSparePartMaterialGroup(
+  actor: PermissionUserContext & { id: string },
+  scope: StoreScope,
+  input: { categoryId: string; code: string; name: string; active?: boolean },
+) {
+  requireStorePermission(actor, PermissionKey.MANAGE_SPARE_PARTS);
+  assertActorStoreScope(actor, scope);
+  const categoryId = requiredText(input.categoryId, "Spare part category");
+  const code = normalizeMasterCode(input.code, "Spare part material group code");
+  const name = requiredText(input.name, "Spare part material group name");
+  await db.sparePartCategory.findFirstOrThrow({ where: { id: categoryId, plantId: scope.plantId, active: true } });
+  await assertUniqueSparePartMaterialGroup(categoryId, { code, name });
+  const created = await db.sparePartMaterialGroup.create({
+    data: { organizationId: scope.organizationId, plantId: scope.plantId, categoryId, code, name, active: input.active ?? true },
+  });
+  await auditStoreChange(actor.id, scope, "SparePartMaterialGroup", created.id, "CREATE_SPARE_PART_MATERIAL_GROUP", { categoryId, code, name });
+  return created;
+}
+
+export async function updateSparePartMaterialGroup(
+  actor: PermissionUserContext & { id: string },
+  scope: StoreScope,
+  id: string,
+  input: { categoryId: string; code: string; name: string; active: boolean },
+) {
+  requireStorePermission(actor, PermissionKey.MANAGE_SPARE_PARTS);
+  assertActorStoreScope(actor, scope);
+  const categoryId = requiredText(input.categoryId, "Spare part category");
+  const code = normalizeMasterCode(input.code, "Spare part material group code");
+  const name = requiredText(input.name, "Spare part material group name");
+  await db.sparePartMaterialGroup.findFirstOrThrow({ where: { id, plantId: scope.plantId } });
+  await db.sparePartCategory.findFirstOrThrow({ where: { id: categoryId, plantId: scope.plantId, active: true } });
+  await assertUniqueSparePartMaterialGroup(categoryId, { code, name }, id);
+  const updated = await db.sparePartMaterialGroup.update({ where: { id }, data: { categoryId, code, name, active: input.active } });
+  await auditStoreChange(actor.id, scope, "SparePartMaterialGroup", id, "UPDATE_SPARE_PART_MATERIAL_GROUP", { categoryId, code, name, active: input.active });
+  return updated;
+}
+
+export async function deleteSparePartMaterialGroup(
+  actor: PermissionUserContext & { id: string },
+  scope: StoreScope,
+  id: string,
+) {
+  requireStorePermission(actor, PermissionKey.MANAGE_SPARE_PARTS);
+  assertActorStoreScope(actor, scope);
+  const group = await db.sparePartMaterialGroup.findFirstOrThrow({
+    where: { id, plantId: scope.plantId },
+    include: { _count: { select: { spareParts: true } } },
+  });
+  if (group._count.spareParts) throw new Error("This spare part material group is already in use. Set it to inactive instead.");
+  await db.sparePartMaterialGroup.delete({ where: { id } });
+  await auditStoreChange(actor.id, scope, "SparePartMaterialGroup", id, "DELETE_SPARE_PART_MATERIAL_GROUP", { code: group.code, name: group.name });
+}
+
 export async function updateSparePartType(
   actor: PermissionUserContext & { id: string },
   scope: StoreScope,
@@ -364,6 +418,7 @@ export async function createSparePart(
             description: data.description,
             unit: data.unit,
             categoryId: data.categoryId,
+            materialGroupId: data.materialGroupId,
             typeId: data.typeId,
             defaultStoreId: data.defaultStoreId,
             minStock: data.minStock,
@@ -400,10 +455,11 @@ export async function updateSparePart(
   const sparePart = await db.$transaction(async (tx) => {
     const existing = await tx.sparePart.findFirstOrThrow({
       where: { id: sparePartId, organizationId: scope.organizationId, plantId: scope.plantId },
-      select: { id: true, categoryId: true, typeId: true, defaultStoreId: true },
+      select: { id: true, categoryId: true, materialGroupId: true, typeId: true, defaultStoreId: true },
     });
     await assertSparePartMasterData(tx, scope, normalized, {
       categoryId: existing.categoryId,
+      materialGroupId: existing.materialGroupId,
       typeId: existing.typeId,
       defaultStoreId: existing.defaultStoreId,
     });
@@ -416,6 +472,7 @@ export async function updateSparePart(
         description: normalized.description,
         unit: normalized.unit,
         categoryId: normalized.categoryId,
+        materialGroupId: normalized.materialGroupId,
         typeId: normalized.typeId,
         defaultStoreId: normalized.defaultStoreId,
         minStock: normalized.minStock,
@@ -525,22 +582,48 @@ async function assertUniqueSparePartType(
   if (duplicate) throw new Error("Spare part type code or name already exists in this Site.");
 }
 
+async function assertUniqueSparePartMaterialGroup(
+  categoryId: string,
+  input: { code: string; name: string },
+  excludeId?: string,
+) {
+  const duplicate = await db.sparePartMaterialGroup.findFirst({
+    where: {
+      categoryId,
+      ...(excludeId ? { id: { not: excludeId } } : {}),
+      OR: [{ code: input.code }, { name: input.name }],
+    },
+    select: { id: true },
+  });
+  if (duplicate) throw new Error("Material group code or name already exists in this spare part category.");
+}
+
 async function assertSparePartMasterData(
   tx: Prisma.TransactionClient,
   scope: StoreScope,
   input: ReturnType<typeof normalizeSparePartInput>,
   allowInactive?: {
     categoryId: string | null;
+    materialGroupId: string | null;
     typeId: string | null;
     defaultStoreId: string | null;
   },
 ) {
-  const [category, type, store] = await Promise.all([
+  const [category, materialGroup, type, store] = await Promise.all([
     tx.sparePartCategory.findFirst({
       where: {
         id: input.categoryId,
         plantId: scope.plantId,
         ...(input.categoryId === allowInactive?.categoryId ? {} : { active: true }),
+      },
+      select: { id: true },
+    }),
+    tx.sparePartMaterialGroup.findFirst({
+      where: {
+        id: input.materialGroupId,
+        categoryId: input.categoryId,
+        plantId: scope.plantId,
+        ...(input.materialGroupId === allowInactive?.materialGroupId ? {} : { active: true }),
       },
       select: { id: true },
     }),
@@ -561,8 +644,8 @@ async function assertSparePartMasterData(
       select: { id: true },
     }),
   ]);
-  if (!category || !type || !store) {
-    throw new Error("Store, spare part type, and category must be active and belong to the selected Site.");
+  if (!category || !materialGroup || !type || !store) {
+    throw new Error("Store, spare part type, category, and material group must be active, related, and belong to the selected Site.");
   }
 }
 

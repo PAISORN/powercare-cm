@@ -236,6 +236,15 @@ Never assume these are synchronized merely because Prisma Client generates succe
 - **Constraints:** unique Site name and Site code.
 - **RLS:** enabled; Prisma server policy.
 
+### `SparePartMaterialGroup`
+
+- **Purpose:** Site-scoped child master data beneath `SparePartCategory`, used to refine spare-part/material search (for example Electrical → Pipe).
+- **Important fields:** organization/site, `categoryId`, `code`, name, active.
+- **Constraints:** code and name are unique within one category; the same value may be reused under another category.
+- **Relationships:** one category has many material groups; a spare part can reference one group.
+- **Migration rule:** existing spare parts may keep `materialGroupId = null`; new and edited records must select a group through application validation.
+- **RLS:** enabled; Prisma server policy.
+
 ### `SparePartType`
 
 - **Purpose:** expense/spare-part type such as `630101` Consumable.

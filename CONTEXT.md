@@ -172,6 +172,10 @@ _Avoid_: spare part category, zone, storage location
 A grouping for spare parts, such as Bearing, Valve, Electrical, Instrument, or Consumable.
 _Avoid_: store category, zone, storage location
 
+**Spare Part Material Group**:
+A Site-scoped child grouping under exactly one Spare Part Category, used to refine spare-part and material discovery, such as Electrical → Pipe. Each spare part belongs to at most one material group, and the selected group must belong to the spare part's selected category. The Thai UI label is “กลุ่มอะไหล่/วัสดุ”.
+_Avoid_: spare part name, spare part category, spare part type, unit, store category
+
 **Applicable Zone**:
 A plant zone where a spare part is commonly used. One spare part can have multiple applicable zones.
 _Avoid_: spare part category, store, storage location

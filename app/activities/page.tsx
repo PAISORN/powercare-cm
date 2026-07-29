@@ -864,7 +864,7 @@ function ActivityActionDrawer({
     <div className="fixed inset-0 z-50 bg-black/30 backdrop-blur-sm">
       <Link aria-label="Close action panel" className="absolute inset-0" href={closeHref} />
       <aside
-        className="activity-action-drawer relative ml-auto h-full w-full max-w-xl overflow-y-auto border-l border-[var(--line)] bg-[var(--surface)] p-4 shadow-2xl animate-in slide-in-from-right duration-300 sm:p-5"
+        className="activity-action-drawer relative ml-auto h-full w-full max-w-xl overflow-y-auto border-l border-[var(--line)] bg-[var(--surface-raised)] p-4 shadow-[var(--shadow-raised)] animate-in slide-in-from-right duration-300 sm:p-5"
         id="activity-action-drawer"
       >
       <div className="flex items-center justify-between gap-3">

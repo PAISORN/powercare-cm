@@ -154,7 +154,9 @@ function Hero() {
         <span className="orbit-node orbit-node-5 orbit-blue"><BarChart3 size={22} /><b>วิเคราะห์</b></span>
         <span className="orbit-node orbit-node-6 orbit-teal"><Users size={22} /><b>ทีมช่าง</b></span>
         <span className="orbit-node orbit-node-7 orbit-blue"><Bell size={22} /><b>แจ้งเตือน</b></span>
-        <span className="orbit-core"><span>PC</span></span>
+        <span className="orbit-core">
+          <img alt="" aria-hidden="true" src="/brand/powercare-mark.png" />
+        </span>
       </div>
       <div className="landing-container landing-hero-inner relative z-10 flex items-center">
         <div className="landing-hero-content max-w-3xl">

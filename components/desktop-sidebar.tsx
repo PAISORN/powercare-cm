@@ -1,8 +1,7 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useState } from "react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft } from "lucide-react";
 import { AppBrand } from "./app-brand";
 import { AppNavLinks } from "./app-nav-links";
 import { UserAvatar } from "./user-avatar";
@@ -48,28 +47,38 @@ export function DesktopSidebar({
 
   return (
     <aside
-      className={`fixed inset-y-0 left-0 hidden h-screen flex-col border-r border-[var(--line)] bg-[var(--surface)] transition-[width,padding] duration-300 md:flex ${
+      className={`guardian-sidebar fixed inset-y-0 left-0 hidden h-screen flex-col border-r border-[var(--line)] bg-[var(--surface)] transition-[width,padding] duration-300 md:flex ${
         collapsed ? "w-20 px-3 py-5" : "w-72 p-5"
       }`}
       data-collapsed={collapsed ? "true" : "false"}
     >
-      <div className={`flex items-center gap-2 ${collapsed ? "justify-center" : "justify-between"}`}>
-        <Link
-          aria-label="PowerCare Dashboard"
-          className={`min-w-0 font-extrabold text-[var(--primary)] ${collapsed ? "grid h-11 w-11 place-items-center rounded-2xl bg-[var(--soft)] text-base" : "text-2xl"}`}
-          href="/dashboard"
-          title="PowerCare"
-        >
-          {collapsed ? "PC" : <AppBrand />}
-        </Link>
-        <button
-          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-          className="grid h-9 w-9 shrink-0 place-items-center rounded-full border border-[var(--line)] bg-[var(--surface)] text-[var(--ink)] shadow-sm transition hover:bg-[var(--soft)]"
-          type="button"
-          onClick={() => setCollapsed((value) => !value)}
-        >
-          {collapsed ? <ChevronRight aria-hidden="true" size={18} /> : <ChevronLeft aria-hidden="true" size={18} />}
-        </button>
+      <div className={`flex items-center ${collapsed ? "justify-center" : "justify-between gap-2"}`}>
+        {collapsed ? (
+          <button
+            aria-label="Expand sidebar"
+            className="grid h-12 w-12 min-w-0 place-items-center rounded-2xl bg-[var(--soft)] text-base font-extrabold text-[var(--primary)] outline-none transition hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-[var(--primary)]"
+            onClick={() => setCollapsed(false)}
+            title="Expand sidebar"
+            type="button"
+          >
+            <img alt="" aria-hidden="true" className="h-10 w-10 object-contain" src="/brand/powercare-mark.png" />
+          </button>
+        ) : (
+          <>
+            <span className="min-w-0 px-1 py-1 text-2xl font-extrabold text-[var(--primary)]">
+            <AppBrand versionClassName="hidden" />
+            </span>
+            <button
+              aria-label="Collapse sidebar"
+              className="grid h-9 w-9 shrink-0 place-items-center rounded-full border border-[var(--line)] bg-[var(--surface)] text-[var(--ink)] shadow-sm outline-none transition hover:bg-[var(--soft)] focus-visible:ring-2 focus-visible:ring-[var(--primary)]"
+              onClick={() => setCollapsed(true)}
+              title="Collapse sidebar"
+              type="button"
+            >
+              <ChevronLeft aria-hidden="true" size={18} />
+            </button>
+          </>
+        )}
       </div>
 
       <div

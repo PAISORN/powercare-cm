@@ -80,15 +80,15 @@ function MetricCard({
   tone: "blue" | "amber" | "cyan" | "violet" | "red" | "green" | "slate";
 }) {
   const tones = {
-    blue: "bg-[#dff7ff] text-[#07324f]",
-    amber: "bg-[#fff0c7] text-[#5a3800]",
-    cyan: "bg-[#d8fbf7] text-[#06433f]",
-    violet: "bg-[#ede9fe] text-[#3b236f]",
-    red: "bg-[#ffe1e1] text-[#681515]",
-    green: "bg-[#dcfce7] text-[#073f26]",
-    slate: "bg-[#e2e8f0] text-[#1f2937]",
+    blue: "status-kpi-blue",
+    amber: "status-kpi-amber",
+    cyan: "status-kpi-cyan",
+    violet: "status-kpi-violet",
+    red: "status-kpi-red",
+    green: "status-kpi-green",
+    slate: "status-kpi-slate",
   };
-  const className = `relative block rounded-2xl p-4 text-left shadow-[var(--shadow)] transition duration-300 ease-out ${tones[tone]} ${active ? "ring-2 ring-[var(--primary)] ring-offset-2 ring-offset-[var(--bg)]" : ""}`;
+  const className = `status-kpi-card relative block rounded-2xl border p-4 text-left shadow-[var(--shadow)] transition duration-300 ease-out ${tones[tone]} ${active ? "ring-2 ring-[var(--primary)] ring-offset-2 ring-offset-[var(--bg)]" : ""}`;
   const content = (
     <>
       <UnreadBadge count={unreadCount} />

@@ -91,6 +91,7 @@ export default async function ReceivePage({ searchParams }: { searchParams: Prom
         unit: true,
         minStock: true,
         category: { select: { name: true } },
+        materialGroup: { select: { name: true } },
         type: { select: { name: true } },
         stocks: { select: { storeId: true, quantity: true } },
       },
@@ -175,6 +176,7 @@ export default async function ReceivePage({ searchParams }: { searchParams: Prom
               unit: part.unit,
               minStock: Number(part.minStock),
               categoryName: part.category?.name,
+              materialGroupName: part.materialGroup?.name,
               typeName: part.type?.name,
               stocks: part.stocks.map((stock) => ({ storeId: stock.storeId, quantity: Number(stock.quantity) })),
             })) : []}

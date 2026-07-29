@@ -7,6 +7,7 @@ export type CreateSparePartInput = {
   itemCode: string;
   description?: string | null;
   categoryId: string;
+  materialGroupId: string;
   typeId: string;
   defaultStoreId: string;
   minStock: number;
@@ -27,6 +28,7 @@ export type SparePartRepository = {
     itemCode: string;
     description: string | null;
     categoryId: string;
+    materialGroupId: string;
     typeId: string;
     defaultStoreId: string;
     minStock: number;
@@ -58,6 +60,7 @@ export function normalizeSparePartInput(input: CreateSparePartInput) {
   const unit = input.unit.trim();
   const itemCode = requiredCode(input.itemCode, "Item Code");
   const categoryId = requiredText(input.categoryId, "Spare part category");
+  const materialGroupId = requiredText(input.materialGroupId, "Spare part material group");
   const typeId = requiredText(input.typeId, "Spare part type");
   const defaultStoreId = requiredText(input.defaultStoreId, "Spare part store");
   if (!name) throw new Error("Spare part name is required.");
@@ -90,6 +93,7 @@ export function normalizeSparePartInput(input: CreateSparePartInput) {
     itemCode,
     description: optionalText(input.description),
     categoryId,
+    materialGroupId,
     typeId,
     defaultStoreId,
     minStock: input.minStock,

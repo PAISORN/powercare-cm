@@ -38,7 +38,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
 
       <main className="min-h-screen p-5 transition-[margin] duration-300 md:ml-[var(--app-sidebar-width,18rem)] md:p-8">
         <div
-          className="sticky top-3 z-40 mb-6 grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 rounded-2xl border border-[var(--line)] bg-[var(--surface)]/95 px-2.5 py-2.5 shadow-[var(--shadow)] backdrop-blur transition-all duration-200 sm:gap-3 sm:px-3 md:top-4 md:rounded-3xl md:px-4 md:py-3"
+          className="sticky top-3 z-40 mb-6 grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 rounded-2xl border border-[var(--line)] bg-[var(--surface-raised)]/94 px-2.5 py-2.5 shadow-[var(--shadow)] backdrop-blur transition-all duration-200 sm:gap-3 sm:px-3 md:top-4 md:rounded-3xl md:px-4 md:py-3"
           data-app-top-bar
         >
           <div className="flex min-w-0 items-center gap-2 sm:gap-3">

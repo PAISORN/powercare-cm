@@ -77,7 +77,7 @@ export function MobileAppDrawer({
       />
       <div
         aria-label="Application menu"
-        className="fixed inset-0 flex w-screen max-w-none flex-col bg-[var(--surface)] p-5 shadow-2xl sm:absolute sm:inset-y-0 sm:left-0 sm:right-auto sm:w-[86vw] sm:max-w-[340px] sm:border-r sm:border-[var(--line)]"
+        className="fixed inset-0 flex w-screen max-w-none flex-col bg-[var(--surface-raised)] p-5 shadow-[var(--shadow-raised)] sm:absolute sm:inset-y-0 sm:left-0 sm:right-auto sm:w-[86vw] sm:max-w-[340px] sm:border-r sm:border-[var(--line)]"
         role="dialog"
       >
         <div className="flex items-center justify-between gap-3">

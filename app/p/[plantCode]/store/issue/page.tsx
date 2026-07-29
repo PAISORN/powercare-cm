@@ -75,6 +75,7 @@ export default async function PublicStoreIssuePage({
             minStock: true,
             type: { select: { name: true } },
             category: { select: { name: true } },
+            materialGroup: { select: { name: true } },
           },
         },
       },
@@ -145,6 +146,7 @@ export default async function PublicStoreIssuePage({
                   sparePartName: stock.sparePart.name,
                   sparePartTypeName: stock.sparePart.type?.name,
                   sparePartCategoryName: stock.sparePart.category?.name,
+                  sparePartMaterialGroupName: stock.sparePart.materialGroup?.name,
                   itemCode: stock.sparePart.itemCode,
                   stockStatus: buildStoreStockStatus(Number(stock.quantity), Number(stock.sparePart.minStock)),
                 }))}

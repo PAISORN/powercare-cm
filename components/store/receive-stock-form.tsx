@@ -12,6 +12,7 @@ type SparePartOption = {
   unit: string;
   minStock: number;
   categoryName?: string;
+  materialGroupName?: string;
   typeName?: string;
   stocks: Array<{ storeId: string; quantity: number }>;
 };
@@ -22,6 +23,7 @@ type ReceiveFilters = {
   storeId: string;
   type: string;
   category: string;
+  materialGroup: string;
   unit: string;
   stockStatus: StockStatus;
 };
@@ -31,6 +33,7 @@ const initialFilters: ReceiveFilters = {
   storeId: "ALL",
   type: "ALL",
   category: "ALL",
+  materialGroup: "ALL",
   unit: "ALL",
   stockStatus: "ALL",
 };
@@ -56,8 +59,9 @@ export function ReceiveStockForm({
   const filterOptions = useMemo(() => ({
     types: uniqueSorted(spareParts.map((part) => part.typeName ?? "")),
     categories: uniqueSorted(spareParts.map((part) => part.categoryName ?? "")),
+    materialGroups: uniqueSorted(spareParts.filter((part) => filters.category === "ALL" || part.categoryName === filters.category).map((part) => part.materialGroupName ?? "")),
     units: uniqueSorted(spareParts.map((part) => part.unit)),
-  }), [spareParts]);
+  }), [filters.category, spareParts]);
   const filteredSpareParts = useMemo(
     () => spareParts.filter((part) => matchesReceiveFilters(part, filters)),
     [filters, spareParts],
@@ -141,7 +145,8 @@ export function ReceiveStockForm({
             value={filters.storeId}
           />
           <FilterSelect label="ประเภท" onChange={(type) => setFilters((current) => ({ ...current, type }))} options={filterOptions.types.map(toFilterOption)} value={filters.type} />
-          <FilterSelect label="หมวดหมู่" onChange={(category) => setFilters((current) => ({ ...current, category }))} options={filterOptions.categories.map(toFilterOption)} value={filters.category} />
+          <FilterSelect label="หมวดหมู่" onChange={(category) => setFilters((current) => ({ ...current, category, materialGroup: "ALL" }))} options={filterOptions.categories.map(toFilterOption)} value={filters.category} />
+          <FilterSelect disabled={filters.category === "ALL"} label="กลุ่มอะไหล่/วัสดุ" onChange={(materialGroup) => setFilters((current) => ({ ...current, materialGroup }))} options={filterOptions.materialGroups.map(toFilterOption)} value={filters.materialGroup} />
           <FilterSelect label="หน่วยนับ" onChange={(unit) => setFilters((current) => ({ ...current, unit }))} options={filterOptions.units.map(toFilterOption)} value={filters.unit} />
           <FilterSelect
             label="สถานะสต็อก"
@@ -251,11 +256,13 @@ export function ReceiveStockForm({
 }
 
 function FilterSelect({
+  disabled = false,
   label,
   onChange,
   options,
   value,
 }: {
+  disabled?: boolean;
   label: string;
   onChange: (value: string) => void;
   options: Array<{ label: string; value: string }>;
@@ -264,7 +271,7 @@ function FilterSelect({
   return (
     <label className={labelClass}>
       {label}
-      <select className={inputClass} onChange={(event) => onChange(event.target.value)} value={value}>
+      <select className={inputClass} disabled={disabled} onChange={(event) => onChange(event.target.value)} value={value}>
         <option value="ALL">ทั้งหมด</option>
         {options.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
       </select>
@@ -274,7 +281,7 @@ function FilterSelect({
 
 function matchesReceiveFilters(part: SparePartOption, filters: ReceiveFilters) {
   const search = filters.search.trim().toLocaleLowerCase("th-TH");
-  const haystack = [part.code, part.itemCode, part.name, part.typeName, part.categoryName, part.unit]
+  const haystack = [part.code, part.itemCode, part.name, part.typeName, part.categoryName, part.materialGroupName, part.unit]
     .filter(Boolean)
     .join(" ")
     .toLocaleLowerCase("th-TH");
@@ -289,6 +296,7 @@ function matchesReceiveFilters(part: SparePartOption, filters: ReceiveFilters) {
     (filters.storeId === "ALL" || relevantStocks.length > 0) &&
     (filters.type === "ALL" || part.typeName === filters.type) &&
     (filters.category === "ALL" || part.categoryName === filters.category) &&
+    (filters.materialGroup === "ALL" || part.materialGroupName === filters.materialGroup) &&
     (filters.unit === "ALL" || part.unit === filters.unit) &&
     (filters.stockStatus === "ALL" || status === filters.stockStatus)
   );

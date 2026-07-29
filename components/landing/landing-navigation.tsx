@@ -108,7 +108,7 @@ export function LandingNavigation() {
     <header className="landing-header">
       <div className="landing-container flex h-full items-center justify-between gap-4">
         <Link aria-label="PowerCare home" className="landing-wordmark" href="/">
-          <span aria-hidden="true" className="landing-mark">PC</span>
+          <img alt="" aria-hidden="true" className="landing-mark" src="/brand/powercare-mark.png" />
           <span>PowerCare</span>
         </Link>
         <nav aria-label="เมนูหลัก" className="hidden items-center gap-7 lg:flex">

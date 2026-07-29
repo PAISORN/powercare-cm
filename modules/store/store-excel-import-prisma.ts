@@ -21,7 +21,7 @@ export async function importSparePartsFromExcel(
   validateFile(file);
 
   const parsedRows = parseSparePartImportWorkbook(await file.arrayBuffer());
-  const [stores, types, categories, existingItemCodes] = await Promise.all([
+  const [stores, types, categories, materialGroups, existingItemCodes] = await Promise.all([
     db.store.findMany({
       where: { plantId: scope.plantId, active: true },
       select: { id: true, code: true },
@@ -34,6 +34,10 @@ export async function importSparePartsFromExcel(
       where: { plantId: scope.plantId, active: true },
       select: { id: true, code: true },
     }),
+    db.sparePartMaterialGroup.findMany({
+      where: { plantId: scope.plantId, active: true },
+      select: { id: true, code: true, categoryId: true },
+    }),
     db.sparePart.findMany({
       where: { organizationId: scope.organizationId, itemCode: { not: null } },
       select: { itemCode: true },
@@ -43,6 +47,7 @@ export async function importSparePartsFromExcel(
     stores,
     types,
     categories,
+    materialGroups,
     existingItemCodes: existingItemCodes.flatMap((row) => (row.itemCode ? [row.itemCode] : [])),
   });
   const batchId = randomUUID();
@@ -70,6 +75,7 @@ export async function importSparePartsFromExcel(
           description: row.description,
           unit: row.unit,
           categoryId: row.categoryId,
+          materialGroupId: row.materialGroupId,
           typeId: row.typeId,
           defaultStoreId: row.storeId,
           minStock: row.minStock,

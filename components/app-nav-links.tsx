@@ -36,6 +36,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { RoleName, type RoleName as RoleValue } from "../modules/cm-work/cm-work-types";
+import { LogoutMenuItem } from "./logout-menu-item";
 import {
   canUsePermission,
   PermissionKey,
@@ -372,6 +373,10 @@ export function AppNavLinks({
           : active
             ? `flex items-center rounded-xl bg-[var(--soft)] text-sm ${textWeight} ${collapsed ? "justify-center px-2 py-3" : "gap-3 px-3 py-3"} ${indent}`
             : `flex items-center rounded-xl text-sm ${textWeight} hover:bg-[var(--soft)] ${collapsed ? "justify-center px-2 py-3" : "gap-3 px-3 py-3"} ${indent}`;
+
+        if (isDanger) {
+          return <LogoutMenuItem collapsed={collapsed} key={navItemKey(item)} />;
+        }
 
         if (item.disabled) {
           return (

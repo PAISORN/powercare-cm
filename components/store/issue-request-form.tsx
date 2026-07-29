@@ -33,6 +33,7 @@ type StockOption = {
   sparePartName?: string;
   sparePartTypeName?: string;
   sparePartCategoryName?: string;
+  sparePartMaterialGroupName?: string;
   itemCode?: string | null;
   stockStatus?: StockStatus;
 };
@@ -50,6 +51,7 @@ type StockFilters = {
   store: string;
   type: string;
   category: string;
+  materialGroup: string;
   unit: string;
   stockStatus: string;
 };
@@ -67,6 +69,7 @@ const initialFilters: StockFilters = {
   store: "ALL",
   type: "ALL",
   category: "ALL",
+  materialGroup: "ALL",
   unit: "ALL",
   stockStatus: "ALL",
 };
@@ -314,7 +317,14 @@ export function IssueRequestForm({
           <div className="grid gap-3 border-b border-[var(--line)] bg-[var(--soft)]/65 p-4 sm:grid-cols-2 2xl:grid-cols-3">
             <FilterSelect label="คลังอะไหล่" options={filterOptions.stores} value={filters.store} onChange={(value) => setFilters((current) => ({ ...current, store: value }))} />
             <FilterSelect label="ประเภท" options={filterOptions.types} value={filters.type} onChange={(value) => setFilters((current) => ({ ...current, type: value }))} />
-            <FilterSelect label="หมวดหมู่" options={filterOptions.categories} value={filters.category} onChange={(value) => setFilters((current) => ({ ...current, category: value }))} />
+            <FilterSelect label="หมวดหมู่" options={filterOptions.categories} value={filters.category} onChange={(value) => setFilters((current) => ({ ...current, category: value, materialGroup: "ALL" }))} />
+            <FilterSelect
+              disabled={filters.category === "ALL"}
+              label="กลุ่มอะไหล่/วัสดุ"
+              options={uniqueSorted(stocks.filter((stock) => stock.sparePartCategoryName === filters.category).map((stock) => stock.sparePartMaterialGroupName ?? ""))}
+              value={filters.materialGroup}
+              onChange={(value) => setFilters((current) => ({ ...current, materialGroup: value }))}
+            />
             <FilterSelect label="หน่วยนับ" options={filterOptions.units} value={filters.unit} onChange={(value) => setFilters((current) => ({ ...current, unit: value }))} />
             <FilterSelect label="สถานะสต๊อก" options={filterOptions.stockStatuses} value={filters.stockStatus} onChange={(value) => setFilters((current) => ({ ...current, stockStatus: value }))} />
             <button className={`${secondaryButtonClass} self-end`} onClick={() => setFilters(initialFilters)} type="button">
@@ -657,11 +667,13 @@ function matchesStockSearch(stock: StockOption, value: string) {
 }
 
 function FilterSelect({
+  disabled = false,
   label,
   onChange,
   options,
   value,
 }: {
+  disabled?: boolean;
   label: string;
   onChange: (value: string) => void;
   options: string[];
@@ -670,7 +682,7 @@ function FilterSelect({
   return (
     <label className={labelClass}>
       {label}
-      <select aria-label={label} className={inputClass} onChange={(event) => onChange(event.target.value)} value={value}>
+      <select aria-label={label} className={inputClass} disabled={disabled} onChange={(event) => onChange(event.target.value)} value={value}>
         <option value="ALL">ทั้งหมด</option>
         {options.map((option) => (
           <option key={option} value={option}>
@@ -687,6 +699,7 @@ function buildFilterOptions(stocks: StockOption[]) {
     stores: uniqueSorted(stocks.map((stock) => stock.storeName ?? stock.storeCode ?? "")),
     types: uniqueSorted(stocks.map((stock) => stock.sparePartTypeName ?? "")),
     categories: uniqueSorted(stocks.map((stock) => stock.sparePartCategoryName ?? "")),
+    materialGroups: uniqueSorted(stocks.map((stock) => stock.sparePartMaterialGroupName ?? "")),
     units: uniqueSorted(stocks.map((stock) => stock.unit)),
     stockStatuses: ["ENOUGH", "LOW", "OUT"],
   };
@@ -703,6 +716,7 @@ function matchesStockFilters(stock: StockOption, filters: StockFilters) {
     stock.itemCode,
     stock.sparePartTypeName,
     stock.sparePartCategoryName,
+    stock.sparePartMaterialGroupName,
     stock.storeCategoryName,
   ]
     .filter(Boolean)
@@ -714,6 +728,7 @@ function matchesStockFilters(stock: StockOption, filters: StockFilters) {
     matchesFilter(filters.store, stock.storeName ?? stock.storeCode) &&
     matchesFilter(filters.type, stock.sparePartTypeName) &&
     matchesFilter(filters.category, stock.sparePartCategoryName) &&
+    matchesFilter(filters.materialGroup, stock.sparePartMaterialGroupName) &&
     matchesFilter(filters.unit, stock.unit) &&
     matchesFilter(filters.stockStatus, stock.stockStatus)
   );

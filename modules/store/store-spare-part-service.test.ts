@@ -26,6 +26,7 @@ function validInput(overrides: Partial<CreateSparePartInput> = {}): CreateSpareP
     unit: "PCS",
     itemCode: "ACC-1001",
     categoryId: "category-1",
+    materialGroupId: "material-group-1",
     typeId: "type-1",
     defaultStoreId: "store-1",
     minStock: 2,
@@ -106,6 +107,9 @@ describe("store spare part service", () => {
     );
     await expect(createSparePartWithRepository(repository, scope, validInput({ typeId: "" }))).rejects.toThrow(
       "Spare part type is required",
+    );
+    await expect(createSparePartWithRepository(repository, scope, validInput({ materialGroupId: "" }))).rejects.toThrow(
+      "Spare part material group is required",
     );
   });
 });

@@ -16,6 +16,7 @@ export const SparePartImportHeaders = {
   latestUnitPrice: "ราคาล่าสุด (Latest Unit Price)",
   openingQuantity: "จำนวนตั้งต้น (Opening Quantity)",
   active: "สถานะใช้งาน (Active TRUE/FALSE)",
+  materialGroupCode: "รหัสกลุ่มอะไหล่/วัสดุ (Material Group Code)",
 } as const;
 
 const requiredHeaders = Object.values(SparePartImportHeaders);
@@ -30,6 +31,7 @@ export type ParsedSparePartImportRow = {
   storeCode: string;
   typeCode: string;
   categoryCode: string;
+  materialGroupCode: string;
   minStock: number;
   maxStock: number | null;
   reorderPoint: number;
@@ -42,6 +44,7 @@ export type SparePartImportMasterData = {
   stores: Array<{ id: string; code: string }>;
   types: Array<{ id: string; code: string }>;
   categories: Array<{ id: string; code: string | null }>;
+  materialGroups?: Array<{ id: string; code: string; categoryId: string }>;
   existingItemCodes: string[];
 };
 
@@ -49,6 +52,7 @@ export type ValidatedSparePartImportRow = ParsedSparePartImportRow & {
   storeId: string;
   typeId: string;
   categoryId: string;
+  materialGroupId: string | null;
 };
 
 export class SparePartImportValidationError extends Error {
@@ -110,6 +114,8 @@ export function validateSparePartImportRows(
   const stores = codeMap(masterData.stores);
   const types = codeMap(masterData.types);
   const categories = codeMap(masterData.categories.filter((category) => category.code));
+  const materialGroupRows = masterData.materialGroups ?? [];
+  const materialGroups = codeMap(materialGroupRows);
   const existingItemCodes = new Set(masterData.existingItemCodes.map(normalizeCode));
   const fileItemCodes = new Set<string>();
   const issues: string[] = [];
@@ -118,10 +124,16 @@ export function validateSparePartImportRows(
     const storeId = stores.get(row.storeCode);
     const typeId = types.get(row.typeCode);
     const categoryId = categories.get(row.categoryCode);
+    const materialGroupId = row.materialGroupCode ? materialGroups.get(row.materialGroupCode) : null;
 
     if (!storeId) issues.push(`แถว ${row.rowNumber}: ไม่พบรหัสคลังอะไหล่ ${row.storeCode} ใน Site นี้`);
     if (!typeId) issues.push(`แถว ${row.rowNumber}: ไม่พบรหัสประเภท ${row.typeCode} ใน Site นี้`);
     if (!categoryId) issues.push(`แถว ${row.rowNumber}: ไม่พบรหัสหมวดหมู่ ${row.categoryCode} ใน Site นี้`);
+    const materialGroup = materialGroupId ? materialGroupRows.find((group) => group.id === materialGroupId) : null;
+    if (row.materialGroupCode && !materialGroup) issues.push(`แถว ${row.rowNumber}: ไม่พบรหัสกลุ่มอะไหล่/วัสดุ ${row.materialGroupCode} ใน Site นี้`);
+    if (materialGroup && categoryId && materialGroup.categoryId !== categoryId) {
+      issues.push(`แถว ${row.rowNumber}: กลุ่มอะไหล่/วัสดุ ${row.materialGroupCode} ไม่ได้อยู่ในหมวดหมู่ ${row.categoryCode}`);
+    }
     if (existingItemCodes.has(row.itemCode)) {
       issues.push(`แถว ${row.rowNumber}: Item Code ${row.itemCode} มีอยู่ใน Organization แล้ว`);
     }
@@ -135,6 +147,7 @@ export function validateSparePartImportRows(
       storeId: storeId ?? "",
       typeId: typeId ?? "",
       categoryId: categoryId ?? "",
+      materialGroupId: materialGroupId ?? null,
     };
   });
 
@@ -164,6 +177,7 @@ function parseRow(
   const storeCode = requiredCode(value(SparePartImportHeaders.storeCode), "รหัสคลังอะไหล่", rowNumber, issues);
   const typeCode = requiredCode(value(SparePartImportHeaders.typeCode), "รหัสประเภท", rowNumber, issues);
   const categoryCode = requiredCode(value(SparePartImportHeaders.categoryCode), "รหัสหมวดหมู่", rowNumber, issues);
+  const materialGroupCode = normalizeCode(value(SparePartImportHeaders.materialGroupCode));
   const minStock = numericValue(value(SparePartImportHeaders.minStock), "Stock ขั้นต่ำ", rowNumber, issues, true) ?? 0;
   const maxStock = numericValue(value(SparePartImportHeaders.maxStock), "Stock สูงสุด", rowNumber, issues, false);
   const reorderPoint = numericValue(
@@ -204,6 +218,7 @@ function parseRow(
     storeCode,
     typeCode,
     categoryCode,
+    materialGroupCode,
     minStock,
     maxStock,
     reorderPoint,

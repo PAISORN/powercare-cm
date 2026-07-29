@@ -7,8 +7,9 @@ test("user can log out and must sign in again before opening the dashboard", asy
   await page.locator("form button").click();
 
   await expect(page).toHaveURL(/\/dashboard/);
-  await page.getByRole("link", { name: "Logout" }).click();
-  await expect(page.getByRole("heading", { name: "Logout" })).toBeVisible();
+  await page.getByRole("button", { name: "Logout" }).click();
+  await expect(page).toHaveURL(/\/dashboard/);
+  await expect(page.getByRole("dialog", { name: "ออกจากระบบ?" })).toBeVisible();
   await page.getByRole("button", { name: "Confirm logout" }).click();
 
   await expect(page).toHaveURL(/\/login\?loggedOut=1/);
@@ -16,7 +17,7 @@ test("user can log out and must sign in again before opening the dashboard", asy
   await expect(page).toHaveURL(/\/login/);
 });
 
-test("mobile dashboard header keeps logout beside day/night switch", async ({ page }) => {
+test("mobile menu opens the logout confirmation without leaving the dashboard", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/login");
   await page.getByPlaceholder("Username").fill("admin");
@@ -24,16 +25,10 @@ test("mobile dashboard header keeps logout beside day/night switch", async ({ pa
   await page.locator("form button").click();
 
   await expect(page).toHaveURL(/\/dashboard/);
-  const logout = page.getByRole("link", { name: "Logout" });
-  const themeSwitch = page.getByRole("button", { name: /Day mode|Night mode/ });
-  await expect(logout).toBeVisible();
-  await expect(themeSwitch).toBeVisible();
-
-  const logoutBox = await logout.boundingBox();
-  const themeBox = await themeSwitch.boundingBox();
-  expect(logoutBox).not.toBeNull();
-  expect(themeBox).not.toBeNull();
-  expect(logoutBox!.width).toBeLessThanOrEqual(44);
-  expect(themeBox!.width).toBeLessThanOrEqual(92);
-  expect(logoutBox!.x + logoutBox!.width).toBeLessThanOrEqual(themeBox!.x);
+  await page.getByRole("button", { name: "Open menu" }).click();
+  await page.getByRole("button", { name: "Logout" }).click();
+  await expect(page).toHaveURL(/\/dashboard/);
+  await expect(page.getByRole("dialog", { name: "ออกจากระบบ?" })).toBeVisible();
+  await page.getByRole("button", { name: "ยกเลิก" }).click();
+  await expect(page.getByRole("dialog", { name: "ออกจากระบบ?" })).toHaveCount(0);
 });
