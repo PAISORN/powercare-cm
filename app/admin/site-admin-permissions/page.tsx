@@ -110,7 +110,7 @@ async function updateSiteQuota(formData: FormData) {
   redirect(siteAdminPermissionsPath("saved", returnPlantId, returnOrganizationId));
 }
 
-export default async function SiteAdminPermissionsPage({
+async function LegacySiteAdminPermissionsPage({
   searchParams,
 }: {
   searchParams: Promise<{ saved?: string; error?: string; organizationId?: string; plantId?: string }>;
@@ -422,4 +422,10 @@ function normalizeLimit(value: FormDataEntryValue | null) {
   if (!text) return null;
   const parsed = Number(text);
   return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+}
+
+export default async function SiteAdminPermissionsPage() {
+  const current = await requireUser();
+  if (!canManageSiteAdminPermissions(current)) redirect("/dashboard");
+  redirect("/admin/permissions");
 }

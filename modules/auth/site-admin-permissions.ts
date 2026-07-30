@@ -107,6 +107,7 @@ export const PermissionKey = {
   MANAGE_STORE: "manage_store",
   MANAGE_SPARE_PARTS: "manage_spare_parts",
   VIEW_STORE_STOCK: "view_store_stock",
+  VIEW_STOCK_VALUE: "view_stock_value",
   RECEIVE_STOCK: "receive_stock",
   ADJUST_STOCK: "adjust_stock",
   CREATE_STORE_ISSUE: "create_store_issue",
@@ -127,12 +128,28 @@ export type SiteAdminPermissionRecord = {
   enabled: boolean;
 };
 
+export type RolePermissionOverrideRecord = {
+  scopeKey: string;
+  organizationId?: string | null;
+  role: string;
+  permissionKey: string;
+  decision: string;
+};
+
+export type UserPermissionOverrideRecord = {
+  userId: string;
+  permissionKey: string;
+  decision: string;
+};
+
 export type PermissionUserContext = {
   id?: string;
   role: string;
   organizationId?: string | null;
   plantId?: string | null;
   siteAdminPermissions?: SiteAdminPermissionRecord[];
+  rolePermissionOverrides?: RolePermissionOverrideRecord[];
+  userPermissionOverrides?: UserPermissionOverrideRecord[];
 };
 
 export const SITE_ADMIN_CONFIGURABLE_PERMISSIONS = [
@@ -167,6 +184,7 @@ export const SITE_ADMIN_CONFIGURABLE_PERMISSIONS = [
   PermissionKey.MANAGE_STORE,
   PermissionKey.MANAGE_SPARE_PARTS,
   PermissionKey.VIEW_STORE_STOCK,
+  PermissionKey.VIEW_STOCK_VALUE,
   PermissionKey.RECEIVE_STOCK,
   PermissionKey.ADJUST_STOCK,
   PermissionKey.VIEW_STORE_REPORTS,
@@ -213,6 +231,7 @@ export const SITE_ADMIN_PERMISSION_OPTIONS: readonly PermissionOption[] = [
   { key: PermissionKey.MANAGE_STORE, label: "Manage Store", group: "Store" },
   { key: PermissionKey.MANAGE_SPARE_PARTS, label: "Manage Spare Parts", group: "Store" },
   { key: PermissionKey.VIEW_STORE_STOCK, label: "View Store Stock", group: "Store" },
+  { key: PermissionKey.VIEW_STOCK_VALUE, label: "View Stock Value", group: "Store" },
   { key: PermissionKey.RECEIVE_STOCK, label: "Receive Stock", group: "Store" },
   { key: PermissionKey.ADJUST_STOCK, label: "Adjust Stock", group: "Store" },
   { key: PermissionKey.VIEW_STORE_REPORTS, label: "View Store Reports", group: "Store" },
@@ -474,6 +493,18 @@ const alwaysAllowedByRole: Record<PermissionRole, ReadonlySet<PermissionKey>> = 
 
 export function permissionDefaultForRole(role: string, permissionKey: PermissionKey) {
   const normalizedRole = isSiteAdminRole(role) ? RoleName.SITE_ADMIN : role;
+  if (
+    permissionKey === PermissionKey.VIEW_STORE_STOCK &&
+    Object.values(RoleName).includes(normalizedRole as RoleName)
+  ) {
+    return true;
+  }
+  if (
+    permissionKey === PermissionKey.VIEW_STOCK_VALUE &&
+    new Set<string>([RoleName.ADMIN, RoleName.ORGANIZATION_ADMIN, RoleName.STORE_OFFICER]).has(normalizedRole)
+  ) {
+    return true;
+  }
   return Boolean(alwaysAllowedByRole[normalizedRole as PermissionRole]?.has(permissionKey));
 }
 
@@ -482,28 +513,56 @@ export function isSiteAdminConfigurablePermission(permissionKey: string): permis
 }
 
 export function canUsePermission(
-  actor: { id?: string; role: string; plantId?: string | null },
+  actor: { id?: string; role: string; organizationId?: string | null; plantId?: string | null },
   permissionKey: PermissionKey,
   siteAdminPermissions: SiteAdminPermissionRecord[] = [],
+  rolePermissionOverrides: RolePermissionOverrideRecord[] = [],
+  userPermissionOverrides: UserPermissionOverrideRecord[] = [],
 ) {
   if (actor.role === RoleName.ADMIN) return true;
-  if (!isSiteAdminRole(actor.role)) return permissionDefaultForRole(actor.role, permissionKey);
-  if (permissionDefaultForRole(actor.role, permissionKey)) return true;
-  if (!actor.id || !actor.plantId || !isSiteAdminConfigurablePermission(permissionKey)) return false;
+  const normalizedRole = isSiteAdminRole(actor.role) ? RoleName.SITE_ADMIN : actor.role;
+  let allowed = permissionDefaultForRole(normalizedRole, permissionKey);
+  const systemDecision = rolePermissionOverrides.find(
+    (permission) =>
+      permission.scopeKey === "SYSTEM" &&
+      permission.role === normalizedRole &&
+      permission.permissionKey === permissionKey,
+  )?.decision;
+  if (systemDecision) allowed = systemDecision === "ALLOW";
 
-  return siteAdminPermissions.some(
+  const organizationDecision = actor.organizationId
+    ? rolePermissionOverrides.find(
+        (permission) =>
+          permission.organizationId === actor.organizationId &&
+          permission.role === normalizedRole &&
+          permission.permissionKey === permissionKey,
+      )?.decision
+    : undefined;
+  if (organizationDecision) allowed = organizationDecision === "ALLOW";
+
+  const userDecision = actor.id
+    ? userPermissionOverrides.find(
+        (permission) => permission.userId === actor.id && permission.permissionKey === permissionKey,
+      )?.decision
+    : undefined;
+  if (userDecision) return userDecision === "ALLOW";
+
+  const legacySiteAdminGrant = actor.id && actor.plantId && siteAdminPermissions.some(
     (permission) =>
       permission.enabled &&
       permission.userId === actor.id &&
       permission.plantId === actor.plantId &&
       permission.permissionKey === permissionKey,
   );
+  return allowed || Boolean(legacySiteAdminGrant);
 }
 
 export function canUseUserPermission(user: PermissionUserContext, permissionKey: PermissionKey) {
   return canUsePermission(
-    { id: user.id, role: user.role, plantId: user.plantId },
+    { id: user.id, role: user.role, organizationId: user.organizationId, plantId: user.plantId },
     permissionKey,
     user.siteAdminPermissions ?? [],
+    user.rolePermissionOverrides ?? [],
+    user.userPermissionOverrides ?? [],
   );
 }

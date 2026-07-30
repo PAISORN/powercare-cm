@@ -94,7 +94,7 @@ describe("getAppLinks", () => {
     expect(links.some((link) => link.kind === "section" && link.label === "Master Data")).toBe(true);
     expect(links.some((link) => link.kind === "section" && link.label === "Communication")).toBe(true);
     expect(links.some((link) => link.kind === "section" && link.label === "Administration")).toBe(true);
-    expect(links.some((link) => link.label === "Site Admin Permissions" && link.href === "/admin/site-admin-permissions" && link.parentSectionId === "organization")).toBe(true);
+    expect(links.some((link) => link.label === "Permissions" && link.href === "/admin/permissions" && link.parentSectionId === "organization")).toBe(true);
     expect(links.some((link) => link.label === "Plant Admin Permissions")).toBe(false);
     for (const href of ["/admin/settings", "/admin/line", "/admin/history", "/admin/users"]) {
       expect(links.some((link) => link.href === href && link.nested && link.parentSectionId === "administration")).toBe(true);
@@ -102,7 +102,7 @@ describe("getAppLinks", () => {
     for (const href of ["/admin/categories", "/admin/zones", "/admin/qr-code", "/admin/sla"]) {
       expect(links.some((link) => link.href === href && link.nested && link.parentSectionId === "master-data")).toBe(true);
     }
-    for (const href of ["/admin/organization", "/admin/sites", "/admin/site-admin-permissions"]) {
+    for (const href of ["/admin/organization", "/admin/sites", "/admin/permissions"]) {
       expect(links.some((link) => link.href === href && link.nested && link.parentSectionId === "organization")).toBe(true);
     }
     for (const href of ["/admin/announcements", "/admin/feedback"]) {
@@ -161,7 +161,7 @@ describe("getAppLinks", () => {
     expect(links.some((link) => link.kind === "section" && link.label === "Inventory")).toBe(true);
     expect(links.some((link) => link.label === "Equipment" && link.disabled)).toBe(true);
     expect(links.some((link) => link.label === "Spare Parts" && link.href === "/inventory/spare-parts" && !link.disabled)).toBe(true);
-    expect(visitorLinks.some((link) => link.label === "Spare Parts" && link.disabled)).toBe(true);
+    expect(visitorLinks.some((link) => link.label === "Spare Parts" && !link.disabled)).toBe(true);
   });
 
   it("shows real Inventory links to Store Officer", () => {

@@ -41,6 +41,7 @@ export type StoreIssueRecord = {
   status: string;
   plantId: string;
   organizationId: string;
+  requesterUserId?: string | null;
   items: {
     id: string;
     lineNumber?: string | null;
@@ -130,10 +131,14 @@ export async function approveStoreIssueByEngineer(
   scope: StoreScope,
   issueId: string,
   changedAt = new Date(),
+  allowSelfApproval = false,
 ) {
   const issue = await readIssueInScope(repository, scope, issueId);
   assertActorInScope(engineer, scope);
   assertIssueStatus(issue, StoreIssueStatus.WAITING_ENGINEER_APPROVAL);
+  if (issue.requesterUserId && issue.requesterUserId === engineer.id && !allowSelfApproval) {
+    throw new Error("The requester cannot approve their own store issue.");
+  }
   for (const item of issue.items) {
     await repository.updateIssueItem({
       itemId: item.id,

@@ -164,6 +164,18 @@ _Avoid_: fixed default store, store officer only selection
 The rule that prevents a spare-part issue request from being submitted when the requested quantity is greater than the currently available site stock.
 _Avoid_: negative stock request, over-issue request, approval-first stock check
 
+**Stock Read Access**:
+The baseline capability that lets every authenticated Role view Stock within its Organization and Site scope without changing inventory data.
+_Avoid_: public stock access, stock management permission
+
+**Stock Value Access**:
+An Owner Admin-controlled permission for viewing Inventory Item prices, issue costs, and aggregate Stock value. Stock Read Access does not imply Stock Value Access.
+_Avoid_: stock quantity access, stock management permission
+
+**Stock Mutation Permission**:
+An Owner Admin-controlled permission for changing inventory master data, receiving stock, adjusting stock, or issuing stock. Store Officer receives the normal Role Permission Defaults, while another Role or User may act only through an explicit permission decision.
+_Avoid_: Store Officer identity check, read-only stock access
+
 **Store Category**:
 A grouping for stores, such as Electrical Store, Mechanical Store, Instrument Store, or Tool Room.
 _Avoid_: spare part category, zone, storage location
@@ -175,6 +187,10 @@ _Avoid_: store category, zone, storage location
 **Spare Part Material Group**:
 A Site-scoped child grouping under exactly one Spare Part Category, used to refine spare-part and material discovery, such as Electrical → Pipe. Each spare part belongs to at most one material group, and the selected group must belong to the spare part's selected category. The Thai UI label is “กลุ่มอะไหล่/วัสดุ”.
 _Avoid_: spare part name, spare part category, spare part type, unit, store category
+
+**Inventory Item Kind**:
+The business kind of a stock-controlled item: Spare Part, Chemical, or Oil. All three kinds share the same Store stock, receive, issue, movement, approval, CM-reference lifecycle, and item details without separate Lot, manufacture-date, expiry-date, or manufacturer tracking; the kind distinguishes how users discover and report the item.
+_Avoid_: separate chemical store system, separate oil issue system, spare part category
 
 **Applicable Zone**:
 A plant zone where a spare part is commonly used. One spare part can have multiple applicable zones.
@@ -204,6 +220,14 @@ _Avoid_: quantity edit, silent reduction, full rejection
 The lifecycle status of a spare-part issue: Draft, Waiting Engineer Approval, Returned for Edit, Engineer Approved, Waiting Store Issue, Partially Issued, Issued, Rejected, Not Enough Stock, or Canceled.
 _Avoid_: CM work status, stock movement status, approval flag
 
+**Store Issue Workflow**:
+The fixed three-stage lifecycle Create Issue → Approve Issue → Issue Stock. Owner Admin controls which Roles and Users may perform each stage, but permissions do not change, remove, reorder, or add workflow stages.
+_Avoid_: configurable approval chain, direct stock deduction, role-named approval stage
+
+**Store Issue Separation of Duties**:
+The control that prevents a User from approving an Issue they created. An approver may also issue Stock when separately permitted; Owner Admin may bypass the separation only as an Emergency Override with a recorded reason and Audit Trail.
+_Avoid_: self-approval, silent Owner bypass, mandatory three-person workflow
+
 **Spare Part Issue Document**:
 A printable record produced only after a spare-part issue is fully issued. It records the requester, Engineer approval, Store Officer issue, requested, approved, and actually issued quantities, plus the unit price and issue value captured for that issue. Historical document values do not change when the spare part's latest price changes later. The three accountable parties are the Requester, approving Engineer, and issuing Store Officer; Supervisor, Department Manager, and Receiver are not part of the current issue workflow.
 _Avoid_: purchase request, blank material request form, CM completion document
@@ -232,9 +256,29 @@ _Avoid_: type, department
 The maintenance category attached to an Engineer or Technician role, defining which CM work they can claim, update, review, close, or cancel.
 _Avoid_: separate electrical role, separate mechanical role
 
+**Role Permission Default**:
+The Owner Admin-managed permission set inherited by every User holding a Role. It defines the normal capabilities of the Role without determining Organization, Site, Category, or workflow scope.
+_Avoid_: hard-coded role capability, user-specific permission
+
+**Organization Role Permission Override**:
+An Owner Admin-managed Allow or Deny decision that adapts one Role Permission Default for Users in one Organization. It takes precedence over the system Role Permission Default but remains subordinate to a User Permission Override.
+_Avoid_: global role template, user-specific permission, Site scope
+
+**User Permission Override**:
+An Owner Admin-managed Allow or Deny decision for one User that takes precedence over the Organization Role Permission Override and system Role Permission Default; no override means the User follows inherited decisions. Owner Admin retains protected recovery capabilities that cannot be denied.
+_Avoid_: second role, Site Admin checkbox, duplicated role
+
+**Permission Control Center**:
+The single Owner Admin workspace for managing Organization Role Permission Overrides and User Permission Overrides, organized into Role Permissions and User Permissions views with searchable permission groups and Audit History.
+_Avoid_: Site Admin Permissions page, scattered permission settings, role editor
+
 **Closed CM Work**:
 CM work that has been completed and is ready for a printable completion document.
 _Avoid_: finished task, done job
+
+**CM Completion Inventory Usage**:
+The organized list of Inventory Items actually issued from Store for one CM Work, shown as a conditional supporting table in the existing CM completion document. It records issued quantities only and excludes rejected, canceled, unissued, or zero-quantity lines.
+_Avoid_: requested quantity, technician-entered spare-parts note, separate completion document
 
 **Engineer Review**:
 The step where an Engineer checks the Technician's completion details before closing CM work.

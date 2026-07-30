@@ -51,6 +51,7 @@ type PageQuery = {
   typeId?: string;
   categoryId?: string;
   materialGroupId?: string;
+  itemKind?: "SPARE_PART" | "CHEMICAL" | "OIL";
   unit?: string;
   stockStatus?: "all" | "available" | "nearMin" | "outOfStock";
   stockAction?: "issue" | "receive" | "adjust";
@@ -77,6 +78,13 @@ async function updateSparePartFromStockAction(formData: FormData) {
     const text = String(value ?? "").trim();
     return text ? Number(text) : null;
   };
+  const sparePartId = String(formData.get("sparePartId") ?? "");
+  const existingPrice = canUseUserPermission(user, PermissionKey.VIEW_STOCK_VALUE)
+    ? optionalNumber(formData.get("latestUnitPrice"))
+    : (await db.sparePart.findFirstOrThrow({
+        where: { id: sparePartId, plantId: scope.plant.id },
+        select: { latestUnitPrice: true },
+      })).latestUnitPrice;
   await updateSparePart(
     user,
     {
@@ -84,8 +92,9 @@ async function updateSparePartFromStockAction(formData: FormData) {
       plantId: scope.plant.id,
       plantCode: plant.inventoryCode,
     },
-    String(formData.get("sparePartId") ?? ""),
+    sparePartId,
     {
+      itemKind: String(formData.get("itemKind") ?? "SPARE_PART"),
       name: String(formData.get("name") ?? ""),
       itemCode: String(formData.get("itemCode") ?? ""),
       description: String(formData.get("description") ?? ""),
@@ -97,7 +106,7 @@ async function updateSparePartFromStockAction(formData: FormData) {
       minStock: Number(formData.get("minStock") ?? 0),
       maxStock: optionalNumber(formData.get("maxStock")),
       reorderPoint: Number(formData.get("reorderPoint") ?? 0),
-      latestUnitPrice: optionalNumber(formData.get("latestUnitPrice")),
+      latestUnitPrice: existingPrice == null ? null : Number(existingPrice),
       active: formData.get("active") === "on",
     },
   );
@@ -289,10 +298,11 @@ export default async function StockPage({ searchParams }: { searchParams: Promis
   const canManageParts = canUseUserPermission(user, PermissionKey.MANAGE_SPARE_PARTS);
   const canReceive = canUseUserPermission(user, PermissionKey.RECEIVE_STOCK);
   const canIssue = canUseUserPermission(user, PermissionKey.CREATE_STORE_ISSUE);
+  const canViewValue = canUseUserPermission(user, PermissionKey.VIEW_STOCK_VALUE);
   const search = query.search?.trim() ?? "";
   const stockStatus = query.stockStatus ?? "all";
 
-  const [stores, categories, materialGroups, sparePartTypes, issueZones, units, stocks] = await Promise.all([
+  const [stores, categories, materialGroups, sparePartTypes, issueZones, units, stocks, searchSuggestions] = await Promise.all([
     db.store.findMany({
       where: { plantId: scope.plant.id, active: true },
       orderBy: { name: "asc" },
@@ -332,6 +342,7 @@ export default async function StockPage({ searchParams }: { searchParams: Promis
         sparePart: {
           plantId: scope.plant.id,
           active: true,
+          ...(query.itemKind ? { itemKind: query.itemKind } : {}),
           ...(query.typeId ? { typeId: query.typeId } : {}),
           ...(query.categoryId ? { categoryId: query.categoryId } : {}),
           ...(query.materialGroupId ? { materialGroupId: query.materialGroupId } : {}),
@@ -354,6 +365,7 @@ export default async function StockPage({ searchParams }: { searchParams: Promis
             id: true,
             code: true,
             itemCode: true,
+            itemKind: true,
             name: true,
             description: true,
             unit: true,
@@ -373,6 +385,12 @@ export default async function StockPage({ searchParams }: { searchParams: Promis
         },
       },
       orderBy: [{ store: { name: "asc" } }, { sparePart: { name: "asc" } }],
+    }),
+    db.sparePart.findMany({
+      where: { plantId: scope.plant.id, active: true },
+      select: { id: true, code: true, itemCode: true, name: true },
+      orderBy: { name: "asc" },
+      take: 500,
     }),
   ]);
 
@@ -427,6 +445,7 @@ export default async function StockPage({ searchParams }: { searchParams: Promis
     if (query.typeId) params.set("typeId", query.typeId);
     if (query.categoryId) params.set("categoryId", query.categoryId);
     if (query.materialGroupId) params.set("materialGroupId", query.materialGroupId);
+    if (query.itemKind) params.set("itemKind", query.itemKind);
     if (query.unit) params.set("unit", query.unit);
     if (stockStatus !== "all") params.set("stockStatus", stockStatus);
     if (page > 1) params.set("page", String(page));
@@ -497,13 +516,15 @@ export default async function StockPage({ searchParams }: { searchParams: Promis
         ) : null}
 
         <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
-          <SummaryCard
-            color="blue"
-            icon={<Boxes size={28} />}
-            label="มูลค่าอะไหล่คงเหลือรวม"
-            sublabel="บาท"
-            value={formatMoney(totalValue)}
-          />
+          {canViewValue ? (
+            <SummaryCard
+              color="blue"
+              icon={<Boxes size={28} />}
+              label="มูลค่าอะไหล่คงเหลือรวม"
+              sublabel="บาท"
+              value={formatMoney(totalValue)}
+            />
+          ) : null}
           <SummaryCard
             color="green"
             icon={<Warehouse size={28} />}
@@ -541,7 +562,12 @@ export default async function StockPage({ searchParams }: { searchParams: Promis
               ค้นหา
               <span className="relative">
                 <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--muted)]" size={17} />
-                <input className={`${inputClass} pl-10`} defaultValue={search} name="search" placeholder="ค้นหา รหัสอะไหล่, รายการอะไหล่, Part No." />
+                <input autoComplete="off" className={`${inputClass} pl-10`} defaultValue={search} list="stock-search-suggestions" name="search" placeholder="ค้นหา รหัสอะไหล่, รายการอะไหล่, Part No." />
+                <datalist id="stock-search-suggestions">
+                  {searchSuggestions.map((item) => (
+                    <option key={item.id} value={item.code}>{item.itemCode ? `${item.itemCode} · ` : ""}{item.name}</option>
+                  ))}
+                </datalist>
               </span>
             </label>
             <label className={labelClass}>
@@ -553,6 +579,15 @@ export default async function StockPage({ searchParams }: { searchParams: Promis
                     {store.name}
                   </option>
                 ))}
+              </AutoSubmitSelect>
+            </label>
+            <label className={labelClass}>
+              ชนิดรายการ
+              <AutoSubmitSelect className={inputClass} defaultValue={query.itemKind ?? ""} name="itemKind">
+                <option value="">ทั้งหมด</option>
+                <option value="SPARE_PART">อะไหล่</option>
+                <option value="CHEMICAL">สารเคมี</option>
+                <option value="OIL">น้ำมัน</option>
               </AutoSubmitSelect>
             </label>
             <label className={labelClass}>
@@ -712,7 +747,7 @@ export default async function StockPage({ searchParams }: { searchParams: Promis
                       <td className="px-4 py-3">
                         <StockStatusPill minStock={Number(stock.sparePart.minStock)} quantity={quantity} />
                       </td>
-                      <td className="px-4 py-3 text-left font-semibold">{formatMoney(quantity * unitPrice)}</td>
+                      <td className="px-4 py-3 text-left font-semibold">{canViewValue ? formatMoney(quantity * unitPrice) : "—"}</td>
                       <td className="px-2 py-3 text-right">
                         <div className="flex items-center justify-end gap-1">
                           <div className="grid gap-1">
@@ -831,6 +866,14 @@ export default async function StockPage({ searchParams }: { searchParams: Promis
               <AdminScopeHiddenFields scope={scope} />
               <input name="sparePartId" type="hidden" value={editPart.id} />
               <label className={labelClass}>
+                ชนิดรายการ
+                <select className={inputClass} defaultValue={editPart.itemKind} name="itemKind" required>
+                  <option value="SPARE_PART">อะไหล่</option>
+                  <option value="CHEMICAL">สารเคมี</option>
+                  <option value="OIL">น้ำมัน</option>
+                </select>
+              </label>
+              <label className={labelClass}>
                 ชื่ออะไหล่
                 <input className={inputClass} defaultValue={editPart.name} name="name" required />
               </label>
@@ -884,10 +927,12 @@ export default async function StockPage({ searchParams }: { searchParams: Promis
                   <input className={inputClass} defaultValue={Number(editPart.reorderPoint)} min="0" name="reorderPoint" step="0.01" type="number" required />
                 </label>
               </div>
-              <label className={labelClass}>
-                ราคาล่าสุด
-                <input className={inputClass} defaultValue={editPart.latestUnitPrice == null ? "" : Number(editPart.latestUnitPrice)} min="0" name="latestUnitPrice" step="0.01" type="number" />
-              </label>
+              {canViewValue ? (
+                <label className={labelClass}>
+                  ราคาล่าสุด
+                  <input className={inputClass} defaultValue={editPart.latestUnitPrice == null ? "" : Number(editPart.latestUnitPrice)} min="0" name="latestUnitPrice" step="0.01" type="number" />
+                </label>
+              ) : null}
               <label className={labelClass}>
                 รายละเอียด
                 <textarea className={`${inputClass} min-h-24 py-3`} defaultValue={editPart.description ?? ""} name="description" />

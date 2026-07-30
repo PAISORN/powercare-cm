@@ -1,11 +1,12 @@
-import { Building2, PackageSearch } from "lucide-react";
+import { Home, PackageSearch } from "lucide-react";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { IssueRequestForm } from "../../../../../components/store/issue-request-form";
+import { ThemeToggle } from "../../../../../components/theme-toggle";
 import { db } from "../../../../../lib/db";
 import { createPublicStoreIssue } from "../../../../../modules/store/store-issue-prisma";
 
-type PageQuery = { created?: string; error?: string };
+type PageQuery = { created?: string; error?: string; itemKind?: string };
 
 async function createPublicIssueAction(formData: FormData) {
   "use server";
@@ -69,6 +70,7 @@ export default async function PublicStoreIssuePage({
           select: {
             id: true,
             code: true,
+            itemKind: true,
             itemCode: true,
             name: true,
             unit: true,
@@ -91,14 +93,15 @@ export default async function PublicStoreIssuePage({
   return (
     <main className="min-h-screen bg-[var(--page)] px-4 py-6 text-[var(--ink)] sm:px-6">
       <div className="mx-auto max-w-5xl space-y-5">
-        <header className="rounded-3xl bg-gradient-to-r from-blue-600 to-cyan-500 p-6 text-white shadow-lg sm:p-8">
-          <p className="inline-flex items-center gap-2 rounded-full bg-white/15 px-3 py-1.5 text-sm font-bold">
-            <Building2 size={16} />
-            {plant.organization.name}
-          </p>
-          <h1 className="mt-4 text-3xl font-extrabold sm:text-4xl">{plant.name}</h1>
-          <p className="mt-2 text-white/85">ใบขอเบิกอะไหล่สาธารณะ · Store Site Code {inventoryCode}</p>
-        </header>
+        <div className="sticky top-2 z-40 flex min-h-16 items-center justify-between gap-3 rounded-2xl border border-[var(--line)] bg-[var(--surface-raised)]/95 p-2 shadow-[var(--shadow)] backdrop-blur-xl">
+          <div className="flex min-w-0 items-center gap-3">
+            <Link aria-label="Home" className="grid size-12 shrink-0 place-items-center rounded-full bg-[var(--primary)] text-white shadow-sm" href="/">
+              <Home size={20} />
+            </Link>
+            <p className="truncate text-sm font-semibold text-[var(--muted)]">{plant.name}</p>
+          </div>
+          <ThemeToggle />
+        </div>
 
         {query.created ? (
           <section className="rounded-3xl border border-emerald-500/30 bg-emerald-500/10 p-6 text-center">
@@ -119,23 +122,23 @@ export default async function PublicStoreIssuePage({
         ) : null}
 
         {!query.created ? (
-          <section className="rounded-3xl border border-[var(--line)] bg-[var(--surface)] p-5 shadow-[var(--shadow)] sm:p-7">
-            <h2 className="text-2xl font-extrabold">ขอเบิกอะไหล่</h2>
-            <p className="mt-1 text-sm text-[var(--muted)]">Engineer จะตรวจสอบก่อนส่งต่อให้ Store Officer จ่ายของ</p>
-            <div className="mt-5">
+          <section>
               <IssueRequestForm
                 action={createPublicIssueAction}
                 cmWorks={[]}
                 directOnly
                 inventoryCode={inventoryCode}
+                initialItemKind={resolveItemKind(query.itemKind)}
                 organizationId={plant.organizationId}
                 plantId={plant.id}
                 issueZones={issueZones.map((item) => ({ ...item.zone, code: item.code }))}
                 publicRequester={{ contactRequired: plant.publicStoreIssueContactRequired }}
+                siteSummary={{ organizationName: plant.organization.name, plantName: plant.name, inventoryCode }}
                 singleCard
                 stocks={stocks.map((stock) => ({
                   storeId: stock.storeId,
                   sparePartId: stock.sparePartId,
+                  sparePartItemKind: stock.sparePart.itemKind,
                   label: `${stock.store.code} · ${stock.sparePart.code} · ${stock.sparePart.name}`,
                   available: Number(stock.quantity),
                   unit: stock.sparePart.unit,
@@ -151,12 +154,15 @@ export default async function PublicStoreIssuePage({
                   stockStatus: buildStoreStockStatus(Number(stock.quantity), Number(stock.sparePart.minStock)),
                 }))}
               />
-            </div>
           </section>
         ) : null}
       </div>
     </main>
   );
+}
+
+function resolveItemKind(value?: string): "SPARE_PART" | "CHEMICAL" | "OIL" {
+  return value === "CHEMICAL" || value === "OIL" ? value : "SPARE_PART";
 }
 
 function buildStoreStockStatus(quantity: number, minStock: number) {

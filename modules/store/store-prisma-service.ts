@@ -414,6 +414,7 @@ export async function createSparePart(
             plantId: data.plantId,
             code: data.code,
             itemCode: data.itemCode,
+            itemKind: data.itemKind,
             name: data.name,
             description: data.description,
             unit: data.unit,
@@ -468,6 +469,7 @@ export async function updateSparePart(
       where: { id: sparePartId },
       data: {
         itemCode: normalized.itemCode,
+        itemKind: normalized.itemKind,
         name: normalized.name,
         description: normalized.description,
         unit: normalized.unit,

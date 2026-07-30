@@ -2,6 +2,7 @@ import type { StoreScope } from "./store-types";
 import { formatSparePartCode } from "./store-numbering";
 
 export type CreateSparePartInput = {
+  itemKind?: string;
   name: string;
   unit: string;
   itemCode: string;
@@ -26,6 +27,7 @@ export type SparePartRepository = {
     name: string;
     unit: string;
     itemCode: string;
+    itemKind: string;
     description: string | null;
     categoryId: string;
     materialGroupId: string;
@@ -56,6 +58,7 @@ export async function createSparePartWithRepository(
 }
 
 export function normalizeSparePartInput(input: CreateSparePartInput) {
+  const itemKind = normalizeInventoryItemKind(input.itemKind ?? "SPARE_PART");
   const name = input.name.trim();
   const unit = input.unit.trim();
   const itemCode = requiredCode(input.itemCode, "Item Code");
@@ -88,6 +91,7 @@ export function normalizeSparePartInput(input: CreateSparePartInput) {
   }
 
   return {
+    itemKind,
     name,
     unit,
     itemCode,
@@ -102,6 +106,14 @@ export function normalizeSparePartInput(input: CreateSparePartInput) {
     latestUnitPrice: input.latestUnitPrice ?? null,
     active: input.active ?? true,
   };
+}
+
+function normalizeInventoryItemKind(value: string) {
+  const normalized = value.trim().toUpperCase();
+  if (!["SPARE_PART", "CHEMICAL", "OIL"].includes(normalized)) {
+    throw new Error("Inventory item kind is invalid.");
+  }
+  return normalized;
 }
 
 function requiredText(value: string, label: string) {

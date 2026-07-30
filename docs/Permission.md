@@ -74,6 +74,7 @@
 | `manage_store` | จัดการ Store ภายใน Site | Store / Inventory |
 | `manage_spare_parts` | จัดการข้อมูลอะไหล่ | Store / Inventory |
 | `view_store_stock` | ดูยอดคงเหลือ Stock | Store / Inventory |
+| `view_stock_value` | ดูราคาและมูลค่า Stock | Store / Inventory |
 | `receive_stock` | รับของเข้า Stock | Store / Inventory |
 | `adjust_stock` | ปรับยอด Stock พร้อมเหตุผล | Store / Inventory |
 | `view_store_reports` | ดูรายงาน Store | Store / Inventory |

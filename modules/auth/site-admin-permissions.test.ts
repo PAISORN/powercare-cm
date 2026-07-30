@@ -104,4 +104,24 @@ describe("Site Admin permissions", () => {
     expect(canUsePermission(user, PermissionKey.CLOSE_WORK, [])).toBe(false);
     expect(canUsePermission(user, PermissionKey.MANAGE_USERS_PLANT, [])).toBe(false);
   });
+
+  it("allows every authenticated role to read stock while protecting stock value", () => {
+    for (const role of Object.values(RoleName)) {
+      expect(permissionDefaultForRole(role, PermissionKey.VIEW_STORE_STOCK)).toBe(true);
+    }
+    expect(permissionDefaultForRole(RoleName.TECHNICIAN, PermissionKey.VIEW_STOCK_VALUE)).toBe(false);
+    expect(permissionDefaultForRole(RoleName.STORE_OFFICER, PermissionKey.VIEW_STOCK_VALUE)).toBe(true);
+  });
+
+  it("applies system, organization, then user overrides in that order", () => {
+    const actor = { id: "tech-1", role: RoleName.TECHNICIAN, organizationId: "org-1", plantId: "site-1" };
+    const roleOverrides = [
+      { scopeKey: "SYSTEM", role: RoleName.TECHNICIAN, permissionKey: PermissionKey.RECEIVE_STOCK, decision: "ALLOW" },
+      { scopeKey: "ORG:org-1", organizationId: "org-1", role: RoleName.TECHNICIAN, permissionKey: PermissionKey.RECEIVE_STOCK, decision: "DENY" },
+    ];
+    expect(canUsePermission(actor, PermissionKey.RECEIVE_STOCK, [], roleOverrides, [])).toBe(false);
+    expect(canUsePermission(actor, PermissionKey.RECEIVE_STOCK, [], roleOverrides, [
+      { userId: "tech-1", permissionKey: PermissionKey.RECEIVE_STOCK, decision: "ALLOW" },
+    ])).toBe(true);
+  });
 });

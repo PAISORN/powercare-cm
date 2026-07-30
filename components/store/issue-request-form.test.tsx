@@ -245,9 +245,9 @@ describe("IssueRequestForm", () => {
     );
 
     const form = screen.getByTestId("issue-request-form");
-    const reviewButton = screen.getByRole("button", { name: /ถัดไป: ตรวจสอบและยืนยัน/ });
+    const reviewButton = screen.getByRole("button", { name: /ตรวจสอบและยืนยัน/ });
     expect(reviewButton.parentElement?.className).not.toContain("sticky");
-    expect(form.querySelectorAll("section.rounded-2xl")).toHaveLength(0);
+    expect(form.querySelectorAll("section.rounded-3xl")).toHaveLength(0);
   });
 
   it("renders stock suggestions in a portal above the form", () => {
@@ -285,7 +285,7 @@ describe("IssueRequestForm", () => {
 
     expect(container.querySelector('input[name="requesterName"]')).toBeTruthy();
     expect(container.querySelector('input[name="requesterDepartment"]')).toBeTruthy();
-    expect(container.querySelector('input[name="requesterContact"]')?.hasAttribute("required")).toBe(false);
+    expect(container.querySelector('input[name="requesterContact"]')).toBeNull();
     expect(screen.getByRole("button", { name: "สแกนบาร์โค้ต" })).toBeTruthy();
   });
 });

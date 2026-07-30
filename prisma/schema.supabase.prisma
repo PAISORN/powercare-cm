@@ -29,18 +29,21 @@ model User {
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt
 
-  claimedWorks                CmWork[]              @relation("Claimant")
-  closedWorks                 CmWork[]              @relation("EngineerReviewer")
+  claimedWorks                CmWork[]                 @relation("Claimant")
+  closedWorks                 CmWork[]                 @relation("EngineerReviewer")
   auditEvents                 AuditEvent[]
-  announcements               Announcement[]        @relation("AnnouncementAuthor")
-  notifications               UserNotification[]    @relation("NotificationRecipient")
-  siteAdminPermissions        SiteAdminPermission[] @relation("SiteAdminPermissionUser")
-  grantedSiteAdminPermissions SiteAdminPermission[] @relation("SiteAdminPermissionGrantedBy")
+  announcements               Announcement[]           @relation("AnnouncementAuthor")
+  notifications               UserNotification[]       @relation("NotificationRecipient")
+  siteAdminPermissions        SiteAdminPermission[]    @relation("SiteAdminPermissionUser")
+  grantedSiteAdminPermissions SiteAdminPermission[]    @relation("SiteAdminPermissionGrantedBy")
+  userPermissionOverrides     UserPermissionOverride[] @relation("UserPermissionOverrideUser")
+  grantedUserPermissions      UserPermissionOverride[] @relation("UserPermissionOverrideGrantedBy")
+  grantedRolePermissions      RolePermissionOverride[] @relation("RolePermissionOverrideGrantedBy")
   stockMovements              StockMovement[]
   sparePartReceives           SparePartReceive[]
-  requestedStoreIssues        SparePartIssue[]      @relation("StoreIssueRequester")
-  engineerStoreIssues         SparePartIssue[]      @relation("StoreIssueEngineer")
-  officerStoreIssues          SparePartIssue[]      @relation("StoreIssueOfficer")
+  requestedStoreIssues        SparePartIssue[]         @relation("StoreIssueRequester")
+  engineerStoreIssues         SparePartIssue[]         @relation("StoreIssueEngineer")
+  officerStoreIssues          SparePartIssue[]         @relation("StoreIssueOfficer")
 
   @@index([role])
   @@index([organizationId])
@@ -80,6 +83,7 @@ model Organization {
   stockMovements          StockMovement[]
   sparePartReceives       SparePartReceive[]
   sparePartIssues         SparePartIssue[]
+  rolePermissionOverrides RolePermissionOverride[]
 
   @@index([active])
 }
@@ -145,6 +149,40 @@ model SiteAdminPermission {
 
   @@unique([userId, plantId, permissionKey])
   @@index([plantId, permissionKey, enabled])
+  @@index([grantedById])
+}
+
+model RolePermissionOverride {
+  id             String        @id @default(cuid())
+  scopeKey       String
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  role           String
+  permissionKey  String
+  decision       String
+  grantedById    String?
+  grantedBy      User?         @relation("RolePermissionOverrideGrantedBy", fields: [grantedById], references: [id])
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  @@unique([scopeKey, role, permissionKey])
+  @@index([organizationId, role])
+  @@index([role, permissionKey])
+}
+
+model UserPermissionOverride {
+  id            String   @id @default(cuid())
+  userId        String
+  user          User     @relation("UserPermissionOverrideUser", fields: [userId], references: [id], onDelete: Cascade)
+  permissionKey String
+  decision      String
+  grantedById   String?
+  grantedBy     User?    @relation("UserPermissionOverrideGrantedBy", fields: [grantedById], references: [id])
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([userId, permissionKey])
+  @@index([permissionKey, decision])
   @@index([grantedById])
 }
 
@@ -638,6 +676,7 @@ model SparePart {
   defaultStore    Store?                  @relation(fields: [defaultStoreId], references: [id], onDelete: SetNull)
   code            String
   itemCode        String?
+  itemKind        String                  @default("SPARE_PART")
   name            String
   description     String?
   unit            String
@@ -659,6 +698,7 @@ model SparePart {
   @@index([organizationId, active])
   @@index([plantId, active])
   @@index([plantId, itemCode])
+  @@index([plantId, itemKind, active])
   @@index([categoryId, active])
   @@index([materialGroupId, active])
   @@index([typeId, active])

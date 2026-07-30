@@ -125,6 +125,7 @@ export default async function WorkDetailPage({
         select: {
           id: true,
           code: true,
+          itemKind: true,
           itemCode: true,
           name: true,
           unit: true,
@@ -512,9 +513,11 @@ export default async function WorkDetailPage({
             issueZones={issueZones.map((item) => ({ ...item.zone, code: item.code }))}
             lockedCmWork={{ id: work.id, number: work.number, label: `${work.machineName} · ${work.problemTitle}` }}
             cmWorks={[{ id: work.id, number: work.number, label: `${work.machineName} · ${work.problemTitle}` }]}
+            singleCard
             stocks={storeStocks.map((stock) => ({
               storeId: stock.store.id,
               sparePartId: stock.sparePart.id,
+              sparePartItemKind: stock.sparePart.itemKind,
               label: `${stock.sparePart.code} · ${stock.sparePart.name} · ${stock.store.code}`,
               available: Number(stock.quantity),
               unit: stock.sparePart.unit,

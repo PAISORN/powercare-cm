@@ -6,7 +6,7 @@ import { AppBrand } from "./app-brand";
 import { AppNavLinks } from "./app-nav-links";
 import { UserAvatar } from "./user-avatar";
 import type { RoleName } from "../modules/cm-work/cm-work-types";
-import type { SiteAdminPermissionRecord } from "../modules/auth/site-admin-permissions";
+import type { RolePermissionOverrideRecord, SiteAdminPermissionRecord, UserPermissionOverrideRecord } from "../modules/auth/site-admin-permissions";
 import { formatRoleName } from "../modules/users/role-labels";
 
 const SIDEBAR_STORAGE_KEY = "powercare.sidebar.collapsed";
@@ -17,8 +17,11 @@ export function DesktopSidebar({
   hasPhoto,
   plantCode,
   plantId,
+  organizationId,
   role,
+  rolePermissionOverrides,
   siteAdminPermissions,
+  userPermissionOverrides,
   userId,
   version,
 }: {
@@ -27,8 +30,11 @@ export function DesktopSidebar({
   hasPhoto: boolean;
   plantCode?: string | null;
   plantId?: string | null;
+  organizationId?: string | null;
   role: RoleName;
+  rolePermissionOverrides?: RolePermissionOverrideRecord[];
   siteAdminPermissions?: SiteAdminPermissionRecord[];
+  userPermissionOverrides?: UserPermissionOverrideRecord[];
   userId: string;
   version?: number;
 }) {
@@ -110,9 +116,12 @@ export function DesktopSidebar({
           role={role}
           permissionContext={{
             id: userId,
+            organizationId,
             plantCode,
             plantId,
+            rolePermissionOverrides,
             siteAdminPermissions,
+            userPermissionOverrides,
           }}
         />
       </nav>

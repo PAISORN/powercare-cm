@@ -31,10 +31,26 @@ export async function getCurrentUser() {
     include: { category: true, categories: true, plant: true, signature: true, profilePhoto: true, siteAdminPermissions: true },
   });
   if (!user) return null;
+  const [rolePermissionOverrides, userPermissionOverrides] = await Promise.all([
+    db.rolePermissionOverride.findMany({
+      where: {
+        role: user.role === "PLANT_ADMIN" ? "SITE_ADMIN" : user.role,
+        OR: [
+          { scopeKey: "SYSTEM" },
+          ...(user.organizationId ? [{ organizationId: user.organizationId }] : []),
+        ],
+      },
+      select: { scopeKey: true, organizationId: true, role: true, permissionKey: true, decision: true },
+    }),
+    db.userPermissionOverride.findMany({
+      where: { userId: user.id },
+      select: { userId: true, permissionKey: true, decision: true },
+    }),
+  ]);
   if (shouldTouchLastSeen(user.lastSeenAt)) {
     await db.user.update({ where: { id: user.id }, data: { lastSeenAt: new Date() }, select: lastSeenSelect });
   }
-  return user;
+  return { ...user, rolePermissionOverrides, userPermissionOverrides };
 }
 
 export async function requireUser() {

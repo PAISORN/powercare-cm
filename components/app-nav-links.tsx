@@ -40,7 +40,9 @@ import { LogoutMenuItem } from "./logout-menu-item";
 import {
   canUsePermission,
   PermissionKey,
+  type RolePermissionOverrideRecord,
   type SiteAdminPermissionRecord,
+  type UserPermissionOverrideRecord,
 } from "../modules/auth/site-admin-permissions";
 
 type AppLink = {
@@ -58,17 +60,22 @@ type AppLink = {
 
 export type AppPermissionContext = {
   id?: string;
+  organizationId?: string | null;
   plantId?: string | null;
   plantCode?: string | null;
   siteAdminPermissions?: SiteAdminPermissionRecord[];
+  rolePermissionOverrides?: RolePermissionOverrideRecord[];
+  userPermissionOverrides?: UserPermissionOverrideRecord[];
 };
 
 export function getAppLinks(role: RoleValue, permissionContext: AppPermissionContext = {}): AppLink[] {
   const canUse = (permissionKey: PermissionKey) =>
     canUsePermission(
-      { id: permissionContext.id, role, plantId: permissionContext.plantId },
+      { id: permissionContext.id, role, organizationId: permissionContext.organizationId, plantId: permissionContext.plantId },
       permissionKey,
       permissionContext.siteAdminPermissions ?? [],
+      permissionContext.rolePermissionOverrides ?? [],
+      permissionContext.userPermissionOverrides ?? [],
   );
   const canUseAny = (...permissionKeys: PermissionKey[]) => permissionKeys.some((permissionKey) => canUse(permissionKey));
   const inventoryLink = (link: AppLink, allowed: boolean): AppLink => (allowed ? link : { ...link, href: "#", disabled: true });
@@ -154,8 +161,8 @@ export function getAppLinks(role: RoleValue, permissionContext: AppPermissionCon
   if (role === RoleName.ADMIN || role === RoleName.ORGANIZATION_ADMIN) {
     organizationLinks.push({ label: "Sites", href: "/admin/sites", icon: Factory, nested: true, parentSectionId: "organization" });
   }
-  if (canUse(PermissionKey.MANAGE_SITE_ADMIN_PERMISSION)) {
-    organizationLinks.push({ label: "Site Admin Permissions", href: "/admin/site-admin-permissions", icon: ShieldCheck, nested: true, parentSectionId: "organization" });
+  if (role === RoleName.ADMIN) {
+    organizationLinks.push({ label: "Permissions", href: "/admin/permissions", icon: ShieldCheck, nested: true, parentSectionId: "organization" });
   }
 
   if (organizationLinks.length > 0) {

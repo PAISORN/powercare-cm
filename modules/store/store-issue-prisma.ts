@@ -251,7 +251,8 @@ export async function approveStoreIssue(
   await db.$transaction(async (tx) => {
     const repository = createIssueRepository(tx);
     if (decision === "APPROVE") {
-      await approveStoreIssueByEngineer(repository, actor, scope, issueId);
+      const ownerOverride = actor.role === "ADMIN" && Boolean(reason?.trim());
+      await approveStoreIssueByEngineer(repository, actor, scope, issueId, new Date(), ownerOverride);
     } else if (decision === "RETURN") {
       await returnStoreIssueForEdit(repository, actor, scope, issueId, reason ?? "");
     } else {
@@ -367,6 +368,7 @@ function createIssueRepository(tx: Prisma.TransactionClient): StoreIssueReposito
           status: true,
           plantId: true,
           organizationId: true,
+          requesterUserId: true,
           items: {
             select: {
               id: true,

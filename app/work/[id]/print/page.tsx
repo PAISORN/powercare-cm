@@ -19,6 +19,24 @@ export default async function PrintCompletionPage({ params }: { params: Promise<
       zone: true,
       claimant: { include: { signature: true } },
       reviewer: { include: { signature: true } },
+      sparePartIssues: {
+        where: { issuedAt: { not: null } },
+        select: {
+          number: true,
+          issuedAt: true,
+          note: true,
+          items: {
+            where: { issuedQty: { gt: 0 } },
+            select: {
+              issuedQty: true,
+              note: true,
+              store: { select: { code: true, name: true } },
+              sparePart: { select: { code: true, name: true, unit: true, itemKind: true } },
+            },
+          },
+        },
+        orderBy: { issuedAt: "asc" },
+      },
     },
   });
 
@@ -56,6 +74,19 @@ export default async function PrintCompletionPage({ params }: { params: Promise<
         rootCause: work.rootCause ?? "-",
         correctiveAction: work.correctiveAction ?? "-",
         engineerNote: work.engineerNote ?? "-",
+        inventoryUsage: work.sparePartIssues.flatMap((issue) =>
+          issue.items.map((item) => ({
+            issueNumber: issue.number,
+            itemKind: item.sparePart.itemKind,
+            code: item.sparePart.code,
+            name: item.sparePart.name,
+            quantity: String(Number(item.issuedQty)),
+            unit: item.sparePart.unit,
+            store: item.store ? `${item.store.code} · ${item.store.name}` : "-",
+            issuedAt: issue.issuedAt ? formatThaiDateTime(issue.issuedAt) : "-",
+            note: item.note?.trim() || issue.note?.trim() || "-",
+          })),
+        ),
         claimant: work.claimant
           ? {
               fullName: work.claimant.fullName,

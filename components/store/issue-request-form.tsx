@@ -3,15 +3,21 @@
 import {
   ArrowLeft,
   ArrowRight,
+  Beaker,
+  Building2,
+  CalendarDays,
   ClipboardCheck,
+  Droplets,
   FileText,
   FilterX,
   Minus,
+  Package,
   PackageSearch,
   Plus,
   Search,
   Send,
   ShoppingCart,
+  UserRound,
   Wrench,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -23,6 +29,7 @@ type StockStatus = "ENOUGH" | "LOW" | "OUT";
 type StockOption = {
   storeId: string;
   sparePartId: string;
+  sparePartItemKind?: string;
   label: string;
   available: number;
   unit: string;
@@ -93,6 +100,9 @@ export function IssueRequestForm({
   lockedCmWork,
   directOnly = false,
   singleCard = false,
+  initialItemKind = "SPARE_PART",
+  requesterSummary,
+  siteSummary,
 }: {
   action: (formData: FormData) => void | Promise<void>;
   organizationId: string;
@@ -105,6 +115,9 @@ export function IssueRequestForm({
   lockedCmWork?: CmOption;
   directOnly?: boolean;
   singleCard?: boolean;
+  initialItemKind?: "SPARE_PART" | "CHEMICAL" | "OIL";
+  requesterSummary?: { name: string; department?: string | null };
+  siteSummary?: { organizationName: string; plantName: string; inventoryCode?: string };
 }) {
   const [issueType, setIssueType] = useState<"CM_REFERENCED" | "DIRECT">(directOnly ? "DIRECT" : "CM_REFERENCED");
   const formRef = useRef<HTMLFormElement>(null);
@@ -115,9 +128,26 @@ export function IssueRequestForm({
   const submittingRef = useRef(false);
   const [submissionKey, setSubmissionKey] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [itemKind, setItemKind] = useState<"SPARE_PART" | "CHEMICAL" | "OIL">(initialItemKind);
   const selectedIssueType = lockedCmWork ? "CM_REFERENCED" : directOnly ? "DIRECT" : issueType;
-  const filterOptions = useMemo(() => buildFilterOptions(stocks), [stocks]);
-  const filteredStocks = useMemo(() => stocks.filter((stock) => matchesStockFilters(stock, filters)), [filters, stocks]);
+  const kindStocks = useMemo(
+    () => stocks.filter((stock) => (stock.sparePartItemKind ?? "SPARE_PART") === itemKind),
+    [itemKind, stocks],
+  );
+  const filterOptions = useMemo(() => buildFilterOptions(kindStocks), [kindStocks]);
+  const filteredStocks = useMemo(
+    () => kindStocks.filter((stock) => matchesStockFilters(stock, filters)),
+    [filters, kindStocks],
+  );
+  const kindUi = itemKind === "CHEMICAL"
+    ? { title: "ขอเบิกสารเคมี", noun: "สารเคมี", storeLabel: "คลังสารเคมี", Icon: Beaker, gradient: "from-cyan-500/20 via-teal-400/12 to-blue-500/20" }
+    : itemKind === "OIL"
+      ? { title: "ใบเบิกน้ำมัน", noun: "น้ำมัน", storeLabel: "คลังน้ำมัน", Icon: Droplets, gradient: "from-blue-500/20 via-sky-400/12 to-cyan-500/20" }
+      : { title: "ขอเบิกอะไหล่", noun: "อะไหล่", storeLabel: "คลังอะไหล่", Icon: Package, gradient: "from-blue-600/20 via-blue-400/10 to-cyan-400/20" };
+  const activeStoreNames = useMemo(
+    () => [...new Set(kindStocks.map((stock) => stock.storeName).filter(Boolean))],
+    [kindStocks],
+  );
 
   useEffect(() => {
     setSubmissionKey(createSubmissionKey());
@@ -158,6 +188,7 @@ export function IssueRequestForm({
 
   function resetFormView() {
     setIssueType(directOnly ? "DIRECT" : "CM_REFERENCED");
+    setItemKind(initialItemKind);
     setLines([{ id: 1, stockKey: "", stockSearch: "", zoneId: "", requestedQty: "" }]);
     setFilters(initialFilters);
     setReviewMode(false);
@@ -195,7 +226,7 @@ export function IssueRequestForm({
   return (
     <form
       action={action}
-      className={singleCard ? "-mx-4 -mb-4 sm:-mx-5 sm:-mb-5" : "space-y-4"}
+      className={singleCard ? "space-y-4 md:-mx-5 md:-mb-5" : "space-y-4"}
       data-testid="issue-request-form"
       onSubmit={(event) => {
         if (reviewMode) {
@@ -215,6 +246,7 @@ export function IssueRequestForm({
       <input name="organizationId" type="hidden" value={organizationId} />
       <input name="plantId" type="hidden" value={plantId} />
       <input name="submissionKey" type="hidden" value={submissionKey} />
+      <input name="itemKind" type="hidden" value={itemKind} />
       {inventoryCode ? <input name="inventoryCode" type="hidden" value={inventoryCode} /> : null}
       {lockedCmWork ? (
         <>
@@ -223,9 +255,45 @@ export function IssueRequestForm({
         </>
       ) : directOnly ? <input name="issueType" type="hidden" value="DIRECT" /> : null}
 
-      <section className={singleCard ? "overflow-visible" : "overflow-visible rounded-2xl border border-[var(--line)] bg-[var(--surface)] shadow-sm"}>
+      <header className={`overflow-hidden rounded-3xl border border-[var(--primary)]/20 bg-gradient-to-br ${siteSummary ? "from-blue-700 via-blue-600 to-cyan-500 text-white" : kindUi.gradient} p-5 shadow-lg sm:p-7`}>
+        {siteSummary ? (
+          <div className="mb-5 flex flex-wrap items-center justify-between gap-3 border-b border-white/20 pb-4">
+            <p className="inline-flex items-center gap-2 rounded-full bg-white/15 px-3 py-1.5 text-xs font-extrabold">
+              <Building2 size={15} /> {siteSummary.organizationName}
+            </p>
+            <p className="text-xs font-bold text-white/75">
+              {siteSummary.inventoryCode ? `Store Site Code ${siteSummary.inventoryCode}` : "PowerCare Store"}
+            </p>
+          </div>
+        ) : null}
+        <div className="flex items-center gap-4">
+          <span className={`grid size-16 shrink-0 place-items-center rounded-full shadow-lg sm:size-20 ${siteSummary ? "bg-white/18 text-white ring-1 ring-white/30" : "bg-[var(--primary)] text-white shadow-blue-500/20"}`}>
+            <kindUi.Icon aria-hidden="true" size={32} strokeWidth={1.8} />
+          </span>
+          <div className="min-w-0">
+            <p className={`text-xs font-extrabold uppercase tracking-[0.14em] ${siteSummary ? "text-white/75" : "text-[var(--primary)]"}`}>PowerCare Store</p>
+            {siteSummary ? <p className="mt-1 text-sm font-bold text-white/85">{siteSummary.plantName}</p> : null}
+            <h2 className={`mt-1 text-2xl font-black sm:text-3xl ${siteSummary ? "text-white" : "text-[var(--ink)]"}`}>{kindUi.title}</h2>
+            <p className={`mt-1 truncate text-sm font-semibold ${siteSummary ? "text-white/75" : "text-[var(--muted)]"}`}>
+              {activeStoreNames[0] ?? kindUi.storeLabel} · พร้อมเบิก {kindStocks.length.toLocaleString("th-TH")} รายการ
+            </p>
+            <p className={`mt-2 inline-flex items-center gap-2 text-sm font-bold ${siteSummary ? "text-emerald-200" : "text-emerald-600 dark:text-emerald-300"}`}>
+              <span className="size-2 rounded-full bg-emerald-400" /> เปิดให้บริการ
+            </p>
+          </div>
+        </div>
+      </header>
+
+      <section className="overflow-visible">
         <SectionHeading icon={<FileText size={19} />} title="ข้อมูลการเบิก" />
         <div className="grid gap-4 p-4 sm:p-5">
+          {requesterSummary ? (
+            <div className="grid divide-y divide-[var(--line)]">
+              <SummaryRow icon={<CalendarDays size={18} />} label="วันที่ขอเบิก" value={new Intl.DateTimeFormat("th-TH", { dateStyle: "medium" }).format(new Date())} />
+              <SummaryRow icon={<UserRound size={18} />} label="ผู้เบิก" value={requesterSummary.name} />
+              <SummaryRow icon={<Building2 size={18} />} label="หน่วยงาน" value={requesterSummary.department || "-"} />
+            </div>
+          ) : null}
           {publicRequester ? (
             <div className="grid gap-4 md:grid-cols-2">
               <label className={labelClass}>
@@ -235,10 +303,6 @@ export function IssueRequestForm({
               <label className={labelClass}>
                 หน่วยงาน / แผนก
                 <input className={inputClass} name="requesterDepartment" required />
-              </label>
-              <label className={labelClass}>
-                เบอร์ติดต่อ / ช่องทางติดต่อ {publicRequester.contactRequired ? "" : "(ไม่บังคับ)"}
-                <input className={inputClass} name="requesterContact" required={publicRequester.contactRequired} />
               </label>
             </div>
           ) : null}
@@ -295,10 +359,6 @@ export function IssueRequestForm({
                 </label>
               )}
 
-              <div className="grid gap-1.5 text-sm font-bold">
-                วันที่ขอเบิก
-                <div className={`${inputClass} flex items-center text-[var(--muted)]`}>ระบบบันทึกอัตโนมัติ</div>
-              </div>
             </div>
           )}
 
@@ -308,20 +368,81 @@ export function IssueRequestForm({
               <textarea className={`${inputClass} min-h-20 resize-y py-3`} name="note" placeholder="ระบุรายละเอียดเพิ่มเติม (ไม่บังคับ)" />
             </label>
           ) : null}
+
+          {itemKind === "OIL" ? (
+            <fieldset className="grid gap-4 rounded-2xl border border-[var(--line)] bg-[var(--soft)]/45 p-4 sm:grid-cols-2">
+              <legend className="px-2 font-extrabold">ข้อมูลรถและการจ่ายน้ำมัน</legend>
+              <label className={labelClass}>
+                รถที่นำไปใช้
+                <input className={inputClass} name="vehicle" placeholder="ทะเบียนรถ / ชื่อรถ / รหัสรถ" required />
+              </label>
+              <label className={labelClass}>
+                เลขไมล์ก่อนเติม
+                <input className={inputClass} inputMode="decimal" min="0" name="odometerBefore" placeholder="0" required step="0.01" type="number" />
+              </label>
+              <label className={labelClass}>
+                เลขไมล์หลังเติม
+                <input className={inputClass} inputMode="decimal" min="0" name="odometerAfter" placeholder="0" required step="0.01" type="number" />
+              </label>
+              <label className={labelClass}>
+                มิเตอร์หัวจ่ายก่อนเติม
+                <input className={inputClass} inputMode="decimal" min="0" name="dispenserMeterBefore" placeholder="0.00" required step="0.01" type="number" />
+              </label>
+              <label className={`${labelClass} sm:col-span-2`}>
+                มิเตอร์หัวจ่ายหลังเติม
+                <input className={inputClass} inputMode="decimal" min="0" name="dispenserMeterAfter" placeholder="0.00" required step="0.01" type="number" />
+              </label>
+            </fieldset>
+          ) : null}
         </div>
       </section>
 
-      <section className={singleCard ? "overflow-visible border-t border-[var(--line)]" : "overflow-visible rounded-2xl border border-[var(--line)] bg-[var(--surface)] shadow-sm"}>
-          <SectionHeading icon={<ShoppingCart size={19} />} title="รายการอะไหล่" />
+      <section className="overflow-visible">
+          <SectionHeading icon={<ShoppingCart size={19} />} title={`รายการ${kindUi.noun}`} />
 
-          <div className="grid gap-3 border-b border-[var(--line)] bg-[var(--soft)]/65 p-4 sm:grid-cols-2 2xl:grid-cols-3">
+          <div className="border-b border-[var(--line)] px-2 pt-2 sm:px-5">
+            <div className="flex gap-1 overflow-x-auto" role="tablist" aria-label="ประเภทสิ่งของที่ต้องการเบิก">
+              {([
+                ["SPARE_PART", "อะไหล่", Package],
+                ["CHEMICAL", "สารเคมี", Beaker],
+                ["OIL", "น้ำมัน", Droplets],
+              ] as const).map(([value, label, Icon]) => (
+                <button
+                  aria-selected={itemKind === value}
+                  className={`relative flex min-h-12 min-w-28 items-center justify-center gap-2 whitespace-nowrap px-4 text-sm font-extrabold transition-colors ${
+                    itemKind === value ? "text-[var(--primary)]" : "text-[var(--muted)] hover:text-[var(--ink)]"
+                  }`}
+                  key={value}
+                  onClick={() => {
+                    setItemKind(value);
+                    setFilters(initialFilters);
+                    setLines([{ id: 1, stockKey: "", stockSearch: "", zoneId: "", requestedQty: "" }]);
+                  }}
+                  role="tab"
+                  type="button"
+                >
+                  <Icon size={18} />
+                  {label}
+                  {itemKind === value ? <span className="absolute inset-x-2 bottom-0 h-0.5 rounded-full bg-[var(--primary)]" /> : null}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <details className="group border-b border-[var(--line)] bg-[var(--soft)]/65">
+            <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between px-4 text-sm font-extrabold text-[var(--muted)]">
+              <span className="inline-flex items-center gap-2"><FilterX size={17} /> ตัวกรองเพิ่มเติม</span>
+              <span className="text-[var(--primary)] group-open:hidden">เปิด</span>
+              <span className="hidden text-[var(--primary)] group-open:inline">ปิด</span>
+            </summary>
+          <div className="grid gap-3 px-4 pb-4 sm:grid-cols-2 2xl:grid-cols-3">
             <FilterSelect label="คลังอะไหล่" options={filterOptions.stores} value={filters.store} onChange={(value) => setFilters((current) => ({ ...current, store: value }))} />
             <FilterSelect label="ประเภท" options={filterOptions.types} value={filters.type} onChange={(value) => setFilters((current) => ({ ...current, type: value }))} />
             <FilterSelect label="หมวดหมู่" options={filterOptions.categories} value={filters.category} onChange={(value) => setFilters((current) => ({ ...current, category: value, materialGroup: "ALL" }))} />
             <FilterSelect
               disabled={filters.category === "ALL"}
               label="กลุ่มอะไหล่/วัสดุ"
-              options={uniqueSorted(stocks.filter((stock) => stock.sparePartCategoryName === filters.category).map((stock) => stock.sparePartMaterialGroupName ?? ""))}
+              options={uniqueSorted(kindStocks.filter((stock) => stock.sparePartCategoryName === filters.category).map((stock) => stock.sparePartMaterialGroupName ?? ""))}
               value={filters.materialGroup}
               onChange={(value) => setFilters((current) => ({ ...current, materialGroup: value }))}
             />
@@ -331,6 +452,7 @@ export function IssueRequestForm({
               <FilterX size={17} /> ล้างตัวกรอง
             </button>
           </div>
+          </details>
 
           <div className="max-w-full p-3 sm:p-4">
             <div className="w-full overflow-visible rounded-xl border border-[var(--line)]">
@@ -340,7 +462,7 @@ export function IssueRequestForm({
               {lines.map((line, index) => {
                 const stock = stockForKey(stocks, line.stockKey);
                 return (
-                  <div className="grid gap-3 border-t border-[var(--line)] bg-[var(--surface)] p-3 2xl:grid-cols-[40px_minmax(300px,1.45fr)_minmax(130px,.55fr)_90px_44px] 2xl:items-end 2xl:gap-0 2xl:px-3" key={line.id}>
+                  <div className="grid gap-3 border-t border-[var(--line)] bg-[var(--surface)] p-3 sm:p-4 2xl:grid-cols-[40px_minmax(300px,1.45fr)_minmax(130px,.55fr)_160px_44px] 2xl:items-end 2xl:gap-0 2xl:px-3" key={line.id}>
                     <span className="inline-flex size-8 items-center justify-center self-center rounded-lg bg-[var(--soft)] text-sm font-extrabold text-[var(--primary)] 2xl:size-auto 2xl:justify-start 2xl:bg-transparent">{index + 1}</span>
                     <label className={`${labelClass} 2xl:pr-3`}>
                       <span className="text-xs text-[var(--muted)] 2xl:sr-only">อะไหล่ / คลัง</span>
@@ -367,18 +489,32 @@ export function IssueRequestForm({
                     </label>
                     <label className={`${labelClass} 2xl:pr-3`}>
                       <span className="text-xs text-[var(--muted)] 2xl:sr-only">จำนวนที่ขอ</span>
-                      <input
-                        className={inputClass}
-                        inputMode="numeric"
-                        max={stock?.available}
-                        min="1"
-                        name="requestedQty"
-                        onChange={(event) => setLines((current) => current.map((item) => item.id === line.id ? { ...item, requestedQty: event.target.value } : item))}
-                        required
-                        step="1"
-                        type="number"
-                        value={line.requestedQty}
-                      />
+                      <div className="grid grid-cols-[48px_minmax(64px,1fr)_48px] overflow-hidden rounded-xl border border-[var(--line)] bg-[var(--surface)]">
+                        <button
+                          aria-label="ลดจำนวน"
+                          className="grid min-h-12 place-items-center text-[var(--primary)] hover:bg-[var(--soft)]"
+                          onClick={() => setLines((current) => current.map((item) => item.id === line.id ? { ...item, requestedQty: String(Math.max(1, Number(item.requestedQty || 1) - 1)) } : item))}
+                          type="button"
+                        ><Minus size={18} /></button>
+                        <input
+                          className="min-w-0 border-x border-[var(--line)] bg-transparent px-2 text-center text-lg font-black outline-none"
+                          inputMode="numeric"
+                          max={stock?.available}
+                          min="1"
+                          name="requestedQty"
+                          onChange={(event) => setLines((current) => current.map((item) => item.id === line.id ? { ...item, requestedQty: event.target.value } : item))}
+                          required
+                          step="1"
+                          type="number"
+                          value={line.requestedQty}
+                        />
+                        <button
+                          aria-label="เพิ่มจำนวน"
+                          className="grid min-h-12 place-items-center text-[var(--primary)] hover:bg-[var(--soft)]"
+                          onClick={() => setLines((current) => current.map((item) => item.id === line.id ? { ...item, requestedQty: String(Math.min(stock?.available ?? Number.MAX_SAFE_INTEGER, Number(item.requestedQty || 0) + 1)) } : item))}
+                          type="button"
+                        ><Plus size={18} /></button>
+                      </div>
                     </label>
                     <button
                       aria-label={`ลบรายการที่ ${index + 1}`}
@@ -424,15 +560,16 @@ export function IssueRequestForm({
         </p>
       ) : null}
 
-      <div className={singleCard
-        ? "mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-[var(--line)] px-4 py-4 sm:px-5"
-        : "flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-3"
-      }>
-        <button className={secondaryButtonClass} onClick={resetFormView} type="button">
+      <div className="flex flex-col-reverse gap-3 rounded-3xl border border-[var(--line)] bg-[var(--surface)] p-3 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+        <button className={`${secondaryButtonClass} max-sm:hidden`} onClick={resetFormView} type="button">
           ยกเลิก
         </button>
-        <button className={primaryButtonClass} disabled={!stocks.length} onClick={openReview} type="button">
-          ถัดไป: ตรวจสอบและยืนยัน <ArrowRight size={18} />
+        <div className="min-w-0 sm:mr-auto">
+          <p className="text-sm font-extrabold">รวม {lines.filter((line) => line.stockKey).length} รายการ</p>
+          <p className="text-xs text-[var(--muted)]">จำนวนรวม {lines.reduce((sum, line) => sum + Number(line.requestedQty || 0), 0).toLocaleString("th-TH")} หน่วย</p>
+        </div>
+        <button className={`${primaryButtonClass} min-h-13 justify-center max-sm:w-full sm:min-w-72`} disabled={!kindStocks.length} onClick={openReview} type="button">
+          ตรวจสอบและยืนยัน <ArrowRight size={18} />
         </button>
       </div>
 
@@ -454,6 +591,16 @@ function SectionHeading({ action, icon, title }: { action?: React.ReactNode; ico
     <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--line)] px-4 py-3 sm:px-5">
       <h3 className="flex items-center gap-2 text-lg font-extrabold"><span className="text-[var(--primary)]">{icon}</span>{title}</h3>
       {action}
+    </div>
+  );
+}
+
+function SummaryRow({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
+  return (
+    <div className="grid min-h-16 grid-cols-[40px_minmax(0,1fr)_minmax(0,1fr)] items-center gap-3 py-2">
+      <span className="grid size-10 place-items-center rounded-xl bg-[var(--primary)]/10 text-[var(--primary)]">{icon}</span>
+      <span className="font-bold">{label}</span>
+      <span className="text-right font-semibold text-[var(--ink)]">{value}</span>
     </div>
   );
 }

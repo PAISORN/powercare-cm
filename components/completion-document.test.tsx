@@ -46,4 +46,29 @@ describe("CompletionDocument", () => {
     expect(markup).toContain("PowerCare.CM");
     expect(markup).not.toContain("Company logo");
   });
+
+  it("renders only actual inventory usage when the completion data includes issued items", () => {
+    const markup = renderToStaticMarkup(
+      <CompletionDocument
+        organization={{ companyName: "PowerCare.CM" }}
+        work={{
+          ...work,
+          inventoryUsage: [{
+            issueNumber: "SI-RTB-2026-07-0001",
+            itemKind: "OIL",
+            code: "SP-RTB-00001",
+            name: "Hydraulic Oil",
+            quantity: "2",
+            unit: "L",
+            store: "MAIN · Main Store",
+            issuedAt: "30/7/2569 10:00",
+            note: "-",
+          }],
+        }}
+      />,
+    );
+    expect(markup).toContain("SI-RTB-2026-07-0001");
+    expect(markup).toContain("Hydraulic Oil");
+    expect(markup).toContain("2 L");
+  });
 });

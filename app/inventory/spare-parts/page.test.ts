@@ -53,4 +53,13 @@ describe("Spare parts page", () => {
     expect(source).toContain("SparePartsPagination");
     expect(source).toContain('params.set("partsPage", String(page))');
   });
+
+  it("handles invalid material group codes without crashing the route", () => {
+    const source = readFileSync("app/inventory/spare-parts/page.tsx", "utf8");
+
+    expect(source).toContain("materialGroupActionError(error)");
+    expect(source).toContain("pageErrorUrl(scope");
+    expect(source).toContain('role="alert"');
+    expect(source).toContain('pattern="[A-Za-z0-9][A-Za-z0-9._/-]*"');
+  });
 });

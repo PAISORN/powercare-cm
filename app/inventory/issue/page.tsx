@@ -1,11 +1,13 @@
 import {
   CheckCircle2,
+  Bell,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
   ClipboardList,
   Clock3,
   FileUp,
+  Home,
   PackageCheck,
   PackageX,
   Printer,
@@ -19,6 +21,8 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { AdminScopeHiddenFields, AdminSiteScopeSelector } from "../../../components/admin-site-scope-selector";
 import { AppShell } from "../../../components/app-shell";
+import { AppBrand } from "../../../components/app-brand";
+import { ThemeToggle } from "../../../components/theme-toggle";
 import { IssueRequestForm } from "../../../components/store/issue-request-form";
 import { formatThaiMediumDateTime } from "../../../lib/date-time/bangkok-time";
 import { db } from "../../../lib/db";
@@ -46,6 +50,7 @@ type PageQuery = {
   q?: string;
   status?: string;
   trackingPage?: string;
+  itemKind?: string;
 };
 
 async function createIssueAction(formData: FormData) {
@@ -178,6 +183,7 @@ export default async function IssuePage({ searchParams }: { searchParams: Promis
             id: true,
             code: true,
             itemCode: true,
+            itemKind: true,
             name: true,
             unit: true,
             minStock: true,
@@ -213,7 +219,7 @@ export default async function IssuePage({ searchParams }: { searchParams: Promis
         items: {
           include: {
             store: { select: { code: true, name: true } },
-            sparePart: { select: { code: true, name: true, unit: true } },
+            sparePart: { select: { code: true, name: true, unit: true, itemKind: true } },
           },
           orderBy: { id: "asc" },
         },
@@ -400,9 +406,22 @@ export default async function IssuePage({ searchParams }: { searchParams: Promis
   }
 
   return (
-    <AppShell>
-      <div className="grid items-stretch gap-5 xl:grid-cols-2">
-        <header className="flex flex-wrap items-start justify-between gap-4 xl:col-span-2">
+    <AppShell immersiveMobile>
+      <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,48rem)_minmax(0,1fr)]">
+        <div className="sticky top-2 z-40 flex min-h-16 items-center gap-1 rounded-2xl border border-[var(--line)] bg-[var(--surface-raised)]/95 p-2 shadow-[var(--shadow)] backdrop-blur-xl md:hidden">
+          <Link aria-label="กลับไปหน้า Store" className="grid size-12 place-items-center rounded-2xl text-[var(--ink)] hover:bg-[var(--soft)]" href="/inventory">
+            <ChevronLeft size={26} />
+          </Link>
+          <Link aria-label="Home" className="grid size-12 place-items-center rounded-2xl bg-[var(--primary)] text-white shadow-sm" href="/dashboard">
+            <Home size={21} />
+          </Link>
+          <AppBrand className="min-w-0 flex-1 justify-center text-lg" versionClassName="hidden" />
+          <Link aria-label="การแจ้งเตือน" className="relative grid size-12 place-items-center rounded-2xl text-[var(--ink)] hover:bg-[var(--soft)]" href="/notifications">
+            <Bell size={24} />
+          </Link>
+          <ThemeToggle />
+        </div>
+        <header className="hidden flex-wrap items-start justify-between gap-4 md:flex xl:col-span-2">
           <div>
             <div className="flex items-center gap-3">
               <span className="flex size-11 items-center justify-center rounded-xl border border-[var(--line)] bg-[var(--surface)] text-[var(--primary)] shadow-sm">
@@ -423,10 +442,10 @@ export default async function IssuePage({ searchParams }: { searchParams: Promis
         </header>
 
         <section
-          className="h-full space-y-5 rounded-3xl border border-[var(--line)] bg-[var(--surface)] p-4 shadow-[var(--shadow)] sm:p-5"
+          className="space-y-5"
           data-testid="issue-create-workspace"
         >
-        <div>
+        <div className="hidden md:block">
           <div className="flex items-center gap-2">
             <ShoppingCart className="text-[var(--primary)]" size={21} />
             <h2 className="text-xl font-extrabold">สร้างใบขอเบิกอะไหล่</h2>
@@ -434,7 +453,9 @@ export default async function IssuePage({ searchParams }: { searchParams: Promis
           <p className="mt-1 text-sm text-[var(--muted)]">เลือกงาน CM หรือเบิกโดยตรง แล้วระบุอะไหล่ที่ต้องการ</p>
         </div>
 
-        <AdminSiteScopeSelector action="/inventory/issue" compact scope={scope} title="Site สำหรับใบเบิก" unframed />
+        <div className="hidden md:block">
+          <AdminSiteScopeSelector action="/inventory/issue" compact scope={scope} title="Site สำหรับใบเบิก" unframed />
+        </div>
 
         {query.created ? (
           <p className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 font-bold text-emerald-700 dark:text-emerald-300">
@@ -468,11 +489,19 @@ export default async function IssuePage({ searchParams }: { searchParams: Promis
               }))}
               organizationId={scope.organization.id}
               plantId={scope.plant.id}
+              initialItemKind={resolveItemKind(query.itemKind)}
+              requesterSummary={{ name: user.fullName, department: user.category?.name }}
+              siteSummary={{
+                organizationName: scope.organization.name,
+                plantName: scope.plant.name,
+                inventoryCode: scope.plant.code,
+              }}
               issueZones={issueZones.map((item) => ({ ...item.zone, code: item.code }))}
               singleCard
               stocks={stocks.map((stock) => ({
                 storeId: stock.storeId,
                 sparePartId: stock.sparePartId,
+                sparePartItemKind: stock.sparePart.itemKind,
                 label: `${stock.store.code} · ${stock.sparePart.code} · ${stock.sparePart.name}`,
                 available: Number(stock.quantity),
                 unit: stock.sparePart.unit,
@@ -662,6 +691,10 @@ export default async function IssuePage({ searchParams }: { searchParams: Promis
       </div>
     </AppShell>
   );
+}
+
+function resolveItemKind(value?: string): "SPARE_PART" | "CHEMICAL" | "OIL" {
+  return value === "CHEMICAL" || value === "OIL" ? value : "SPARE_PART";
 }
 
 function trackingPaginationPageClass(isActive: boolean) {

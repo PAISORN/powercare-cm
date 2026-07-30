@@ -1,6 +1,6 @@
 "use client";
 
-import { FilterX, Minus, PackagePlus, Plus, Search } from "lucide-react";
+import { Beaker, Droplets, FilterX, Minus, Package, PackagePlus, Plus, Search } from "lucide-react";
 import { useMemo, useState } from "react";
 
 type StoreOption = { id: string; name: string; code: string; categoryName?: string };
@@ -9,6 +9,7 @@ type SparePartOption = {
   name: string;
   code: string;
   itemCode?: string | null;
+  itemKind?: string;
   unit: string;
   minStock: number;
   categoryName?: string;
@@ -16,7 +17,7 @@ type SparePartOption = {
   typeName?: string;
   stocks: Array<{ storeId: string; quantity: number }>;
 };
-type ReceiveLine = { id: number; storeId: string; sparePartId: string };
+type ReceiveLine = { id: number; storeId: string; sparePartId: string; sparePartSearch: string };
 type StockStatus = "ALL" | "ENOUGH" | "LOW" | "OUT";
 type ReceiveFilters = {
   search: string;
@@ -53,18 +54,23 @@ export function ReceiveStockForm({
   stores,
   spareParts,
 }: ReceiveStockFormProps) {
-  const [lines, setLines] = useState<ReceiveLine[]>([{ id: 1, storeId: "", sparePartId: "" }]);
+  const [lines, setLines] = useState<ReceiveLine[]>([{ id: 1, storeId: "", sparePartId: "", sparePartSearch: "" }]);
   const [filters, setFilters] = useState<ReceiveFilters>(initialFilters);
+  const [itemKind, setItemKind] = useState<"SPARE_PART" | "CHEMICAL" | "OIL">("SPARE_PART");
   const canSubmit = stores.length > 0 && spareParts.length > 0;
+  const kindParts = useMemo(
+    () => spareParts.filter((part) => (part.itemKind ?? "SPARE_PART") === itemKind),
+    [itemKind, spareParts],
+  );
   const filterOptions = useMemo(() => ({
-    types: uniqueSorted(spareParts.map((part) => part.typeName ?? "")),
-    categories: uniqueSorted(spareParts.map((part) => part.categoryName ?? "")),
-    materialGroups: uniqueSorted(spareParts.filter((part) => filters.category === "ALL" || part.categoryName === filters.category).map((part) => part.materialGroupName ?? "")),
-    units: uniqueSorted(spareParts.map((part) => part.unit)),
-  }), [filters.category, spareParts]);
+    types: uniqueSorted(kindParts.map((part) => part.typeName ?? "")),
+    categories: uniqueSorted(kindParts.map((part) => part.categoryName ?? "")),
+    materialGroups: uniqueSorted(kindParts.filter((part) => filters.category === "ALL" || part.categoryName === filters.category).map((part) => part.materialGroupName ?? "")),
+    units: uniqueSorted(kindParts.map((part) => part.unit)),
+  }), [filters.category, kindParts]);
   const filteredSpareParts = useMemo(
-    () => spareParts.filter((part) => matchesReceiveFilters(part, filters)),
-    [filters, spareParts],
+    () => kindParts.filter((part) => matchesReceiveFilters(part, filters)),
+    [filters, kindParts],
   );
   const filteredStores = filters.storeId === "ALL"
     ? stores
@@ -75,6 +81,7 @@ export function ReceiveStockForm({
       id: Math.max(...current.map((line) => line.id)) + 1,
       storeId: filters.storeId === "ALL" ? "" : filters.storeId,
       sparePartId: "",
+      sparePartSearch: "",
     }]);
   }
 
@@ -124,6 +131,32 @@ export function ReceiveStockForm({
           </button>
         </div>
 
+        <div className="flex gap-1 overflow-x-auto border-b border-[var(--line)]" role="tablist" aria-label="ประเภทสิ่งของที่รับเข้า">
+          {([
+            ["SPARE_PART", "อะไหล่", Package],
+            ["CHEMICAL", "สารเคมี", Beaker],
+            ["OIL", "น้ำมัน", Droplets],
+          ] as const).map(([value, label, Icon]) => (
+            <button
+              aria-selected={itemKind === value}
+              className={`relative flex min-h-12 min-w-28 items-center justify-center gap-2 px-4 text-sm font-extrabold ${
+                itemKind === value ? "text-[var(--primary)]" : "text-[var(--muted)]"
+              }`}
+              key={value}
+              onClick={() => {
+                setItemKind(value);
+                setFilters(initialFilters);
+                setLines([{ id: 1, storeId: "", sparePartId: "", sparePartSearch: "" }]);
+              }}
+              role="tab"
+              type="button"
+            >
+              <Icon size={18} /> {label}
+              {itemKind === value ? <span className="absolute inset-x-2 bottom-0 h-0.5 rounded-full bg-[var(--primary)]" /> : null}
+            </button>
+          ))}
+        </div>
+
         <div className="grid gap-3 rounded-2xl border border-[var(--line)] bg-[var(--soft)] p-4 sm:grid-cols-2 xl:grid-cols-3">
           <label className={labelClass}>
             ค้นหาอะไหล่
@@ -168,7 +201,7 @@ export function ReceiveStockForm({
         </p>
 
         {lines.map((line, index) => {
-          const lineParts = includeSelectedPart(filteredSpareParts, spareParts, line.sparePartId);
+          const lineParts = includeSelectedPart(filteredSpareParts, kindParts, line.sparePartId);
           return (
           <div
             key={line.id}
@@ -195,23 +228,29 @@ export function ReceiveStockForm({
             </label>
             <label className={labelClass}>
               อะไหล่
-              <select
-                className={inputClass}
-                name="sparePartId"
-                onChange={(event) => setLines((current) => current.map((item) => item.id === line.id ? { ...item, sparePartId: event.target.value } : item))}
-                required
-                value={line.sparePartId}
-              >
-                <option disabled value="">
-                  เลือกอะไหล่
-                </option>
-                {lineParts.map((part) => (
-                  <option key={part.id} value={part.id}>
-                    {part.code} · {part.itemCode || "-"} · {part.name} ({part.unit})
-                  </option>
-                ))}
-                {!lineParts.length ? <option disabled value="">ไม่พบอะไหล่ตามตัวกรอง</option> : null}
-              </select>
+              <input name="sparePartId" type="hidden" value={line.sparePartId} />
+              <span className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--muted)]" size={17} />
+                <input
+                  autoComplete="off"
+                  className={`${inputClass} pl-10`}
+                  list={`receive-parts-${line.id}`}
+                  onChange={(event) => {
+                    const text = event.target.value;
+                    const selected = lineParts.find((part) => receivePartLabel(part) === text);
+                    setLines((current) => current.map((item) => item.id === line.id
+                      ? { ...item, sparePartSearch: text, sparePartId: selected?.id ?? "" }
+                      : item));
+                  }}
+                  placeholder="พิมพ์รหัส Item code หรือชื่อ"
+                  required
+                  value={line.sparePartSearch}
+                />
+                <datalist id={`receive-parts-${line.id}`}>
+                  {lineParts.map((part) => <option key={part.id} value={receivePartLabel(part)}>{receivePartLabel(part)}</option>)}
+                </datalist>
+              </span>
+              {line.sparePartSearch && !line.sparePartId ? <span className="text-xs text-amber-600">กรุณาเลือกรายการจากคำแนะนำ</span> : null}
             </label>
             <label className={labelClass}>
               จำนวน
@@ -306,6 +345,10 @@ function includeSelectedPart(filtered: SparePartOption[], all: SparePartOption[]
   if (!selectedId || filtered.some((part) => part.id === selectedId)) return filtered;
   const selected = all.find((part) => part.id === selectedId);
   return selected ? [selected, ...filtered] : filtered;
+}
+
+function receivePartLabel(part: SparePartOption) {
+  return `${part.code} · ${part.itemCode || "-"} · ${part.name} (${part.unit})`;
 }
 
 function toFilterOption(value: string) {

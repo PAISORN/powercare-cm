@@ -7,7 +7,7 @@ import { AppNavLinks } from "./app-nav-links";
 import { AppBrand } from "./app-brand";
 import { UserAvatar } from "./user-avatar";
 import type { RoleName } from "../modules/cm-work/cm-work-types";
-import type { SiteAdminPermissionRecord } from "../modules/auth/site-admin-permissions";
+import type { RolePermissionOverrideRecord, SiteAdminPermissionRecord, UserPermissionOverrideRecord } from "../modules/auth/site-admin-permissions";
 import { formatRoleName } from "../modules/users/role-labels";
 
 export function MobileAppDrawer({
@@ -15,9 +15,12 @@ export function MobileAppDrawer({
   role,
   categoryName,
   userId,
+  organizationId,
   plantId,
   plantCode,
   siteAdminPermissions,
+  rolePermissionOverrides,
+  userPermissionOverrides,
   hasPhoto = false,
   version,
   unreadCount,
@@ -26,9 +29,12 @@ export function MobileAppDrawer({
   role: RoleName;
   categoryName?: string | null;
   userId?: string;
+  organizationId?: string | null;
   plantId?: string | null;
   plantCode?: string | null;
   siteAdminPermissions?: SiteAdminPermissionRecord[];
+  rolePermissionOverrides?: RolePermissionOverrideRecord[];
+  userPermissionOverrides?: UserPermissionOverrideRecord[];
   hasPhoto?: boolean;
   version?: number;
   unreadCount: number;
@@ -109,7 +115,7 @@ export function MobileAppDrawer({
         >
           <AppNavLinks
             role={role}
-            permissionContext={{ id: userId, plantCode, plantId, siteAdminPermissions }}
+            permissionContext={{ id: userId, organizationId, plantCode, plantId, rolePermissionOverrides, siteAdminPermissions, userPermissionOverrides }}
             onNavigate={() => setOpen(false)}
           />
         </nav>

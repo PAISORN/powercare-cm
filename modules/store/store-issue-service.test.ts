@@ -164,6 +164,15 @@ describe("store issue service", () => {
     ]);
   });
 
+  it("prevents the requester from approving their own issue unless an explicit owner override is used", async () => {
+    const repository = createRepository({ requesterUserId: engineer.id });
+    await expect(approveStoreIssueByEngineer(repository, engineer, scope, "issue-1"))
+      .rejects.toThrow("cannot approve their own");
+
+    await approveStoreIssueByEngineer(repository, engineer, scope, "issue-1", new Date(), true);
+    expect(repository.statuses).toMatchObject([{ status: StoreIssueStatus.WAITING_STORE_ISSUE }]);
+  });
+
   it("issues stock when all items have enough stock", async () => {
     const repository = createRepository({ status: StoreIssueStatus.WAITING_STORE_ISSUE });
     const result = await issueApprovedStoreIssue(repository, storeOfficer, scope, "issue-1");

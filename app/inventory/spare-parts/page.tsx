@@ -107,11 +107,15 @@ async function addSparePartMaterialGroup(formData: FormData) {
   "use server";
   const user = await requireUser();
   const scope = await resolveStorePageScope(user, adminScopeSearchFromFormData(formData));
-  await createSparePartMaterialGroup(user, await toStoreScope(scope), {
-    categoryId: String(formData.get("categoryId") ?? ""),
-    code: String(formData.get("code") ?? ""),
-    name: String(formData.get("name") ?? ""),
-  });
+  try {
+    await createSparePartMaterialGroup(user, await toStoreScope(scope), {
+      categoryId: String(formData.get("categoryId") ?? ""),
+      code: String(formData.get("code") ?? ""),
+      name: String(formData.get("name") ?? ""),
+    });
+  } catch (error) {
+    redirect(pageErrorUrl(scope, materialGroupActionError(error)));
+  }
   redirect(pageUrl(scope, "material-group"));
 }
 
@@ -121,13 +125,17 @@ async function saveSparePartMaterialGroup(formData: FormData) {
   const scope = await resolveStorePageScope(user, adminScopeSearchFromFormData(formData));
   const storeScope = await toStoreScope(scope);
   const id = String(formData.get("id") ?? "");
-  if (formData.get("intent") === "delete") await deleteSparePartMaterialGroup(user, storeScope, id);
-  else await updateSparePartMaterialGroup(user, storeScope, id, {
-    categoryId: String(formData.get("categoryId") ?? ""),
-    code: String(formData.get("code") ?? ""),
-    name: String(formData.get("name") ?? ""),
-    active: formData.get("active") === "on",
-  });
+  try {
+    if (formData.get("intent") === "delete") await deleteSparePartMaterialGroup(user, storeScope, id);
+    else await updateSparePartMaterialGroup(user, storeScope, id, {
+      categoryId: String(formData.get("categoryId") ?? ""),
+      code: String(formData.get("code") ?? ""),
+      name: String(formData.get("name") ?? ""),
+      active: formData.get("active") === "on",
+    });
+  } catch (error) {
+    redirect(pageErrorUrl(scope, materialGroupActionError(error)));
+  }
   redirect(pageUrl(scope, "material-group-updated"));
 }
 
@@ -185,6 +193,7 @@ async function addSparePart(formData: FormData) {
   const user = await requireUser();
   const scope = await resolveStorePageScope(user, adminScopeSearchFromFormData(formData));
   await createSparePart(user, await toStoreScope(scope), {
+    itemKind: String(formData.get("itemKind") ?? "SPARE_PART"),
     name: String(formData.get("name") ?? ""),
     itemCode: String(formData.get("itemCode") ?? ""),
     description: String(formData.get("description") ?? ""),
@@ -207,6 +216,7 @@ async function updateSparePartAction(formData: FormData) {
   const user = await requireUser();
   const scope = await resolveStorePageScope(user, adminScopeSearchFromFormData(formData));
   await updateSparePart(user, await toStoreScope(scope), String(formData.get("sparePartId") ?? ""), {
+    itemKind: String(formData.get("itemKind") ?? "SPARE_PART"),
     name: String(formData.get("name") ?? ""),
     itemCode: String(formData.get("itemCode") ?? ""),
     description: String(formData.get("description") ?? ""),
@@ -440,6 +450,15 @@ export default async function SparePartsPage({ searchParams }: { searchParams: P
             บันทึกข้อมูลเรียบร้อยแล้ว
           </p>
         ) : null}
+        {query.error ? (
+          <p
+            aria-live="polite"
+            className="rounded-2xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm font-bold text-red-700 dark:text-red-300"
+            role="alert"
+          >
+            {query.error}
+          </p>
+        ) : null}
 
         <section className="flex flex-wrap items-center justify-between gap-4 rounded-3xl border border-[var(--line)] bg-[var(--surface)] p-4 shadow-[var(--shadow)] sm:px-5">
           <div className="flex min-w-0 items-center gap-3">
@@ -562,7 +581,15 @@ export default async function SparePartsPage({ searchParams }: { searchParams: P
                       <option disabled value="">เลือกหมวดหมู่</option>
                       {activePartCategories.map((category) => <option key={category.id} value={category.id}>{category.code} · {category.name}</option>)}
                     </select>
-                    <input className={inputClass} name="code" placeholder="PIPE" required />
+                    <input
+                      className={inputClass}
+                      maxLength={40}
+                      name="code"
+                      pattern="[A-Za-z0-9][A-Za-z0-9._/-]*"
+                      placeholder="รหัส เช่น PIPE"
+                      required
+                      title="กรอกรหัสภาษาอังกฤษ ตัวเลข จุด ขีดล่าง เครื่องหมาย / หรือ - เท่านั้น เช่น PIPE-01"
+                    />
                     <input className={inputClass} name="name" placeholder="ชื่อกลุ่ม เช่น ท่อ" required />
                     <button className={compactPrimaryButtonClass}>เพิ่ม</button>
                   </form>
@@ -575,7 +602,15 @@ export default async function SparePartsPage({ searchParams }: { searchParams: P
                       <select className={compactInputClass} defaultValue={group.categoryId} name="categoryId" required>
                         {partCategories.map((category) => <option key={category.id} value={category.id}>{category.code} · {category.name}</option>)}
                       </select>
-                      <input className={compactInputClass} defaultValue={group.code} name="code" required />
+                      <input
+                        className={compactInputClass}
+                        defaultValue={group.code}
+                        maxLength={40}
+                        name="code"
+                        pattern="[A-Za-z0-9][A-Za-z0-9._/-]*"
+                        required
+                        title="กรอกรหัสภาษาอังกฤษ ตัวเลข จุด ขีดล่าง เครื่องหมาย / หรือ - เท่านั้น เช่น PIPE-01"
+                      />
                       <input className={compactInputClass} defaultValue={group.name} name="name" required />
                       <ActiveToggle defaultChecked={group.active} />
                       <MasterRowActions canEdit={canManageParts} deleteMessage={`ต้องการลบกลุ่ม ${group.name} หรือไม่`} />
@@ -684,6 +719,14 @@ export default async function SparePartsPage({ searchParams }: { searchParams: P
               </summary>
               <form action={addSparePart} className="grid gap-4 border-t border-[var(--line)] p-4 sm:p-5 lg:grid-cols-2">
                 <AdminScopeHiddenFields scope={scope} />
+                <label className={labelClass}>
+                  ชนิดรายการ
+                  <select className={inputClass} defaultValue="SPARE_PART" name="itemKind" required>
+                    <option value="SPARE_PART">อะไหล่</option>
+                    <option value="CHEMICAL">สารเคมี</option>
+                    <option value="OIL">น้ำมัน</option>
+                  </select>
+                </label>
                 <label className={labelClass}>
                   ชื่ออะไหล่
                   <input className={inputClass} name="name" placeholder="ระบุชื่ออะไหล่" required />
@@ -932,6 +975,14 @@ export default async function SparePartsPage({ searchParams }: { searchParams: P
               <AdminScopeHiddenFields scope={scope} />
               <input name="sparePartId" type="hidden" value={editPart.id} />
               <label className={labelClass}>
+                ชนิดรายการ
+                <select className={inputClass} defaultValue={editPart.itemKind} name="itemKind" required>
+                  <option value="SPARE_PART">อะไหล่</option>
+                  <option value="CHEMICAL">สารเคมี</option>
+                  <option value="OIL">น้ำมัน</option>
+                </select>
+              </label>
+              <label className={labelClass}>
                 ชื่ออะไหล่
                 <input className={inputClass} defaultValue={editPart.name} name="name" required />
               </label>
@@ -1177,6 +1228,24 @@ async function toStoreScope(scope: { organization: { id: string }; plant: { id: 
 
 function pageUrl(scope: { organization: { id: string }; plant: { id: string } }, saved: string) {
   return `/inventory/spare-parts?organizationId=${encodeURIComponent(scope.organization.id)}&plantId=${encodeURIComponent(scope.plant.id)}&saved=${saved}`;
+}
+
+function pageErrorUrl(scope: { organization: { id: string }; plant: { id: string } }, error: string) {
+  return `/inventory/spare-parts?organizationId=${encodeURIComponent(scope.organization.id)}&plantId=${encodeURIComponent(scope.plant.id)}&error=${encodeURIComponent(error)}`;
+}
+
+function materialGroupActionError(error: unknown) {
+  const message = error instanceof Error ? error.message : "";
+  if (message.includes("may contain letters, numbers")) {
+    return "รหัสอะไหล่/วัสดุต้องขึ้นต้นด้วยภาษาอังกฤษหรือตัวเลข และใช้ได้เฉพาะภาษาอังกฤษ ตัวเลข จุด ขีดล่าง เครื่องหมาย / หรือ - เช่น PIPE-01";
+  }
+  if (message.includes("is required")) {
+    return "กรุณากรอกหมวดหมู่ รหัส และชื่อกลุ่มอะไหล่/วัสดุให้ครบถ้วน";
+  }
+  if (message.includes("already")) {
+    return "รหัสหรือชื่อกลุ่มอะไหล่/วัสดุนี้มีอยู่แล้วในหมวดหมู่ที่เลือก";
+  }
+  return "บันทึกกลุ่มอะไหล่/วัสดุไม่สำเร็จ กรุณาตรวจสอบข้อมูลแล้วลองอีกครั้ง";
 }
 
 function SparePartsPagination({

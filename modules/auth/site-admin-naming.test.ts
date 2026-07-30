@@ -18,9 +18,9 @@ describe("site admin naming", () => {
     }
   });
 
-  it("routes Site Admin permission management through the Site Admin URL", () => {
+  it("routes permission management through the unified Owner Admin URL", () => {
     const navSource = readFileSync("components/app-nav-links.tsx", "utf8");
-    expect(navSource).toContain("/admin/site-admin-permissions");
+    expect(navSource).toContain("/admin/permissions");
     expect(navSource).not.toContain("/admin/plant-admin-permissions");
   });
 });

@@ -24,6 +24,17 @@ export type CompletionDocumentProps = {
     rootCause: string;
     correctiveAction: string;
     engineerNote: string;
+    inventoryUsage?: Array<{
+      issueNumber: string;
+      itemKind: string;
+      code: string;
+      name: string;
+      quantity: string;
+      unit: string;
+      store: string;
+      issuedAt: string;
+      note: string;
+    }>;
     claimant?: DocumentPerson | null;
     reviewer?: DocumentPerson | null;
   };
@@ -120,6 +131,41 @@ export function CompletionDocument({ organization, work }: CompletionDocumentPro
           <Field label="วิธีการแก้ไข" value={work.correctiveAction} />
           <Field label="หมายเหตุวิศวกร" value={work.engineerNote} />
         </Section>
+
+        {work.inventoryUsage?.length ? (
+          <section className="break-inside-avoid overflow-hidden rounded-md border border-emerald-900/30">
+            <h2 className="flex items-center gap-3 border-b border-emerald-900/25 bg-emerald-50 px-5 py-3 text-lg font-extrabold text-emerald-950 print:bg-emerald-50">
+              <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-emerald-900 text-sm text-white">4</span>
+              รายการอะไหล่/วัสดุที่เบิกใช้จริง
+            </h2>
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[680px] border-collapse text-left text-xs">
+                <thead className="bg-gray-50 text-emerald-950">
+                  <tr>
+                    <th className="px-3 py-2">ใบเบิก</th>
+                    <th className="px-3 py-2">ประเภท</th>
+                    <th className="px-3 py-2">รหัส / รายการ</th>
+                    <th className="px-3 py-2 text-right">จำนวน</th>
+                    <th className="px-3 py-2">คลัง / วันที่จ่าย</th>
+                    <th className="px-3 py-2">หมายเหตุ</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {work.inventoryUsage.map((item, index) => (
+                    <tr className="[&>td]:border-t [&>td]:border-emerald-950/15" key={`${item.issueNumber}:${item.code}:${index}`}>
+                      <td className="px-3 py-2 font-bold">{item.issueNumber}</td>
+                      <td className="px-3 py-2">{inventoryKindLabel(item.itemKind)}</td>
+                      <td className="px-3 py-2"><strong>{item.code}</strong><br />{item.name}</td>
+                      <td className="px-3 py-2 text-right font-bold">{item.quantity} {item.unit}</td>
+                      <td className="px-3 py-2">{item.store}<br />{item.issuedAt}</td>
+                      <td className="px-3 py-2">{item.note}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        ) : null}
       </div>
 
       <section className="mt-8 grid gap-8 border-t border-emerald-900/25 pt-6 sm:grid-cols-2 print:grid-cols-2">
@@ -130,4 +176,10 @@ export function CompletionDocument({ organization, work }: CompletionDocumentPro
       <footer className="mt-8 h-2 bg-emerald-900 print:bg-emerald-900" />
     </main>
   );
+}
+
+function inventoryKindLabel(value: string) {
+  if (value === "CHEMICAL") return "สารเคมี";
+  if (value === "OIL") return "น้ำมัน";
+  return "อะไหล่";
 }
