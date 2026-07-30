@@ -35,7 +35,6 @@ export default async function PublicIssueManagementPage({ searchParams }: { sear
       name: true,
       inventoryCode: true,
       publicStoreIssueEnabled: true,
-      publicStoreIssueContactRequired: true,
     },
   });
   const requestHeaders = await headers();
@@ -101,7 +100,6 @@ export default async function PublicIssueManagementPage({ searchParams }: { sear
               <Feature icon={<Smartphone size={19} />} title="รองรับมือถือ" description="ฟอร์ม ปุ่ม และกล้องสแกนบาร์โค้ตออกแบบสำหรับหน้างาน" />
               <Feature icon={<ShieldCheck size={19} />} title="แยกข้อมูลตาม Site" description="เห็นเฉพาะ Stock, Zone และเลข CM ของ Site จากลิงก์นี้" />
             </div>
-            <p className="mt-4 text-xs text-[var(--muted)]">ช่องทางติดต่อ: {plant.publicStoreIssueContactRequired ? "บังคับกรอก" : "ไม่บังคับกรอก"}</p>
           </div>
 
           <div className="rounded-3xl border border-cyan-100 bg-white p-5 text-center text-slate-900 print:border-0">

@@ -22,7 +22,11 @@ async function createPublicIssueAction(formData: FormData) {
       cmWorkNumber: null,
       requesterName: String(formData.get("requesterName") ?? ""),
       requesterDepartment: String(formData.get("requesterDepartment") ?? ""),
-      requesterContact: optionalText(formData.get("requesterContact")),
+      vehicle: optionalText(formData.get("vehicle")),
+      odometerBefore: optionalNumber(formData.get("odometerBefore")),
+      odometerAfter: optionalNumber(formData.get("odometerAfter")),
+      dispenserMeterBefore: optionalNumber(formData.get("dispenserMeterBefore")),
+      dispenserMeterAfter: optionalNumber(formData.get("dispenserMeterAfter")),
       note: optionalText(formData.get("note")),
       requestedAt: new Date(),
       submissionKey: optionalText(formData.get("submissionKey")),
@@ -55,7 +59,6 @@ export default async function PublicStoreIssuePage({
       id: true,
       name: true,
       organizationId: true,
-      publicStoreIssueContactRequired: true,
       organization: { select: { name: true } },
     },
   });
@@ -132,7 +135,7 @@ export default async function PublicStoreIssuePage({
                 organizationId={plant.organizationId}
                 plantId={plant.id}
                 issueZones={issueZones.map((item) => ({ ...item.zone, code: item.code }))}
-                publicRequester={{ contactRequired: plant.publicStoreIssueContactRequired }}
+                publicRequester={{}}
                 siteSummary={{ organizationName: plant.organization.name, plantName: plant.name, inventoryCode }}
                 singleCard
                 stocks={stocks.map((stock) => ({
@@ -174,6 +177,13 @@ function buildStoreStockStatus(quantity: number, minStock: number) {
 function optionalText(value: FormDataEntryValue | null) {
   const normalized = String(value ?? "").trim();
   return normalized || null;
+}
+
+function optionalNumber(value: FormDataEntryValue | null) {
+  const text = String(value ?? "").trim();
+  if (!text) return null;
+  const parsed = Number(text);
+  return Number.isFinite(parsed) ? parsed : null;
 }
 
 function publicIssueError(error: unknown) {

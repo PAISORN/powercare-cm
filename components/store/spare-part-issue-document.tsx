@@ -19,7 +19,11 @@ export type SparePartIssueDocumentProps = {
     issuedAt: string;
     requesterName: string;
     requesterDepartment: string;
-    requesterContact?: string | null;
+    vehicle?: string | null;
+    odometerBefore?: string | null;
+    odometerAfter?: string | null;
+    dispenserMeterBefore?: string | null;
+    dispenserMeterAfter?: string | null;
     note?: string | null;
     cmNumber?: string | null;
     machineName?: string | null;
@@ -120,7 +124,6 @@ export function SparePartIssueDocument({ branding, issue, items, printedAt, prin
         <dl>
           <Detail label="ผู้ขอเบิก" value={issue.requesterName} />
           <Detail label="หน่วยงาน" value={issue.requesterDepartment} />
-          <Detail label="ช่องทางติดต่อ" value={issue.requesterContact} />
           <Detail label="ประเภทการเบิก" value={issue.issueType} />
         </dl>
         <dl>
@@ -130,6 +133,13 @@ export function SparePartIssueDocument({ branding, issue, items, printedAt, prin
           <Detail label="เครื่องจักร / ปัญหา" value={[issue.machineName, issue.problemTitle].filter(Boolean).join(" - ")} />
         </dl>
         <dl className="col-span-2">
+          {issue.vehicle ? (
+            <div className="grid grid-cols-3 gap-x-6">
+              <Detail label="รถที่นำไปใช้" value={issue.vehicle} />
+              <Detail label="เลขไมล์ก่อน / หลัง" value={`${issue.odometerBefore || "-"} / ${issue.odometerAfter || "-"}`} />
+              <Detail label="มิเตอร์หัวจ่ายก่อน / หลัง" value={`${issue.dispenserMeterBefore || "-"} / ${issue.dispenserMeterAfter || "-"}`} />
+            </div>
+          ) : null}
           <Detail label="วัตถุประสงค์ / หมายเหตุ" value={issue.note} />
         </dl>
       </section>

@@ -853,6 +853,11 @@ model SparePartIssue {
   requesterName       String
   requesterDepartment String?
   requesterContact    String?
+  vehicle             String?
+  odometerBefore      Decimal?     @db.Decimal(18, 2)
+  odometerAfter       Decimal?     @db.Decimal(18, 2)
+  dispenserMeterBefore Decimal?    @db.Decimal(18, 2)
+  dispenserMeterAfter  Decimal?    @db.Decimal(18, 2)
   requesterUserId     String?
   requesterUser       User?        @relation("StoreIssueRequester", fields: [requesterUserId], references: [id], onDelete: SetNull)
   engineerId          String?

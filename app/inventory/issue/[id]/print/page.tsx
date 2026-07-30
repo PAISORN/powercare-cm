@@ -86,7 +86,11 @@ export default async function PrintSparePartIssuePage({ params }: { params: Prom
           issuedAt: issue.issuedAt ? formatThaiDateTime(issue.issuedAt) : "-",
           requesterName: issue.requesterUser?.fullName ?? issue.requesterName,
           requesterDepartment: issue.requesterUser?.department ?? issue.requesterDepartment ?? "-",
-          requesterContact: issue.requesterContact,
+          vehicle: issue.vehicle,
+          odometerBefore: formatOptionalDecimal(issue.odometerBefore),
+          odometerAfter: formatOptionalDecimal(issue.odometerAfter),
+          dispenserMeterBefore: formatOptionalDecimal(issue.dispenserMeterBefore),
+          dispenserMeterAfter: formatOptionalDecimal(issue.dispenserMeterAfter),
           note: issue.note,
           cmNumber: issue.cmWork?.number,
           machineName: issue.cmWork?.machineName,
@@ -141,6 +145,11 @@ type SignatureUser = {
 
 function signatureUrl(user: SignatureUser) {
   return user?.signature ? `/signatures/${user.id}?v=${user.signature.uploadedAt.getTime()}` : null;
+}
+
+function formatOptionalDecimal(value: { toString(): string } | null | undefined) {
+  if (value === null || value === undefined) return null;
+  return new Intl.NumberFormat("th-TH", { maximumFractionDigits: 2 }).format(Number(value));
 }
 
 function buildFallbackLineCode(item: {

@@ -110,7 +110,7 @@ export function IssueRequestForm({
   stocks: StockOption[];
   issueZones: IssueZoneOption[];
   cmWorks: CmOption[];
-  publicRequester?: { contactRequired: boolean };
+  publicRequester?: { contactRequired?: boolean };
   inventoryCode?: string;
   lockedCmWork?: CmOption;
   directOnly?: boolean;

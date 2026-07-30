@@ -30,6 +30,11 @@ export type CreateStoreIssueInput = {
   requesterName: string;
   requesterDepartment?: string | null;
   requesterContact?: string | null;
+  vehicle?: string | null;
+  odometerBefore?: number | null;
+  odometerAfter?: number | null;
+  dispenserMeterBefore?: number | null;
+  dispenserMeterAfter?: number | null;
   requesterUserId?: string | null;
   note?: string | null;
   requestedAt: Date;
@@ -389,6 +394,23 @@ async function readIssueInScope(
 
 function assertIssueInput(input: CreateStoreIssueInput) {
   if (!input.requesterName.trim()) throw new Error("Requester name is required.");
+  if (input.vehicle) {
+    const oilReadings = [
+      input.odometerBefore,
+      input.odometerAfter,
+      input.dispenserMeterBefore,
+      input.dispenserMeterAfter,
+    ];
+    if (oilReadings.some((value) => value === null || value === undefined || !Number.isFinite(value) || value < 0)) {
+      throw new Error("Oil issue readings are required and must not be negative.");
+    }
+    if (input.odometerAfter! < input.odometerBefore!) {
+      throw new Error("Odometer after filling must not be lower than before filling.");
+    }
+    if (input.dispenserMeterAfter! < input.dispenserMeterBefore!) {
+      throw new Error("Dispenser meter after filling must not be lower than before filling.");
+    }
+  }
   if (!input.items.length) throw new Error("Store issue must include at least one item.");
   for (const item of input.items) {
     if (!item.zoneId.trim()) throw new Error("Applicable Zone is required for every spare part.");

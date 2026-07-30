@@ -36,6 +36,11 @@ export type CreateLoggedInStoreIssueInput = {
   requesterName: string;
   requesterDepartment?: string | null;
   requesterContact?: string | null;
+  vehicle?: string | null;
+  odometerBefore?: number | null;
+  odometerAfter?: number | null;
+  dispenserMeterBefore?: number | null;
+  dispenserMeterAfter?: number | null;
   note?: string | null;
   requestedAt: Date;
   items: StoreIssueItemInput[];
@@ -89,6 +94,11 @@ export async function createLoggedInStoreIssue(
       requesterName: requiredText(input.requesterName, "Requester name"),
       requesterDepartment: optionalText(input.requesterDepartment ?? actor.department),
       requesterContact: optionalText(input.requesterContact),
+      vehicle: optionalText(input.vehicle),
+      odometerBefore: optionalNumber(input.odometerBefore),
+      odometerAfter: optionalNumber(input.odometerAfter),
+      dispenserMeterBefore: optionalNumber(input.dispenserMeterBefore),
+      dispenserMeterAfter: optionalNumber(input.dispenserMeterAfter),
       requesterUserId: actor.id,
       note: optionalText(input.note),
       requestedAt: input.requestedAt,
@@ -137,14 +147,10 @@ export async function createPublicStoreIssue(
         id: true,
         organizationId: true,
         inventoryCode: true,
-        publicStoreIssueContactRequired: true,
       },
     });
     if (!plant?.inventoryCode) throw new Error("Public Store Issue is not available for this Site.");
     const requesterContact = optionalText(input.requesterContact);
-    if (plant.publicStoreIssueContactRequired && !requesterContact) {
-      throw new Error("Contact is required for this Site.");
-    }
     const scope: StoreScope = {
       organizationId: plant.organizationId,
       plantId: plant.id,
@@ -181,6 +187,11 @@ export async function createPublicStoreIssue(
       requesterName: requiredText(input.requesterName, "Requester name"),
       requesterDepartment: requiredText(input.requesterDepartment, "Requester department"),
       requesterContact,
+      vehicle: optionalText(input.vehicle),
+      odometerBefore: optionalNumber(input.odometerBefore),
+      odometerAfter: optionalNumber(input.odometerAfter),
+      dispenserMeterBefore: optionalNumber(input.dispenserMeterBefore),
+      dispenserMeterAfter: optionalNumber(input.dispenserMeterAfter),
       requesterUserId: null,
       note: optionalText(input.note),
       requestedAt: input.requestedAt,
@@ -342,6 +353,11 @@ function createIssueRepository(tx: Prisma.TransactionClient): StoreIssueReposito
           requesterName: input.requesterName,
           requesterDepartment: input.requesterDepartment,
           requesterContact: input.requesterContact,
+          vehicle: input.vehicle,
+          odometerBefore: input.odometerBefore,
+          odometerAfter: input.odometerAfter,
+          dispenserMeterBefore: input.dispenserMeterBefore,
+          dispenserMeterAfter: input.dispenserMeterAfter,
           requesterUserId: input.requesterUserId,
           note: input.note,
           requestedAt: input.requestedAt,
@@ -667,6 +683,11 @@ function requiredText(value: string, label: string) {
 function optionalText(value?: string | null) {
   const normalized = value?.trim();
   return normalized || null;
+}
+
+function optionalNumber(value?: number | null) {
+  if (value === null || value === undefined || !Number.isFinite(value)) return null;
+  return value;
 }
 
 async function dispatchStoreIssueLineEvent(

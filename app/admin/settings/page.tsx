@@ -44,7 +44,6 @@ async function updatePublicStoreSetting(formData: FormData) {
   if (user.role !== RoleName.ADMIN) redirect("/dashboard");
   const scope = await resolveAdminSiteScope(user, adminScopeSearchFromFormData(formData));
   const publicStoreIssueEnabled = formData.get("publicStoreIssueEnabled") === "on";
-  const publicStoreIssueContactRequired = formData.get("publicStoreIssueContactRequired") === "on";
   await db.$transaction(async (tx) => {
     const before = await tx.plant.findUniqueOrThrow({
       where: { id: scope.plant.id },
@@ -52,7 +51,7 @@ async function updatePublicStoreSetting(formData: FormData) {
     });
     await tx.plant.update({
       where: { id: scope.plant.id },
-      data: { publicStoreIssueEnabled, publicStoreIssueContactRequired },
+      data: { publicStoreIssueEnabled, publicStoreIssueContactRequired: false },
     });
     await tx.auditEvent.create({
       data: {
@@ -63,7 +62,7 @@ async function updatePublicStoreSetting(formData: FormData) {
         entityId: scope.plant.id,
         action: "UPDATE_PUBLIC_STORE_ISSUE_SETTING",
         beforeJson: JSON.stringify(before),
-        afterJson: JSON.stringify({ publicStoreIssueEnabled, publicStoreIssueContactRequired }),
+        afterJson: JSON.stringify({ publicStoreIssueEnabled, publicStoreIssueContactRequired: false }),
       },
     });
   });
@@ -84,7 +83,7 @@ export default async function AdminSystemSettingsPage({
     readEngineerAssignmentSetting(scope.plant.id),
     db.plant.findUniqueOrThrow({
       where: { id: scope.plant.id },
-      select: { publicStoreIssueEnabled: true, publicStoreIssueContactRequired: true, inventoryCode: true },
+      select: { publicStoreIssueEnabled: true, inventoryCode: true },
     }),
   ]);
 
@@ -188,12 +187,6 @@ export default async function AdminSystemSettingsPage({
               description="อนุญาตให้ผู้ไม่มีบัญชีส่งใบขอเบิกผ่าน QR ของ Site นี้"
               label="เปิด Public Store Issue"
               name="publicStoreIssueEnabled"
-            />
-            <SettingToggle
-              checked={publicStoreSetting.publicStoreIssueContactRequired}
-              description="บังคับให้ผู้ขอกรอกเบอร์ติดต่อหรือช่องทางติดต่อ"
-              label="บังคับกรอกช่องทางติดต่อ"
-              name="publicStoreIssueContactRequired"
             />
             <button className="inline-flex min-h-11 w-fit items-center gap-2 rounded-md bg-[var(--primary)] px-5 font-bold text-white transition hover:bg-[var(--primary-strong)]" disabled={!publicStoreSetting.inventoryCode}>
               <Save aria-hidden="true" size={18} />

@@ -129,7 +129,13 @@ export default async function StoreTrackingPage({ searchParams }: { searchParams
                 <dl className="mt-4 grid gap-3 text-sm">
                   <InfoRow label="ผู้ขอเบิก" value={issue.requesterUser?.fullName ?? issue.requesterName} />
                   <InfoRow label="หน่วยงาน / แผนก" value={issue.requesterUser?.department ?? issue.requesterDepartment ?? "-"} />
-                  <InfoRow label="ช่องทางติดต่อ" value={issue.requesterContact ?? "-"} />
+                  {issue.vehicle ? (
+                    <>
+                      <InfoRow label="รถที่นำไปใช้" value={issue.vehicle} />
+                      <InfoRow label="เลขไมล์ก่อน / หลัง" value={`${formatDecimal(issue.odometerBefore)} / ${formatDecimal(issue.odometerAfter)}`} />
+                      <InfoRow label="มิเตอร์หัวจ่ายก่อน / หลัง" value={`${formatDecimal(issue.dispenserMeterBefore)} / ${formatDecimal(issue.dispenserMeterAfter)}`} />
+                    </>
+                  ) : null}
                   <InfoRow label="วันที่ขอเบิก" value={formatThaiMediumDateTime(issue.requestedAt)} />
                   <InfoRow label="Engineer ผู้อนุมัติ" value={issue.engineer?.fullName ?? "-"} />
                   <InfoRow label="Store Officer" value={issue.storeOfficer?.fullName ?? "-"} />
@@ -365,6 +371,11 @@ function progressLabel(state: ProgressState) {
 
 function formatQty(value: number) {
   return new Intl.NumberFormat("th-TH", { maximumFractionDigits: 2 }).format(value);
+}
+
+function formatDecimal(value: { toString(): string } | null | undefined) {
+  if (value === null || value === undefined) return "-";
+  return new Intl.NumberFormat("th-TH", { maximumFractionDigits: 2 }).format(Number(value));
 }
 
 const inputClass = "min-h-12 w-full rounded-xl border border-[var(--line)] bg-[var(--surface)] px-3 font-mono text-[var(--ink)] outline-none focus:border-[var(--primary)]";
