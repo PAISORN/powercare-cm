@@ -11,7 +11,7 @@
     "dev:local": "prisma generate && next dev",
     "dev:supabase": "npm run db:check:development && prisma generate --schema prisma/schema.supabase.prisma && next dev",
     "build": "next build",
-    "build:vercel": "prisma db execute --schema prisma/schema.supabase.prisma --file prisma/supabase-migrations/20260730_inventory_kinds_and_layered_permissions.sql && prisma db execute --schema prisma/schema.supabase.prisma --file prisma/supabase-migrations/20260731_store_issue_oil_details.sql && prisma generate --schema prisma/schema.supabase.prisma && next build",
+    "build:vercel": "prisma generate --schema prisma/schema.supabase.prisma && next build",
     "start": "next start",
     "start:local": "prisma generate && next start",
     "start:supabase": "prisma generate --schema prisma/schema.supabase.prisma && next start",
