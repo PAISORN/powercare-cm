@@ -134,7 +134,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
 
   return (
     <AppShell>
-      <section className="cm-hero relative overflow-hidden rounded-3xl px-6 py-7 text-white shadow-[var(--shadow)]">
+      <section className="cm-hero dashboard-hero relative overflow-hidden rounded-3xl px-6 py-7 text-white shadow-[var(--shadow)]">
         <div className="plant-skyline" aria-hidden="true">
           <span />
           <span />
@@ -159,7 +159,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         <DashboardFilterBar activeCategory={activeCategoryFilter} activeDateFilter={hasExplicitDateFilter ? activeDateFilterInput : undefined} clearHref="/dashboard" />
       </section>
 
-      <section className="mt-6 grid grid-cols-2 gap-3 sm:gap-5 md:grid-cols-2 xl:grid-cols-5">
+      <section className="dashboard-kpi-grid mt-6 grid grid-cols-2 gap-3 sm:gap-5 md:grid-cols-2 xl:grid-cols-5">
         <KpiCard href={buildWorkHref(workCategoryParam)} group="ALL_CM" unreadCount={unreadSummary.total} readAction={markDashboardGroupReadAction} label="Total CM" value={String(summary.total)} note="งานซ่อมทั้งหมด" icon={<ClipboardList size={34} />} color="#3b82f6" />
         <KpiCard href={buildWorkHref(workCategoryParam, { status: WorkStatus.NEW })} group="NEW" unreadCount={unreadSummary.newRequest} readAction={markDashboardGroupReadAction} label="New Request" value={String(newCount)} note="แจ้งซ่อมใหม่" icon={<CircleDot size={34} />} color="#06b6d4" />
         <KpiCard href={buildWorkHref(workCategoryParam, { statusGroup: "IN_PROCESS" })} group="IN_PROCESS" unreadCount={unreadSummary.inProcess} readAction={markDashboardGroupReadAction} label="In Process" value={String(inProcessCount)} note="งานอยู่ระหว่างดำเนินการ" icon={<Wrench size={34} />} color="#14b8a6" />
@@ -283,19 +283,19 @@ function KpiCard({ href, group, unreadCount, readAction, label, value, note, ico
       <input name="href" type="hidden" value={href} />
       <button
       type="submit"
-      className="relative block min-h-[148px] h-full w-full min-w-0 rounded-2xl p-3 text-left text-white shadow-[var(--shadow)] transition duration-300 ease-out hover:-translate-y-1 hover:shadow-lg active:translate-y-0 focus:outline-none focus:ring-2 focus:ring-white/60 focus:ring-offset-2 focus:ring-offset-[var(--bg)] sm:min-h-0 sm:p-5"
-      style={{ background: `linear-gradient(135deg, ${color}, color-mix(in srgb, ${color} 78%, white))` }}
+      className="dashboard-kpi relative block min-h-[148px] h-full w-full min-w-0 overflow-hidden rounded-2xl border border-[var(--line)] p-3 text-left text-[var(--ink)] shadow-[var(--shadow)] transition duration-300 ease-out hover:-translate-y-1 hover:shadow-lg active:translate-y-0 focus:outline-none focus:ring-2 focus:ring-[var(--primary)] focus:ring-offset-2 focus:ring-offset-[var(--bg)] sm:min-h-0 sm:p-5"
+      style={{ "--kpi-color": color } as React.CSSProperties}
       aria-label={`KPI ${label}`}
       >
       <UnreadBadge count={unreadCount} />
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="text-xs font-bold leading-tight text-white/80 sm:text-sm">{label}</p>
+          <p className="text-xs font-bold leading-tight text-[var(--muted)] sm:text-sm">{label}</p>
           <strong className="mt-2 block text-3xl leading-none sm:text-4xl">{value}</strong>
         </div>
-        <div className="origin-top-right scale-75 text-white/75 sm:scale-100">{icon}</div>
+        <div className="dashboard-kpi-icon origin-top-right scale-75 sm:scale-100">{icon}</div>
       </div>
-      <p className="mt-4 text-xs leading-snug text-white/80 sm:text-sm">{note}</p>
+      <p className="mt-4 text-xs leading-snug text-[var(--muted)] sm:text-sm">{note}</p>
       </button>
     </form>
   );
@@ -303,7 +303,7 @@ function KpiCard({ href, group, unreadCount, readAction, label, value, note, ico
 
 function Panel({ title, icon, aside, children }: { title: string; icon: React.ReactNode; aside: string; children: React.ReactNode }) {
   return (
-    <section className="flex h-full min-w-0 flex-col rounded-3xl border border-[var(--line)] bg-[var(--surface)] p-4 shadow-[var(--shadow)] sm:p-6">
+    <section className="dashboard-panel ops-panel flex h-full min-w-0 flex-col rounded-3xl border border-[var(--line)] bg-[var(--surface)] p-4 sm:p-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="flex min-w-0 items-center gap-3 text-xl font-bold sm:text-2xl">
           {icon}

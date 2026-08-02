@@ -122,6 +122,12 @@ model Plant {
   sparePartIssues         SparePartIssue[]
   sparePartSequence       SparePartSequence?
   storeIssueSequences     StoreIssueSequence[]
+  assetClasses            AssetClass[]
+  assetTypes              AssetType[]
+  assetFamilies           AssetFamily[]
+  assets                  Asset[]
+  assetSequences          AssetSequence[]
+  assetQrSetting          AssetQrSetting?
 
   @@unique([organizationId, code])
   @@unique([organizationId, name])
@@ -250,6 +256,7 @@ model Zone {
   works                CmWork[]
   storeApplicableZones StoreApplicableZone[]
   sparePartIssueItems  SparePartIssueItem[]
+  assets               Asset[]
 
   @@unique([plantId, name])
   @@index([active])
@@ -271,6 +278,10 @@ model CmWork {
   zoneId              String
   zone                Zone          @relation(fields: [zoneId], references: [id])
   machineName         String
+  assetId             String?
+  asset               Asset?        @relation(fields: [assetId], references: [id], onDelete: SetNull)
+  assetCodeSnapshot   String?
+  assetNameSnapshot   String?
   problemTitle        String
   problemDetail       String
   urgency             String
@@ -296,6 +307,8 @@ model CmWork {
   statusHistory   StatusHistory[]
   auditEvents     AuditEvent[]
   sparePartIssues SparePartIssue[]
+
+  @@index([assetId])
 }
 
 model CmNumberSequence {
@@ -812,39 +825,39 @@ model SparePartReceiveItem {
 }
 
 model SparePartIssue {
-  id                  String       @id @default(cuid())
-  number              String       @unique
-  submissionKey       String?      @unique
-  organizationId      String
-  organization        Organization @relation(fields: [organizationId], references: [id])
-  plantId             String
-  plant               Plant        @relation(fields: [plantId], references: [id], onDelete: Cascade)
-  cmWorkId            String?
-  cmWork              CmWork?      @relation(fields: [cmWorkId], references: [id], onDelete: SetNull)
-  issueType           String
-  status              String       @default("WAITING_ENGINEER_APPROVAL")
-  requesterName       String
-  requesterDepartment String?
-  requesterContact    String?
-  vehicle             String?
-  odometerBefore      Decimal?
-  odometerAfter       Decimal?
+  id                   String       @id @default(cuid())
+  number               String       @unique
+  submissionKey        String?      @unique
+  organizationId       String
+  organization         Organization @relation(fields: [organizationId], references: [id])
+  plantId              String
+  plant                Plant        @relation(fields: [plantId], references: [id], onDelete: Cascade)
+  cmWorkId             String?
+  cmWork               CmWork?      @relation(fields: [cmWorkId], references: [id], onDelete: SetNull)
+  issueType            String
+  status               String       @default("WAITING_ENGINEER_APPROVAL")
+  requesterName        String
+  requesterDepartment  String?
+  requesterContact     String?
+  vehicle              String?
+  odometerBefore       Decimal?
+  odometerAfter        Decimal?
   dispenserMeterBefore Decimal?
   dispenserMeterAfter  Decimal?
-  requesterUserId     String?
-  requesterUser       User?        @relation("StoreIssueRequester", fields: [requesterUserId], references: [id], onDelete: SetNull)
-  engineerId          String?
-  engineer            User?        @relation("StoreIssueEngineer", fields: [engineerId], references: [id], onDelete: SetNull)
-  storeOfficerId      String?
-  storeOfficer        User?        @relation("StoreIssueOfficer", fields: [storeOfficerId], references: [id], onDelete: SetNull)
-  note                String?
-  rejectReason        String?
-  requestedAt         DateTime     @default(now())
-  engineerApprovedAt  DateTime?
-  issuedAt            DateTime?
-  rejectedAt          DateTime?
-  createdAt           DateTime     @default(now())
-  updatedAt           DateTime     @updatedAt
+  requesterUserId      String?
+  requesterUser        User?        @relation("StoreIssueRequester", fields: [requesterUserId], references: [id], onDelete: SetNull)
+  engineerId           String?
+  engineer             User?        @relation("StoreIssueEngineer", fields: [engineerId], references: [id], onDelete: SetNull)
+  storeOfficerId       String?
+  storeOfficer         User?        @relation("StoreIssueOfficer", fields: [storeOfficerId], references: [id], onDelete: SetNull)
+  note                 String?
+  rejectReason         String?
+  requestedAt          DateTime     @default(now())
+  engineerApprovedAt   DateTime?
+  issuedAt             DateTime?
+  rejectedAt           DateTime?
+  createdAt            DateTime     @default(now())
+  updatedAt            DateTime     @updatedAt
 
   items SparePartIssueItem[]
 
@@ -896,4 +909,203 @@ model PublicFeedback {
   createdAt      DateTime      @default(now())
 
   @@index([createdAt])
+}
+
+model AssetClass {
+  id        String      @id @default(cuid())
+  plantId   String
+  plant     Plant       @relation(fields: [plantId], references: [id], onDelete: Cascade)
+  nameTh    String
+  nameEn    String?
+  active    Boolean     @default(true)
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+  types     AssetType[]
+  assets    Asset[]
+
+  @@unique([plantId, nameTh])
+  @@index([plantId, active])
+}
+
+model AssetType {
+  id           String                @id @default(cuid())
+  plantId      String
+  plant        Plant                 @relation(fields: [plantId], references: [id], onDelete: Cascade)
+  assetClassId String
+  assetClass   AssetClass            @relation(fields: [assetClassId], references: [id])
+  code         String
+  nameTh       String
+  nameEn       String?
+  active       Boolean               @default(true)
+  createdAt    DateTime              @default(now())
+  updatedAt    DateTime              @updatedAt
+  fields       AssetTechnicalField[]
+  assets       Asset[]
+
+  @@unique([plantId, code])
+  @@index([plantId, active])
+  @@index([assetClassId])
+}
+
+model AssetTechnicalField {
+  id          String                @id @default(cuid())
+  assetTypeId String
+  assetType   AssetType             @relation(fields: [assetTypeId], references: [id], onDelete: Cascade)
+  key         String
+  labelTh     String
+  labelEn     String?
+  dataType    String                @default("TEXT")
+  unit        String?
+  optionsJson String?
+  required    Boolean               @default(false)
+  active      Boolean               @default(true)
+  sortOrder   Int                   @default(0)
+  createdAt   DateTime              @default(now())
+  updatedAt   DateTime              @updatedAt
+  values      AssetTechnicalValue[]
+
+  @@unique([assetTypeId, key])
+  @@index([assetTypeId, active, sortOrder])
+}
+
+model AssetFamily {
+  id        String          @id @default(cuid())
+  plantId   String
+  plant     Plant           @relation(fields: [plantId], references: [id], onDelete: Cascade)
+  code      String
+  nameTh    String
+  nameEn    String?
+  active    Boolean         @default(true)
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+  assets    Asset[]
+  sequences AssetSequence[]
+
+  @@unique([plantId, code])
+  @@index([plantId, active])
+}
+
+model AssetSequence {
+  id         String      @id @default(cuid())
+  plantId    String
+  plant      Plant       @relation(fields: [plantId], references: [id], onDelete: Cascade)
+  familyId   String
+  family     AssetFamily @relation(fields: [familyId], references: [id])
+  lastNumber Int         @default(0)
+  updatedAt  DateTime    @updatedAt
+
+  @@unique([plantId, familyId])
+}
+
+model Asset {
+  id                   String                @id @default(cuid())
+  publicToken          String                @unique @default(cuid())
+  plantId              String
+  plant                Plant                 @relation(fields: [plantId], references: [id], onDelete: Cascade)
+  familyId             String
+  family               AssetFamily           @relation(fields: [familyId], references: [id])
+  assetClassId         String
+  assetClass           AssetClass            @relation(fields: [assetClassId], references: [id])
+  assetTypeId          String?
+  assetType            AssetType?            @relation(fields: [assetTypeId], references: [id])
+  zoneId               String?
+  zone                 Zone?                 @relation(fields: [zoneId], references: [id], onDelete: SetNull)
+  parentId             String?
+  parent               Asset?                @relation("AssetHierarchy", fields: [parentId], references: [id], onDelete: Restrict)
+  children             Asset[]               @relation("AssetHierarchy")
+  code                 String?               @unique
+  sequence             Int?
+  componentCode        String?
+  nameTh               String
+  nameEn               String?
+  installationLocation String?
+  manufacturer         String?
+  model                String?
+  serialNumber         String?
+  serialNormalized     String?
+  installedAt          DateTime?
+  commissionedAt       DateTime?
+  operatingStatus      String                @default("IN_SERVICE")
+  criticality          String                @default("MEDIUM")
+  registrationStatus   String                @default("ACTIVE")
+  cancellationReason   String?
+  imageFileName        String?
+  imageMimeType        String?
+  imageFileSize        Int?
+  imageStoragePath     String?
+  qrOverrideJson       String?
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime              @updatedAt
+  technicalValues      AssetTechnicalValue[]
+  documents            AssetDocument[]
+  cmWorks              CmWork[]
+
+  @@unique([parentId, componentCode])
+  @@index([plantId, registrationStatus])
+  @@index([familyId])
+  @@index([assetClassId, assetTypeId])
+  @@index([zoneId])
+  @@index([parentId])
+  @@index([serialNormalized])
+}
+
+model AssetTechnicalValue {
+  id          String               @id @default(cuid())
+  assetId     String
+  asset       Asset                @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  fieldId     String?
+  field       AssetTechnicalField? @relation(fields: [fieldId], references: [id], onDelete: SetNull)
+  customLabel String?
+  dataType    String               @default("TEXT")
+  unit        String?
+  value       String?
+  sortOrder   Int                  @default(0)
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
+
+  @@unique([assetId, fieldId])
+  @@index([assetId, sortOrder])
+}
+
+model AssetDocument {
+  id             String    @id @default(cuid())
+  assetId        String
+  asset          Asset     @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  category       String
+  customCategory String?
+  title          String
+  revision       String?
+  documentDate   DateTime?
+  note           String?
+  fileName       String
+  mimeType       String
+  fileSize       Int
+  storagePath    String
+  version        Int       @default(1)
+  publicVisible  Boolean   @default(false)
+  status         String    @default("ACTIVE")
+  canceledReason String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@index([assetId, category, status])
+}
+
+model AssetQrSetting {
+  id                String   @id @default(cuid())
+  plantId           String   @unique
+  plant             Plant    @relation(fields: [plantId], references: [id], onDelete: Cascade)
+  showImage         Boolean  @default(true)
+  showLocation      Boolean  @default(true)
+  showManufacturer  Boolean  @default(true)
+  showModel         Boolean  @default(true)
+  showSerialNumber  Boolean  @default(false)
+  showTechnical     Boolean  @default(false)
+  showLastCmDate    Boolean  @default(true)
+  showLastCmTitle   Boolean  @default(false)
+  showLastCmOutcome Boolean  @default(false)
+  showLastPmDate    Boolean  @default(true)
+  showLastPmTitle   Boolean  @default(false)
+  showLastPmOutcome Boolean  @default(false)
+  updatedAt         DateTime @updatedAt
 }

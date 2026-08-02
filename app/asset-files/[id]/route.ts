@@ -1,0 +1,4 @@
+import { db } from "../../../lib/db";
+import { readStoredFile } from "../../../lib/file-storage";
+import { getCurrentUser } from "../../../lib/session";
+export async function GET(_request:Request,{params}:{params:Promise<{id:string}>}){const{id}=await params;const doc=await db.assetDocument.findUnique({where:{id},include:{asset:{select:{plantId:true}}}});if(!doc||doc.status!=="ACTIVE")return new Response("Not found",{status:404});const user=await getCurrentUser();const allowed=doc.publicVisible||user?.role==="ADMIN"||user?.role==="ORGANIZATION_ADMIN"||user?.plantId===doc.asset.plantId;if(!allowed)return new Response("Forbidden",{status:403});const file=await readStoredFile(doc.storagePath);return new Response(file.bytes,{headers:{"Content-Type":doc.mimeType||file.contentType||"application/octet-stream","Content-Disposition":`inline; filename*=UTF-8''${encodeURIComponent(doc.fileName)}`}})}

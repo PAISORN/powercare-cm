@@ -144,6 +144,26 @@ export function canManageQrCode(input: string | PermissionUserContext) {
   return canUse(input, PermissionKey.MANAGE_QR_CODE, [RoleName.ADMIN, RoleName.ORGANIZATION_ADMIN]);
 }
 
+export function canViewAssets(input: string | PermissionUserContext) {
+  return canUse(input, PermissionKey.VIEW_ASSETS, Object.values(RoleName));
+}
+
+export function canManageAssets(input: string | PermissionUserContext) {
+  return canUse(input, PermissionKey.MANAGE_ASSETS, [RoleName.ADMIN, RoleName.ORGANIZATION_ADMIN, RoleName.SITE_ADMIN]);
+}
+
+export function canManageAssetMasters(input: string | PermissionUserContext) {
+  return canUse(input, PermissionKey.MANAGE_ASSET_MASTERS, [RoleName.ADMIN, RoleName.ORGANIZATION_ADMIN, RoleName.SITE_ADMIN]);
+}
+
+export function canManageAssetDocuments(input: string | PermissionUserContext) {
+  return canUse(input, PermissionKey.MANAGE_ASSET_DOCUMENTS, [RoleName.ADMIN, RoleName.ORGANIZATION_ADMIN, RoleName.SITE_ADMIN]);
+}
+
+export function canManageAssetQrProfile(input: string | PermissionUserContext) {
+  return canUse(input, PermissionKey.MANAGE_ASSET_QR_PROFILE, [RoleName.ADMIN, RoleName.ORGANIZATION_ADMIN]);
+}
+
 export function canViewPlantAuditLog(input: string | PermissionUserContext) {
   if (typeof input === "string") return input === RoleName.ADMIN || input === RoleName.ORGANIZATION_ADMIN;
   return canUseUserPermission(input, PermissionKey.VIEW_AUDIT_LOG_ALL_PLANTS) || canUseUserPermission(input, PermissionKey.VIEW_AUDIT_LOG_PLANT);

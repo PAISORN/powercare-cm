@@ -119,6 +119,7 @@ export async function createRepairRequest(input: {
   categoryId: string;
   zoneId: string;
   machineName: string;
+  assetId?: string | null;
   problemTitle: string;
   problemDetail: string;
   urgency: Urgency;
@@ -135,6 +136,10 @@ export async function createRepairRequest(input: {
       if (existing) return { created: false, work: existing };
 
       const plantScope = await resolveRequestPlantScope(createPrismaRequestPlantScopeStore(tx), plantCode);
+      const selectedAsset = input.assetId
+        ? await tx.asset.findFirst({ where: { id: input.assetId, plantId: plantScope.id, registrationStatus: "ACTIVE" } })
+        : null;
+      const selectedAssetName = selectedAsset ? selectedAsset.nameEn?.trim() || selectedAsset.nameTh : null;
       const number = await reserveCmWorkNumber(tx, plantScope.code, now);
       const plant = await tx.plant.findUnique({ where: { id: plantScope.id }, select: { maxWorkRequests: true } });
       if (plant?.maxWorkRequests) {
@@ -145,6 +150,10 @@ export async function createRepairRequest(input: {
       const work = await tx.cmWork.create({
         data: {
           ...workInput,
+          assetId: selectedAsset?.id ?? null,
+          assetCodeSnapshot: selectedAsset?.code ?? null,
+          assetNameSnapshot: selectedAssetName,
+          machineName: selectedAssetName ?? workInput.machineName,
           submissionKey,
           organizationId: plantScope.organizationId,
           plantId: plantScope.id,

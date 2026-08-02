@@ -143,13 +143,24 @@ export function getAppLinks(role: RoleValue, permissionContext: AppPermissionCon
     baseLinks.push({ label: "Maintenance", kind: "section", icon: Wrench, sectionId: "maintenance" }, ...maintenanceLinks);
   }
 
-  baseLinks.push(
-    { label: "Assets", kind: "section", icon: Boxes, sectionId: "assets" },
-    { label: "Assets", href: "#", icon: Boxes, nested: true, disabled: true, parentSectionId: "assets" },
-    { label: "Equipment", href: "#", icon: Factory, nested: true, disabled: true, parentSectionId: "assets" },
-    { label: "Preventive Maintenance", href: "#", icon: ClipboardList, nested: true, disabled: true, parentSectionId: "assets" },
-    { label: "Meter Reading", href: "#", icon: CalendarDays, nested: true, disabled: true, parentSectionId: "assets" },
-  );
+  if (canUse(PermissionKey.VIEW_ASSETS)) {
+    baseLinks.push(
+      { label: "Assets", kind: "section", icon: Boxes, sectionId: "assets" },
+      { label: "Assets", href: "/assets", icon: Boxes, nested: true, parentSectionId: "assets" },
+    );
+    if (canUse(PermissionKey.MANAGE_ASSET_MASTERS)) {
+      baseLinks.push({ label: "Asset Master Data", href: "/assets/master-data", icon: Factory, nested: true, parentSectionId: "assets" });
+    }
+    if (canUse(PermissionKey.MANAGE_ASSET_QR_PROFILE)) {
+      baseLinks.push({ label: "QR Public Profile", href: "/assets/qr-settings", icon: QrCode, nested: true, parentSectionId: "assets" });
+    }
+    baseLinks.push(
+      { label: "Equipment", href: "#", icon: Factory, nested: true, disabled: true, parentSectionId: "assets" },
+      { label: "Preventive Maintenance", href: "#", icon: ClipboardList, nested: true, disabled: true, parentSectionId: "assets" },
+      { label: "Meter Reading", href: "#", icon: CalendarDays, nested: true, disabled: true, parentSectionId: "assets" },
+      { label: "Asset Analytics", href: "#", icon: BarChart3, nested: true, disabled: true, parentSectionId: "assets" },
+    );
+  }
 
   const organizationLinks: AppLink[] = [];
   if (canUse(PermissionKey.VIEW_MEMBERS)) {

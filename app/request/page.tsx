@@ -3,8 +3,9 @@ import { permanentRedirect, redirect } from "next/navigation";
 import { AppShell } from "../../components/app-shell";
 import { PublicHeader } from "../../components/public-header";
 import { RequestSubmitButton } from "../../components/request-submit-button";
-import { getActiveCategoriesForPlantScope, getActiveZonesForScope } from "../../lib/query-cache";
+import { RequestAssetFields } from "../../components/request-asset-fields";
 import { getCurrentUser } from "../../lib/session";
+import { db } from "../../lib/db";
 import { repairRequestSchema } from "../../lib/validation";
 import { createRepairRequest } from "../../modules/cm-work/cm-work-service";
 import { RoleName } from "../../modules/cm-work/cm-work-types";
@@ -20,7 +21,7 @@ async function submitRepairRequest(formData: FormData) {
     requesterDepartment: formData.get("requesterDepartment"),
     categoryId: formData.get("categoryId"),
     zoneId: formData.get("zoneId"),
-    machineName: formData.get("machineName"),
+    machineName: formData.get("machineName") || (formData.get("assetId") ? "Selected asset" : ""),
     problemTitle: formData.get("problemTitle"),
     problemDetail: formData.get("problemDetail"),
     urgency: formData.get("urgency"),
@@ -34,7 +35,10 @@ async function submitRepairRequest(formData: FormData) {
   const submissionKey = String(formData.get("submissionKey") ?? "");
   let work;
   try {
-    work = await createRepairRequest({ ...parsed, plantCode, submissionKey });
+    const assetId = String(formData.get("assetId") || "") || null;
+    work = assetId
+      ? await createRepairRequest({ ...parsed, plantCode, submissionKey, assetId })
+      : await createRepairRequest({ ...parsed, plantCode, submissionKey });
   } catch (error) {
     if (error instanceof Error && error.message === "SITE_REQUEST_LIMIT_REACHED") {
       redirect(`${requestPath}?error=site-limit`);
@@ -60,10 +64,17 @@ export async function RequestPageContent({ error, plantCode }: { error?: string 
     redirect(`/p/${encodeURIComponent(user.plant.code.toLowerCase())}/request`);
   }
   const plantScope = await readRequestPlantScope(plantCode);
-  const [categories, zones, plantProfile] = await Promise.all([
-    getActiveCategoriesForPlantScope(plantScope.id, plantScope.organizationId),
-    getActiveZonesForScope(plantScope.id),
+  const [categories, zones, plantProfile, assets] = await Promise.all([
+    db.category.findMany({
+      where: { active: true, OR: [{ plantId: plantScope.id }, { plantId: null, organizationId: plantScope.organizationId }] },
+      orderBy: { name: "asc" }, select: { id: true, name: true },
+    }),
+    db.zone.findMany({
+      where: { active: true, OR: [{ plantId: plantScope.id }, { plantId: null }] },
+      orderBy: { name: "asc" }, select: { id: true, name: true },
+    }),
     readPlantProfile(plantScope.id),
+    db.asset.findMany({ where: { plantId: plantScope.id, registrationStatus: "ACTIVE", operatingStatus: { not: "RETIRED" } }, select: { id: true, code: true, nameTh: true, nameEn: true, zoneId: true }, orderBy: { code: "asc" } }),
   ]);
   const submissionKey = randomUUID();
 
@@ -86,23 +97,13 @@ export async function RequestPageContent({ error, plantCode }: { error?: string 
         <h1 className="text-3xl font-bold">แจ้งซ่อม</h1>
         <input name="requesterName" required placeholder="ชื่อผู้แจ้ง" className="rounded-md border p-3 text-black" />
         <input name="requesterDepartment" required placeholder="หน่วยงาน/แผนก" className="rounded-md border p-3 text-black" />
-        <select name="categoryId" required className="rounded-md border p-3 text-black">
-          <option value="">เลือก Category</option>
-          {categories.map((category) => (
-            <option key={category.id} value={category.id}>
-              {category.name}
-            </option>
-          ))}
-        </select>
-        <select name="zoneId" required className="rounded-md border p-3 text-black">
-          <option value="">เลือก Zone</option>
-          {zones.map((zone) => (
-            <option key={zone.id} value={zone.id}>
-              {zone.name}
-            </option>
-          ))}
-        </select>
-        <input name="machineName" required placeholder="ชื่อเครื่องจักร" className="rounded-md border p-3 text-black" />
+        <label className="grid gap-1 text-sm font-bold text-[var(--ink)]">Category
+          <select name="categoryId" required className="min-h-12 cursor-pointer rounded-md border bg-white p-3 text-black disabled:cursor-not-allowed disabled:opacity-60" disabled={!categories.length}>
+            <option value="">{categories.length?"เลือก Category":"ยังไม่มี Category สำหรับ Site นี้"}</option>
+            {categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}
+          </select>
+        </label>
+        <RequestAssetFields zones={zones} assets={assets}/>
         <input name="problemTitle" required placeholder="หัวข้อปัญหา" className="rounded-md border p-3 text-black" />
         <textarea name="problemDetail" required placeholder="รายละเอียดปัญหา" className="min-h-32 rounded-md border p-3 text-black" />
         <select name="urgency" required className="rounded-md border p-3 text-black">

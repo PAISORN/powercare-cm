@@ -13,7 +13,9 @@ describe("Plant-specific repair request routing", () => {
     expect(source).toContain("plantName={plantScope.name}");
     expect(source).toContain("Site: {plantName}");
     expect(source).not.toContain("Plant: {plantName}");
-    expect(source).toContain("getActiveZonesForScope(plantScope.id)");
+    expect(source).toContain("db.zone.findMany");
+    expect(source).toContain("db.category.findMany");
+    expect(source).toContain("db.asset.findMany");
     expect(source).toContain("createRepairRequest({ ...parsed, plantCode, submissionKey })");
     expect(source).toContain('name="submissionKey"');
     expect(source).toContain("RequestSubmitButton");
@@ -34,5 +36,6 @@ describe("Plant-specific repair request routing", () => {
     expect(source).toContain("RequestPageContent");
     expect(source).toContain("params");
     expect(source).toContain("plantCode");
+    expect(source).toContain('dynamic = "force-dynamic"');
   });
 });

@@ -463,11 +463,12 @@ export default async function StockPage({ searchParams }: { searchParams: Promis
   return (
     <AppShell>
       <div className="space-y-5">
-        <header className="flex flex-wrap items-start justify-between gap-4">
+        <header className="stock-page-hero relative overflow-hidden rounded-3xl border p-5 shadow-[var(--shadow)] sm:p-6">
+          <div className="relative z-10 flex flex-wrap items-start justify-between gap-4">
           <div>
-            <p className="text-sm font-semibold text-[var(--muted)]">Home &gt; Inventory &gt; Stock</p>
-            <h1 className="mt-1 text-2xl font-extrabold tracking-tight sm:text-3xl">Stock (คลังอะไหล่)</h1>
-            <p className="mt-1 text-sm text-[var(--muted)]">
+            <p className="text-sm font-semibold text-white/70">Home &gt; Inventory &gt; Stock</p>
+            <h1 className="mt-1 text-2xl font-extrabold tracking-tight text-white sm:text-3xl">Stock (คลังอะไหล่)</h1>
+            <p className="mt-1 max-w-3xl text-sm text-white/75">
               ตรวจสอบยอดคงเหลือ มูลค่าคลัง จุดขั้นต่ำ และประวัติการเคลื่อนไหวของอะไหล่ใน Site
             </p>
           </div>
@@ -480,15 +481,16 @@ export default async function StockPage({ searchParams }: { searchParams: Promis
               เพิ่มอะไหล่เข้าสต็อก
             </Link>
             {canManageParts ? (
-              <Link className={secondaryButtonClass} href={`${scopedHref}&importExcel=1#excel-import-drawer`}>
+              <Link className={`${secondaryButtonClass} stock-hero-secondary`} href={`${scopedHref}&importExcel=1#excel-import-drawer`}>
                 <Download size={17} />
                 นำเข้า Excel
               </Link>
             ) : null}
-            <Link className={secondaryButtonClass} href="/inventory/reports">
+            <Link className={`${secondaryButtonClass} stock-hero-secondary`} href="/inventory/reports">
               <Printer size={17} />
               พิมพ์รายงาน
             </Link>
+          </div>
           </div>
         </header>
 
@@ -515,7 +517,7 @@ export default async function StockPage({ searchParams }: { searchParams: Promis
           </p>
         ) : null}
 
-        <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+        <section className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
           {canViewValue ? (
             <SummaryCard
               color="blue"
@@ -555,7 +557,7 @@ export default async function StockPage({ searchParams }: { searchParams: Promis
           />
         </section>
 
-        <section className="rounded-3xl border border-[var(--line)] bg-[var(--surface)] p-4 shadow-[var(--shadow)]">
+        <section className="ops-panel rounded-3xl border border-[var(--line)] p-4">
           <form action="/inventory/stock" className="grid gap-3 md:grid-cols-2 xl:grid-cols-[1.45fr_repeat(6,minmax(120px,0.7fr))_auto_auto] xl:items-end">
             <AdminScopeHiddenFields scope={scope} />
             <label className={labelClass}>
@@ -640,7 +642,7 @@ export default async function StockPage({ searchParams }: { searchParams: Promis
 
         <StockHeaderReplacementController regionId="stock-table-region" />
         <section
-          className="rounded-3xl border border-[var(--line)] bg-[var(--surface)] shadow-[var(--shadow)]"
+          className="ops-panel rounded-3xl border border-[var(--line)]"
           id="stock-table-region"
         >
           <div
@@ -1185,22 +1187,22 @@ function SummaryCard({
   value: string;
 }) {
   const surfaceClass = {
-    blue: "border-blue-400 bg-gradient-to-br from-blue-500 to-blue-600",
-    green: "border-emerald-400 bg-gradient-to-br from-emerald-500 to-green-500",
-    violet: "border-violet-400 bg-gradient-to-br from-violet-500 to-purple-600",
-    orange: "border-orange-400 bg-gradient-to-br from-amber-400 to-orange-500",
-    red: "border-red-400 bg-gradient-to-br from-rose-500 to-red-600",
+    blue: "stock-summary-blue",
+    green: "stock-summary-green",
+    violet: "stock-summary-violet",
+    orange: "stock-summary-orange",
+    red: "stock-summary-red",
   }[color];
 
   return (
-    <article className={`min-h-36 rounded-2xl border p-5 text-white shadow-sm transition duration-300 hover:-translate-y-0.5 hover:shadow-[var(--shadow)] ${surfaceClass}`}>
-      <div className="flex h-full items-start justify-between gap-4">
+    <article className={`stock-summary-card relative min-h-36 overflow-hidden rounded-2xl border p-4 transition duration-300 hover:-translate-y-0.5 sm:p-5 ${surfaceClass}`}>
+      <div className="relative z-10 flex h-full items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="truncate text-sm font-extrabold text-white/90">{label}</p>
-          <p className="mt-3 truncate text-3xl font-black">{value}</p>
-          <p className="mt-2 text-xs font-bold text-white/80">{sublabel}</p>
+          <p className="text-sm font-extrabold leading-5">{label}</p>
+          <p className="mt-3 break-words text-2xl font-black tracking-tight sm:text-3xl">{value}</p>
+          <p className="mt-2 text-xs font-bold text-[var(--muted)]">{sublabel}</p>
         </div>
-        <span className="grid size-12 shrink-0 place-items-center text-white/80">
+        <span className="stock-summary-icon grid size-11 shrink-0 place-items-center rounded-xl">
           {icon}
         </span>
       </div>

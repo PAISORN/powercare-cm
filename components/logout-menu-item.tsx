@@ -38,7 +38,7 @@ export function LogoutMenuItem({ collapsed = false }: { collapsed?: boolean }) {
     <div className="fixed inset-0 z-[100] grid place-items-center p-4">
       <button
         aria-label="Cancel logout"
-        className="absolute inset-0 cursor-default bg-[#07111d]/55 backdrop-blur-md"
+        className="absolute inset-0 cursor-default bg-[#0d1b3d]/60 backdrop-blur-md"
         onClick={() => setOpen(false)}
         type="button"
       />

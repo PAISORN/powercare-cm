@@ -11,13 +11,13 @@ const items = [
   { href: "/profile", label: "โปรไฟล์", Icon: UserRound },
 ] as const;
 
-export function MobilePrimaryNav() {
+export function MobilePrimaryNav({ elevated = false }: { elevated?: boolean }) {
   const pathname = usePathname();
 
   return (
     <nav
       aria-label="เมนูหลัก"
-      className="fixed inset-x-0 bottom-0 z-50 border-t border-[var(--line)] bg-[var(--surface-raised)]/96 px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 shadow-[0_-12px_32px_rgba(13,27,61,.12)] backdrop-blur-xl md:hidden"
+      className={`fixed inset-x-0 bottom-0 ${elevated?"z-[250]":"z-50"} border-t border-[var(--line)] bg-[var(--surface-raised)]/96 px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 shadow-[0_-12px_32px_rgba(13,27,61,.12)] backdrop-blur-xl md:hidden`}
     >
       <div className="mx-auto grid max-w-lg grid-cols-4">
         {items.map(({ href, label, Icon }) => {

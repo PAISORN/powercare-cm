@@ -22,6 +22,8 @@ restore-workspace/
 logs/
 .codex-dev*.log
 outputs/
+tsconfig.tsbuildinfo
+.tmp-motor-import/
 
 .vercel
 .worktrees/

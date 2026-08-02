@@ -117,6 +117,13 @@ export const PermissionKey = {
   VIEW_STORE_REPORTS: "view_store_reports",
   ENABLE_PUBLIC_STORE_ISSUE: "enable_public_store_issue",
   REQUIRE_PUBLIC_ISSUE_CONTACT: "require_public_issue_contact",
+  VIEW_ASSETS: "view_assets",
+  MANAGE_ASSETS: "manage_assets",
+  MANAGE_ASSET_MASTERS: "manage_asset_masters",
+  MANAGE_ASSET_DOCUMENTS: "manage_asset_documents",
+  MANAGE_ASSET_QR_PROFILE: "manage_asset_qr_profile",
+  RECODE_ASSETS: "recode_assets",
+  CANCEL_ASSET_REGISTRATION: "cancel_asset_registration",
 } as const;
 
 export type PermissionKey = (typeof PermissionKey)[keyof typeof PermissionKey];
@@ -190,6 +197,12 @@ export const SITE_ADMIN_CONFIGURABLE_PERMISSIONS = [
   PermissionKey.VIEW_STORE_REPORTS,
   PermissionKey.ENABLE_PUBLIC_STORE_ISSUE,
   PermissionKey.REQUIRE_PUBLIC_ISSUE_CONTACT,
+  PermissionKey.MANAGE_ASSETS,
+  PermissionKey.MANAGE_ASSET_MASTERS,
+  PermissionKey.MANAGE_ASSET_DOCUMENTS,
+  PermissionKey.MANAGE_ASSET_QR_PROFILE,
+  PermissionKey.RECODE_ASSETS,
+  PermissionKey.CANCEL_ASSET_REGISTRATION,
 ] as const satisfies readonly PermissionKey[];
 
 export type PermissionOption = {
@@ -237,6 +250,12 @@ export const SITE_ADMIN_PERMISSION_OPTIONS: readonly PermissionOption[] = [
   { key: PermissionKey.VIEW_STORE_REPORTS, label: "View Store Reports", group: "Store" },
   { key: PermissionKey.ENABLE_PUBLIC_STORE_ISSUE, label: "Enable Public Store Issue", group: "Store" },
   { key: PermissionKey.REQUIRE_PUBLIC_ISSUE_CONTACT, label: "Require Public Issue Contact", group: "Store" },
+  { key: PermissionKey.MANAGE_ASSETS, label: "สร้างและแก้ไข Assets", group: "Assets" },
+  { key: PermissionKey.MANAGE_ASSET_MASTERS, label: "จัดการ Asset Master Data", group: "Assets" },
+  { key: PermissionKey.MANAGE_ASSET_DOCUMENTS, label: "จัดการเอกสาร Assets", group: "Assets" },
+  { key: PermissionKey.MANAGE_ASSET_QR_PROFILE, label: "กำหนดข้อมูลสาธารณะของ QR", group: "Assets" },
+  { key: PermissionKey.RECODE_ASSETS, label: "เปลี่ยนรหัส Assets", group: "Assets" },
+  { key: PermissionKey.CANCEL_ASSET_REGISTRATION, label: "ยกเลิกทะเบียน Assets", group: "Assets" },
 ];
 
 export const ENGINEER_CONFIGURABLE_PERMISSIONS = [
@@ -326,6 +345,10 @@ const alwaysAllowedByRole: Record<PermissionRole, ReadonlySet<PermissionKey>> = 
     PermissionKey.VIEW_STORE_DASHBOARD,
     PermissionKey.VIEW_STORE_STOCK,
     PermissionKey.VIEW_STORE_REPORTS,
+    PermissionKey.VIEW_ASSETS,
+    PermissionKey.MANAGE_ASSETS,
+    PermissionKey.MANAGE_ASSET_MASTERS,
+    PermissionKey.MANAGE_ASSET_DOCUMENTS,
   ]),
   [RoleName.SITE_ADMIN]: new Set([
     PermissionKey.LOGIN,
@@ -373,6 +396,10 @@ const alwaysAllowedByRole: Record<PermissionRole, ReadonlySet<PermissionKey>> = 
     PermissionKey.VIEW_ANNOUNCEMENTS,
     PermissionKey.SEND_LINE_NOTIFICATION,
     PermissionKey.CREATE_STORE_ISSUE,
+    PermissionKey.VIEW_ASSETS,
+    PermissionKey.MANAGE_ASSETS,
+    PermissionKey.MANAGE_ASSET_MASTERS,
+    PermissionKey.MANAGE_ASSET_DOCUMENTS,
   ]),
   [RoleName.ENGINEER]: new Set([
     PermissionKey.LOGIN,
@@ -421,6 +448,7 @@ const alwaysAllowedByRole: Record<PermissionRole, ReadonlySet<PermissionKey>> = 
     PermissionKey.CREATE_STORE_ISSUE,
     PermissionKey.APPROVE_STORE_ISSUE,
     PermissionKey.VIEW_STORE_TRACKING,
+    PermissionKey.VIEW_ASSETS,
   ]),
   [RoleName.TECHNICIAN]: new Set([
     PermissionKey.LOGIN,
@@ -454,6 +482,7 @@ const alwaysAllowedByRole: Record<PermissionRole, ReadonlySet<PermissionKey>> = 
     PermissionKey.SEND_LINE_NOTIFICATION,
     PermissionKey.CREATE_STORE_ISSUE,
     PermissionKey.VIEW_STORE_TRACKING,
+    PermissionKey.VIEW_ASSETS,
   ]),
   [RoleName.STORE_OFFICER]: new Set([
     PermissionKey.LOGIN,
@@ -469,6 +498,7 @@ const alwaysAllowedByRole: Record<PermissionRole, ReadonlySet<PermissionKey>> = 
     PermissionKey.ISSUE_STOCK,
     PermissionKey.VIEW_STORE_TRACKING,
     PermissionKey.VIEW_STORE_REPORTS,
+    PermissionKey.VIEW_ASSETS,
   ]),
   [RoleName.VISITOR]: new Set([
     PermissionKey.LOGIN,
@@ -481,6 +511,7 @@ const alwaysAllowedByRole: Record<PermissionRole, ReadonlySet<PermissionKey>> = 
     PermissionKey.VIEW_MEMBER_DETAIL,
     PermissionKey.FILTER_MEMBERS,
     PermissionKey.VIEW_ANNOUNCEMENTS,
+    PermissionKey.VIEW_ASSETS,
   ]),
   [PublicRoleName.PUBLIC_REQUESTER]: new Set([
     PermissionKey.ACCESS_PUBLIC_QR,

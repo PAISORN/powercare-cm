@@ -369,21 +369,23 @@ export default async function ActivitiesPage({
   return (
     <AppShell>
       <div className="page-enter">
-        <div className="flex flex-wrap items-start justify-between gap-4">
+        <header className="activities-page-hero relative overflow-hidden rounded-3xl border p-5 shadow-[var(--shadow)] sm:p-6">
+        <div className="relative z-10 flex flex-wrap items-start justify-between gap-4">
           <div>
-            <p className="inline-flex items-center gap-2 rounded-full bg-[var(--soft)] px-3 py-1 text-sm font-bold text-[var(--primary)]">
+            <p className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1 text-sm font-bold text-white">
               <ClipboardCheck size={16} /> My Activities
             </p>
-            <h1 className="mt-3 text-3xl font-bold">งานที่ต้องดำเนินการ</h1>
-            <p className="mt-1 text-[var(--muted)]">
+            <h1 className="mt-3 text-3xl font-bold text-white">งานที่ต้องดำเนินการ</h1>
+            <p className="mt-1 max-w-3xl text-white/75">
               รวมงานที่รับผิดชอบ งานที่ต้องอัปเดต งานรอตรวจรับ/ปิดงาน และคิวงาน Store
             </p>
           </div>
-          <div className="rounded-2xl border border-[var(--line)] bg-[var(--surface)] px-5 py-4 text-right shadow-[var(--shadow)]">
-            <p className="text-sm font-semibold text-[var(--muted)]">Total Activities</p>
-            <p className="text-3xl font-extrabold">{totalActivities}</p>
+          <div className="activities-total-card min-w-40 rounded-2xl border px-5 py-4 text-right">
+            <p className="text-sm font-semibold text-white/70">Total Activities</p>
+            <p className="text-3xl font-extrabold text-white">{totalActivities}</p>
           </div>
         </div>
+        </header>
 
         <div className="hidden">
           <AdminSiteScopeSelector
@@ -405,7 +407,7 @@ export default async function ActivitiesPage({
           </p>
         ) : null}
 
-        <section className="reveal-on-scroll mt-6 rounded-3xl border border-[var(--line)] bg-[var(--surface)] p-4 shadow-[var(--shadow)] sm:p-5">
+        <section className="ops-panel reveal-on-scroll mt-6 rounded-3xl border border-[var(--line)] p-4 sm:p-5">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <SectionTitle icon={<Clock3 size={18} />} title="กิจกรรมทั้งหมด" count={combinedActivities.length} />
             <ActivityViewToggle activeView={activityView} scope={scope} />
@@ -584,7 +586,7 @@ function ActivityBoardView({
   const endItem = Math.min(currentPage * pageSize, items.length);
 
   return (
-    <div className="activity-board-view rounded-3xl border border-[var(--line)] bg-[var(--bg)]/35 p-4 shadow-inner">
+    <div className="activity-board-view rounded-3xl border border-[var(--line)] bg-[var(--bg)]/30 p-4">
       <div className="activity-board-toolbar grid gap-3 xl:grid-cols-[minmax(0,1fr)_auto] xl:items-center">
         <div className="activity-board-tabs flex flex-wrap overflow-hidden rounded-2xl border border-[var(--line)] bg-[var(--surface)]">
           {tabs.map((tab) => {
@@ -737,19 +739,19 @@ function ActivityBoardCard({
 
   return (
     <Link
-      className={`activity-board-card group relative block h-36 w-full overflow-hidden rounded-2xl border p-5 shadow-sm transition duration-300 hover:-translate-y-1 hover:shadow-[var(--shadow)] ${toneClass} ${
-        selected ? "ring-2 ring-white/80 ring-offset-2 ring-offset-[var(--bg)]" : ""
+      className={`activity-board-card group relative block h-36 w-full overflow-hidden rounded-2xl border p-5 transition duration-300 hover:-translate-y-1 hover:shadow-[var(--shadow)] ${toneClass} ${
+        selected ? "ring-2 ring-[var(--primary)] ring-offset-2 ring-offset-[var(--bg)]" : ""
       }`}
       href={selectionHref}
     >
       <div className="grid grid-cols-[48px_minmax(0,1fr)] gap-3 pr-8">
-        <div className="flex size-12 items-center justify-center rounded-2xl border border-white/30 bg-white/15 text-white">
+        <div className="activity-board-icon flex size-12 items-center justify-center rounded-2xl border">
           <Icon size={27} />
         </div>
         <div className="min-w-0">
-          <p className="truncate font-mono text-sm font-semibold text-white/80">{item.title}</p>
+          <p className="truncate font-mono text-sm font-semibold text-[var(--muted)]">{item.title}</p>
           <h3 className="mt-1 line-clamp-2 text-xl font-extrabold leading-tight">{title}</h3>
-          <p className="mt-2 truncate text-sm font-semibold text-white/80">
+          <p className="mt-2 truncate text-sm font-semibold text-[var(--muted)]">
             {scope.plant.name} <span className="mx-2">•</span> {subline}
           </p>
           <p className="hidden">
@@ -758,11 +760,11 @@ function ActivityBoardCard({
           </p>
         </div>
         <div className="absolute inset-y-4 right-3 flex flex-col items-end justify-between">
-          <span className="max-w-24 truncate rounded-xl border border-white/30 bg-white/20 px-2 py-1 text-xs font-extrabold text-white">
+          <span className="activity-board-status max-w-24 truncate rounded-xl border px-2 py-1 text-xs font-extrabold">
             {type === "store" ? "Store" : activityStatusLabel(item.status)}
           </span>
           <span
-            className="inline-flex size-11 items-center justify-center rounded-xl border border-white/30 bg-white/15 text-white transition group-hover:bg-white/25"
+            className="activity-board-arrow inline-flex size-11 items-center justify-center rounded-xl border transition"
           >
             <ArrowRight size={22} />
           </span>
@@ -1353,27 +1355,27 @@ function activityStatusPillClass(status: string, type: ActivityBoardItemType) {
 
 function activityFeedToneClass(status: string, kind: ActivityFeedItem["kind"]) {
   if (kind === "store") {
-    return "border-violet-400 bg-gradient-to-br from-violet-500 to-purple-600 text-white hover:border-violet-300";
+    return "activity-tone-violet";
   }
   if (status === WorkStatus.NEW) {
-    return "border-blue-400 bg-gradient-to-br from-blue-500 to-blue-600 text-white hover:border-blue-300";
+    return "activity-tone-blue";
   }
   if (status === WorkStatus.WAITING_TO_CLAIM) {
-    return "border-amber-400 bg-gradient-to-br from-amber-400 to-orange-500 text-white hover:border-amber-300";
+    return "activity-tone-amber";
   }
   if (status === WorkStatus.CLAIMED || status === WorkStatus.IN_PROGRESS) {
-    return "border-cyan-400 bg-gradient-to-br from-cyan-500 to-teal-500 text-white hover:border-cyan-300";
+    return "activity-tone-cyan";
   }
   if (status === WorkStatus.WAITING_TO_CLOSE || status === WorkStatus.CLOSED) {
-    return "border-emerald-400 bg-gradient-to-br from-emerald-500 to-green-500 text-white hover:border-emerald-300";
+    return "activity-tone-green";
   }
   if (status === WorkStatus.RETURNED_FOR_CORRECTION) {
-    return "border-rose-400 bg-gradient-to-br from-rose-500 to-red-500 text-white hover:border-rose-300";
+    return "activity-tone-red";
   }
   if (status === WorkStatus.CANCELED || status === WorkStatus.BACKLOG_SHUTDOWN) {
-    return "border-slate-500 bg-gradient-to-br from-slate-500 to-slate-700 text-white hover:border-slate-400";
+    return "activity-tone-slate";
   }
-  return "border-orange-400 bg-gradient-to-br from-orange-500 to-red-500 text-white hover:border-orange-300";
+  return "activity-tone-orange";
 }
 
 function storeScopeFromActivity(scope: ActivityScope) {

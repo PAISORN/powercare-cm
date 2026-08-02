@@ -8,10 +8,10 @@ describe("Activities page", () => {
 
     expect(source).toContain("My Activities");
     expect(source).toContain("activityFeedToneClass");
-    expect(source).toContain("from-blue-500 to-blue-600");
-    expect(source).toContain("from-violet-500 to-purple-600");
+    expect(source).toContain("activity-tone-blue");
+    expect(source).toContain("activity-tone-violet");
     expect(source).toContain("activity-board-card group relative block h-36 w-full");
-    expect(source).toContain("border-white/30 bg-white/15 text-white");
+    expect(source).toContain("activity-board-icon");
     expect(source).toContain("requireUser");
     expect(source).toContain("WAITING_TO_CLOSE");
     expect(source).toContain("CLAIMED");

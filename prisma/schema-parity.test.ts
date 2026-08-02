@@ -32,4 +32,21 @@ describe("Prisma schema parity", () => {
     expect(migration).toContain('ALTER TABLE "LineDestination" ADD COLUMN IF NOT EXISTS "plantId" TEXT');
     expect(migration).toContain('CREATE INDEX IF NOT EXISTS "LineDestination_plantId_active_idx"');
   });
+
+  it("keeps the production Asset migrations ordered and server-only", () => {
+    const registry = readFileSync(
+      "prisma/supabase-migrations/20260802000100_assets_registry.sql",
+      "utf8",
+    );
+    const zoneBasedCodes = readFileSync(
+      "prisma/supabase-migrations/20260802000200_asset_codes_without_system.sql",
+      "utf8",
+    );
+
+    expect(registry).toContain('CREATE TABLE "Asset"');
+    expect(zoneBasedCodes).toContain('DROP TABLE "AssetSystem"');
+    expect(zoneBasedCodes).toContain('ALTER TABLE "Asset" ENABLE ROW LEVEL SECURITY');
+    expect(zoneBasedCodes).toContain('REVOKE ALL ON TABLE "Asset" FROM anon, authenticated');
+    expect(zoneBasedCodes).toContain('CREATE POLICY "asset_prisma_server_access"');
+  });
 });

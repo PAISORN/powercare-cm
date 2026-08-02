@@ -71,8 +71,8 @@ export async function resolveRequestPlantScope(
 function normalizeRequestPlantCode(plantCode?: string | null) {
   return (plantCode ?? "")
     .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
+    .toUpperCase()
+    .replace(/[^A-Z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "");
 }
 

@@ -36,7 +36,7 @@ export function StatusKpiStrip({ statusCountByKey, activeStatus, getHref, unread
   };
 
   return (
-    <section className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4 2xl:grid-cols-9" aria-label="Status KPI strip">
+    <section className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5 2xl:grid-cols-9" aria-label="Status KPI strip">
       {Object.values(WorkStatus).map((status) => (
         <MetricCard
           key={status}
@@ -88,15 +88,15 @@ function MetricCard({
     green: "status-kpi-green",
     slate: "status-kpi-slate",
   };
-  const className = `status-kpi-card relative block rounded-2xl border p-4 text-left shadow-[var(--shadow)] transition duration-300 ease-out ${tones[tone]} ${active ? "ring-2 ring-[var(--primary)] ring-offset-2 ring-offset-[var(--bg)]" : ""}`;
+  const className = `status-kpi-card relative block overflow-hidden rounded-2xl border p-4 text-left transition duration-300 ease-out ${tones[tone]} ${active ? "status-kpi-active ring-2 ring-[var(--primary)] ring-offset-2 ring-offset-[var(--bg)]" : ""}`;
   const content = (
     <>
       <UnreadBadge count={unreadCount} />
-      <div className="flex items-center justify-between gap-3">
-        <p className="min-w-0 truncate text-sm font-semibold">{label}</p>
-        {icon}
+      <div className="relative z-10 flex items-start justify-between gap-3">
+        <p className="min-w-0 text-sm font-semibold leading-5">{label}</p>
+        <span className="status-kpi-icon shrink-0" aria-hidden="true">{icon}</span>
       </div>
-      <strong className="mt-3 block text-3xl">{value}</strong>
+      <strong className="relative z-10 mt-3 block text-3xl leading-none tracking-tight">{value}</strong>
     </>
   );
 

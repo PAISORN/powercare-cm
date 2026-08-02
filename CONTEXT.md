@@ -241,12 +241,140 @@ A role-bound user record that stores identity details and a signature for roles 
 _Avoid_: account page, personal settings
 
 **Zone**:
-A plant area or operational location used to classify repair requests and CM work.
-_Avoid_: area, location, site
+A Site-defined plant system, area, or operational location used consistently to classify Assets, repair requests, and CM Work.
+_Avoid_: Asset System, Site, maintenance Category
 
 **Machine**:
 The equipment or asset name related to a repair request or CM work.
 _Avoid_: device, asset, equipment
+
+**Asset**:
+A uniquely coded maintainable item registered within one Site and available for future CM and PM linkage. An Asset may represent either a complete machine set or an independently maintained component.
+_Avoid_: free-text machine name, inventory item, spare part
+
+**Parent Asset**:
+An Asset representing a complete machine set that may stand alone when its components have not been registered, such as a Boiler Feed Pump set.
+_Avoid_: asset group, code-only container, folder
+
+**Child Asset**:
+An independently maintained component registered beneath one Parent Asset, such as the Pump or Motor in a Boiler Feed Pump set.
+_Avoid_: spare part, technical field, asset attachment
+
+**Asset Code**:
+A unique, permanent human-readable identifier composed from the Site, Asset Family, optional Child Asset component, and a system-generated sequence. Zone classifies the Asset's system or location but never forms part of this code.
+_Avoid_: serial number, QR payload, location code
+
+**Site Code Segment**:
+The normalized Site Code used as the first Asset Code segment, such as `RTB`. Changing a Site Code changes the prefix used for subsequently registered Assets and requires a controlled Asset Recode for existing records.
+_Avoid_: Organization code, Zone code, user-entered Asset prefix
+
+**Asset Sequence**:
+A system-generated running number owned by one Parent Asset prefix within a Site. Every Child Asset inherits its Parent Asset sequence, so `BFP-002`, `BFP-PMP-002`, and `BFP-MOT-002` identify one machine set.
+_Avoid_: organization-wide sequence, independently generated Child sequence, user-entered running number
+
+**Asset Recode**:
+A restricted, audited correction that replaces an Asset Code while preserving the same Asset identity, QR destination, and maintenance history. Normal edits, System renaming, and Zone changes never recode an Asset.
+_Avoid_: editing the code field, creating a replacement Asset, changing code on relocation
+
+**Asset Type Template**:
+A Site-defined set of standard technical fields for one Asset Type, including each field's data type, unit, and whether a value is required.
+_Avoid_: fixed machine table, document template, maintenance checklist
+
+**Asset Custom Field**:
+A technical field added for one Asset when its Asset Type Template does not cover a machine-specific attribute. It remains outside standard cross-Asset reporting until incorporated into the template.
+_Avoid_: template field, free-form note, document metadata
+
+**Retired Technical Field**:
+A previously used technical field closed to new entry while its historical Asset values remain preserved. A field with stored values is retired rather than deleted.
+_Avoid_: deleted field, hidden data, active template field
+
+**Incomplete Asset Data**:
+The non-blocking state of an existing Asset that has no value for a newly required template field. The Asset remains usable while clearly indicating that its technical record needs completion.
+_Avoid_: inactive Asset, invalid Asset, maintenance lock
+
+**Asset Class**:
+A broad Site-defined grouping for managing different kinds of Assets, such as Heavy Machinery, Vehicle, Measuring Instrument, Tool, or Other.
+_Avoid_: maintenance Category, Asset Type, technical template
+
+**Asset Type**:
+A technical kind of Asset, such as Pump, Motor, Transformer, or VFD, that owns a Type Code and an Asset Type Template.
+_Avoid_: Asset Class, maintenance Category, machine name
+
+**Asset Family**:
+A reusable Site-defined machine family identified by a Site-unique short code and bilingual names, such as `BFP` for Boiler Feed Pump. It may be assigned to a Zone, and multiple Parent Assets may be registered from the same Asset Family.
+_Avoid_: individual Asset, Asset Type, free-text machine name
+
+**Component Code**:
+A code that distinguishes multiple Child Assets of the same Asset Type within one Parent Asset, such as `PMP1` and `PMP2`. Component Codes share the Asset Type Template and inherit the Parent Asset sequence.
+_Avoid_: Asset Type, independently generated sequence, spare-part position
+
+**Asset Operating Status**:
+The current lifecycle condition of an Asset: In Service, Under Repair, Standby, Temporarily Out of Service, or Retired. Retired Assets remain available for maintenance history and documents.
+_Avoid_: CM Work status, registration cancellation, deletion
+
+**Canceled Asset Registration**:
+An audited invalidation of an Asset record created in error, with a required reason and preserved history. An Asset with maintenance history is Retired rather than canceled.
+_Avoid_: retired Asset, deleted Asset, inactive status
+
+**Asset Criticality**:
+A shared four-level assessment of an Asset's operational impact: Critical, High, Medium, or Low. Sites may clarify assessment criteria but do not create additional levels.
+_Avoid_: CM priority, custom Site scale, Asset Operating Status
+
+**Parent Asset Status Summary**:
+A derived warning that reports Child Asset operating conditions without changing the Parent Asset's own status. An authorized user decides whether a Child condition makes the complete machine set unavailable.
+_Avoid_: automatic Parent status, rolled-up status overwrite, CM status
+
+**QR Public Asset Profile**:
+A read-only, no-login Asset view opened from the machine QR code. Each Site defines default visible fields, an Asset may override them, and maintenance exposure is limited to approved summary dates rather than work details.
+_Avoid_: authenticated Asset record, public CM history, QR-embedded machine data
+
+**Public Latest Maintenance Summary**:
+The most recent completed CM and PM information permitted on a QR Public Asset Profile. Site permissions and Asset overrides independently control the date, title, and outcome for CM and PM while internal causes, procedures, people, media, materials, and costs remain private.
+_Avoid_: maintenance history, open work status, public work-order detail
+
+**Asset Document**:
+A versioned file attached to an Asset under a standard or Site-defined document category. Documents are internal by default and may be exposed on the QR Public Asset Profile only by an explicit per-document decision.
+_Avoid_: CM attachment, unversioned replacement file, publicly visible category
+
+**Canceled Asset Document**:
+An Asset Document withdrawn with a reason while its file history and Audit Trail remain preserved.
+_Avoid_: deleted file, latest revision, hidden attachment
+
+**Unlinked CM Work**:
+A CM Work identified by a free-text machine name because no suitable Asset was selected. It remains valid and may be linked to an Asset later by an authorized user.
+_Avoid_: invalid CM Work, legacy Asset, deleted machine
+
+**CM Asset Snapshot**:
+The Asset code and name captured on CM Work when it is created, alongside the permanent Asset link. The snapshot preserves the work's historical wording when the Asset is later renamed or recoded.
+_Avoid_: current Asset master data, free-text-only machine, duplicate Asset
+
+**Asset Read Access**:
+The baseline capability that lets an authenticated User view Assets within their Organization and Site scope without changing Asset data.
+_Avoid_: public QR access, Asset management permission, cross-Site access
+
+**Asset Mutation Permission**:
+An Owner Admin-controlled capability separated by responsibility: Asset records, Asset masters, documents, QR public exposure, recoding, or registration cancellation. Permission to edit ordinary Asset data never implies the higher-risk capabilities.
+_Avoid_: single Asset admin permission, role-name check, Asset Read Access
+
+**Asset Maintenance History**:
+The Asset detail view of linked maintenance records, separated into CM Work and completed or planned PM activity while preserving their distinct workflows.
+_Avoid_: combined work status, free-text repair log, public maintenance summary
+
+**Asset Draft**:
+An incomplete Asset registration saved before a permanent Asset Code and sequence are issued. Documents and maintenance history become available only after registration is completed.
+_Avoid_: active Asset, reserved Asset Code, canceled registration
+
+**Asset Hierarchy View**:
+The Asset register view that groups each Parent Asset with its Child Assets while preserving a separate flat list for search, filters, and bulk work.
+_Avoid_: Asset Family list, organization chart, location hierarchy
+
+**Asset Import Preview**:
+A validation stage that shows proposed Parent and Child Asset rows and row-level errors before an Excel import creates any registered Assets. Permanent codes and sequences remain system-issued.
+_Avoid_: direct spreadsheet write, user-supplied permanent code, partial hidden failure
+
+**Duplicate Asset Serial Warning**:
+A non-blocking Organization-wide warning raised when a normalized Serial Number matches another Asset. An authorized user may continue only with a reason recorded in the Audit Trail.
+_Avoid_: Asset Code uniqueness, automatic merge, silent duplicate
 
 **Category**:
 A maintenance discipline used to classify repair requests and CM work, initially Electrical or Mechanical.

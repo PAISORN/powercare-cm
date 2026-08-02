@@ -2,14 +2,15 @@ import { existsSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 describe("Store stock page", () => {
-  it("uses distinct color surfaces for important stock summary cards", () => {
+  it("uses distinct soft color surfaces for important stock summary cards", () => {
     const source = readFileSync("app/inventory/stock/page.tsx", "utf8");
 
     expect(source).toContain("surfaceClass");
-    expect(source).toContain("from-blue-500 to-blue-600");
-    expect(source).toContain("from-emerald-500 to-green-500");
-    expect(source).toContain("from-amber-400 to-orange-500");
-    expect(source).toContain("from-rose-500 to-red-600");
+    expect(source).toContain("stock-summary-card");
+    expect(source).toContain("stock-summary-blue");
+    expect(source).toContain("stock-summary-green");
+    expect(source).toContain("stock-summary-orange");
+    expect(source).toContain("stock-summary-red");
   });
 
   it("renders an enterprise stock dashboard with filters, inventory table, and row actions", () => {
@@ -38,7 +39,7 @@ describe("Store stock page", () => {
     expect(source).toContain("min-w-[1460px] table-fixed");
     expect(source).toContain("overflow-x-auto");
     expect(source).toContain("sticky top-0 z-40 bg-[var(--soft)]");
-    expect(source).toContain("rounded-3xl border border-[var(--line)] bg-[var(--surface)]");
+    expect(source).toContain("ops-panel rounded-3xl border border-[var(--line)]");
     expect(source).toContain("bg-[var(--surface)] transition hover:bg-[var(--soft)]/80");
     expect(source).toContain("[&>td]:border-b [&>td]:border-[var(--line)] last:[&>td]:border-b-0");
     expect(source).toContain("bg-blue-500/10 text-blue-700 hover:bg-blue-600");

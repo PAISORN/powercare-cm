@@ -1,0 +1,4 @@
+import { db } from "../../../lib/db";
+import { readStoredFile } from "../../../lib/file-storage";
+import { getCurrentUser } from "../../../lib/session";
+export async function GET(request:Request,{params}:{params:Promise<{id:string}>}){const{id}=await params;const asset=await db.asset.findUnique({where:{id},select:{plantId:true,publicToken:true,imageStoragePath:true,imageMimeType:true}});if(!asset?.imageStoragePath)return new Response("Not found",{status:404});const user=await getCurrentUser();const token=new URL(request.url).searchParams.get("token");const allowed=token===asset.publicToken||user?.role==="ADMIN"||user?.role==="ORGANIZATION_ADMIN"||user?.plantId===asset.plantId;if(!allowed)return new Response("Forbidden",{status:403});const file=await readStoredFile(asset.imageStoragePath);return new Response(file.bytes,{headers:{"Content-Type":asset.imageMimeType||file.contentType||"application/octet-stream","Cache-Control":"private, max-age=300"}})}

@@ -18,7 +18,7 @@ describe("request plant scope", () => {
       " Plant A ",
     );
 
-    expect(calls).toEqual(["plant-a"]);
+    expect(calls).toEqual(["PLANT-A"]);
     expect(plant.id).toBe("plant-a");
   });
 

@@ -15,6 +15,9 @@ const allowedOrganizationLogoMimeTypes = ["image/png", "image/jpeg", "image/webp
 const maxOrganizationLogoBytes = 2 * 1024 * 1024;
 const defaultOrganizationLogosBucket = "powercare-organization-logos";
 const defaultPlantLogosBucket = "powercare-plant-logos";
+const defaultAssetFilesBucket = "powercare-asset-files";
+const allowedAssetDocumentMimeTypes = ["application/pdf", "image/png", "image/jpeg", "image/webp", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"];
+const maxAssetDocumentBytes = 20 * 1024 * 1024;
 
 type StorageTarget = {
   bucket: string;
@@ -285,6 +288,27 @@ export async function savePlantLogoFile(plantId: string, file: File) {
     fileSize: file.size,
     storagePath,
   };
+}
+
+export async function saveAssetFile(assetId: string, file: File, kind: "image" | "document") {
+  const allowed = kind === "image" ? allowedProfilePhotoMimeTypes : allowedAssetDocumentMimeTypes;
+  const maxBytes = kind === "image" ? 5 * 1024 * 1024 : maxAssetDocumentBytes;
+  if (!allowed.includes(file.type)) throw new Error(kind === "image" ? "Asset image must be PNG, JPG, or WebP" : "Unsupported Asset document type");
+  if (file.size > maxBytes) throw new Error(`Asset ${kind} is too large`);
+  const bytes = Buffer.from(await file.arrayBuffer());
+  const version = randomUUID();
+  const extension = file.name.split(".").pop()?.replace(/[^a-zA-Z0-9]/g, "").toLowerCase() || extensionForMimeType(file.type);
+  const objectPath = `assets/${assetId}/${kind}/${version}.${extension}`;
+  if (isSupabaseStorageEnabled()) {
+    const target = { bucket: process.env.SUPABASE_ASSET_FILES_BUCKET || defaultAssetFilesBucket, objectPath };
+    await uploadSupabaseObject(target, bytes, file.type);
+    return { fileName: file.name, mimeType: file.type, fileSize: file.size, storagePath: toSupabasePath(target) };
+  }
+  const storageDir = path.join(process.cwd(), "storage", "assets", assetId, kind);
+  await mkdir(storageDir, { recursive: true });
+  const storagePath = path.join(storageDir, `${version}.${extension}`);
+  await writeFile(storagePath, bytes);
+  return { fileName: file.name, mimeType: file.type, fileSize: file.size, storagePath };
 }
 
 export async function readStoredFile(storagePath: string) {

@@ -40,9 +40,9 @@ export async function AppShell({ children, immersiveMobile = false }: { children
         version={user.profilePhoto?.updatedAt.getTime()}
       />
 
-      <main className="min-h-screen p-5 pb-28 transition-[margin] duration-300 md:ml-[var(--app-sidebar-width,18rem)] md:p-8">
+      <main className="app-workspace min-h-screen p-5 pb-28 transition-[margin] duration-300 md:ml-[var(--app-sidebar-width,18rem)] md:p-8">
         <div
-          className={`sticky top-3 z-40 mb-6 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 rounded-2xl border border-[var(--line)] bg-[var(--surface-raised)]/94 px-2.5 py-2.5 shadow-[var(--shadow)] backdrop-blur transition-all duration-200 sm:gap-3 sm:px-3 md:top-4 md:grid md:rounded-3xl md:px-4 md:py-3 ${immersiveMobile ? "hidden" : "grid"}`}
+          className={`ops-topbar sticky top-3 z-40 mb-6 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 rounded-2xl border border-[var(--line)] bg-[var(--surface-raised)]/94 px-2.5 py-2.5 shadow-[var(--shadow)] backdrop-blur transition-all duration-200 sm:gap-3 sm:px-3 md:top-4 md:grid md:rounded-3xl md:px-4 md:py-3 ${immersiveMobile ? "hidden" : "grid"}`}
           data-app-top-bar
         >
           <div className="flex min-w-0 items-center gap-2 sm:gap-3">
@@ -78,7 +78,7 @@ export async function AppShell({ children, immersiveMobile = false }: { children
         </div>
         {children}
       </main>
-      <MobilePrimaryNav />
+      <MobilePrimaryNav elevated={immersiveMobile} />
     </div>
   );
 }

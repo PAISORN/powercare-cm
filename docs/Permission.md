@@ -80,6 +80,12 @@
 | `view_store_reports` | ดูรายงาน Store | Store / Inventory |
 | `enable_public_store_issue` | เปิด/ปิด Public Store Issue ของ Site | Store / Inventory |
 | `require_public_issue_contact` | บังคับ/ซ่อนช่องทางติดต่อใน Public Store Issue | Store / Inventory |
+| `manage_assets` | สร้างและแก้ไขทะเบียน Assets | Assets |
+| `manage_asset_masters` | จัดการ System, Class, Type, Family และ Technical Template | Assets |
+| `manage_asset_documents` | จัดการเอกสารประจำ Asset | Assets |
+| `manage_asset_qr_profile` | กำหนดข้อมูลสาธารณะบน QR | Assets |
+| `recode_assets` | เปลี่ยนรหัส Asset แบบมี Audit Trail | Assets |
+| `cancel_asset_registration` | ยกเลิกทะเบียน Asset ที่สร้างผิด | Assets |
 
 ## สิทธิ์ที่ควรล็อกไว้เฉพาะ Owner Admin
 

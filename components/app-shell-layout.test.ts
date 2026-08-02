@@ -33,4 +33,13 @@ describe("AppShell mobile header", () => {
     expect(source).toContain("backdrop-blur");
     expect(source).toContain("data-app-top-bar");
   });
+
+  it("keeps the mobile primary tabs above immersive Store forms", () => {
+    const source = fs.readFileSync(path.join(process.cwd(), "components/app-shell.tsx"), "utf8");
+    const mobileNavSource = fs.readFileSync(path.join(process.cwd(), "components/mobile-primary-nav.tsx"), "utf8");
+
+    expect(source).toContain("<MobilePrimaryNav elevated={immersiveMobile}");
+    expect(mobileNavSource).toContain('elevated?"z-[250]":"z-50"');
+    expect(mobileNavSource).toContain('{ href: "/inventory", label: "Store"');
+  });
 });

@@ -17,6 +17,8 @@ const thaiMediumDateTimeFormatter = new Intl.DateTimeFormat("th-TH-u-ca-buddhist
   dateStyle: "medium",
   timeStyle: "short",
 });
+const thaiMediumDateFormatter = new Intl.DateTimeFormat("th-TH-u-ca-buddhist-nu-latn", { timeZone: BANGKOK_TIME_ZONE, dateStyle: "medium" });
+const thaiLongDateFormatter = new Intl.DateTimeFormat("th-TH-u-ca-buddhist-nu-latn", { timeZone: BANGKOK_TIME_ZONE, dateStyle: "long" });
 
 const bangkokHourFormatter = new Intl.DateTimeFormat("en-US", {
   timeZone: BANGKOK_TIME_ZONE,
@@ -61,6 +63,7 @@ export function formatThaiDateTime(value: Date) {
 export function formatThaiMediumDateTime(value: Date) {
   return thaiMediumDateTimeFormatter.format(value);
 }
+export function formatThaiDate(value: Date, style: "medium" | "long" = "medium") { return style === "long" ? thaiLongDateFormatter.format(value) : thaiMediumDateFormatter.format(value); }
 
 export function getBangkokHour(value = new Date()) {
   return Number(bangkokHourFormatter.format(value));
