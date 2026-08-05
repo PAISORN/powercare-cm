@@ -1,14 +1,11 @@
 import {
   Beaker,
   CheckCircle2,
-  Bell,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
   ClipboardList,
   Clock3,
-  FileUp,
-  Home,
   Package,
   PackageCheck,
   PackageX,
@@ -22,10 +19,8 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { AdminScopeHiddenFields, AdminSiteScopeSelector } from "../../../components/admin-site-scope-selector";
+import { AdminScopeHiddenFields } from "../../../components/admin-site-scope-selector";
 import { AppShell } from "../../../components/app-shell";
-import { AppBrand } from "../../../components/app-brand";
-import { ThemeToggle } from "../../../components/theme-toggle";
 import { IssueRequestForm } from "../../../components/store/issue-request-form";
 import { formatThaiMediumDateTime } from "../../../lib/date-time/bangkok-time";
 import { db } from "../../../lib/db";
@@ -54,6 +49,7 @@ type PageQuery = {
   status?: string;
   trackingPage?: string;
   itemKind?: string;
+  view?: string;
 };
 
 async function createIssueAction(formData: FormData) {
@@ -113,7 +109,7 @@ async function engineerDecisionAction(formData: FormData) {
   } catch (error) {
     actionError = storeActionError(error);
   }
-  redirect(issueRedirect(scope, actionError ? { error: actionError } : { saved: "decision" }));
+  redirect(issueRedirect(scope, actionError ? { view: "tracking", error: actionError } : { view: "tracking", saved: "decision" }));
 }
 
 async function issueStockAction(formData: FormData) {
@@ -130,7 +126,7 @@ async function issueStockAction(formData: FormData) {
   } catch (error) {
     actionError = storeActionError(error);
   }
-  redirect(issueRedirect(scope, actionError ? { error: actionError } : { saved: "issued" }));
+  redirect(issueRedirect(scope, actionError ? { view: "tracking", error: actionError } : { view: "tracking", saved: "issued" }));
 }
 
 async function notEnoughStockAction(formData: FormData) {
@@ -148,7 +144,7 @@ async function notEnoughStockAction(formData: FormData) {
   } catch (error) {
     actionError = storeActionError(error);
   }
-  redirect(issueRedirect(scope, actionError ? { error: actionError } : { saved: "not-enough" }));
+  redirect(issueRedirect(scope, actionError ? { view: "tracking", error: actionError } : { view: "tracking", saved: "not-enough" }));
 }
 
 async function cancelIssueAction(formData: FormData) {
@@ -166,7 +162,7 @@ async function cancelIssueAction(formData: FormData) {
   } catch (error) {
     actionError = storeActionError(error);
   }
-  redirect(issueRedirect(scope, actionError ? { error: actionError } : { saved: "canceled" }));
+  redirect(issueRedirect(scope, actionError ? { view: "tracking", error: actionError } : { view: "tracking", saved: "canceled" }));
 }
 
 export default async function IssuePage({ searchParams }: { searchParams: Promise<PageQuery> }) {
@@ -174,10 +170,13 @@ export default async function IssuePage({ searchParams }: { searchParams: Promis
   const canCreate = canUseUserPermission(user, PermissionKey.CREATE_STORE_ISSUE);
   const canApprove = canUseUserPermission(user, PermissionKey.APPROVE_STORE_ISSUE);
   const canIssue = canUseUserPermission(user, PermissionKey.ISSUE_STOCK);
+  const canTrack = canUseUserPermission(user, PermissionKey.VIEW_STORE_TRACKING);
   const approvalKinds = new Set(user.role === RoleName.ADMIN ? ["SPARE_PART", "CHEMICAL", "OIL"] : user.inventoryScopes.filter((scope) => scope.approvalEnabled).map((scope) => scope.itemKind));
   const responsibilityKinds = new Set(user.role === RoleName.ADMIN ? ["SPARE_PART", "CHEMICAL", "OIL"] : user.inventoryScopes.filter((scope) => scope.responsibilityEnabled).map((scope) => scope.itemKind));
-  if (!canCreate && !canApprove && !canIssue) redirect("/dashboard");
   const query = await searchParams;
+  const trackingOnly = query.view === "tracking";
+  if (trackingOnly && !canTrack && !canApprove && !canIssue) redirect("/dashboard");
+  if (!trackingOnly && !canCreate) redirect("/inventory/issue?view=tracking");
   const scope = await resolveStorePageScope(user, query);
 
   const [stocks, issueZones, cmWorks, issues] = await Promise.all([
@@ -276,11 +275,23 @@ export default async function IssuePage({ searchParams }: { searchParams: Promis
     const params = new URLSearchParams({
       organizationId: scope.organization.id,
       plantId: scope.plant.id,
+      view: "tracking",
     });
     if (query.q) params.set("q", query.q);
     if (selectedTrackingStatus !== "ALL") params.set("status", selectedTrackingStatus);
     params.set("itemKind", selectedTrackingKind);
     if (page > 1) params.set("trackingPage", String(page));
+    return `/inventory/issue?${params.toString()}#issue-tracking`;
+  };
+  const trackingStatusHref = (status: "ALL" | "WAITING" | "IN_PROGRESS" | "COMPLETED" | "CANCELED") => {
+    const params = new URLSearchParams({
+      organizationId: scope.organization.id,
+      plantId: scope.plant.id,
+      view: "tracking",
+      itemKind: selectedTrackingKind,
+    });
+    if (query.q) params.set("q", query.q);
+    if (status !== "ALL") params.set("status", status);
     return `/inventory/issue?${params.toString()}#issue-tracking`;
   };
 
@@ -406,56 +417,17 @@ export default async function IssuePage({ searchParams }: { searchParams: Promis
 
   return (
     <AppShell immersiveMobile>
-      <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,48rem)_minmax(0,1fr)]">
-        <div className="sticky top-2 z-40 flex min-h-16 items-center gap-1 rounded-2xl border border-[var(--line)] bg-[var(--surface-raised)]/95 p-2 shadow-[var(--shadow)] backdrop-blur-xl md:hidden">
-          <Link aria-label="กลับไปหน้า Store" className="grid size-12 place-items-center rounded-2xl text-[var(--ink)] hover:bg-[var(--soft)]" href="/inventory">
-            <ChevronLeft size={26} />
-          </Link>
-          <Link aria-label="Home" className="grid size-12 place-items-center rounded-2xl bg-[var(--primary)] text-white shadow-sm" href="/dashboard">
-            <Home size={21} />
-          </Link>
-          <AppBrand className="min-w-0 flex-1 justify-center text-lg" versionClassName="hidden" />
-          <Link aria-label="การแจ้งเตือน" className="relative grid size-12 place-items-center rounded-2xl text-[var(--ink)] hover:bg-[var(--soft)]" href="/notifications">
-            <Bell size={24} />
-          </Link>
-          <ThemeToggle />
-        </div>
-        <header className="hidden flex-wrap items-start justify-between gap-4 md:flex xl:col-span-2">
-          <div>
-            <div className="flex items-center gap-3">
-              <span className="flex size-11 items-center justify-center rounded-xl border border-[var(--line)] bg-[var(--surface)] text-[var(--primary)] shadow-sm">
-                <FileUp size={22} />
-              </span>
-              <h1 className="text-2xl font-extrabold sm:text-3xl">ใบเบิกอะไหล่ / ติดตามสถานะ</h1>
-            </div>
-            <nav aria-label="Breadcrumb" className="mt-3 flex items-center gap-2 text-sm font-bold text-[var(--muted)]">
-              <span className="text-[var(--primary)]">เบิกอะไหล่</span>
-              <ChevronRight size={15} />
-              <span>ใบเบิกอะไหล่</span>
-            </nav>
-          </div>
-          <a className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-[var(--line)] bg-[var(--surface)] px-4 text-sm font-bold hover:border-[var(--primary)] hover:text-[var(--primary)]" href="#issue-tracking">
-            <ClipboardList size={17} />
-            ติดตามสถานะ
-          </a>
-        </header>
-
+      <div className="issue-request-page-gradient -mb-28 min-h-screen pb-28">
+        <div
+          className={`mx-auto grid w-full items-start gap-5 ${
+            trackingOnly ? "max-w-[96rem]" : "max-w-3xl"
+          }`}
+        >
+        {!trackingOnly ? (
         <section
           className="space-y-5"
           data-testid="issue-create-workspace"
         >
-        <div className="hidden md:block">
-          <div className="flex items-center gap-2">
-            <ShoppingCart className="text-[var(--primary)]" size={21} />
-            <h2 className="text-xl font-extrabold">สร้างใบขอเบิกอะไหล่</h2>
-          </div>
-          <p className="mt-1 text-sm text-[var(--muted)]">เลือกงาน CM หรือเบิกโดยตรง แล้วระบุอะไหล่ที่ต้องการ</p>
-        </div>
-
-        <div className="hidden md:block">
-          <AdminSiteScopeSelector action="/inventory/issue" compact scope={scope} title="Site สำหรับใบเบิก" unframed />
-        </div>
-
         {query.created ? (
           <p className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 font-bold text-emerald-700 dark:text-emerald-300">
             ส่งคำขอเบิกสำเร็จ เลขที่ใบเบิก: <span className="font-mono">{query.created}</span>
@@ -519,7 +491,9 @@ export default async function IssuePage({ searchParams }: { searchParams: Promis
           </section>
         ) : null}
         </section>
+        ) : null}
 
+        {trackingOnly ? (
         <section className="h-full rounded-3xl border border-[var(--line)] bg-[var(--surface)] p-4 shadow-[var(--shadow)] sm:p-5" id="issue-tracking">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-2">
@@ -538,16 +512,17 @@ export default async function IssuePage({ searchParams }: { searchParams: Promis
             status={selectedTrackingStatus}
           />
 
-          <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3 2xl:grid-cols-5">
-            <TrackingStat icon={<ClipboardList size={18} />} label="ทั้งหมด" value={statusCounts.all} />
-            <TrackingStat icon={<Clock3 size={18} />} label="รออนุมัติ" tone="amber" value={statusCounts.waiting} />
-            <TrackingStat icon={<Settings2 size={18} />} label="ดำเนินการ" tone="blue" value={statusCounts.inProgress} />
-            <TrackingStat icon={<PackageCheck size={18} />} label="เสร็จสิ้น" tone="green" value={statusCounts.completed} />
-            <TrackingStat icon={<XCircle size={18} />} label="ยกเลิก" tone="red" value={statusCounts.canceled} />
+          <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
+            <TrackingStat active={selectedTrackingStatus === "ALL"} href={trackingStatusHref("ALL")} icon={<ClipboardList size={28} />} label="ทั้งหมด" value={statusCounts.all} />
+            <TrackingStat active={selectedTrackingStatus === "WAITING"} href={trackingStatusHref("WAITING")} icon={<Clock3 size={28} />} label="รออนุมัติ" tone="amber" value={statusCounts.waiting} />
+            <TrackingStat active={selectedTrackingStatus === "IN_PROGRESS"} href={trackingStatusHref("IN_PROGRESS")} icon={<Settings2 size={28} />} label="ดำเนินการ" tone="blue" value={statusCounts.inProgress} />
+            <TrackingStat active={selectedTrackingStatus === "COMPLETED"} href={trackingStatusHref("COMPLETED")} icon={<PackageCheck size={28} />} label="เสร็จสิ้น" tone="green" value={statusCounts.completed} />
+            <TrackingStat active={selectedTrackingStatus === "CANCELED"} href={trackingStatusHref("CANCELED")} icon={<XCircle size={28} />} label="ยกเลิก" tone="red" value={statusCounts.canceled} />
           </div>
 
           <form action="/inventory/issue" className="mt-4 grid gap-2 rounded-2xl border border-[var(--line)] bg-[var(--soft)] p-3 sm:grid-cols-[minmax(0,1fr)_170px_auto]">
             <AdminScopeHiddenFields scope={scope} />
+            <input name="view" type="hidden" value="tracking" />
             <input name="itemKind" type="hidden" value={selectedTrackingKind} />
             <label className="relative">
               <span className="sr-only">ค้นหาใบเบิก</span>
@@ -688,6 +663,8 @@ export default async function IssuePage({ searchParams }: { searchParams: Promis
             </nav>
           ) : null}
         </section>
+        ) : null}
+        </div>
       </div>
     </AppShell>
   );
@@ -718,7 +695,7 @@ function IssueTrackingTabs({
         {tabs.map((tab) => {
           const active = tab.key === itemKind;
           const Icon = tab.icon;
-          const params = new URLSearchParams({ organizationId, plantId, itemKind: tab.key });
+          const params = new URLSearchParams({ organizationId, plantId, itemKind: tab.key, view: "tracking" });
           if (query) params.set("q", query);
           if (status !== "ALL") params.set("status", status);
           return (
@@ -765,31 +742,43 @@ function trackingPaginationArrowClass(isDisabled: boolean) {
 }
 
 function TrackingStat({
+  active,
+  href,
   icon,
   label,
   tone = "neutral",
   value,
 }: {
+  active: boolean;
+  href: string;
   icon: React.ReactNode;
   label: string;
   tone?: "neutral" | "amber" | "blue" | "green" | "red";
   value: number;
 }) {
-  const tones = {
-    neutral: "text-[var(--muted)]",
-    amber: "text-amber-500",
-    blue: "text-sky-500",
-    green: "text-emerald-500",
-    red: "text-red-500",
+  const surfaces = {
+    neutral: "stock-summary-violet",
+    amber: "stock-summary-orange",
+    blue: "stock-summary-blue",
+    green: "stock-summary-green",
+    red: "stock-summary-red",
   };
   return (
-    <div className="flex min-h-20 items-center gap-3 rounded-2xl border border-[var(--line)] bg-[var(--card)] px-3 py-3">
-      <span className={`flex size-9 shrink-0 items-center justify-center rounded-xl bg-[var(--soft)] ${tones[tone]}`}>{icon}</span>
-      <div className="min-w-0">
-        <p className="truncate text-xs font-bold text-[var(--muted)]">{label}</p>
-        <p className={`text-xl font-extrabold ${tones[tone]}`}>{value}</p>
+    <Link
+      aria-current={active ? "page" : undefined}
+      className={`stock-summary-card relative min-h-36 overflow-hidden rounded-2xl border p-4 transition duration-300 hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 sm:p-5 ${surfaces[tone]} ${active ? "ring-2 ring-[var(--primary)]/45" : ""}`}
+      href={href}
+      scroll={false}
+    >
+      <div className="relative z-10 flex h-full items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-sm font-extrabold leading-5">{label}</p>
+          <p className="mt-3 break-words text-2xl font-black tracking-tight sm:text-3xl">{value}</p>
+          <p className="mt-2 text-xs font-bold text-[var(--muted)]">รายการ</p>
+        </div>
+        <span className="stock-summary-icon grid size-11 shrink-0 place-items-center rounded-xl">{icon}</span>
       </div>
-    </div>
+    </Link>
   );
 }
 

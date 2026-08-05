@@ -6,6 +6,8 @@ describe("Inventory tracking page", () => {
     const source = readFileSync("app/inventory/tracking/page.tsx", "utf8");
 
     expect(source).toContain("StoreTrackingStepper");
+    expect(source).toContain("Issue Tracking");
+    expect(source).toContain("ติดตามสถานะใบเบิก");
     expect(source).toContain("รายละเอียดใบเบิก");
     expect(source).toContain("ประวัติสถานะ");
     expect(source).toContain("รายการอะไหล่");

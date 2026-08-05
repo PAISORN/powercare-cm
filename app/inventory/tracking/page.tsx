@@ -74,7 +74,8 @@ export default async function StoreTrackingPage({ searchParams }: { searchParams
             <PackageSearch size={16} />
             Store Inventory
           </p>
-          <h1 className="mt-4 text-2xl font-extrabold sm:text-3xl">Store Tracking</h1>
+          <h1 className="mt-4 text-2xl font-extrabold sm:text-3xl">Issue Tracking</h1>
+          <p className="mt-1 font-bold text-[var(--primary)]">ติดตามสถานะใบเบิก</p>
           <p className="mt-2 text-sm text-[var(--muted)]">
             ค้นหาเลขที่ใบเบิก เพื่อดูสถานะล่าสุด รายละเอียดอะไหล่ และประวัติการดำเนินงานภายใน Site
           </p>

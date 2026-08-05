@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import {
   Archive,
@@ -191,8 +191,8 @@ export function getAppLinks(role: RoleValue, permissionContext: AppPermissionCon
       canUseAny(PermissionKey.VIEW_STORE_STOCK, PermissionKey.ADJUST_STOCK),
     ),
     inventoryLink(
-      { label: "Issue", href: "/inventory/issue", icon: ArrowUpFromLine, nested: true, parentSectionId: "inventory" },
-      canUseAny(PermissionKey.CREATE_STORE_ISSUE, PermissionKey.APPROVE_STORE_ISSUE, PermissionKey.ISSUE_STOCK),
+      { label: "Issue", href: "/inventory/issue?view=create", icon: ArrowUpFromLine, nested: true, parentSectionId: "inventory" },
+      canUse(PermissionKey.CREATE_STORE_ISSUE),
     ),
     inventoryLink(
       { label: "Issue Public", href: "/inventory/public-issue", icon: QrCode, nested: true, parentSectionId: "inventory" },
@@ -210,8 +210,8 @@ export function getAppLinks(role: RoleValue, permissionContext: AppPermissionCon
       canUse(PermissionKey.RECEIVE_STOCK),
     ),
     inventoryLink(
-      { label: "Store Tracking", href: "/inventory/tracking", icon: Search, nested: true, parentSectionId: "inventory" },
-      canUse(PermissionKey.VIEW_STORE_TRACKING),
+      { label: "Issue Tracking", href: "/inventory/issue?view=tracking", icon: Search, nested: true, parentSectionId: "inventory" },
+      canUseAny(PermissionKey.VIEW_STORE_TRACKING, PermissionKey.APPROVE_STORE_ISSUE, PermissionKey.ISSUE_STOCK),
     ),
     inventoryLink(
       { label: "Stock Movement", href: "/inventory/movements", icon: History, nested: true, parentSectionId: "inventory" },
@@ -289,6 +289,7 @@ export function AppNavLinks({
   collapsed?: boolean;
 }) {
   const pathname = usePathname() ?? "";
+  const searchParams = useSearchParams();
   const links = getAppLinks(role, permissionContext);
   const [openSections, setOpenSections] = useState<Record<string, boolean>>(() =>
     links.reduce<Record<string, boolean>>((sections, link, _index, allLinks) => {
@@ -302,7 +303,7 @@ export function AppNavLinks({
         sections[sectionId] = true;
         openParentChain(sectionParents.get(sectionId));
       };
-      if (link.parentSectionId && link.href && !link.disabled && isActivePath(pathname, link.href)) {
+      if (link.parentSectionId && link.href && !link.disabled && isActivePath(pathname, link.href, searchParams)) {
         openParentChain(link.parentSectionId);
       }
       return sections;
@@ -325,7 +326,7 @@ export function AppNavLinks({
           const Icon = item.icon;
           const sectionId = item.sectionId ?? item.label;
           const sectionOpen = openSections[sectionId] ?? false;
-          const sectionActive = links.some((link) => link.href && !link.disabled && isActivePath(pathname, link.href) && isChildOfSection(link.parentSectionId, sectionId));
+          const sectionActive = links.some((link) => link.href && !link.disabled && isActivePath(pathname, link.href, searchParams) && isChildOfSection(link.parentSectionId, sectionId));
           const isSubmenuSection = Boolean(item.nested);
           const sectionIndent = collapsed ? "" : item.depth === 2 ? "ml-10" : item.nested ? "ml-6" : "";
           const sectionWeight = isSubmenuSection ? "font-medium" : "font-bold";
@@ -379,7 +380,7 @@ export function AppNavLinks({
         if (item.nested && !(openSections[item.parentSectionId ?? ""] ?? false)) return null;
 
         const Icon = item.icon;
-        const active = item.href && !item.disabled ? isActivePath(pathname, item.href) : false;
+        const active = item.href && !item.disabled ? isActivePath(pathname, item.href, searchParams) : false;
         const isDanger = item.accent === "danger";
         const isSubmenu = Boolean(item.nested);
         const indent = collapsed ? "" : item.depth === 2 ? "ml-10" : item.nested ? "ml-6" : "";
@@ -448,10 +449,15 @@ export function AppNavLinks({
   );
 }
 
-function isActivePath(pathname: string, href: string) {
-  const cleanHref = href.split("#")[0];
+export function isActivePath(pathname: string, href: string, searchParams?: Pick<URLSearchParams, "get"> | null) {
+  const [hrefWithoutHash] = href.split("#");
+  const [cleanHref, hrefQuery = ""] = hrefWithoutHash.split("?");
   if (!cleanHref || cleanHref === "#") return false;
-  return pathname === cleanHref || pathname.startsWith(`${cleanHref}/`);
+  if (pathname !== cleanHref && !pathname.startsWith(`${cleanHref}/`)) return false;
+  if (!hrefQuery) return true;
+
+  const expectedParams = new URLSearchParams(hrefQuery);
+  return Array.from(expectedParams.entries()).every(([key, value]) => searchParams?.get(key) === value);
 }
 
 function navItemKey(item: AppLink) {

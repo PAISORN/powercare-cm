@@ -2,13 +2,23 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 describe("Inventory issue page", () => {
-  it("provides create and tracking workspaces on the same page", () => {
+  it("provides separate create and tracking views on the issue route", () => {
     const source = readFileSync("app/inventory/issue/page.tsx", "utf8");
 
-    expect(source).toContain("ใบเบิกอะไหล่ / ติดตามสถานะ");
+    expect(source).toContain('const trackingOnly = query.view === "tracking"');
+    expect(source).toContain("{!trackingOnly ? (");
+    expect(source).toContain("{trackingOnly ? (");
+    expect(source).toContain('trackingOnly ? "max-w-[96rem]" : "max-w-3xl"');
+    expect(source).toContain('className="issue-request-page-gradient -mb-28 min-h-screen pb-28"');
     expect(source).toContain("issue-create-workspace");
     expect(source).toContain('id="issue-tracking"');
     expect(source).toContain("TrackingStat");
+    expect(source).toContain("grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5");
+    expect(source).toContain("stock-summary-card relative min-h-36");
+    expect(source).toContain("stock-summary-icon grid size-11");
+    expect(source).toContain("const trackingStatusHref");
+    expect(source).toContain('href={trackingStatusHref("WAITING")}');
+    expect(source).toContain('aria-current={active ? "page" : undefined}');
     expect(source).toContain("IssueProgress");
     expect(source).toContain("filteredIssues");
     expect(source).toContain("const trackingPageSize = 5");
