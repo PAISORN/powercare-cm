@@ -5,10 +5,15 @@ export function UnreadBadge({
 }: {
   count: number;
   className?: string;
-  position?: "card" | "icon";
+  position?: "card" | "icon" | "cardEdge";
 }) {
   if (count <= 0) return null;
-  const positionClass = position === "icon" ? "right-0 top-0" : "right-2 top-2";
+  const positionClass =
+    position === "icon"
+      ? "right-0 top-0"
+      : position === "cardEdge"
+        ? "-right-2 -top-2"
+        : "right-2 top-2";
 
   return (
     <span

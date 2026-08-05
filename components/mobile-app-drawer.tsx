@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { UnreadBadge } from "./unread-badge";
 import { Menu, X } from "lucide-react";
 import { AppNavLinks } from "./app-nav-links";
 import { AppBrand } from "./app-brand";
@@ -133,11 +134,7 @@ export function MobileAppDrawer({
         onClick={() => setOpen(true)}
       >
         <Menu size={18} />
-        {unreadCount > 0 ? (
-          <span className="absolute -right-1 -top-1 min-w-5 rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] font-bold text-white">
-            {unreadCount > 99 ? "99+" : unreadCount}
-          </span>
-        ) : null}
+        <UnreadBadge count={unreadCount} position="cardEdge" />
       </button>
 
       {mounted && drawer ? createPortal(drawer, document.body) : null}
