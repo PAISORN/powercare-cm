@@ -976,7 +976,14 @@ export default async function SparePartsPage({ searchParams }: { searchParams: P
               <input name="sparePartId" type="hidden" value={editPart.id} />
               <label className={labelClass}>
                 ชนิดรายการ
-                <select className={inputClass} defaultValue={editPart.itemKind} name="itemKind" required>
+                <select
+                  aria-disabled={user.role !== "ADMIN"}
+                  className={`${inputClass} ${user.role === "ADMIN" ? "" : "pointer-events-none bg-[var(--soft)] text-[var(--muted)]"}`}
+                  defaultValue={editPart.itemKind}
+                  name="itemKind"
+                  required
+                  tabIndex={user.role === "ADMIN" ? 0 : -1}
+                >
                   <option value="SPARE_PART">อะไหล่</option>
                   <option value="CHEMICAL">สารเคมี</option>
                   <option value="OIL">น้ำมัน</option>

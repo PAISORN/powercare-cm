@@ -454,7 +454,6 @@ export async function updateSparePart(
   requireStorePermission(actor, PermissionKey.MANAGE_SPARE_PARTS);
   assertActorStoreScope(actor, scope);
   const normalized = normalizeSparePartInput(input);
-  if (!hasInventoryResponsibility(actor, normalized.itemKind)) throw new Error("No management scope for this inventory type.");
 
   const sparePart = await db.$transaction(async (tx) => {
     const existing = await tx.sparePart.findFirstOrThrow({
@@ -462,6 +461,9 @@ export async function updateSparePart(
       select: { id: true, itemKind: true, categoryId: true, materialGroupId: true, typeId: true, defaultStoreId: true },
     });
     if (!hasInventoryResponsibility(actor, existing.itemKind)) throw new Error("No management scope for this inventory type.");
+    if (normalized.itemKind !== existing.itemKind && actor.role !== RoleName.ADMIN) {
+      throw new Error("Only Owner Admin can change the inventory item type.");
+    }
     await assertSparePartMasterData(tx, scope, normalized, {
       categoryId: existing.categoryId,
       materialGroupId: existing.materialGroupId,
