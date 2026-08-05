@@ -283,6 +283,10 @@ html[data-stock-header-replacement="active"] .stock-replacement-header {
   backdrop-filter: blur(18px);
 }
 
+.stock-table-panel {
+  backdrop-filter: none;
+}
+
 .stock-page-hero {
   border-color: rgb(255 255 255 / 10%);
   background:

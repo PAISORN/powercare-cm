@@ -187,7 +187,7 @@ export function getAppLinks(role: RoleValue, permissionContext: AppPermissionCon
       canUseAny(PermissionKey.MANAGE_SPARE_PARTS, PermissionKey.VIEW_STORE_STOCK),
     ),
     inventoryLink(
-      { label: "Stock (คลังอะไหล่)", href: "/inventory/stock", icon: Boxes, nested: true, parentSectionId: "inventory" },
+      { label: "Stock", href: "/inventory/stock", icon: Boxes, nested: true, parentSectionId: "inventory" },
       canUseAny(PermissionKey.VIEW_STORE_STOCK, PermissionKey.ADJUST_STOCK),
     ),
     inventoryLink(
