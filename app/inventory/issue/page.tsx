@@ -1,4 +1,5 @@
 import {
+  Beaker,
   CheckCircle2,
   Bell,
   ChevronDown,
@@ -8,6 +9,7 @@ import {
   Clock3,
   FileUp,
   Home,
+  Package,
   PackageCheck,
   PackageX,
   Printer,
@@ -15,6 +17,7 @@ import {
   Search,
   Settings2,
   ShoppingCart,
+  Droplets,
   XCircle,
 } from "lucide-react";
 import Link from "next/link";
@@ -234,15 +237,17 @@ export default async function IssuePage({ searchParams }: { searchParams: Promis
   ]);
 
   const selectedTrackingStatus = normalizeTrackingStatus(query.status);
+  const selectedTrackingKind = resolveItemKind(query.itemKind);
   const trackingSearch = String(query.q ?? "").trim().toLocaleLowerCase("th-TH");
+  const kindIssues = issues.filter((issue) => issue.itemKind === selectedTrackingKind);
   const statusCounts = {
-    all: issues.length,
-    waiting: issues.filter((issue) => issueStatusGroup(issue.status) === "WAITING").length,
-    inProgress: issues.filter((issue) => issueStatusGroup(issue.status) === "IN_PROGRESS").length,
-    completed: issues.filter((issue) => issueStatusGroup(issue.status) === "COMPLETED").length,
-    canceled: issues.filter((issue) => issueStatusGroup(issue.status) === "CANCELED").length,
+    all: kindIssues.length,
+    waiting: kindIssues.filter((issue) => issueStatusGroup(issue.status) === "WAITING").length,
+    inProgress: kindIssues.filter((issue) => issueStatusGroup(issue.status) === "IN_PROGRESS").length,
+    completed: kindIssues.filter((issue) => issueStatusGroup(issue.status) === "COMPLETED").length,
+    canceled: kindIssues.filter((issue) => issueStatusGroup(issue.status) === "CANCELED").length,
   };
-  const filteredIssues = issues.filter((issue) => {
+  const filteredIssues = kindIssues.filter((issue) => {
     if (selectedTrackingStatus !== "ALL" && issueStatusGroup(issue.status) !== selectedTrackingStatus) return false;
     if (!trackingSearch) return true;
     const haystack = [
@@ -274,6 +279,7 @@ export default async function IssuePage({ searchParams }: { searchParams: Promis
     });
     if (query.q) params.set("q", query.q);
     if (selectedTrackingStatus !== "ALL") params.set("status", selectedTrackingStatus);
+    params.set("itemKind", selectedTrackingKind);
     if (page > 1) params.set("trackingPage", String(page));
     return `/inventory/issue?${params.toString()}#issue-tracking`;
   };
@@ -524,6 +530,14 @@ export default async function IssuePage({ searchParams }: { searchParams: Promis
           </div>
           <p className="mt-1 text-sm text-[var(--muted)]">ติดตามความคืบหน้าและดำเนินการใบเบิกอะไหล่ภายใน Site</p>
 
+          <IssueTrackingTabs
+            itemKind={selectedTrackingKind}
+            organizationId={scope.organization.id}
+            plantId={scope.plant.id}
+            query={query.q}
+            status={selectedTrackingStatus}
+          />
+
           <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3 2xl:grid-cols-5">
             <TrackingStat icon={<ClipboardList size={18} />} label="ทั้งหมด" value={statusCounts.all} />
             <TrackingStat icon={<Clock3 size={18} />} label="รออนุมัติ" tone="amber" value={statusCounts.waiting} />
@@ -534,6 +548,7 @@ export default async function IssuePage({ searchParams }: { searchParams: Promis
 
           <form action="/inventory/issue" className="mt-4 grid gap-2 rounded-2xl border border-[var(--line)] bg-[var(--soft)] p-3 sm:grid-cols-[minmax(0,1fr)_170px_auto]">
             <AdminScopeHiddenFields scope={scope} />
+            <input name="itemKind" type="hidden" value={selectedTrackingKind} />
             <label className="relative">
               <span className="sr-only">ค้นหาใบเบิก</span>
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--muted)]" size={17} />
@@ -675,6 +690,57 @@ export default async function IssuePage({ searchParams }: { searchParams: Promis
         </section>
       </div>
     </AppShell>
+  );
+}
+
+function IssueTrackingTabs({
+  itemKind,
+  organizationId,
+  plantId,
+  query,
+  status,
+}: {
+  itemKind: "SPARE_PART" | "CHEMICAL" | "OIL";
+  organizationId: string;
+  plantId: string;
+  query?: string;
+  status: string;
+}) {
+  const tabs = [
+    { key: "SPARE_PART" as const, label: "อะไหล่", icon: Package },
+    { key: "CHEMICAL" as const, label: "สารเคมี", icon: Beaker },
+    { key: "OIL" as const, label: "น้ำมัน", icon: Droplets },
+  ];
+
+  return (
+    <nav aria-label="ประเภทใบเบิกที่ติดตาม" className="mt-4 border-b border-[var(--line)]" role="tablist">
+      <div className="grid grid-cols-3">
+        {tabs.map((tab) => {
+          const active = tab.key === itemKind;
+          const Icon = tab.icon;
+          const params = new URLSearchParams({ organizationId, plantId, itemKind: tab.key });
+          if (query) params.set("q", query);
+          if (status !== "ALL") params.set("status", status);
+          return (
+            <Link
+              aria-selected={active}
+              className={`relative flex min-h-12 cursor-pointer items-center justify-center gap-2 px-2 py-3 text-sm font-extrabold transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--primary)] sm:px-4 sm:text-base ${
+                active
+                  ? "text-[var(--primary)] after:absolute after:inset-x-2 after:-bottom-px after:h-[3px] after:rounded-t-full after:bg-[var(--primary)]"
+                  : "text-[var(--muted)] hover:bg-[var(--soft)] hover:text-[var(--ink)]"
+              }`}
+              href={`/inventory/issue?${params.toString()}#issue-tracking`}
+              key={tab.key}
+              role="tab"
+              scroll={false}
+            >
+              <Icon aria-hidden="true" size={19} strokeWidth={2} />
+              <span>{tab.label}</span>
+            </Link>
+          );
+        })}
+      </div>
+    </nav>
   );
 }
 

@@ -26,6 +26,20 @@ describe("Inventory issue page", () => {
     expect(source).toContain("details");
   });
 
+  it("filters tracked issues through underlined inventory kind tabs", () => {
+    const source = readFileSync("app/inventory/issue/page.tsx", "utf8");
+
+    expect(source).toContain("IssueTrackingTabs");
+    expect(source).toContain('role="tablist"');
+    expect(source).toContain('role="tab"');
+    expect(source).toContain("aria-selected={active}");
+    expect(source).toContain('{ key: "SPARE_PART" as const, label: "อะไหล่", icon: Package }');
+    expect(source).toContain('{ key: "CHEMICAL" as const, label: "สารเคมี", icon: Beaker }');
+    expect(source).toContain('{ key: "OIL" as const, label: "น้ำมัน", icon: Droplets }');
+    expect(source).toContain("const kindIssues = issues.filter");
+    expect(source).toContain('name="itemKind" type="hidden" value={selectedTrackingKind}');
+  });
+
   it("offers the server-authorized issue document only after full issue", () => {
     const source = readFileSync("app/inventory/issue/page.tsx", "utf8");
 
