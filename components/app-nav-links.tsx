@@ -214,7 +214,7 @@ export function getAppLinks(role: RoleValue, permissionContext: AppPermissionCon
       canUse(PermissionKey.VIEW_STORE_TRACKING),
     ),
     inventoryLink(
-      { label: "Stock Movement ล่าสุด", href: "/inventory/movements", icon: History, nested: true, parentSectionId: "inventory" },
+      { label: "Stock Movement", href: "/inventory/movements", icon: History, nested: true, parentSectionId: "inventory" },
       canUseAny(PermissionKey.VIEW_STORE_STOCK, PermissionKey.VIEW_STORE_REPORTS, PermissionKey.ADJUST_STOCK),
     ),
     inventoryLink(
