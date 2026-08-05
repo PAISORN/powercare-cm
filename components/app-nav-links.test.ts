@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import React from "react";
 import { RoleName } from "../modules/cm-work/cm-work-types";
-import { getAppLinks } from "./app-nav-links";
+import { getAppLinks, isActivePath } from "./app-nav-links";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { AppNavLinks } from "./app-nav-links";
 import { PermissionKey, type SiteAdminPermissionRecord } from "../modules/auth/site-admin-permissions";
@@ -21,6 +21,16 @@ const plantAdminContext = (...permissionKeys: string[]) => ({
 });
 
 describe("getAppLinks", () => {
+  it("separates active state for Issue and Issue Tracking query views", () => {
+    const createView = new URLSearchParams("view=create");
+    const trackingView = new URLSearchParams("view=tracking");
+
+    expect(isActivePath("/inventory/issue", "/inventory/issue?view=create", createView)).toBe(true);
+    expect(isActivePath("/inventory/issue", "/inventory/issue?view=tracking", createView)).toBe(false);
+    expect(isActivePath("/inventory/issue", "/inventory/issue?view=create", trackingView)).toBe(false);
+    expect(isActivePath("/inventory/issue", "/inventory/issue?view=tracking", trackingView)).toBe(true);
+  });
+
   it("uses the signed-in user's Site request URL and disables it for Owner Admin", () => {
     const siteLinks = getAppLinks(RoleName.ENGINEER, {
       plantId: "plant-rayong",
@@ -170,10 +180,10 @@ describe("getAppLinks", () => {
     expect(links.some((link) => link.href === "/inventory/spare-parts" && !link.disabled)).toBe(true);
     expect(links.some((link) => link.href === "/inventory/stock" && !link.disabled)).toBe(true);
     expect(links.some((link) => link.href === "/inventory/stock" && link.label === "Stock")).toBe(true);
-    expect(links.some((link) => link.href === "/inventory/issue" && !link.disabled)).toBe(true);
+    expect(links.some((link) => link.href === "/inventory/issue?view=create" && !link.disabled)).toBe(true);
     expect(links.some((link) => link.href === "/inventory/public-issue" && !link.disabled)).toBe(true);
     expect(links.some((link) => link.href === "/inventory/receive" && !link.disabled)).toBe(true);
-    expect(links.some((link) => link.href === "/inventory/tracking" && !link.disabled)).toBe(true);
+    expect(links.some((link) => link.href === "/inventory/issue?view=tracking" && link.label === "Issue Tracking" && !link.disabled)).toBe(true);
     expect(links.some((link) => link.href === "/inventory/movements" && link.label === "Stock Movement")).toBe(true);
     expect(links.some((link) => link.href === "/inventory/movements" && !link.disabled)).toBe(true);
     expect(links.some((link) => link.href === "/inventory/reports" && !link.disabled)).toBe(true);

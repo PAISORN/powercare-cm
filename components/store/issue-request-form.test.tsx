@@ -230,7 +230,7 @@ describe("IssueRequestForm", () => {
     expect(screen.queryByRole("listbox")).toBeNull();
   });
 
-  it("renders the create page as one card with a normal form footer", () => {
+  it("renders the redesigned create page with a normal review footer", () => {
     render(
       <IssueRequestForm
         action={vi.fn()}
@@ -245,9 +245,9 @@ describe("IssueRequestForm", () => {
     );
 
     const form = screen.getByTestId("issue-request-form");
-    const reviewButton = screen.getByRole("button", { name: /ตรวจสอบและยืนยัน/ });
+    const reviewButton = screen.getByRole("button", { name: /ตรวจสอบและเสร็จสิ้น/ });
     expect(reviewButton.parentElement?.className).not.toContain("sticky");
-    expect(form.querySelectorAll("section.rounded-3xl")).toHaveLength(0);
+    expect(form.querySelector('[role="tablist"]')?.className).toContain("grid-cols-3");
   });
 
   it("renders stock suggestions in a portal above the form", () => {

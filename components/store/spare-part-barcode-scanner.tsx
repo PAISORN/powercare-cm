@@ -94,7 +94,7 @@ export function SparePartBarcodeScanner({
   return (
     <>
       <button
-        className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-[var(--primary)]/30 bg-[var(--primary)]/10 px-4 text-sm font-bold text-[var(--primary)] transition hover:bg-[var(--primary)]/15"
+        className="inline-flex min-h-14 w-full items-center justify-center gap-2 rounded-xl border border-[var(--primary)]/30 bg-[var(--primary)]/10 px-3 text-sm font-bold text-[var(--primary)] transition hover:bg-[var(--primary)]/15"
         onClick={() => {
           setMessage("");
           setOpen(true);

@@ -8,7 +8,6 @@ import {
   CalendarDays,
   ClipboardCheck,
   Droplets,
-  FileText,
   FilterX,
   Minus,
   Package,
@@ -17,6 +16,7 @@ import {
   Search,
   Send,
   ShoppingCart,
+  Trash2,
   UserRound,
   Wrench,
 } from "lucide-react";
@@ -139,16 +139,12 @@ export function IssueRequestForm({
     () => kindStocks.filter((stock) => matchesStockFilters(stock, filters)),
     [filters, kindStocks],
   );
-  const kindUi = itemKind === "CHEMICAL"
-    ? { title: "ขอเบิกสารเคมี", noun: "สารเคมี", storeLabel: "คลังสารเคมี", Icon: Beaker, gradient: "from-cyan-500/20 via-teal-400/12 to-blue-500/20" }
-    : itemKind === "OIL"
-      ? { title: "ใบเบิกน้ำมัน", noun: "น้ำมัน", storeLabel: "คลังน้ำมัน", Icon: Droplets, gradient: "from-blue-500/20 via-sky-400/12 to-cyan-500/20" }
-      : { title: "ขอเบิกอะไหล่", noun: "อะไหล่", storeLabel: "คลังอะไหล่", Icon: Package, gradient: "from-blue-600/20 via-blue-400/10 to-cyan-400/20" };
+  const kindNoun = itemKind === "CHEMICAL" ? "สารเคมี" : itemKind === "OIL" ? "น้ำมัน" : "อะไหล่";
+  const KindIcon = itemKind === "CHEMICAL" ? Beaker : itemKind === "OIL" ? Droplets : Package;
   const activeStoreNames = useMemo(
     () => [...new Set(kindStocks.map((stock) => stock.storeName).filter(Boolean))],
     [kindStocks],
   );
-
   useEffect(() => {
     setSubmissionKey(createSubmissionKey());
   }, []);
@@ -226,7 +222,7 @@ export function IssueRequestForm({
   return (
     <form
       action={action}
-      className={singleCard ? "space-y-4 md:-mx-5 md:-mb-5" : "space-y-4"}
+      className={singleCard ? "space-y-6 md:-mx-5 md:-mb-5" : "space-y-6"}
       data-testid="issue-request-form"
       onSubmit={(event) => {
         if (reviewMode) {
@@ -255,43 +251,57 @@ export function IssueRequestForm({
         </>
       ) : directOnly ? <input name="issueType" type="hidden" value="DIRECT" /> : null}
 
-      <header className={`overflow-hidden rounded-3xl border border-[var(--primary)]/20 bg-gradient-to-br ${siteSummary ? "from-blue-700 via-blue-600 to-cyan-500 text-white" : kindUi.gradient} p-5 shadow-lg sm:p-7`}>
-        {siteSummary ? (
-          <div className="mb-5 flex flex-wrap items-center justify-between gap-3 border-b border-white/20 pb-4">
-            <p className="inline-flex items-center gap-2 rounded-full bg-white/15 px-3 py-1.5 text-xs font-extrabold">
-              <Building2 size={15} /> {siteSummary.organizationName}
-            </p>
-            <p className="text-xs font-bold text-white/75">
-              {siteSummary.inventoryCode ? `Store Site Code ${siteSummary.inventoryCode}` : "PowerCare Store"}
-            </p>
-          </div>
-        ) : null}
-        <div className="flex items-center gap-4">
-          <span className={`grid size-16 shrink-0 place-items-center rounded-full shadow-lg sm:size-20 ${siteSummary ? "bg-white/18 text-white ring-1 ring-white/30" : "bg-[var(--primary)] text-white shadow-blue-500/20"}`}>
-            <kindUi.Icon aria-hidden="true" size={32} strokeWidth={1.8} />
+      <header className={`px-1 py-2 ${singleCard ? "text-white" : "text-[var(--ink)]"}`}>
+        <div className="flex items-start gap-4">
+          <span className={`mt-1 grid size-20 shrink-0 place-items-center rounded-2xl border ${singleCard ? "border-white/25 bg-white/10 text-white" : "border-[var(--line)] bg-[var(--soft)] text-[var(--primary)]"}`}>
+            <KindIcon aria-hidden="true" size={38} strokeWidth={1.7} />
           </span>
-          <div className="min-w-0">
-            <p className={`text-xs font-extrabold uppercase tracking-[0.14em] ${siteSummary ? "text-white/75" : "text-[var(--primary)]"}`}>PowerCare Store</p>
-            {siteSummary ? <p className="mt-1 text-sm font-bold text-white/85">{siteSummary.plantName}</p> : null}
-            <h2 className={`mt-1 text-2xl font-black sm:text-3xl ${siteSummary ? "text-white" : "text-[var(--ink)]"}`}>{kindUi.title}</h2>
-            <p className={`mt-1 truncate text-sm font-semibold ${siteSummary ? "text-white/75" : "text-[var(--muted)]"}`}>
-              {activeStoreNames[0] ?? kindUi.storeLabel} · พร้อมเบิก {kindStocks.length.toLocaleString("th-TH")} รายการ
-            </p>
-            <p className={`mt-2 inline-flex items-center gap-2 text-sm font-bold ${siteSummary ? "text-emerald-200" : "text-emerald-600 dark:text-emerald-300"}`}>
-              <span className="size-2 rounded-full bg-emerald-400" /> เปิดให้บริการ
-            </p>
+          <div className="min-w-0 flex-1">
+            <h2 className="text-2xl font-black leading-tight sm:text-3xl">สร้างใบเบิก</h2>
+            <p className={`mt-1 text-sm font-bold ${singleCard ? "text-white/80" : "text-[var(--primary)]"}`}>PowerCare Store · {kindNoun}</p>
+            <div className="mt-3 flex flex-nowrap items-center gap-1 text-[11px] font-bold sm:gap-2 sm:text-xs">
+              {siteSummary ? (
+                <span className={`whitespace-nowrap rounded-full px-2 py-1.5 sm:px-2.5 ${singleCard ? "bg-white/10 text-white/90" : "bg-[var(--soft)] text-[var(--ink)]"}`}>
+                  {siteSummary.plantName}
+                </span>
+              ) : null}
+              <span className={`whitespace-nowrap rounded-full px-2 py-1.5 sm:px-2.5 ${singleCard ? "bg-white/10 text-white/80" : "bg-[var(--soft)] text-[var(--muted)]"}`}>
+                {activeStoreNames[0] ?? `คลัง${kindNoun}`} · {kindStocks.length.toLocaleString("th-TH")} รายการ
+              </span>
+              <span className={`inline-flex whitespace-nowrap items-center gap-1 rounded-full px-2 py-1.5 sm:gap-1.5 sm:px-2.5 ${singleCard ? "bg-emerald-400/15 text-emerald-300" : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-300"}`}>
+                <span className="size-2 rounded-full bg-emerald-400" /> เปิดให้บริการ
+              </span>
+            </div>
           </div>
         </div>
       </header>
 
-      <section className="overflow-visible">
-        <SectionHeading icon={<FileText size={19} />} title="ข้อมูลการเบิก" />
+      <section className="overflow-visible rounded-[2rem] border border-[var(--line)] bg-[var(--surface)] shadow-[var(--shadow)]">
+        <SectionHeading icon={<UserRound size={19} />} title="ผู้เบิก" />
         <div className="grid gap-4 p-4 sm:p-5">
           {requesterSummary ? (
-            <div className="grid divide-y divide-[var(--line)]">
-              <SummaryRow icon={<CalendarDays size={18} />} label="วันที่ขอเบิก" value={new Intl.DateTimeFormat("th-TH", { dateStyle: "medium" }).format(new Date())} />
-              <SummaryRow icon={<UserRound size={18} />} label="ผู้เบิก" value={requesterSummary.name} />
-              <SummaryRow icon={<Building2 size={18} />} label="หน่วยงาน" value={requesterSummary.department || "-"} />
+            <div className="grid gap-4">
+              <div className="flex items-center gap-4">
+                <span className="grid size-14 shrink-0 place-items-center rounded-full bg-[var(--primary)]/10 text-[var(--primary)] ring-1 ring-[var(--primary)]/15">
+                  <UserRound size={25} />
+                </span>
+                <div className="min-w-0">
+                  <p className="text-xs font-bold text-[var(--muted)]">ผู้เบิก</p>
+                  <p className="mt-1 truncate text-lg font-black text-[var(--ink)]">{requesterSummary.name}</p>
+                </div>
+              </div>
+              <div className="grid gap-2 sm:grid-cols-[1fr_auto] sm:items-end">
+                <label className={labelClass}>
+                  หน่วยงาน / แผนก
+                  <span className={`${inputClass} flex items-center gap-3 font-semibold`}>
+                    <Building2 className="shrink-0 text-[var(--primary)]" size={20} />
+                    {requesterSummary.department || "-"}
+                  </span>
+                </label>
+                <span className="inline-flex min-h-12 items-center gap-2 rounded-xl bg-[var(--soft)] px-4 text-sm font-semibold text-[var(--muted)]">
+                  <CalendarDays size={17} /> {new Intl.DateTimeFormat("th-TH", { dateStyle: "medium" }).format(new Date())}
+                </span>
+              </div>
             </div>
           ) : null}
           {publicRequester ? (
@@ -354,7 +364,7 @@ export function IssueRequestForm({
                 </label>
               ) : (
                 <label className={labelClass}>
-                  เหตุผลการเบิกโดยตรง
+                  เหตุผลการเบิก
                   <input className={inputClass} name="note" required />
                 </label>
               )}
@@ -370,7 +380,7 @@ export function IssueRequestForm({
           ) : null}
 
           {itemKind === "OIL" ? (
-            <fieldset className="grid gap-4 rounded-2xl border border-[var(--line)] bg-[var(--soft)]/45 p-4 sm:grid-cols-2">
+            <fieldset className="grid gap-4 rounded-2xl border border-[var(--line)] bg-[var(--soft)]/45 p-4 shadow-[var(--shadow)] sm:grid-cols-2">
               <legend className="px-2 font-extrabold">ข้อมูลรถและการจ่ายน้ำมัน</legend>
               <label className={labelClass}>
                 รถที่นำไปใช้
@@ -398,10 +408,18 @@ export function IssueRequestForm({
       </section>
 
       <section className="overflow-visible">
-          <SectionHeading icon={<ShoppingCart size={19} />} title={`รายการ${kindUi.noun}`} />
+          <div className="mb-3 flex flex-wrap items-end justify-between gap-3 px-1">
+            <div>
+              <p className="text-xs font-extrabold uppercase tracking-[0.14em] text-[var(--primary)]">เลือกประเภทและรายการ</p>
+              <h3 className="mt-1 text-2xl font-black text-[var(--ink)]">รายการที่ต้องการเบิก</h3>
+            </div>
+            <span className="rounded-full bg-[var(--primary)]/10 px-3 py-1.5 text-sm font-extrabold text-[var(--primary)]">
+              {lines.filter((line) => line.stockKey).length} รายการ
+            </span>
+          </div>
 
-          <div className="border-b border-[var(--line)] px-2 pt-2 sm:px-5">
-            <div className="flex gap-1 overflow-x-auto" role="tablist" aria-label="ประเภทสิ่งของที่ต้องการเบิก">
+          <div className="border-b border-[var(--line)]">
+            <div className="grid grid-cols-3" role="tablist" aria-label="ประเภทสิ่งของที่ต้องการเบิก">
               {([
                 ["SPARE_PART", "อะไหล่", Package],
                 ["CHEMICAL", "สารเคมี", Beaker],
@@ -409,8 +427,8 @@ export function IssueRequestForm({
               ] as const).map(([value, label, Icon]) => (
                 <button
                   aria-selected={itemKind === value}
-                  className={`relative flex min-h-12 min-w-28 items-center justify-center gap-2 whitespace-nowrap px-4 text-sm font-extrabold transition-colors ${
-                    itemKind === value ? "text-[var(--primary)]" : "text-[var(--muted)] hover:text-[var(--ink)]"
+                  className={`relative flex min-h-16 min-w-0 items-center justify-center gap-2 whitespace-nowrap px-2 text-sm font-extrabold transition-colors sm:px-4 sm:text-base ${
+                    itemKind === value ? "text-[var(--primary)]" : "text-[var(--muted)] hover:bg-[var(--soft)] hover:text-[var(--ink)]"
                   }`}
                   key={value}
                   onClick={() => {
@@ -421,15 +439,15 @@ export function IssueRequestForm({
                   role="tab"
                   type="button"
                 >
-                  <Icon size={18} />
+                  <Icon size={21} />
                   {label}
-                  {itemKind === value ? <span className="absolute inset-x-2 bottom-0 h-0.5 rounded-full bg-[var(--primary)]" /> : null}
+                  {itemKind === value ? <span className="absolute inset-x-3 bottom-0 h-1 rounded-t-full bg-[var(--primary)]" /> : null}
                 </button>
               ))}
             </div>
           </div>
 
-          <details className="group border-b border-[var(--line)] bg-[var(--soft)]/65">
+          <details className="group mt-3 overflow-hidden rounded-2xl border border-[var(--line)] bg-[var(--soft)]/65 shadow-[var(--shadow)]">
             <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between px-4 text-sm font-extrabold text-[var(--muted)]">
               <span className="inline-flex items-center gap-2"><FilterX size={17} /> ตัวกรองเพิ่มเติม</span>
               <span className="text-[var(--primary)] group-open:hidden">เปิด</span>
@@ -454,18 +472,17 @@ export function IssueRequestForm({
           </div>
           </details>
 
-          <div className="max-w-full p-3 sm:p-4">
-            <div className="w-full overflow-visible rounded-xl border border-[var(--line)]">
-              <div className="hidden grid-cols-[40px_minmax(300px,1.45fr)_minmax(130px,.55fr)_90px_44px] bg-[var(--soft)] px-3 py-3 text-xs font-extrabold text-[var(--muted)] 2xl:grid">
-                <span>ลำดับ</span><span>อะไหล่ / คลัง</span><span>Zone ที่นำไปใช้งาน</span><span>จำนวน</span><span className="sr-only">จัดการ</span>
-              </div>
+          <div className="max-w-full pt-3">
+            <div className="grid w-full gap-3 overflow-visible">
               {lines.map((line, index) => {
                 const stock = stockForKey(stocks, line.stockKey);
                 return (
-                  <div className="grid gap-3 border-t border-[var(--line)] bg-[var(--surface)] p-3 sm:p-4 2xl:grid-cols-[40px_minmax(300px,1.45fr)_minmax(130px,.55fr)_160px_44px] 2xl:items-end 2xl:gap-0 2xl:px-3" key={line.id}>
-                    <span className="inline-flex size-8 items-center justify-center self-center rounded-lg bg-[var(--soft)] text-sm font-extrabold text-[var(--primary)] 2xl:size-auto 2xl:justify-start 2xl:bg-transparent">{index + 1}</span>
-                    <label className={`${labelClass} 2xl:pr-3`}>
-                      <span className="text-xs text-[var(--muted)] 2xl:sr-only">อะไหล่ / คลัง</span>
+                  <article className="relative grid grid-cols-12 gap-x-2 gap-y-4 rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-4 shadow-[var(--shadow)] transition hover:border-[var(--primary)]/30 hover:shadow-lg sm:gap-x-3 sm:p-5" key={line.id}>
+                    <label className={`${labelClass} col-span-12`}>
+                      <span className="flex h-5 items-center gap-3 text-xs text-[var(--muted)]">
+                        <strong className="text-base font-black leading-none text-[var(--primary)]">{String(index + 1).padStart(2, "0")}</strong>
+                        {kindNoun} / คลัง
+                      </span>
                       <SearchableStockSelect
                         line={line}
                         onChange={(next) => setLines((current) => current.map((item) => item.id === line.id ? { ...item, ...next } : item))}
@@ -473,8 +490,8 @@ export function IssueRequestForm({
                       />
                       {stock ? <span className="truncate text-xs font-medium text-[var(--muted)]">คงเหลือ {stock.available} {stock.unit} · {stock.storeName}</span> : null}
                     </label>
-                    <label className={`${labelClass} 2xl:pr-3`}>
-                      <span className="text-xs text-[var(--muted)] 2xl:sr-only">Zone ที่นำไปใช้งาน</span>
+                    <label className={`${labelClass} col-span-5 col-start-1`}>
+                      <span className="text-xs text-[var(--muted)]">Zone ที่นำไปใช้งาน</span>
                       <select
                         className={inputClass}
                         disabled={!line.stockKey || !issueZones.length}
@@ -487,9 +504,9 @@ export function IssueRequestForm({
                         {issueZones.map((zone) => <option key={zone.id} value={zone.id}>{zone.code} · {zone.name}</option>)}
                       </select>
                     </label>
-                    <label className={`${labelClass} 2xl:pr-3`}>
-                      <span className="text-xs text-[var(--muted)] 2xl:sr-only">จำนวนที่ขอ</span>
-                      <div className="grid grid-cols-[48px_minmax(64px,1fr)_48px] overflow-hidden rounded-xl border border-[var(--line)] bg-[var(--surface)]">
+                    <label className={`${labelClass} col-span-4`}>
+                      <span className="text-xs text-[var(--muted)]">จำนวน</span>
+                      <div className="grid grid-cols-[36px_minmax(36px,1fr)_36px] overflow-hidden rounded-xl border border-[var(--line)] bg-[var(--surface)]">
                         <button
                           aria-label="ลดจำนวน"
                           className="grid min-h-12 place-items-center text-[var(--primary)] hover:bg-[var(--soft)]"
@@ -516,20 +533,25 @@ export function IssueRequestForm({
                         ><Plus size={18} /></button>
                       </div>
                     </label>
-                    <button
-                      aria-label={`ลบรายการที่ ${index + 1}`}
-                      className="flex size-11 items-center justify-center rounded-lg border border-red-500/25 text-red-600 hover:bg-red-500/10 disabled:opacity-30"
-                      disabled={lines.length === 1}
-                      onClick={() => setLines((current) => current.filter((item) => item.id !== line.id))}
-                      type="button"
-                    >
-                      <Minus size={17} />
-                    </button>
-                  </div>
+                    <div className="col-span-1 col-start-12 row-start-2 flex items-end justify-end">
+                      <button
+                        aria-label={`ลบรายการที่ ${index + 1}`}
+                        className="flex size-11 items-center justify-center rounded-full border border-red-500/20 bg-red-500/5 text-red-600 transition hover:bg-red-500/10 disabled:opacity-30"
+                        disabled={lines.length === 1}
+                        onClick={() => setLines((current) => current.filter((item) => item.id !== line.id))}
+                        type="button"
+                      >
+                        <Trash2 size={20} />
+                      </button>
+                    </div>
+                  </article>
                 );
               })}
             </div>
-            <div className="mt-3 flex flex-wrap gap-2">
+            <div className={`mt-3 grid grid-cols-[minmax(0,1.35fr)_minmax(0,.85fr)] gap-2 ${publicRequester ? "" : "grid-cols-1"}`}>
+              <button className={`${secondaryButtonClass} min-h-14 justify-center border-dashed border-[var(--primary)]/60 text-[var(--primary)]`} onClick={addLine} type="button">
+                <Plus size={17} /> เพิ่มรายการ
+              </button>
               {publicRequester ? (
                 <SparePartBarcodeScanner
                   onSelect={selectScannedStock}
@@ -541,9 +563,6 @@ export function IssueRequestForm({
                   }))}
                 />
               ) : null}
-              <button className={secondaryButtonClass} onClick={addLine} type="button">
-                <Plus size={17} /> เพิ่มรายการ
-              </button>
             </div>
           </div>
       </section>
@@ -560,7 +579,7 @@ export function IssueRequestForm({
         </p>
       ) : null}
 
-      <div className="flex flex-col-reverse gap-3 rounded-3xl border border-[var(--line)] bg-[var(--surface)] p-3 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <button className={`${secondaryButtonClass} max-sm:hidden`} onClick={resetFormView} type="button">
           ยกเลิก
         </button>
@@ -568,8 +587,8 @@ export function IssueRequestForm({
           <p className="text-sm font-extrabold">รวม {lines.filter((line) => line.stockKey).length} รายการ</p>
           <p className="text-xs text-[var(--muted)]">จำนวนรวม {lines.reduce((sum, line) => sum + Number(line.requestedQty || 0), 0).toLocaleString("th-TH")} หน่วย</p>
         </div>
-        <button className={`${primaryButtonClass} min-h-13 justify-center max-sm:w-full sm:min-w-72`} disabled={!kindStocks.length} onClick={openReview} type="button">
-          ตรวจสอบและยืนยัน <ArrowRight size={18} />
+        <button className={`${primaryButtonClass} min-h-14 justify-center max-sm:w-full sm:min-w-72`} disabled={!kindStocks.length} onClick={openReview} type="button">
+          <ClipboardCheck size={19} /> ตรวจสอบและเสร็จสิ้น <ArrowRight size={18} />
         </button>
       </div>
 
@@ -658,6 +677,7 @@ function SearchableStockSelect({ line, onChange, stocks }: {
     () => stocks.filter((stock) => matchesStockSearch(stock, line.stockSearch)).slice(0, 50),
     [line.stockSearch, stocks],
   );
+  const selectedStock = stockForKey(stocks, line.stockKey);
 
   useEffect(() => {
     if (!open) return;
@@ -702,7 +722,19 @@ function SearchableStockSelect({ line, onChange, stocks }: {
   return (
     <div className="relative">
       <input name="stockKey" type="hidden" value={line.stockKey} />
-      <Search className="pointer-events-none absolute left-3 top-1/2 z-10 -translate-y-1/2 text-[var(--muted)]" size={17} />
+      {selectedStock ? (
+        <button
+          className="w-full rounded-xl border border-[var(--line)] bg-[var(--surface)] px-3 py-2.5 text-left transition hover:border-[var(--primary)]"
+          onClick={() => onChange({ stockKey: "", stockSearch: "", zoneId: "" })}
+          type="button"
+        >
+          <span className="block truncate font-extrabold text-[var(--ink)]">{selectedStock.sparePartName ?? selectedStock.label}</span>
+          <span className="mt-1 block truncate text-xs font-semibold text-[var(--muted)]">{selectedStock.sparePartCode ?? selectedStock.itemCode ?? "-"}</span>
+          <span className="mt-2 inline-flex items-center gap-1.5 rounded-lg bg-[var(--soft)] px-2 py-1 text-xs font-bold text-[var(--muted)]">
+            <Package size={14} /> {selectedStock.storeCode ?? selectedStock.storeName ?? "-"}
+          </span>
+        </button>
+      ) : <Search className="pointer-events-none absolute left-3 top-1/2 z-10 -translate-y-1/2 text-[var(--muted)]" size={17} />}
       <input
         aria-activedescendant={activeIndex >= 0 ? `stock-option-${line.id}-${activeIndex}` : undefined}
         aria-autocomplete="list"
@@ -711,7 +743,7 @@ function SearchableStockSelect({ line, onChange, stocks }: {
         aria-label={`ค้นหาและเลือกอะไหล่ รายการ ${line.id}`}
         aria-haspopup="listbox"
         autoComplete="off"
-        className={`${inputClass} pl-10`}
+        className={line.stockKey ? "sr-only" : `${inputClass} pl-10`}
         onBlur={() => window.setTimeout(() => setOpen(false), 120)}
         onChange={(event) => {
           onChange({ stockKey: "", stockSearch: event.target.value, zoneId: "" });

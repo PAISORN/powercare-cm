@@ -1,8 +1,7 @@
-import { Home, PackageSearch } from "lucide-react";
+import { PackageSearch } from "lucide-react";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { IssueRequestForm } from "../../../../../components/store/issue-request-form";
-import { ThemeToggle } from "../../../../../components/theme-toggle";
 import { db } from "../../../../../lib/db";
 import { createPublicStoreIssue } from "../../../../../modules/store/store-issue-prisma";
 
@@ -94,18 +93,8 @@ export default async function PublicStoreIssuePage({
   ]);
 
   return (
-    <main className="min-h-screen bg-[var(--page)] px-4 py-6 text-[var(--ink)] sm:px-6">
+    <main className="issue-request-page-gradient min-h-screen px-5 pb-6 pt-5 text-[var(--ink)] sm:px-6">
       <div className="mx-auto max-w-5xl space-y-5">
-        <div className="sticky top-2 z-40 flex min-h-16 items-center justify-between gap-3 rounded-2xl border border-[var(--line)] bg-[var(--surface-raised)]/95 p-2 shadow-[var(--shadow)] backdrop-blur-xl">
-          <div className="flex min-w-0 items-center gap-3">
-            <Link aria-label="Home" className="grid size-12 shrink-0 place-items-center rounded-full bg-[var(--primary)] text-white shadow-sm" href="/">
-              <Home size={20} />
-            </Link>
-            <p className="truncate text-sm font-semibold text-[var(--muted)]">{plant.name}</p>
-          </div>
-          <ThemeToggle />
-        </div>
-
         {query.created ? (
           <section className="rounded-3xl border border-emerald-500/30 bg-emerald-500/10 p-6 text-center">
             <PackageSearch className="mx-auto text-emerald-600" size={48} />
