@@ -31,4 +31,14 @@ describe("UnreadBadge", () => {
     expect(badge.className).not.toContain("right-2");
     expect(badge.className).not.toContain("top-2");
   });
+
+  it("supports overlapping a card's top-right border", () => {
+    render(<UnreadBadge count={7} position="cardEdge" />);
+
+    const classes = screen.getByLabelText("7 unread items").className.split(/\s+/);
+    expect(classes).toContain("-right-2");
+    expect(classes).toContain("-top-2");
+    expect(classes).not.toContain("right-2");
+    expect(classes).not.toContain("top-2");
+  });
 });

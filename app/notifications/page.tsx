@@ -35,7 +35,7 @@ export default async function NotificationsPage() {
             <form action="/notifications/read" key={notification.id} method="post">
               <input name="notificationId" type="hidden" value={notification.id} />
               <button className={`relative w-full rounded-2xl border border-[var(--line)] p-4 text-left transition hover:bg-[var(--soft)] ${notification.readAt ? "bg-[var(--surface)]" : "bg-[var(--soft)] ring-1 ring-[var(--primary)]/20"}`} type="submit">
-                {!notification.readAt ? <span aria-label="Unread" className="absolute right-4 top-4 h-3 w-3 rounded-full bg-red-600" /> : null}
+                {!notification.readAt ? <span aria-label="Unread" className="absolute -right-1 -top-1 h-3 w-3 rounded-full bg-red-600 shadow-sm ring-2 ring-[var(--surface)]" /> : null}
                 <strong className="block pr-8">{notification.title}</strong>
                 <span className="mt-1 block text-sm text-[var(--muted)]">{notification.message}</span>
                 <span className="mt-3 block text-xs text-[var(--muted)]">{formatThaiDateTime(notification.createdAt)}</span>

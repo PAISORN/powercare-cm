@@ -197,7 +197,7 @@ export default async function WorkListPage({ searchParams }: { searchParams: Pro
                 <form action={openWorkAction} className="min-w-0">
                   <input name="workId" type="hidden" value={work.id} />
                   <button className="relative block w-full min-w-0 rounded-xl text-left transition duration-300 ease-out hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-[var(--primary)] focus:ring-offset-2 focus:ring-offset-[var(--surface)]" type="submit">
-                  {unreadWorkIds.has(work.id) ? <span aria-label="Unread work update" className="absolute right-0 top-0 h-3 w-3 rounded-full bg-red-600 shadow-sm ring-2 ring-[var(--surface)]" /> : null}
+                  {unreadWorkIds.has(work.id) ? <span aria-label="Unread work update" className="absolute -right-1 -top-1 h-3 w-3 rounded-full bg-red-600 shadow-sm ring-2 ring-[var(--surface)]" /> : null}
                   <strong className="block text-lg">{work.number}</strong>
                   <span className="mt-1 block text-sm font-semibold text-[var(--ink)]">
                     Category: {work.category.name} · Zone: {work.zone.name}

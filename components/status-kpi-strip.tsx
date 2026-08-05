@@ -91,7 +91,6 @@ function MetricCard({
   const className = `status-kpi-card relative block overflow-hidden rounded-2xl border p-4 text-left transition duration-300 ease-out ${tones[tone]} ${active ? "status-kpi-active ring-2 ring-[var(--primary)] ring-offset-2 ring-offset-[var(--bg)]" : ""}`;
   const content = (
     <>
-      <UnreadBadge count={unreadCount} />
       <div className="relative z-10 flex items-start justify-between gap-3">
         <p className="min-w-0 text-sm font-semibold leading-5">{label}</p>
         <span className="status-kpi-icon shrink-0" aria-hidden="true">{icon}</span>
@@ -102,27 +101,36 @@ function MetricCard({
 
   if (href && readAction) {
     return (
-      <form action={readAction}>
-        <input name="group" type="hidden" value={status} />
-        <input name="href" type="hidden" value={href} />
-        <button className={`${className} h-full w-full hover:-translate-y-1 hover:shadow-lg active:translate-y-0`} type="submit" aria-label={ariaLabel}>
-          {content}
-        </button>
-      </form>
+      <div className="relative min-w-0 overflow-visible">
+        <form action={readAction} className="h-full">
+          <input name="group" type="hidden" value={status} />
+          <input name="href" type="hidden" value={href} />
+          <button className={`${className} h-full w-full hover:-translate-y-1 hover:shadow-lg active:translate-y-0`} type="submit" aria-label={ariaLabel}>
+            {content}
+          </button>
+        </form>
+        <UnreadBadge count={unreadCount} position="cardEdge" />
+      </div>
     );
   }
 
   if (href) {
     return (
-      <Link className={`${className} hover:-translate-y-1 hover:shadow-lg active:translate-y-0`} href={href} aria-label={ariaLabel}>
-        {content}
-      </Link>
+      <div className="relative min-w-0 overflow-visible">
+        <Link className={`${className} h-full hover:-translate-y-1 hover:shadow-lg active:translate-y-0`} href={href} aria-label={ariaLabel}>
+          {content}
+        </Link>
+        <UnreadBadge count={unreadCount} position="cardEdge" />
+      </div>
     );
   }
 
   return (
-    <div className={className} aria-label={ariaLabel}>
-      {content}
+    <div className="relative min-w-0 overflow-visible">
+      <div className={className} aria-label={ariaLabel}>
+        {content}
+      </div>
+      <UnreadBadge count={unreadCount} position="cardEdge" />
     </div>
   );
 }

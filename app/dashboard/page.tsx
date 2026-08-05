@@ -278,7 +278,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
 
 function KpiCard({ href, group, unreadCount, readAction, label, value, note, icon, color }: { href: string; group: NotificationGroup; unreadCount: number; readAction: (formData: FormData) => void | Promise<void>; label: string; value: string; note: string; icon: React.ReactNode; color: string }) {
   return (
-    <form action={readAction} className="h-full min-w-0">
+    <form action={readAction} className="relative h-full min-w-0 overflow-visible">
       <input name="group" type="hidden" value={group} />
       <input name="href" type="hidden" value={href} />
       <button
@@ -287,7 +287,6 @@ function KpiCard({ href, group, unreadCount, readAction, label, value, note, ico
       style={{ "--kpi-color": color } as React.CSSProperties}
       aria-label={`KPI ${label}`}
       >
-      <UnreadBadge count={unreadCount} />
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-xs font-bold leading-tight text-[var(--muted)] sm:text-sm">{label}</p>
@@ -297,6 +296,7 @@ function KpiCard({ href, group, unreadCount, readAction, label, value, note, ico
       </div>
       <p className="mt-4 text-xs leading-snug text-[var(--muted)] sm:text-sm">{note}</p>
       </button>
+      <UnreadBadge count={unreadCount} position="cardEdge" />
     </form>
   );
 }
