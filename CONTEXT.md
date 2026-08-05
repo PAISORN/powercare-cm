@@ -173,7 +173,7 @@ An Owner Admin-controlled permission for viewing Inventory Item prices, issue co
 _Avoid_: stock quantity access, stock management permission
 
 **Stock Mutation Permission**:
-An Owner Admin-controlled permission for changing inventory master data, receiving stock, adjusting stock, or issuing stock. Store Officer receives the normal Role Permission Defaults, while another Role or User may act only through an explicit permission decision.
+An Owner Admin-controlled action permission for changing inventory master data, receiving stock, adjusting stock, or issuing stock. Authorization requires both the applicable action permission and an Inventory Responsibility Scope containing the affected Item Kind; neither condition grants mutation access by itself.
 _Avoid_: Store Officer identity check, read-only stock access
 
 **Store Category**:
@@ -191,6 +191,58 @@ _Avoid_: spare part name, spare part category, spare part type, unit, store cate
 **Inventory Item Kind**:
 The business kind of a stock-controlled item: Spare Part, Chemical, or Oil. All three kinds share the same Store stock, receive, issue, movement, approval, CM-reference lifecycle, and item details without separate Lot, manufacture-date, expiry-date, or manufacturer tracking; the kind distinguishes how users discover and report the item.
 _Avoid_: separate chemical store system, separate oil issue system, spare part category
+
+**Inventory Responsibility Scope**:
+The set of Inventory Item Kinds a Store Officer is authorized to mutate within a Site. It does not restrict Stock Read Access; a Store Officer may hold one or more kinds and may temporarily cover another kind without changing Role.
+_Avoid_: Lab Role, Chemical Role, Store Category, CM Category
+
+**Inventory Approval Scope**:
+The set of Inventory Item Kinds an Engineer may approve for Store Issue within a Site when the Engineer also holds the approval action permission. A Store Issue is available to every active Engineer satisfying both conditions, and the first completed decision records the acting Engineer without exposing approver selection to the requester.
+_Avoid_: selected approver, Lab Engineer Role, CM Category, requester-selected Engineer
+
+**Inventory Scope Migration Default**:
+When Inventory Responsibility Scope and Inventory Approval Scope are introduced, every existing active Store Officer receives all existing Item Kinds and every existing active Engineer who already has the approve-store-issue action permission receives all existing Item Kinds. This preserves current access; an authorized Admin may narrow each user's scope afterward. Newly created users receive only the explicitly assigned scopes and do not inherit this migration default.
+_Avoid_: silently removing existing access, automatic all-kind access for new users
+
+**Single-Kind Store Issue**:
+A Store Issue contains one or more issue lines, but every line in the request belongs to exactly one Inventory Item Kind. Spare Parts, Chemicals, and Oils cannot be combined in the same Store Issue. Existing requests already satisfy this rule, so scope migration does not split or rewrite historical or pending requests.
+_Avoid_: mixed-kind Store Issue, migration-time request splitting
+
+**Store Officer Scope Requirement**:
+Every active Store Officer must have at least one Inventory Responsibility Scope. User creation and permission editing must reject any state that would leave an active Store Officer with no responsible Item Kind; additional kinds may be assigned or removed later within the applicable Admin authority.
+_Avoid_: active Store Officer with empty responsibility scope, implicit responsibility
+
+**Engineer Approval Scope Requirement**:
+An active Engineer with the approve-store-issue action permission must have at least one Inventory Approval Scope. Enabling that permission or editing its scopes must reject an empty approval scope. An Engineer without the approval action permission may have no Approval Scope and receives no actionable approval work.
+_Avoid_: approval permission with empty scope, scope-only approval authority
+
+**Approval-Issue Separation**:
+The user who approves a Store Issue must not issue stock for that same request, even when the user holds both applicable action permissions and both Item Kind scopes. Holding both capabilities permits coverage on different requests, not performing both control stages on one request.
+_Avoid_: self-approved stock issue, same-user approval and issue
+
+**Store Issue Three-Party Separation**:
+The requester, approver, and stock issuer for one Store Issue must be three different users. A requester who also holds approval or issue capabilities may use them only on requests created by another user, subject to all applicable action permissions and Item Kind scopes.
+_Avoid_: approving own request, issuing own request, two-party completion
+
+**Inventory Permission Toggle**:
+Inventory action permissions and Item Kind scopes are configured with direct on/off switches using the same interaction pattern as the existing Day/Night control. Changing a switch must not open or require a reason field.
+_Avoid_: reason modal, free-text justification, multi-step permission dialog
+
+**Permission Change History**:
+Do not introduce a separate permission-change audit log or require permission-change reasons. The existing History page remains the system's history surface; permission and scope controls stay as direct switches without an additional logging workflow.
+_Avoid_: duplicate permission history, permission-change reason form, new audit screen
+
+**Immediate Inventory Authorization Change**:
+Changes to an inventory action permission or Item Kind scope take effect immediately for pending work that has not yet been acted on. Removed work disappears from that user's actionable lists and remains available to other eligible users. The coverage guard rejects removing or disabling the last eligible approver or issuer while matching pending Store Issues exist.
+_Avoid_: permission snapshot per request, delayed revocation, orphaned pending issue
+
+**Lab Store Officer Preset**:
+A Lab user is created with the existing Store Officer Role, Chemical as the sole Inventory Responsibility Scope, and the Store action permissions needed to manage Chemical master data, receive Chemical stock, adjust Chemical stock, and issue Chemical stock. The user retains read-only visibility of Spare Part and Oil stock and receives no Store Issue approval capability by default.
+_Avoid_: Lab Role, chemical-only visibility, chemical approval bundled with issuing
+
+**Chemical Approver Engineer**:
+A Chemical approver remains an ordinary Engineer with all existing Engineer and CM responsibilities. Chemical Store Issue approval is added independently through the approve-store-issue action permission and Chemical Inventory Approval Scope. CM Category continues to classify maintenance disciplines only and does not grant, restrict, or represent inventory approval authority.
+_Avoid_: Chemical Engineer Role, using CM Category as inventory permission, removing normal Engineer duties
 
 **Applicable Zone**:
 A plant zone where a spare part is commonly used. One spare part can have multiple applicable zones.

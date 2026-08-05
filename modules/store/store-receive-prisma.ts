@@ -11,6 +11,7 @@ import {
   type StoreReceiveRepository,
 } from "./store-receive-service";
 import type { StoreScope } from "./store-types";
+import { hasInventoryResponsibility } from "./inventory-user-scope";
 
 export type ReceiveStockFormInput = {
   supplierName?: string | null;
@@ -21,12 +22,15 @@ export type ReceiveStockFormInput = {
 };
 
 export async function receiveStock(
-  actor: PermissionUserContext & { id: string },
+  actor: PermissionUserContext & { id: string; inventoryScopes?: Array<{ itemKind: string; responsibilityEnabled: boolean }> },
   scope: StoreScope,
   input: ReceiveStockFormInput,
 ) {
   requireStorePermission(actor, PermissionKey.RECEIVE_STOCK);
   assertActorStoreScope(actor, scope);
+  const kinds = await db.sparePart.findMany({ where: { id: { in: [...new Set(input.items.map((item) => item.sparePartId))] }, plantId: scope.plantId }, select: { itemKind: true } });
+  const itemKinds = [...new Set(kinds.map((item) => item.itemKind))];
+  if (itemKinds.length !== 1 || !hasInventoryResponsibility(actor, itemKinds[0])) throw new Error("No receive scope for this inventory type.");
 
   const result = await db.$transaction(async (tx) => {
     await tx.plant.findFirstOrThrow({ where: { id: scope.plantId, organizationId: scope.organizationId, active: true } });

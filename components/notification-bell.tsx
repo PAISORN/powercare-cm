@@ -27,7 +27,7 @@ export function NotificationBell({ unreadCount, notifications }: { unreadCount: 
         type="button"
       >
         <Bell aria-hidden="true" size={19} />
-        <UnreadBadge count={unreadCount} className="-right-1 -top-1" />
+        <UnreadBadge count={unreadCount} position="icon" />
       </button>
 
       {open ? (

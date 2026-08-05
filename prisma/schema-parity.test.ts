@@ -49,4 +49,15 @@ describe("Prisma schema parity", () => {
     expect(zoneBasedCodes).toContain('REVOKE ALL ON TABLE "Asset" FROM anon, authenticated');
     expect(zoneBasedCodes).toContain('CREATE POLICY "asset_prisma_server_access"');
   });
+
+  it("includes the production Inventory User Scope migration", () => {
+    const migration = readFileSync(
+      "prisma/supabase-migrations/20260805000100_inventory_user_scopes.sql",
+      "utf8",
+    );
+
+    expect(migration).toContain('CREATE TABLE IF NOT EXISTS "UserInventoryScope"');
+    expect(migration).toContain('ALTER TABLE "UserInventoryScope" ENABLE ROW LEVEL SECURITY');
+    expect(migration).toContain('REVOKE ALL ON TABLE "UserInventoryScope" FROM anon, authenticated');
+  });
 });

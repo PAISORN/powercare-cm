@@ -185,6 +185,27 @@ describe("store issue service", () => {
     expect(repository.statuses).toMatchObject([{ status: StoreIssueStatus.ISSUED }]);
   });
 
+  it("issues every item on a multi-item request with one full-issue action", async () => {
+    const repository = createRepository({
+      status: StoreIssueStatus.WAITING_STORE_ISSUE,
+      items: [
+        { id: "item-1", storeId: "store-1", sparePartId: "part-1", zoneId: "zone-1", requestedQty: 2, approvedQty: 2 },
+        { id: "item-2", storeId: "store-1", sparePartId: "part-2", zoneId: "zone-1", requestedQty: 3, approvedQty: 3 },
+      ],
+    });
+    repository.balances["store-1:part-2"] = 7;
+
+    const result = await issueApprovedStoreIssue(repository, storeOfficer, scope, "issue-1");
+
+    expect(result).toEqual({ status: StoreIssueStatus.ISSUED });
+    expect(repository.balances).toMatchObject({
+      "store-1:part-1": 3,
+      "store-1:part-2": 4,
+    });
+    expect(repository.movements).toHaveLength(2);
+    expect(repository.statuses).toMatchObject([{ status: StoreIssueStatus.ISSUED }]);
+  });
+
   it("issues the last item and allows the stock balance to reach zero", async () => {
     const repository = createRepository({
       status: StoreIssueStatus.WAITING_STORE_ISSUE,

@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 
 describe("public plant scope", () => {
   it("keeps plant code through request success and tracking lookups", () => {
-    const request = readFileSync("app/request/page.tsx", "utf8");
+    const request = readFileSync("app/request/request-page-content.tsx", "utf8");
     const success = readFileSync("app/request/success/[number]/page.tsx", "utf8");
     const tracking = readFileSync("app/tracking/page.tsx", "utf8");
 

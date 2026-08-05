@@ -62,7 +62,8 @@ describe("Activities page", () => {
     expect(source).toContain("RETURN");
     expect(source).toContain("REJECT");
     expect(source).toContain("Not enough stock");
-    expect(source).toContain("issueQty");
+    expect(source).toContain("จ่ายอะไหล่ทั้งใบ");
+    expect(source).not.toContain('name="issueQty"');
   });
 
   it("combines CM and Store tasks into one compact activity feed", () => {

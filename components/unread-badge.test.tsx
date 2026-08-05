@@ -11,4 +11,24 @@ describe("UnreadBadge", () => {
     expect(screen.getByText("99+")).toBeTruthy();
     expect(screen.getByLabelText("125 unread items")).toBeTruthy();
   });
+
+  it("keeps the counter inside clipping card containers", () => {
+    render(<UnreadBadge count={5} />);
+
+    const badge = screen.getByLabelText("5 unread items");
+    expect(badge.className).toContain("right-2");
+    expect(badge.className).toContain("top-2");
+    expect(badge.className).not.toContain("-right-2");
+    expect(badge.className).not.toContain("-top-2");
+  });
+
+  it("supports a compact inset for icon buttons without conflicting position classes", () => {
+    render(<UnreadBadge count={3} position="icon" />);
+
+    const badge = screen.getByLabelText("3 unread items");
+    expect(badge.className).toContain("right-0");
+    expect(badge.className).toContain("top-0");
+    expect(badge.className).not.toContain("right-2");
+    expect(badge.className).not.toContain("top-2");
+  });
 });

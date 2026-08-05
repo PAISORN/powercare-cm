@@ -11,6 +11,7 @@ import {
 } from "./store-spare-part-service";
 import type { StoreScope } from "./store-types";
 import { normalizeStoreSiteCode } from "./store-numbering";
+import { hasInventoryResponsibility } from "./inventory-user-scope";
 
 export async function updateStoreSiteCode(
   actor: PermissionUserContext & { id: string },
@@ -385,16 +386,17 @@ export async function updateStoreApplicableZones(
 }
 
 export async function createSparePart(
-  actor: PermissionUserContext & { id: string },
+  actor: PermissionUserContext & { id: string; inventoryScopes?: Array<{ itemKind: string; responsibilityEnabled: boolean }> },
   scope: StoreScope,
   input: CreateSparePartInput,
 ) {
   requireStorePermission(actor, PermissionKey.MANAGE_SPARE_PARTS);
   assertActorStoreScope(actor, scope);
+  const normalized = normalizeSparePartInput(input);
+  if (!hasInventoryResponsibility(actor, normalized.itemKind)) throw new Error("No management scope for this inventory type.");
 
   const sparePart = await db.$transaction(async (tx) => {
     await tx.plant.findFirstOrThrow({ where: { id: scope.plantId, organizationId: scope.organizationId, active: true } });
-    const normalized = normalizeSparePartInput(input);
     await assertSparePartMasterData(tx, scope, normalized);
     await assertUniqueItemCode(tx, scope.organizationId, normalized.itemCode);
     const repository: SparePartRepository = {
@@ -444,7 +446,7 @@ export async function createSparePart(
 }
 
 export async function updateSparePart(
-  actor: PermissionUserContext & { id: string },
+  actor: PermissionUserContext & { id: string; inventoryScopes?: Array<{ itemKind: string; responsibilityEnabled: boolean }> },
   scope: StoreScope,
   sparePartId: string,
   input: CreateSparePartInput,
@@ -452,12 +454,14 @@ export async function updateSparePart(
   requireStorePermission(actor, PermissionKey.MANAGE_SPARE_PARTS);
   assertActorStoreScope(actor, scope);
   const normalized = normalizeSparePartInput(input);
+  if (!hasInventoryResponsibility(actor, normalized.itemKind)) throw new Error("No management scope for this inventory type.");
 
   const sparePart = await db.$transaction(async (tx) => {
     const existing = await tx.sparePart.findFirstOrThrow({
       where: { id: sparePartId, organizationId: scope.organizationId, plantId: scope.plantId },
-      select: { id: true, categoryId: true, materialGroupId: true, typeId: true, defaultStoreId: true },
+      select: { id: true, itemKind: true, categoryId: true, materialGroupId: true, typeId: true, defaultStoreId: true },
     });
+    if (!hasInventoryResponsibility(actor, existing.itemKind)) throw new Error("No management scope for this inventory type.");
     await assertSparePartMasterData(tx, scope, normalized, {
       categoryId: existing.categoryId,
       materialGroupId: existing.materialGroupId,
@@ -495,7 +499,7 @@ export async function updateSparePart(
 }
 
 export async function deleteSparePart(
-  actor: PermissionUserContext & { id: string },
+  actor: PermissionUserContext & { id: string; inventoryScopes?: Array<{ itemKind: string; responsibilityEnabled: boolean }> },
   scope: StoreScope,
   sparePartId: string,
 ) {
@@ -503,10 +507,11 @@ export async function deleteSparePart(
   assertActorStoreScope(actor, scope);
 
   const sparePart = await db.$transaction(async (tx) => {
-    await tx.sparePart.findFirstOrThrow({
+    const existing = await tx.sparePart.findFirstOrThrow({
       where: { id: sparePartId, organizationId: scope.organizationId, plantId: scope.plantId, active: true },
-      select: { id: true },
+      select: { id: true, itemKind: true },
     });
+    if (!hasInventoryResponsibility(actor, existing.itemKind)) throw new Error("No management scope for this inventory type.");
     return tx.sparePart.update({
       where: { id: sparePartId },
       data: { active: false },

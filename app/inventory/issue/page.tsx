@@ -117,15 +117,12 @@ async function issueStockAction(formData: FormData) {
   "use server";
   const user = await requireUser();
   const scope = await resolveStorePageScope(user, adminScopeSearchFromFormData(formData));
-  const itemIds = formData.getAll("itemId").map(String);
-  const quantities = formData.getAll("issueQty").map(Number);
   let actionError: string | null = null;
   try {
     await issueStoreStock(
       user,
       storeScope(scope),
       String(formData.get("issueId") ?? ""),
-      itemIds.map((itemId, index) => ({ itemId, quantity: quantities[index] })),
     );
   } catch (error) {
     actionError = storeActionError(error);
@@ -174,6 +171,8 @@ export default async function IssuePage({ searchParams }: { searchParams: Promis
   const canCreate = canUseUserPermission(user, PermissionKey.CREATE_STORE_ISSUE);
   const canApprove = canUseUserPermission(user, PermissionKey.APPROVE_STORE_ISSUE);
   const canIssue = canUseUserPermission(user, PermissionKey.ISSUE_STOCK);
+  const approvalKinds = new Set(user.role === RoleName.ADMIN ? ["SPARE_PART", "CHEMICAL", "OIL"] : user.inventoryScopes.filter((scope) => scope.approvalEnabled).map((scope) => scope.itemKind));
+  const responsibilityKinds = new Set(user.role === RoleName.ADMIN ? ["SPARE_PART", "CHEMICAL", "OIL"] : user.inventoryScopes.filter((scope) => scope.responsibilityEnabled).map((scope) => scope.itemKind));
   if (!canCreate && !canApprove && !canIssue) redirect("/dashboard");
   const query = await searchParams;
   const scope = await resolveStorePageScope(user, query);
@@ -331,7 +330,7 @@ export default async function IssuePage({ searchParams }: { searchParams: Promis
                 );
               })}
 
-              {canApprove && issue.status === StoreIssueStatus.WAITING_ENGINEER_APPROVAL ? (
+              {canApprove && approvalKinds.has(issue.itemKind) && issue.requesterUserId !== user.id && issue.status === StoreIssueStatus.WAITING_ENGINEER_APPROVAL ? (
                 <form action={engineerDecisionAction} className="grid gap-2 rounded-xl bg-[var(--surface)] p-3 sm:grid-cols-[1fr_repeat(3,auto)] sm:items-end">
                   <AdminScopeHiddenFields scope={scope} />
                   <input name="issueId" type="hidden" value={issue.id} />
@@ -345,26 +344,15 @@ export default async function IssuePage({ searchParams }: { searchParams: Promis
                 </form>
               ) : null}
 
-              {canIssue && [StoreIssueStatus.WAITING_STORE_ISSUE, StoreIssueStatus.PARTIALLY_ISSUED].includes(issue.status as never) ? (
+              {canIssue && responsibilityKinds.has(issue.itemKind) && issue.requesterUserId !== user.id && issue.engineerId !== user.id && [StoreIssueStatus.WAITING_STORE_ISSUE, StoreIssueStatus.PARTIALLY_ISSUED].includes(issue.status as never) ? (
                 <div className="grid gap-3 lg:grid-cols-[1fr_240px]">
                   <form action={issueStockAction} className="grid gap-2 rounded-xl bg-[var(--surface)] p-3">
                     <AdminScopeHiddenFields scope={scope} />
                     <input name="issueId" type="hidden" value={issue.id} />
-                    {issue.items.map((item) => {
-                      const remaining = Number(item.approvedQty ?? item.requestedQty) - Number(item.issuedQty ?? 0);
-                      return (
-                        <label className="grid gap-1 text-sm font-bold sm:grid-cols-[1fr_140px] sm:items-center" key={item.id}>
-                          <span className="truncate">{item.sparePart.code} · คงเหลือต้องจ่าย {formatQty(remaining)} {item.sparePart.unit}</span>
-                          <input name="itemId" type="hidden" value={item.id} />
-                          <span className="grid gap-1">
-                            <span className="text-xs text-[var(--muted)]">จำนวนที่จะจ่ายครั้งนี้ (แก้ไขได้)</span>
-                            <input className={inputClass} defaultValue={remaining} inputMode="numeric" max={remaining} min="1" name="issueQty" step="1" type="number" />
-                          </span>
-                        </label>
-                      );
-                    })}
+                    <p className="text-sm font-bold">จ่ายอะไหล่ครบทั้งใบเบิก {issue.items.length} รายการ</p>
+                    <p className="text-xs text-[var(--muted)]">ระบบจะตรวจสต็อกทุกรายการก่อน และจะไม่หักสต็อกหากมีรายการใดไม่เพียงพอ</p>
                     <button className="min-h-11 rounded-xl bg-[var(--primary)] px-4 text-sm font-bold text-white transition hover:bg-[var(--primary-strong)]">
-                      Issue Stock
+                      จ่ายอะไหล่ทั้งใบ
                     </button>
                   </form>
                   <form action={notEnoughStockAction} className="grid content-end gap-2 rounded-xl bg-[var(--surface)] p-3">
@@ -598,7 +586,7 @@ export default async function IssuePage({ searchParams }: { searchParams: Promis
                   })}
                 </div>
 
-                {canApprove && issue.status === StoreIssueStatus.WAITING_ENGINEER_APPROVAL ? (
+                {canApprove && approvalKinds.has(issue.itemKind) && issue.requesterUserId !== user.id && issue.status === StoreIssueStatus.WAITING_ENGINEER_APPROVAL ? (
                   <form action={engineerDecisionAction} className="mt-4 grid gap-2 sm:grid-cols-[1fr_repeat(3,auto)] sm:items-end">
                     <AdminScopeHiddenFields scope={scope} />
                     <input name="issueId" type="hidden" value={issue.id} />
@@ -612,23 +600,15 @@ export default async function IssuePage({ searchParams }: { searchParams: Promis
                   </form>
                 ) : null}
 
-                {canIssue && [StoreIssueStatus.WAITING_STORE_ISSUE, StoreIssueStatus.PARTIALLY_ISSUED].includes(issue.status as never) ? (
+                {canIssue && responsibilityKinds.has(issue.itemKind) && issue.requesterUserId !== user.id && issue.engineerId !== user.id && [StoreIssueStatus.WAITING_STORE_ISSUE, StoreIssueStatus.PARTIALLY_ISSUED].includes(issue.status as never) ? (
                   <div className="mt-4 grid gap-3 lg:grid-cols-[1fr_auto]">
                     <form action={issueStockAction} className="grid gap-2">
                       <AdminScopeHiddenFields scope={scope} />
                       <input name="issueId" type="hidden" value={issue.id} />
-                      {issue.items.map((item) => {
-                        const remaining = Number(item.approvedQty ?? item.requestedQty) - Number(item.issuedQty ?? 0);
-                        return (
-                          <label className="grid gap-1 text-sm font-bold sm:grid-cols-[1fr_160px] sm:items-center" key={item.id}>
-                            <span>{item.sparePart.code} · คงเหลือต้องจ่าย {formatQty(remaining)} {item.sparePart.unit}</span>
-                            <input name="itemId" type="hidden" value={item.id} />
-                            <input className={inputClass} defaultValue={remaining} inputMode="numeric" max={remaining} min="1" name="issueQty" step="1" type="number" />
-                          </label>
-                        );
-                      })}
+                      <p className="text-sm font-bold">จ่ายอะไหล่ครบทั้งใบเบิก {issue.items.length} รายการ</p>
+                      <p className="text-xs text-[var(--muted)]">ตรวจสต็อกครบทุกบรรทัดและบันทึกการจ่ายด้วยการกดเพียงครั้งเดียว</p>
                       <button className="mt-1 min-h-12 rounded-xl bg-[var(--primary)] px-5 font-bold text-white transition hover:bg-[var(--primary-strong)]">
-                        จ่าย Stock ตามจำนวน
+                        จ่ายอะไหล่ทั้งใบ
                       </button>
                     </form>
                     <form action={notEnoughStockAction} className="grid gap-2 lg:w-64">

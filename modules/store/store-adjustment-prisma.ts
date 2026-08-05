@@ -4,6 +4,7 @@ import { PermissionKey, type PermissionUserContext } from "../auth/site-admin-pe
 import { adjustStockWithRepository, type StoreReceiveRepository } from "./store-receive-service";
 import { assertActorStoreScope, requireStorePermission } from "./store-prisma-service";
 import type { StoreScope } from "./store-types";
+import { hasInventoryResponsibility } from "./inventory-user-scope";
 
 export type AdjustStockFormInput = {
   storeId: string;
@@ -14,12 +15,14 @@ export type AdjustStockFormInput = {
 };
 
 export async function adjustStock(
-  actor: PermissionUserContext & { id: string },
+  actor: PermissionUserContext & { id: string; inventoryScopes?: Array<{ itemKind: string; responsibilityEnabled: boolean }> },
   scope: StoreScope,
   input: AdjustStockFormInput,
 ) {
   requireStorePermission(actor, PermissionKey.ADJUST_STOCK);
   assertActorStoreScope(actor, scope);
+  const part = await db.sparePart.findFirstOrThrow({ where: { id: input.sparePartId, plantId: scope.plantId }, select: { itemKind: true } });
+  if (!hasInventoryResponsibility(actor, part.itemKind)) throw new Error("No adjustment scope for this inventory type.");
 
   return db.$transaction(async (tx) => {
     await tx.plant.findFirstOrThrow({

@@ -28,7 +28,7 @@ export async function getCurrentUser() {
   if (!userId) return null;
   const user = await db.user.findFirst({
     where: { id: userId, active: true },
-    include: { category: true, categories: true, plant: true, signature: true, profilePhoto: true, siteAdminPermissions: true },
+    include: { category: true, categories: true, plant: true, signature: true, profilePhoto: true, siteAdminPermissions: true, inventoryScopes: true },
   });
   if (!user) return null;
   const [rolePermissionOverrides, userPermissionOverrides] = await Promise.all([

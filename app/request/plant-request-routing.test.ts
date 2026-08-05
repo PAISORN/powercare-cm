@@ -3,7 +3,9 @@ import { describe, expect, it } from "vitest";
 
 describe("Plant-specific repair request routing", () => {
   it("redirects the general request URL to the canonical RTB request page", () => {
-    const source = readFileSync("app/request/page.tsx", "utf8");
+    const routeSource = readFileSync("app/request/page.tsx", "utf8");
+    const source = readFileSync("app/request/request-page-content.tsx", "utf8");
+    expect(routeSource).toContain('export { default } from "./request-page-content"');
     expect(source).toContain('permanentRedirect("/p/rtb/request")');
     expect(source).toContain("user?.plant?.code");
     expect(source).toContain("RoleName.ADMIN");

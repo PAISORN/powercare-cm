@@ -11,7 +11,7 @@ import {
   approveStoreIssueByEngineer,
   cancelStoreIssueWithRepository,
   createStoreIssueWithRepository,
-  issueStoreIssueQuantities,
+  issueApprovedStoreIssue,
   markStoreIssueNotEnoughStock,
   rejectStoreIssueByEngineer,
   returnStoreIssueForEdit,
@@ -26,8 +26,14 @@ import {
 } from "./store-numbering";
 import { assertActorStoreScope, requireStorePermission } from "./store-prisma-service";
 import { StoreIssueStatus, StoreIssueType, type StoreScope } from "./store-types";
+import { getIssueItemKind, hasInventoryApproval, hasInventoryResponsibility } from "./inventory-user-scope";
 
-type StoreActor = PermissionUserContext & { id: string; fullName?: string; department?: string | null };
+type StoreActor = PermissionUserContext & {
+  id: string;
+  fullName?: string;
+  department?: string | null;
+  inventoryScopes?: Array<{ itemKind: string; responsibilityEnabled: boolean; approvalEnabled: boolean }>;
+};
 
 export type CreateLoggedInStoreIssueInput = {
   submissionKey?: string | null;
@@ -75,7 +81,7 @@ export async function createLoggedInStoreIssue(
       }
     }
     const cmWorkId = await resolveCmWorkId(tx, scope, issueType, input.cmWorkNumber);
-    await assertIssueItemsInScope(tx, scope, input.items);
+    const itemKind = await assertIssueItemsInScope(tx, scope, input.items);
     const items = await reserveIssueLineNumbers(tx, scope, plant.inventoryCode, input.items);
     const { year, month } = getStoreIssuePeriod(input.requestedAt);
     const sequence = await tx.storeIssueSequence.upsert({
@@ -104,6 +110,7 @@ export async function createLoggedInStoreIssue(
       requestedAt: input.requestedAt,
       items,
     });
+    await tx.sparePartIssue.update({ where: { id: created.id }, data: { itemKind } });
     await writeAudit(tx, actor.id, scope, created.id, "CREATE_STORE_ISSUE", {
       number,
       issueType,
@@ -168,7 +175,7 @@ export async function createPublicStoreIssue(
       }
     }
     const cmWorkId = await resolveCmWorkId(tx, scope, issueType, input.cmWorkNumber);
-    await assertIssueItemsInScope(tx, scope, input.items);
+    const itemKind = await assertIssueItemsInScope(tx, scope, input.items);
     const items = await reserveIssueLineNumbers(tx, scope, plant.inventoryCode, input.items);
     const { year, month } = getStoreIssuePeriod(input.requestedAt);
     const sequence = await tx.storeIssueSequence.upsert({
@@ -197,6 +204,7 @@ export async function createPublicStoreIssue(
       requestedAt: input.requestedAt,
       items,
     });
+    await tx.sparePartIssue.update({ where: { id: created.id }, data: { itemKind } });
     await writeAudit(tx, undefined, scope, created.id, "CREATE_PUBLIC_STORE_ISSUE", {
       number,
       issueType,
@@ -260,6 +268,9 @@ export async function approveStoreIssue(
   requireStorePermission(actor, PermissionKey.APPROVE_STORE_ISSUE);
   assertActorStoreScope(actor, scope);
   await db.$transaction(async (tx) => {
+    const issue = await getIssueItemKind(tx, issueId, scope.plantId);
+    if (!hasInventoryApproval(actor, issue.itemKind)) throw new Error("No approval scope for this inventory type.");
+    if (issue.requesterUserId === actor.id) throw new Error("The requester cannot approve their own issue.");
     const repository = createIssueRepository(tx);
     if (decision === "APPROVE") {
       const ownerOverride = actor.role === "ADMIN" && Boolean(reason?.trim());
@@ -282,14 +293,20 @@ export async function issueStoreStock(
   actor: StoreActor,
   scope: StoreScope,
   issueId: string,
-  quantities: Array<{ itemId: string; quantity: number }>,
 ) {
   requireStorePermission(actor, PermissionKey.ISSUE_STOCK);
   assertActorStoreScope(actor, scope);
   const result = await db.$transaction(async (tx) => {
+    const issue = await getIssueItemKind(tx, issueId, scope.plantId);
+    if (!hasInventoryResponsibility(actor, issue.itemKind)) throw new Error("No issue scope for this inventory type.");
+    if (issue.requesterUserId === actor.id) throw new Error("The requester cannot issue their own request.");
+    if (issue.engineerId === actor.id) throw new Error("The approver cannot issue the same request.");
     const repository = createIssueRepository(tx);
-    const result = await issueStoreIssueQuantities(repository, actor, scope, issueId, quantities);
-    await writeAudit(tx, actor.id, scope, issueId, "ISSUE_STORE_STOCK", { quantities, status: result.status });
+    const result = await issueApprovedStoreIssue(repository, actor, scope, issueId);
+    await writeAudit(tx, actor.id, scope, issueId, "ISSUE_STORE_STOCK", {
+      mode: "FULL_ISSUE",
+      status: result.status,
+    });
     return result;
   });
   await dispatchStoreIssueLineEvent(
@@ -309,6 +326,9 @@ export async function markIssueNotEnoughStock(
   requireStorePermission(actor, PermissionKey.ISSUE_STOCK);
   assertActorStoreScope(actor, scope);
   await db.$transaction(async (tx) => {
+    const issue = await getIssueItemKind(tx, issueId, scope.plantId);
+    if (!hasInventoryResponsibility(actor, issue.itemKind)) throw new Error("No issue scope for this inventory type.");
+    if (issue.requesterUserId === actor.id || issue.engineerId === actor.id) throw new Error("This request requires separate users for request, approval, and issue.");
     const repository = createIssueRepository(tx);
     await markStoreIssueNotEnoughStock(repository, actor, scope, issueId, reason, new Date());
     await writeAudit(tx, actor.id, scope, issueId, "STORE_ISSUE_NOT_ENOUGH_STOCK", { reason: reason.trim() });
@@ -551,7 +571,7 @@ async function assertIssueItemsInScope(
         store: { plantId: scope.plantId, active: true },
         sparePart: { plantId: scope.plantId, active: true },
       },
-      select: { storeId: true, sparePartId: true },
+      select: { storeId: true, sparePartId: true, sparePart: { select: { itemKind: true } } },
     }),
     tx.storeApplicableZone.count({
       where: {
@@ -569,12 +589,15 @@ async function assertIssueItemsInScope(
   if (stockRows.length !== stockPairs.length) {
     throw new Error("Selected spare part is not available in the selected Store for this Site.");
   }
+  const itemKinds = [...new Set(stockRows.map((row) => row.sparePart.itemKind))];
+  if (itemKinds.length !== 1) throw new Error("One Store Issue can contain only one inventory type.");
   if (items.some((item) => !item.zoneId)) {
     throw new Error("Applicable Zone is required for every spare part.");
   }
   if (applicableCount !== zoneIds.length) {
     throw new Error("Selected Applicable Zone is not available for this Site.");
   }
+  return itemKinds[0] ?? "SPARE_PART";
 }
 
 async function reserveIssueLineNumbers(
