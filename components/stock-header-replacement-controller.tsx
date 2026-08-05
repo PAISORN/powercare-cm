@@ -2,15 +2,26 @@
 
 import { useEffect } from "react";
 
+export function syncStockHeaderColumnWidths(sourceHeader: HTMLElement, replacementHeader: HTMLElement) {
+  const sourceCells = Array.from(sourceHeader.querySelectorAll<HTMLElement>("th"));
+  const replacementColumns = Array.from(replacementHeader.querySelectorAll<HTMLElement>("col"));
+  if (!sourceCells.length || sourceCells.length !== replacementColumns.length) return;
+
+  sourceCells.forEach((cell, index) => {
+    replacementColumns[index].style.width = `${cell.getBoundingClientRect().width}px`;
+  });
+}
+
 export function StockHeaderReplacementController({ regionId }: { regionId: string }) {
   useEffect(() => {
     const root = document.documentElement;
     const region = document.getElementById(regionId);
     const topBar = document.querySelector<HTMLElement>("[data-app-top-bar]");
-    const tableHeader = document.querySelector<HTMLElement>("[data-stock-table-header]");
-    const tableScroll = document.querySelector<HTMLElement>("[data-stock-table-scroll]");
+    const tableHeader = region?.querySelector<HTMLElement>("[data-stock-table-header]");
+    const replacementHeader = region?.querySelector<HTMLElement>("[data-stock-replacement-header]");
+    const tableScroll = region?.querySelector<HTMLElement>("[data-stock-table-scroll]");
     const table = tableScroll?.querySelector<HTMLElement>("table");
-    if (!region || !topBar || !tableHeader || !tableScroll || !table) return;
+    if (!region || !topBar || !tableHeader || !replacementHeader || !tableScroll || !table) return;
 
     let frame = 0;
 
@@ -27,6 +38,7 @@ export function StockHeaderReplacementController({ regionId }: { regionId: strin
       root.style.setProperty("--stock-replacement-width", `${Math.max(0, tableRect.width)}px`);
       root.style.setProperty("--stock-replacement-table-width", `${Math.max(0, table.offsetWidth)}px`);
       root.style.setProperty("--stock-table-scroll-x", `${tableScroll.scrollLeft}px`);
+      syncStockHeaderColumnWidths(tableHeader, replacementHeader);
       if (shouldReplace) {
         root.dataset.stockHeaderReplacement = "active";
       } else {
@@ -43,12 +55,16 @@ export function StockHeaderReplacementController({ regionId }: { regionId: strin
     window.addEventListener("scroll", scheduleUpdate, { passive: true });
     window.addEventListener("resize", scheduleUpdate);
     tableScroll.addEventListener("scroll", scheduleUpdate, { passive: true });
+    const resizeObserver = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(scheduleUpdate);
+    resizeObserver?.observe(tableScroll);
+    resizeObserver?.observe(table);
 
     return () => {
       if (frame) window.cancelAnimationFrame(frame);
       window.removeEventListener("scroll", scheduleUpdate);
       window.removeEventListener("resize", scheduleUpdate);
       tableScroll.removeEventListener("scroll", scheduleUpdate);
+      resizeObserver?.disconnect();
       delete root.dataset.stockHeaderReplacement;
       root.style.removeProperty("--stock-app-topbar-offset");
       root.style.removeProperty("--stock-replacement-left");

@@ -642,7 +642,7 @@ export default async function StockPage({ searchParams }: { searchParams: Promis
 
         <StockHeaderReplacementController regionId="stock-table-region" />
         <section
-          className="ops-panel rounded-3xl border border-[var(--line)]"
+          className="ops-panel stock-table-panel rounded-3xl border border-[var(--line)]"
           id="stock-table-region"
         >
           <div

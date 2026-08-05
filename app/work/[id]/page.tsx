@@ -688,7 +688,11 @@ export default async function WorkDetailPage({
               {work.statusHistory.map((event, index) => (
                 <WorkStatusTimelineRow
                   active={index === work.statusHistory.length - 1}
-                  actor={event.changedById ? (statusActorNameById.get(event.changedById) ?? "ผู้ใช้งาน") : "ระบบ"}
+                  actor={event.changedById
+                    ? (statusActorNameById.get(event.changedById) ?? "ผู้ใช้งาน")
+                    : event.toStatus === WorkStatus.NEW
+                      ? work.requesterName
+                      : "ระบบ"}
                   key={event.id}
                   note={event.note ?? technicianCompletionTimelineNote(event.toStatus, work)}
                   time={event.changedAt}
