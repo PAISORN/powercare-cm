@@ -39,6 +39,7 @@ model User {
   userPermissionOverrides     UserPermissionOverride[] @relation("UserPermissionOverrideUser")
   grantedUserPermissions      UserPermissionOverride[] @relation("UserPermissionOverrideGrantedBy")
   grantedRolePermissions      RolePermissionOverride[] @relation("RolePermissionOverrideGrantedBy")
+  inventoryScopes             UserInventoryScope[]
   stockMovements              StockMovement[]
   sparePartReceives           SparePartReceive[]
   requestedStoreIssues        SparePartIssue[]         @relation("StoreIssueRequester")
@@ -51,6 +52,21 @@ model User {
   @@index([categoryId])
   @@index([active])
   @@index([lastSeenAt])
+}
+
+model UserInventoryScope {
+  id                    String   @id @default(cuid())
+  userId                String
+  user                  User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  itemKind               String
+  responsibilityEnabled Boolean  @default(false)
+  approvalEnabled       Boolean  @default(false)
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+
+  @@unique([userId, itemKind])
+  @@index([itemKind, responsibilityEnabled])
+  @@index([itemKind, approvalEnabled])
 }
 
 model Organization {
@@ -861,6 +877,7 @@ model SparePartIssue {
   cmWorkId             String?
   cmWork               CmWork?      @relation(fields: [cmWorkId], references: [id], onDelete: SetNull)
   issueType            String
+  itemKind             String       @default("SPARE_PART")
   status               String       @default("WAITING_ENGINEER_APPROVAL")
   requesterName        String
   requesterDepartment  String?

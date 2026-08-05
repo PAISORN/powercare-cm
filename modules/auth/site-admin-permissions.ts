@@ -73,6 +73,7 @@ export const PermissionKey = {
   ASSIGN_USER_ROLE: "assign_user_role",
   ASSIGN_USER_PLANT: "assign_user_plant",
   ASSIGN_USER_CATEGORIES: "assign_user_categories",
+  ASSIGN_INVENTORY_RESPONSIBILITY: "assign_inventory_responsibility",
   MANAGE_SUPER_ADMIN: "manage_super_admin",
   MANAGE_SITE_ADMIN: "manage_site_admin",
   MANAGE_PLANT_PROFILE: "manage_plant_profile",
@@ -175,6 +176,7 @@ export const SITE_ADMIN_CONFIGURABLE_PERMISSIONS = [
   PermissionKey.ASSIGN_USER_ROLE,
   PermissionKey.ASSIGN_USER_PLANT,
   PermissionKey.ASSIGN_USER_CATEGORIES,
+  PermissionKey.ASSIGN_INVENTORY_RESPONSIBILITY,
   PermissionKey.MANAGE_PLANT_PROFILE,
   PermissionKey.MANAGE_CATEGORY,
   PermissionKey.MANAGE_ZONE,
@@ -214,6 +216,7 @@ export type PermissionOption = {
 
 export const SITE_ADMIN_PERMISSION_OPTIONS: readonly PermissionOption[] = [
   { key: PermissionKey.ASSIGN_USER_CATEGORIES, label: "กำหนด Category ให้ User", group: "User Management" },
+  { key: PermissionKey.ASSIGN_INVENTORY_RESPONSIBILITY, label: "กำหนดประเภทสต็อกที่รับผิดชอบ/อนุมัติ", group: "User Management" },
   { key: PermissionKey.ASSIGN_WORK, label: "มอบหมายงาน", group: "Assignment / Control" },
   { key: PermissionKey.REASSIGN_WORK, label: "เปลี่ยนผู้รับผิดชอบงาน", group: "Assignment / Control" },
   { key: PermissionKey.CANCEL_WORK, label: "ยกเลิกงาน", group: "Assignment / Control" },
@@ -322,6 +325,7 @@ const alwaysAllowedByRole: Record<PermissionRole, ReadonlySet<PermissionKey>> = 
     PermissionKey.ASSIGN_USER_ROLE,
     PermissionKey.ASSIGN_USER_PLANT,
     PermissionKey.ASSIGN_USER_CATEGORIES,
+    PermissionKey.ASSIGN_INVENTORY_RESPONSIBILITY,
     PermissionKey.MANAGE_SITE_ADMIN,
     PermissionKey.MANAGE_CATEGORY,
     PermissionKey.MANAGE_ZONE,

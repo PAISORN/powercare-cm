@@ -1,4 +1,4 @@
-import { RequestPageContent } from "../../../request/page";
+import { RequestPageContent } from "../../../request/request-page-content";
 
 export const dynamic = "force-dynamic";
 

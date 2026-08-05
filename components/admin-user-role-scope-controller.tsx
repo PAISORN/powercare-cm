@@ -21,6 +21,8 @@ export function AdminUserRoleScopeController({
     const organizationScopeControl = form.querySelector<HTMLElement>("[data-organization-admin-scope-control]");
     const siteScopeControl = form.querySelector<HTMLElement>("[data-site-scope-control]");
     const categoryScopeControl = form.querySelector<HTMLElement>("[data-category-scope-control]");
+    const inventoryResponsibilityControl = form.querySelector<HTMLElement>("[data-inventory-responsibility-control]");
+    const inventoryApprovalControl = form.querySelector<HTMLElement>("[data-inventory-approval-control]");
     const reloadsSiteOptions = organizationSelect?.dataset.reloadsSiteOptions === "true";
     const filtersScopeOptions = organizationSelect?.dataset.filtersScopeOptions === "true";
 
@@ -46,12 +48,18 @@ export function AdminUserRoleScopeController({
       if (siteSelect?.selectedOptions[0]?.hidden || siteSelect?.selectedOptions[0]?.disabled) {
         siteSelect.value = "";
       }
+      const selectedPlantId = siteSelect?.value || "";
+      let visibleCategoryCount = 0;
 
       categoryScopeControl
         ?.querySelectorAll<HTMLLabelElement>("[data-category-organization-id]")
         .forEach((label) => {
           const categoryOrganizationId = label.dataset.categoryOrganizationId || "";
-          const hidden = Boolean(categoryOrganizationId && categoryOrganizationId !== selectedOrganizationId);
+          const categoryPlantId = label.dataset.categoryPlantId || "";
+          const outsideOrganization = Boolean(categoryOrganizationId && categoryOrganizationId !== selectedOrganizationId);
+          const outsidePlant = categoryPlantId ? categoryPlantId !== selectedPlantId : false;
+          const hidden = outsideOrganization || outsidePlant;
+          if (!hidden) visibleCategoryCount += 1;
           label.hidden = hidden;
           label.classList.toggle("hidden", hidden);
           label.querySelectorAll<HTMLInputElement>("input").forEach((input) => {
@@ -59,6 +67,12 @@ export function AdminUserRoleScopeController({
             if (hidden) input.checked = false;
           });
         });
+      const emptyMessage = categoryScopeControl?.querySelector<HTMLElement>("[data-category-empty-message]");
+      if (emptyMessage) {
+        const hidden = visibleCategoryCount > 0;
+        emptyMessage.hidden = hidden;
+        emptyMessage.classList.toggle("hidden", hidden);
+      }
     };
 
     const applyRoleScope = () => {
@@ -74,6 +88,12 @@ export function AdminUserRoleScopeController({
       setScopeDisabled(organizationScopeControl, false);
       setScopeDisabled(siteScopeControl, organizationAdminSelected);
       setScopeDisabled(categoryScopeControl, organizationAdminSelected);
+      const storeOfficerSelected = roleSelect?.value === RoleName.STORE_OFFICER;
+      const engineerSelected = roleSelect?.value === RoleName.ENGINEER;
+      if (inventoryResponsibilityControl) inventoryResponsibilityControl.hidden = !storeOfficerSelected;
+      if (inventoryApprovalControl) inventoryApprovalControl.hidden = !engineerSelected;
+      setScopeDisabled(inventoryResponsibilityControl, !storeOfficerSelected);
+      setScopeDisabled(inventoryApprovalControl, !engineerSelected);
       filterScopeOptions(organizationAdminSelected);
     };
 
@@ -98,9 +118,11 @@ export function AdminUserRoleScopeController({
 
     applyRoleScope();
     roleSelect?.addEventListener("change", applyRoleScope);
+    siteSelect?.addEventListener("change", applyRoleScope);
     organizationSelect?.addEventListener("change", handleOrganizationChange);
     return () => {
       roleSelect?.removeEventListener("change", applyRoleScope);
+      siteSelect?.removeEventListener("change", applyRoleScope);
       organizationSelect?.removeEventListener("change", handleOrganizationChange);
     };
   }, [formId, organizationName]);

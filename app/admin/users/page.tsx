@@ -33,6 +33,8 @@ import { isDuplicateUsernameError } from "../../../modules/users/user-prisma-err
 import { formatRoleName } from "../../../modules/users/role-labels";
 import { readOrganizationScope } from "../../../modules/organization/organization-scope-service";
 import { DEFAULT_ORGANIZATION_ID } from "../../../modules/organization/organization-foundation";
+import { INVENTORY_ITEM_KINDS, normalizeInventoryScopeKinds } from "../../../modules/store/inventory-user-scope";
+import { canUseUserPermission, PermissionKey } from "../../../modules/auth/site-admin-permissions";
 
 async function createUser(formData: FormData) {
   "use server";
@@ -58,15 +60,20 @@ async function createUser(formData: FormData) {
   });
   if (!organization) redirect("/admin/users?createStatus=orgRequired");
   const canAssignCategories = canAssignManagedUserCategories(current);
-  const selectedCategoryIds = nextRole === RoleName.ORGANIZATION_ADMIN
-    ? []
-    : canAssignCategories ? normalizeSelectedCategoryIds(formData) : [];
+  const canAssignInventory = canUseUserPermission(current, PermissionKey.ASSIGN_INVENTORY_RESPONSIBILITY);
   const plantId = nextRole === RoleName.ORGANIZATION_ADMIN
     ? null
     : canAssignManagedUserPlant(current)
       ? resolveManagedUserPlantId(current, String(formData.get("plantId") || "") || null)
       : resolveManagedUserPlantId(current, null);
+  const selectedCategoryIds = nextRole === RoleName.ORGANIZATION_ADMIN || !plantId
+    ? []
+    : canAssignCategories ? normalizeSelectedCategoryIds(formData) : [];
   const department = normalizeManagedUserDepartment(nextRole, formData, organization.name);
+  const responsibilityKinds = canAssignInventory ? normalizeInventoryScopeKinds(formData.getAll("inventoryResponsibility")) : [];
+  const approvalKinds = canAssignInventory ? normalizeInventoryScopeKinds(formData.getAll("inventoryApproval")) : [];
+  if (nextRole === RoleName.STORE_OFFICER && responsibilityKinds.length === 0) redirect("/admin/users?createStatus=inventoryScopeRequired");
+  if (nextRole === RoleName.ENGINEER && approvalKinds.length === 0) redirect("/admin/users?createStatus=approvalScopeRequired");
   if (plantId) await assertPlantInsideOrganization(plantId, organizationId);
   if (selectedCategoryIds.length && plantId) await assertCategoriesInsidePlant(selectedCategoryIds, plantId);
   if (plantId) {
@@ -90,6 +97,13 @@ async function createUser(formData: FormData) {
         plantId,
         categoryId: selectedCategoryIds[0] ?? null,
         ...(canAssignCategories ? { categories: { create: selectedCategoryIds.map((categoryId) => ({ categoryId })) } } : {}),
+        inventoryScopes: {
+          create: INVENTORY_ITEM_KINDS.flatMap((itemKind) => {
+            const responsibilityEnabled = responsibilityKinds.includes(itemKind);
+            const approvalEnabled = approvalKinds.includes(itemKind);
+            return responsibilityEnabled || approvalEnabled ? [{ itemKind, responsibilityEnabled, approvalEnabled }] : [];
+          }),
+        },
         active: true,
       },
     });
@@ -131,7 +145,7 @@ async function updateUserProfile(formData: FormData) {
   const userId = String(formData.get("userId") ?? "");
   if (!userId || userId === current.id) redirect("/admin/users");
 
-  const before = await db.user.findUniqueOrThrow({ where: { id: userId }, include: { signature: true, profilePhoto: true, categories: true } });
+  const before = await db.user.findUniqueOrThrow({ where: { id: userId }, include: { signature: true, profilePhoto: true, categories: true, inventoryScopes: true } });
   assertCanManageTargetUser(current, before);
   const scope = await readOrganizationScope();
   let organizationId = before.organizationId ?? current.organizationId ?? scope.organization.id;
@@ -152,13 +166,18 @@ async function updateUserProfile(formData: FormData) {
       ? resolveManagedUserPlantId(current, String(formData.get("plantId") || "") || null)
       : before.plantId;
   const canAssignCategories = canAssignManagedUserCategories(current);
-  const selectedCategoryIds = nextRole === RoleName.ORGANIZATION_ADMIN
+  const canAssignInventory = canUseUserPermission(current, PermissionKey.ASSIGN_INVENTORY_RESPONSIBILITY);
+  const selectedCategoryIds = nextRole === RoleName.ORGANIZATION_ADMIN || !nextPlantId
     ? []
     : canAssignCategories ? normalizeSelectedCategoryIds(formData) : getUserCategoryIds(before);
   const department = normalizeManagedUserDepartment(nextRole, formData, organizationName);
+  const nextActive = canDeactivateManagedUser(current) ? formData.get("active") === "on" : before.active;
+  const responsibilityKinds = canAssignInventory ? normalizeInventoryScopeKinds(formData.getAll("inventoryResponsibility")) : before.inventoryScopes.filter((scope) => scope.responsibilityEnabled).map((scope) => scope.itemKind);
+  const approvalKinds = canAssignInventory ? normalizeInventoryScopeKinds(formData.getAll("inventoryApproval")) : before.inventoryScopes.filter((scope) => scope.approvalEnabled).map((scope) => scope.itemKind);
+  if (nextRole === RoleName.STORE_OFFICER && nextActive && responsibilityKinds.length === 0) redirect("/admin/users?updateStatus=inventoryScopeRequired");
+  if (nextRole === RoleName.ENGINEER && nextActive && approvalKinds.length === 0) redirect("/admin/users?updateStatus=approvalScopeRequired");
   if (nextPlantId) await assertPlantInsideOrganization(nextPlantId, organizationId);
   if (selectedCategoryIds.length && nextPlantId) await assertCategoriesInsidePlant(selectedCategoryIds, nextPlantId);
-  const nextActive = canDeactivateManagedUser(current) ? formData.get("active") === "on" : before.active;
   const password = String(formData.get("password") ?? "").trim();
   if (password && !canResetManagedUserPassword(current)) redirect("/admin/users");
   const signature = formData.get("signature");
@@ -189,6 +208,14 @@ async function updateUserProfile(formData: FormData) {
             }
           : {}),
         active: nextActive,
+        inventoryScopes: {
+          deleteMany: {},
+          create: INVENTORY_ITEM_KINDS.flatMap((itemKind) => {
+            const responsibilityEnabled = responsibilityKinds.includes(itemKind);
+            const approvalEnabled = approvalKinds.includes(itemKind);
+            return responsibilityEnabled || approvalEnabled ? [{ itemKind, responsibilityEnabled, approvalEnabled }] : [];
+          }),
+        },
         ...(password ? { passwordHash: await hashPassword(password) } : {}),
         ...(signatureData
           ? {
@@ -352,7 +379,7 @@ export default async function AdminUsersPage({
   const formPlantId = selectedPlantId || user.plantId || undefined;
 
   const [users, categories, plants, scope, formOrganization, createFormPlants, createFormCategories] = await Promise.all([
-    db.user.findMany({ where: filteredUserWhere, include: { category: true, categories: { include: { category: true } }, plant: true, signature: true, profilePhoto: true }, orderBy: { createdAt: "desc" } }),
+    db.user.findMany({ where: filteredUserWhere, include: { category: true, categories: { include: { category: true } }, plant: true, signature: true, profilePhoto: true, inventoryScopes: true }, orderBy: { createdAt: "desc" } }),
     getActiveCategoriesForPlantScope(formPlantId, formOrganizationId),
     getActivePlantsForScope(formOrganizationId),
     readOrganizationScope(),
@@ -392,6 +419,7 @@ export default async function AdminUsersPage({
     canAssignRole: canAssignManagedUserRole(user),
     canAssignPlant: canAssignManagedUserPlant(user),
     canAssignCategories: canAssignManagedUserCategories(user),
+    canAssignInventory: canUseUserPermission(user, PermissionKey.ASSIGN_INVENTORY_RESPONSIBILITY),
     canDeactivate: canDeactivateManagedUser(user),
     canDelete: canDeleteManagedUser(user),
   };
@@ -483,6 +511,7 @@ export default async function AdminUsersPage({
             <CategoryCheckboxList categories={createFormCategories} selectedIds={[]} />
           </div>
         ) : null}
+        {userPermissions.canAssignInventory ? <InventoryUserScopeFields approvalKinds={["SPARE_PART"]} responsibilityKinds={["SPARE_PART"]} /> : null}
         <p className="text-xs font-semibold text-[var(--muted)]">
           ถ้าเลือก Organization Admin ระบบจะใช้หน่วยงานเป็นชื่อองค์กร และไม่ผูก Site/Category
         </p>
@@ -593,6 +622,12 @@ export default async function AdminUsersPage({
                       <span className="rounded-xl border border-[var(--line)] bg-[var(--surface)] p-3 text-[var(--muted)]">{formatUserCategories(item) || "-"}</span>
                     )}
                   </div>
+                  {userPermissions.canAssignInventory ? <div className="xl:col-span-2">
+                    <InventoryUserScopeFields
+                      approvalKinds={item.inventoryScopes.filter((scope) => scope.approvalEnabled).map((scope) => scope.itemKind)}
+                      responsibilityKinds={item.inventoryScopes.filter((scope) => scope.responsibilityEnabled).map((scope) => scope.itemKind)}
+                    />
+                  </div> : null}
                   <label className="grid gap-1 text-sm font-semibold">
                     Reset password
                     {userPermissions.canResetPassword ? (
@@ -803,6 +838,9 @@ function CategoryCheckboxList({
   const selected = new Set(selectedIds);
   return (
     <div className="grid min-w-0 gap-2 rounded-xl border border-[var(--line)] bg-[var(--surface)] p-3">
+      <span data-category-empty-message className="hidden text-sm font-semibold text-[var(--muted)]">
+        กรุณาเลือก Site เพื่อแสดง Category
+      </span>
       {categories.length === 0 ? (
         <span className="text-sm font-semibold text-[var(--muted)]">No Category</span>
       ) : (
@@ -820,10 +858,42 @@ function CategoryCheckboxList({
               type="checkbox"
               value={category.id}
             />
-            <span className="min-w-0 flex-1 truncate">{category.name}</span>
+            <span className="min-w-0 flex-1 truncate">{category.name}{category.plantId ? "" : " · ส่วนกลาง"}</span>
           </label>
         ))
       )}
+    </div>
+  );
+}
+
+function InventoryUserScopeFields({
+  responsibilityKinds,
+  approvalKinds,
+}: {
+  responsibilityKinds: string[];
+  approvalKinds: string[];
+}) {
+  const labels: Record<string, string> = { SPARE_PART: "อะไหล่", CHEMICAL: "สารเคมี", OIL: "น้ำมัน" };
+  const group = (name: string, title: string, selectedKinds: string[], dataAttribute: string) => {
+    const selected = new Set(selectedKinds);
+    return (
+      <fieldset className="rounded-xl border border-[var(--line)] bg-[var(--surface)] p-3" {...{ [dataAttribute]: "true" }}>
+        <legend className="px-2 text-sm font-bold">{title}</legend>
+        <div className="grid gap-2 sm:grid-cols-3">
+          {INVENTORY_ITEM_KINDS.map((kind) => (
+            <label className="flex items-center justify-between rounded-lg bg-[var(--soft)] px-3 py-2 text-sm font-semibold" key={kind}>
+              {labels[kind]}
+              <input className="size-4 accent-[var(--primary)]" defaultChecked={selected.has(kind)} name={name} type="checkbox" value={kind} />
+            </label>
+          ))}
+        </div>
+      </fieldset>
+    );
+  };
+  return (
+    <div className="grid gap-3">
+      {group("inventoryResponsibility", "ประเภทสต็อกที่รับผิดชอบ", responsibilityKinds, "data-inventory-responsibility-control")}
+      {group("inventoryApproval", "ประเภทใบเบิกที่อนุมัติ", approvalKinds, "data-inventory-approval-control")}
     </div>
   );
 }

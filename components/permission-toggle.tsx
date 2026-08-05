@@ -16,37 +16,30 @@ export function PermissionToggle({
   const [allowed, setAllowed] = useState(defaultAllowed);
 
   return (
-    <div
-      className={`flex min-h-20 items-center justify-between gap-3 rounded-2xl border px-4 py-3 transition-colors ${
-        allowed
-          ? "border-emerald-500/40 bg-emerald-500/10"
-          : "border-slate-400/35 bg-[var(--soft)]/65"
-      }`}
-    >
+    <div className="flex min-h-16 items-center justify-between gap-3 rounded-xl bg-[var(--surface)] px-4 py-3 transition-colors">
       <input name={name} type="hidden" value={allowed ? "ALLOW" : "DENY"} />
       <span className="min-w-0">
         <span className="block text-sm font-extrabold">{title}</span>
-        <span className="block truncate text-xs text-[var(--muted)]">{description}</span>
+        <span className="mt-1 block text-xs leading-5 text-[var(--muted)]">{description}</span>
       </span>
       <button
         aria-checked={allowed}
         aria-label={`${title}: ${allowed ? "Allow" : "Deny"}`}
-        className={`relative inline-flex h-9 w-[72px] shrink-0 items-center rounded-full border p-1 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]/40 ${
+        className={`relative inline-flex h-7 w-12 shrink-0 items-center rounded-full p-1 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]/40 ${
           allowed
-            ? "border-emerald-500 bg-emerald-500"
-            : "border-slate-400/60 bg-slate-400/35"
+            ? "bg-[var(--primary)]"
+            : "bg-slate-300 dark:bg-slate-600"
         }`}
         onClick={() => setAllowed((current) => !current)}
         role="switch"
         type="button"
       >
         <span
-          className={`grid size-7 place-items-center rounded-full bg-white text-[10px] font-black shadow-md transition-transform ${
-            allowed ? "translate-x-8 text-emerald-600" : "translate-x-0 text-slate-500"
+          className={`size-5 rounded-full bg-white shadow transition-transform ${
+            allowed ? "translate-x-5" : "translate-x-0"
           }`}
-        >
-          {allowed ? "ON" : "OFF"}
-        </span>
+        />
+        <span className="sr-only">{allowed ? "เปิด" : "ปิด"}</span>
       </button>
     </div>
   );

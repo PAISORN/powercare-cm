@@ -58,6 +58,7 @@
 | `assign_user_role` | กำหนด Role ให้ User | User Management |
 | `assign_user_plant` | กำหนด Site ให้ User | User Management |
 | `assign_user_categories` | กำหนด Category ให้ User | User Management |
+| `assign_inventory_responsibility` | กำหนดประเภทสต็อกที่ User รับผิดชอบหรืออนุมัติ | User Management |
 | `manage_plant_profile` | จัดการ Site Profile | Configuration |
 | `manage_category` | จัดการ Category | Configuration |
 | `manage_zone` | จัดการ Zone | Configuration |
@@ -160,6 +161,16 @@ LINE Settings เดิมควรรองรับ Store events เพิ่�
 - กด Not Enough Stock หรือ Partial Issue ได้
 - ทำ Stock Adjustment ได้พร้อมเหตุผล
 - ไม่สามารถปิดงาน CM, จัดการ Users, จัดการ Organization, System Settings หรือ Site Admin Permissions
+
+## Inventory Scope ราย User
+
+- `Inventory Responsibility Scope` กำหนดประเภทที่ Store Officer จัดการ รับเข้า ปรับยอด และจ่ายได้
+- `Inventory Approval Scope` กำหนดประเภทใบเบิกที่ Engineer อนุมัติได้
+- ประเภทที่รองรับคือ `SPARE_PART`, `CHEMICAL` และ `OIL`
+- สิทธิ์แก้ไขต้องผ่านทั้ง Action Permission และ Scope ของประเภทนั้น
+- ผู้ใช้ยังมองเห็นสต็อกประเภทอื่นได้แบบอ่านอย่างเดียว
+- Category ของ Engineer/Technician ใช้กับงาน CM เท่านั้นและไม่เกี่ยวกับ Inventory Scope
+- ผู้เบิก ผู้อนุมัติ และผู้จ่ายของใบเดียวกันต้องเป็นคนละคน
 
 ## Guardrail ที่ต้องรักษา
 

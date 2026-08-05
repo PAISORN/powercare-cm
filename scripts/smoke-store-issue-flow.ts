@@ -129,7 +129,7 @@ try {
   }
   if (!createdIssue.items[0]?.lineNumber) throw new Error("Issue line number was not generated.");
 
-  await approveStoreIssue(actor, scope, issueId, "APPROVE");
+  await approveStoreIssue(actor, scope, issueId, "APPROVE", "Local smoke-test owner override");
   const approved = await db.sparePartIssue.findUniqueOrThrow({
     where: { id: issueId },
     select: { status: true },
@@ -138,7 +138,7 @@ try {
     throw new Error(`Unexpected status after approval: ${approved.status}`);
   }
 
-  await issueStoreStock(actor, scope, issueId, [{ itemId: createdIssue.items[0].id, quantity: 1 }]);
+  await issueStoreStock(actor, scope, issueId);
   const [issued, stockAfter] = await Promise.all([
     db.sparePartIssue.findUniqueOrThrow({ where: { id: issueId }, select: { status: true } }),
     db.storeStock.findUniqueOrThrow({ where: { id: stock.id }, select: { quantity: true } }),

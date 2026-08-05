@@ -133,14 +133,11 @@ async function issueStockFromActivity(formData: FormData) {
   "use server";
   const user = await requireUser();
   const scope = await resolveStorePageScope(user, adminScopeSearchFromFormData(formData));
-  const itemIds = formData.getAll("itemId").map(String);
-  const quantities = formData.getAll("issueQty").map(Number);
   try {
     await issueStoreStock(
       user,
       storeScopeFromActivity(scope),
       String(formData.get("issueId") ?? ""),
-      itemIds.map((itemId, index) => ({ itemId, quantity: quantities[index] })),
     );
   } catch (error) {
     redirect(activityRedirect(scope, { storeError: activityActionError(error) }));
@@ -265,6 +262,12 @@ export default async function ActivitiesPage({
   ];
   const canApproveStore = canUseUserPermission(user, PermissionKey.APPROVE_STORE_ISSUE);
   const canIssueStore = canUseUserPermission(user, PermissionKey.ISSUE_STOCK);
+  const approvalKinds = user.role === RoleName.ADMIN
+    ? ["SPARE_PART", "CHEMICAL", "OIL"]
+    : user.inventoryScopes.filter((item) => item.approvalEnabled).map((item) => item.itemKind);
+  const responsibilityKinds = user.role === RoleName.ADMIN
+    ? ["SPARE_PART", "CHEMICAL", "OIL"]
+    : user.inventoryScopes.filter((item) => item.responsibilityEnabled).map((item) => item.itemKind);
 
   const [ownedWorks, waitingCloseWorks, approvalIssues, issueQueueIssues, requesterFollowUpIssues] =
     await Promise.all([
@@ -296,6 +299,8 @@ export default async function ActivitiesPage({
               organizationId: scope.organization.id,
               plantId: scope.plant.id,
               status: StoreIssueStatus.WAITING_ENGINEER_APPROVAL,
+              itemKind: { in: approvalKinds },
+              requesterUserId: { not: user.id },
             },
             include: { items: { include: { sparePart: { select: { code: true, name: true } } } } },
             orderBy: { requestedAt: "asc" },
@@ -308,6 +313,9 @@ export default async function ActivitiesPage({
               organizationId: scope.organization.id,
               plantId: scope.plant.id,
               status: { in: [StoreIssueStatus.WAITING_STORE_ISSUE, StoreIssueStatus.PARTIALLY_ISSUED] },
+              itemKind: { in: responsibilityKinds },
+              requesterUserId: { not: user.id },
+              engineerId: { not: user.id },
             },
             include: { items: { include: { sparePart: { select: { code: true, name: true } } } } },
             orderBy: { requestedAt: "asc" },
@@ -1093,21 +1101,10 @@ function StoreIssueActivityCard({
           <form action={issueStockFromActivity} className="grid gap-2">
             <AdminScopeHiddenFields scope={scope} />
             <input name="issueId" type="hidden" value={issue.id} />
-            {issue.items.map((item) => {
-              const remaining = remainingIssueQty(item);
-              return (
-                <label className="grid gap-1 text-xs font-bold text-[var(--muted)] sm:grid-cols-[1fr_140px] sm:items-center" key={item.id}>
-                  <span>{item.sparePart.code} {item.sparePart.name}</span>
-                  <span className="grid gap-1">
-                    จำนวนที่จะจ่ายครั้งนี้ (แก้ไขได้)
-                    <input className={activityInputClass} defaultValue={remaining} inputMode="numeric" max={remaining} min="1" name="issueQty" step="1" type="number" />
-                  </span>
-                  <input name="itemId" type="hidden" value={item.id} />
-                </label>
-              );
-            })}
+            <p className="text-sm font-bold">จ่ายอะไหล่ครบทั้งใบเบิก {issue.items.length} รายการ</p>
+            <p className="text-xs text-[var(--muted)]">ระบบจะตรวจสต็อกทุกรายการก่อนบันทึก และไม่จ่ายแยกทีละรายการ</p>
             <button className="min-h-11 rounded-xl bg-[var(--primary)] px-4 text-sm font-bold text-white transition hover:bg-[var(--primary-strong)]">
-              จ่าย Stock
+              จ่ายอะไหล่ทั้งใบ
             </button>
           </form>
           <form action={notEnoughStockFromActivity} className="grid content-end gap-2">
@@ -1274,13 +1271,6 @@ function buildStoreSections({
       emptyText: "ยังไม่มีใบเบิกที่ถูกส่งกลับหรือแจ้งว่าอะไหล่ไม่พอ",
     },
   ].filter((section) => section.issues.length > 0);
-}
-
-function remainingIssueQty(item: StoreIssueActivity["items"][number]) {
-  const approved = Number(item.approvedQty ?? item.requestedQty);
-  const issued = Number(item.issuedQty ?? 0);
-  const remaining = approved - issued;
-  return Number.isFinite(remaining) && remaining > 0 ? remaining : 0;
 }
 
 function resolveActivityBoardFilters(query: PageQuery): ActivityBoardFilter {
