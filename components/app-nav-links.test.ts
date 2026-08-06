@@ -230,6 +230,26 @@ describe("getAppLinks", () => {
     expect(getAppLinks(RoleName.VISITOR).some((link) => link.href === "/activities")).toBe(false);
   });
 
+  it("keeps My Activities visible when a working role has narrowly denied permissions", () => {
+    const deniedPermissions = [
+      PermissionKey.VIEW_ALL_WORK,
+      PermissionKey.APPROVE_STORE_ISSUE,
+      PermissionKey.ISSUE_STOCK,
+      PermissionKey.CREATE_STORE_ISSUE,
+    ].map((permissionKey) => ({
+      userId: "engineer-limited",
+      permissionKey,
+      decision: "DENY",
+    }));
+
+    const links = getAppLinks(RoleName.ENGINEER, {
+      id: "engineer-limited",
+      userPermissionOverrides: deniedPermissions,
+    });
+
+    expect(links.some((link) => link.href === "/activities" && link.label === "My Activities")).toBe(true);
+  });
+
   it("hides administration links until the Administration trigger is clicked", () => {
     render(React.createElement(AppNavLinks, { role: RoleName.ADMIN }));
 

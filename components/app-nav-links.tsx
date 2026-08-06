@@ -85,15 +85,7 @@ export function getAppLinks(role: RoleValue, permissionContext: AppPermissionCon
     baseLinks.push({ label: "Dashboard", href: "/dashboard", icon: BarChart3 });
   }
 
-  if (
-    role !== RoleName.VISITOR &&
-    canUseAny(
-      PermissionKey.VIEW_ALL_WORK,
-      PermissionKey.APPROVE_STORE_ISSUE,
-      PermissionKey.ISSUE_STOCK,
-      PermissionKey.CREATE_STORE_ISSUE,
-    )
-  ) {
+  if (role !== RoleName.VISITOR) {
     baseLinks.push({ label: "My Activities", href: "/activities", icon: ClipboardList });
   }
 
