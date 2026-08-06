@@ -3,6 +3,7 @@
 !.env.production.example
 .tmp/
 .npm-cache/
+.local-ssh/
 backups/
 restore-workspace/
 storage/
