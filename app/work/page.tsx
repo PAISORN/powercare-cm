@@ -8,6 +8,7 @@ import { StatusKpiStrip } from "../../components/status-kpi-strip";
 import { UserAvatar } from "../../components/user-avatar";
 import { db } from "../../lib/db";
 import { formatThaiDateTime } from "../../lib/date-time/bangkok-time";
+import { paginationWindow } from "../../lib/pagination-window";
 import { getActiveCategoriesForPlantScope, getActiveClaimantsForReportScope, getActiveZonesForReportScope } from "../../lib/query-cache";
 import { requireUser } from "../../lib/session";
 import { canClaimWork } from "../../modules/auth/permission";
@@ -140,7 +141,7 @@ export default async function WorkListPage({ searchParams }: { searchParams: Pro
 
   return (
     <AppShell>
-      <section className="cm-hero relative overflow-hidden rounded-3xl px-6 py-7 text-white shadow-[var(--shadow)]">
+      <section className="menu-heading-plain cm-hero relative overflow-hidden rounded-3xl px-6 py-7 text-white shadow-[var(--shadow)]">
         <div className="plant-skyline" aria-hidden="true">
           <span />
           <span />
@@ -155,7 +156,7 @@ export default async function WorkListPage({ searchParams }: { searchParams: Pro
         </div>
       </section>
 
-      <section className="relative z-20 -mt-7">
+      <section className="relative z-20 mt-4">
         <FilterBar
           values={filters}
           categories={categories}
@@ -292,7 +293,7 @@ function buildWorkListHref(filters: WorkSearchParams) {
 }
 
 function Pagination({ filters, currentPage, totalPages }: { filters: WorkSearchParams; currentPage: number; totalPages: number }) {
-  const pages = Array.from({ length: totalPages }, (_, index) => index + 1);
+  const pages = paginationWindow(currentPage, totalPages);
   return (
     <nav className="mt-5 flex flex-wrap items-center justify-end gap-2" aria-label="Work results pagination">
       <PageLink filters={filters} page={Math.max(1, currentPage - 1)} disabled={currentPage === 1} label="ก่อนหน้า" />

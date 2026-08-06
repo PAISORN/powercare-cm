@@ -1,4 +1,4 @@
-import { AlertTriangle, ArrowDownToLine, ArrowUpFromLine, BarChart3, Boxes, FileSpreadsheet } from "lucide-react";
+import { AlertTriangle, ArrowDownToLine, ArrowUpFromLine, BarChart3, Boxes, Download, FileSpreadsheet, FileText } from "lucide-react";
 import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
 import { AdminScopeHiddenFields, AdminSiteScopeSelector } from "../../../components/admin-site-scope-selector";
@@ -108,7 +108,7 @@ export default async function StoreReportsPage({ searchParams }: { searchParams:
   return (
     <AppShell>
       <div className="space-y-6">
-        <section className="rounded-3xl border border-[var(--line)] bg-[var(--surface)] p-5 shadow-[var(--shadow)] sm:p-7">
+        <section className="menu-heading-plain rounded-3xl border border-[var(--line)] bg-[var(--surface)] p-5 shadow-[var(--shadow)] sm:p-7">
           <p className="inline-flex items-center gap-2 rounded-full bg-[var(--soft)] px-3 py-1.5 text-sm font-bold text-[var(--primary)]">
             <FileSpreadsheet size={16} />
             Store Reports
@@ -142,6 +142,77 @@ export default async function StoreReportsPage({ searchParams }: { searchParams:
             <button className="min-h-12 rounded-xl bg-[var(--primary)] px-5 font-bold text-white transition hover:bg-[var(--primary-strong)]">
               ดูรายงาน
             </button>
+          </form>
+        </section>
+
+        <section className="rounded-3xl border border-[var(--line)] bg-[var(--surface)] p-5 shadow-[var(--shadow)]">
+          <div className="flex items-center gap-2">
+            <Download className="text-[var(--primary)]" size={20} />
+            <div>
+              <h2 className="text-xl font-extrabold">Export Store Report</h2>
+              <p className="mt-1 text-sm text-[var(--muted)]">เลือกข้อมูลและเงื่อนไขก่อนส่งออกเป็น Excel หรือ PDF</p>
+            </div>
+          </div>
+          <form action="/inventory/reports/export" className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4" method="get" target="_blank">
+            <AdminScopeHiddenFields scope={scope} />
+            <label className={labelClass}>
+              ประเภทรายงาน
+              <select className={inputClass} defaultValue="STOCK_BALANCE" name="reportType">
+                <option value="STOCK_BALANCE">Stock Balance</option>
+                <option value="LOW_STOCK">Low Stock</option>
+                <option value="MOVEMENTS">Stock Movement</option>
+                <option value="ISSUES">ใบเบิก Stock</option>
+              </select>
+            </label>
+            <label className={labelClass}>
+              ประเภทรายการ
+              <select className={inputClass} defaultValue="ALL" name="itemKind">
+                <option value="ALL">ทั้งหมด</option>
+                <option value="SPARE_PART">อะไหล่</option>
+                <option value="CHEMICAL">สารเคมี</option>
+                <option value="OIL">น้ำมัน</option>
+              </select>
+            </label>
+            <label className={labelClass}>
+              วันที่เริ่มต้น
+              <input className={inputClass} defaultValue={range.startInput} name="startDate" type="date" />
+            </label>
+            <label className={labelClass}>
+              วันที่สิ้นสุด
+              <input className={inputClass} defaultValue={range.endInput} name="endDate" type="date" />
+            </label>
+            <label className={labelClass}>
+              ประเภท Movement
+              <select className={inputClass} defaultValue="ALL" name="movementType">
+                <option value="ALL">ทั้งหมด</option>
+                <option value="RECEIVE">รับเข้า</option>
+                <option value="ISSUE">จ่ายออก</option>
+                <option value="ADJUSTMENT">ปรับยอด</option>
+              </select>
+            </label>
+            <label className={labelClass}>
+              สถานะใบเบิก
+              <select className={inputClass} defaultValue="ALL" name="issueStatus">
+                <option value="ALL">ทั้งหมด</option>
+                <option value="WAITING_ENGINEER_APPROVAL">รออนุมัติ</option>
+                <option value="RETURNED_FOR_EDIT">ส่งกลับแก้ไข</option>
+                <option value="WAITING_STORE_ISSUE">รอจ่าย Stock</option>
+                <option value="NOT_ENOUGH_STOCK">Stock ไม่เพียงพอ</option>
+                <option value="PARTIALLY_ISSUED">จ่ายบางส่วน</option>
+                <option value="ISSUED">จ่ายครบแล้ว</option>
+                <option value="ENGINEER_REJECTED">Engineer ปฏิเสธ</option>
+                <option value="STORE_REJECTED">Store ปฏิเสธ</option>
+                <option value="CANCELED">ยกเลิก</option>
+              </select>
+            </label>
+            <div className="grid gap-2 sm:col-span-2 sm:grid-cols-2 xl:col-span-2 xl:self-end">
+              <button className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-emerald-600 px-5 font-bold text-white transition hover:bg-emerald-700" name="format" value="xlsx">
+                <FileSpreadsheet size={18} /> Export Excel
+              </button>
+              <button className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-red-600 px-5 font-bold text-white transition hover:bg-red-700" name="format" value="pdf">
+                <FileText size={18} /> Export PDF
+              </button>
+            </div>
           </form>
         </section>
 

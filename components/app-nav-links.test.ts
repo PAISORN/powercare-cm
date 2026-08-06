@@ -180,10 +180,17 @@ describe("getAppLinks", () => {
     expect(links.some((link) => link.href === "/inventory/spare-parts" && !link.disabled)).toBe(true);
     expect(links.some((link) => link.href === "/inventory/stock" && !link.disabled)).toBe(true);
     expect(links.some((link) => link.href === "/inventory/stock" && link.label === "Stock")).toBe(true);
+    expect(links.some((link) => link.href === "/inventory/issue?view=tracking" && link.label === "Stock Issue" && !link.disabled)).toBe(true);
     expect(links.some((link) => link.href === "/inventory/issue?view=create" && !link.disabled)).toBe(true);
     expect(links.some((link) => link.href === "/inventory/public-issue" && !link.disabled)).toBe(true);
     expect(links.some((link) => link.href === "/inventory/receive" && !link.disabled)).toBe(true);
-    expect(links.some((link) => link.href === "/inventory/issue?view=tracking" && link.label === "Issue Tracking" && !link.disabled)).toBe(true);
+    expect(links.some((link) => link.href === "/inventory/tracking" && link.label === "Issue Tracking" && !link.disabled)).toBe(true);
+    expect(links.findIndex((link) => link.label === "Stock Issue")).toBe(
+      links.findIndex((link) => link.label === "Stock") + 1,
+    );
+    expect(links.findIndex((link) => link.label === "Issue Tracking")).toBe(
+      links.findIndex((link) => link.label === "Receive") + 1,
+    );
     expect(links.some((link) => link.href === "/inventory/movements" && link.label === "Stock Movement")).toBe(true);
     expect(links.some((link) => link.href === "/inventory/movements" && !link.disabled)).toBe(true);
     expect(links.some((link) => link.href === "/inventory/reports" && !link.disabled)).toBe(true);

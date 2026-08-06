@@ -29,6 +29,7 @@ import { ConfirmSubmitButton } from "../../../components/confirm-submit-button";
 import { StockHeaderReplacementController } from "../../../components/stock-header-replacement-controller";
 import { SparePartClassificationFields } from "../../../components/store/spare-part-classification-fields";
 import { db } from "../../../lib/db";
+import { paginationWindow } from "../../../lib/pagination-window";
 import { requireUser } from "../../../lib/session";
 import { adminScopeSearchFromFormData } from "../../../modules/admin/admin-site-scope";
 import {
@@ -463,7 +464,7 @@ export default async function StockPage({ searchParams }: { searchParams: Promis
   return (
     <AppShell>
       <div className="space-y-5">
-        <header className="stock-page-hero relative overflow-hidden rounded-3xl border p-5 shadow-[var(--shadow)] sm:p-6">
+        <header className="menu-heading-plain stock-page-hero relative overflow-hidden rounded-3xl border p-5 shadow-[var(--shadow)] sm:p-6">
           <div className="relative z-10 flex flex-wrap items-start justify-between gap-4">
           <div>
             <p className="text-sm font-semibold text-white/70">Home &gt; Inventory &gt; Stock</p>
@@ -825,7 +826,7 @@ export default async function StockPage({ searchParams }: { searchParams: Promis
                   >
                     <ChevronLeft size={16} />
                   </Link>
-                  {Array.from({ length: totalPages }, (_, index) => index + 1).map((pageNumber) => (
+                  {paginationWindow(currentPage, totalPages).map((pageNumber) => (
                     <Link
                       aria-current={pageNumber === currentPage ? "page" : undefined}
                       className={paginationPageClass(pageNumber === currentPage)}

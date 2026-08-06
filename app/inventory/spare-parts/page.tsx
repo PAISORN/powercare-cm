@@ -26,6 +26,7 @@ import { ConfirmSubmitButton } from "../../../components/confirm-submit-button";
 import { StockHeaderReplacementController } from "../../../components/stock-header-replacement-controller";
 import { SparePartClassificationFields } from "../../../components/store/spare-part-classification-fields";
 import { db } from "../../../lib/db";
+import { paginationWindow } from "../../../lib/pagination-window";
 import { requireUser } from "../../../lib/session";
 import { canUseUserPermission, PermissionKey } from "../../../modules/auth/site-admin-permissions";
 import { adminScopeSearchFromFormData } from "../../../modules/admin/admin-site-scope";
@@ -363,7 +364,7 @@ export default async function SparePartsPage({ searchParams }: { searchParams: P
   return (
     <AppShell>
       <div className="space-y-5">
-        <section className="relative overflow-hidden rounded-[2rem] border border-cyan-400/15 bg-[linear-gradient(135deg,rgba(5,22,38,0.96),rgba(7,42,63,0.9))] p-5 text-white shadow-[0_24px_70px_rgba(0,0,0,0.28)] sm:p-7">
+        <section className="menu-heading-plain relative overflow-hidden rounded-[2rem] border border-cyan-400/15 bg-[linear-gradient(135deg,rgba(5,22,38,0.96),rgba(7,42,63,0.9))] p-5 text-white shadow-[0_24px_70px_rgba(0,0,0,0.28)] sm:p-7">
           <div className="pointer-events-none absolute -right-8 -top-16 size-64 rounded-full border-[34px] border-cyan-300/5" />
           <div className="pointer-events-none absolute right-32 top-10 size-40 rotate-12 rounded-[2rem] border-[28px] border-cyan-300/5" />
           <div className="relative flex flex-wrap items-start justify-between gap-4">
@@ -1367,17 +1368,7 @@ function sparePartsPageHref(
 }
 
 function paginationItems(currentPage: number, totalPages: number): Array<number | "ellipsis"> {
-  if (totalPages <= 7) return Array.from({ length: totalPages }, (_, index) => index + 1);
-
-  const pages = new Set([1, totalPages, currentPage - 1, currentPage, currentPage + 1]);
-  const validPages = [...pages].filter((page) => page > 0 && page <= totalPages).sort((a, b) => a - b);
-  const items: Array<number | "ellipsis"> = [];
-  validPages.forEach((page, index) => {
-    const previousPage = validPages[index - 1];
-    if (previousPage && page - previousPage > 1) items.push("ellipsis");
-    items.push(page);
-  });
-  return items;
+  return paginationWindow(currentPage, totalPages);
 }
 
 function formatMoney(value: { toString(): string } | null) {

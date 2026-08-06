@@ -24,6 +24,7 @@ import { AppShell } from "../../../components/app-shell";
 import { IssueRequestForm } from "../../../components/store/issue-request-form";
 import { formatThaiMediumDateTime } from "../../../lib/date-time/bangkok-time";
 import { db } from "../../../lib/db";
+import { paginationWindow } from "../../../lib/pagination-window";
 import { requireUser } from "../../../lib/session";
 import { adminScopeSearchFromFormData } from "../../../modules/admin/admin-site-scope";
 import { canUseUserPermission, PermissionKey } from "../../../modules/auth/site-admin-permissions";
@@ -300,19 +301,20 @@ export default async function IssuePage({ searchParams }: { searchParams: Promis
       .map((item) => `${item.sparePart.code} ${item.sparePart.name}`)
       .join(", ");
     return (
-      <article className="issue-row-two-line overflow-hidden rounded-2xl border border-[var(--line)] bg-[var(--card)] transition hover:-translate-y-0.5 hover:border-[var(--primary)]">
-        <div className="h-1 bg-[var(--primary)]" />
-        <div className="p-3 sm:p-4">
+      <article className="issue-row-two-line overflow-hidden rounded-3xl border border-[var(--line)] bg-[var(--card)] shadow-[var(--shadow)] transition duration-300 hover:-translate-y-0.5 hover:border-[var(--primary)]">
+        <div className="hidden h-1 bg-[var(--primary)]" />
+        <div className="p-4 sm:p-5">
         <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
           <div className="min-w-0">
             <div className="flex min-w-0 flex-wrap items-center gap-2">
-              <p className="truncate font-mono text-base font-extrabold text-[var(--primary)]">{issue.number}</p>
+              <p className="truncate font-mono text-lg font-black tracking-tight text-[var(--ink)] sm:text-xl">{issue.number}</p>
               <StoreIssueStatusBadge status={issue.status} />
             </div>
             <p className="mt-1 truncate text-sm text-[var(--muted)]">
               {issue.cmWork?.number ? `CM: ${issue.cmWork.number}` : "Direct issue"} · {issue.requesterUser?.fullName ?? issue.requesterName} · {formatThaiMediumDateTime(issue.requestedAt)}
             </p>
-            <p className="mt-1 truncate text-sm font-semibold">{itemSummary || "-"}</p>
+            <p className="mt-2 line-clamp-2 text-sm font-semibold sm:text-base">{issue.note ?? itemSummary ?? "-"}</p>
+            <p className="mt-2 truncate text-xs font-bold text-[var(--muted)]">{issueKindLabel(issue.itemKind)} {issue.items.length} รายการ</p>
           </div>
           {canPrintSparePartIssueDocument(user, issue) ? (
             <Link
@@ -325,9 +327,9 @@ export default async function IssuePage({ searchParams }: { searchParams: Promis
               พิมพ์เอกสาร
             </Link>
           ) : null}
-          <details className="group rounded-xl border border-[var(--line)] bg-[var(--soft)] sm:col-span-2">
-            <summary className="flex cursor-pointer list-none items-center justify-center gap-2 px-3 py-2 text-sm font-extrabold text-[var(--primary)]">
-              ดูรายละเอียด
+          <details className="group rounded-2xl border border-[var(--line)] bg-[var(--soft)] sm:col-span-2">
+            <summary className="flex min-h-12 cursor-pointer list-none items-center justify-center gap-2 rounded-2xl bg-[var(--primary)] px-4 py-2 text-sm font-extrabold text-white transition hover:bg-[var(--primary-strong)]">
+              ตรวจสอบใบเบิก
               <ChevronDown className="transition group-open:rotate-180" size={16} />
             </summary>
             <div className="grid gap-3 border-t border-[var(--line)] p-3 sm:col-span-2">
@@ -494,15 +496,38 @@ export default async function IssuePage({ searchParams }: { searchParams: Promis
         ) : null}
 
         {trackingOnly ? (
-        <section className="h-full rounded-3xl border border-[var(--line)] bg-[var(--surface)] p-4 shadow-[var(--shadow)] sm:p-5" id="issue-tracking">
-          <div className="flex flex-wrap items-center justify-between gap-3">
+        <>
+          <header className="px-1 py-2 text-white">
+            <div className="flex items-start gap-4">
+              <span className="mt-1 grid size-20 shrink-0 place-items-center rounded-2xl border border-white/25 bg-white/10 text-white">
+                <Package aria-hidden="true" size={38} strokeWidth={1.7} />
+              </span>
+              <div className="min-w-0 flex-1">
+                <h2 className="text-2xl font-black leading-tight sm:text-3xl">ติดตามสถานะใบเบิก</h2>
+                <p className="mt-1 text-sm font-bold text-white/80">PowerCare Store · {issueKindLabel(selectedTrackingKind)}</p>
+                <div className="mt-3 flex flex-wrap items-center gap-1 text-[11px] font-bold sm:gap-2 sm:text-xs">
+                  <span className="whitespace-nowrap rounded-full bg-white/10 px-2 py-1.5 text-white/90 sm:px-2.5">
+                    {scope.plant.name}
+                  </span>
+                  <span className="whitespace-nowrap rounded-full bg-white/10 px-2 py-1.5 text-white/80 sm:px-2.5">
+                    ใบเบิก · {filteredIssues.length} รายการ
+                  </span>
+                  <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-emerald-400/15 px-2 py-1.5 text-emerald-300 sm:gap-1.5 sm:px-2.5">
+                    <span className="size-2 rounded-full bg-emerald-400" /> เปิดให้บริการ
+                  </span>
+                </div>
+              </div>
+            </div>
+          </header>
+          <section className="mt-3 h-full rounded-3xl border border-[var(--line)] bg-[var(--surface)] p-4 shadow-[var(--shadow)] sm:p-5" id="issue-tracking">
+          <div className="hidden flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-2">
               <ClipboardList className="text-[var(--primary)]" size={21} />
               <h2 className="text-xl font-extrabold">ติดตามสถานะใบเบิก</h2>
             </div>
             <span className="rounded-full bg-[var(--soft)] px-3 py-1 text-sm font-bold">{filteredIssues.length} รายการ</span>
           </div>
-          <p className="mt-1 text-sm text-[var(--muted)]">ติดตามความคืบหน้าและดำเนินการใบเบิกอะไหล่ภายใน Site</p>
+          <p className="hidden">ติดตามความคืบหน้าและดำเนินการใบเบิกอะไหล่ภายใน Site</p>
 
           <IssueTrackingTabs
             itemKind={selectedTrackingKind}
@@ -641,7 +666,7 @@ export default async function IssuePage({ searchParams }: { searchParams: Promis
                 >
                   <ChevronLeft size={16} />
                 </Link>
-                {Array.from({ length: totalTrackingPages }, (_, index) => index + 1).map((pageNumber) => (
+                {paginationWindow(currentTrackingPage, totalTrackingPages).map((pageNumber) => (
                   <Link
                     aria-current={pageNumber === currentTrackingPage ? "page" : undefined}
                     className={trackingPaginationPageClass(pageNumber === currentTrackingPage)}
@@ -662,7 +687,8 @@ export default async function IssuePage({ searchParams }: { searchParams: Promis
               </div>
             </nav>
           ) : null}
-        </section>
+          </section>
+        </>
         ) : null}
         </div>
       </div>
@@ -723,6 +749,12 @@ function IssueTrackingTabs({
 
 function resolveItemKind(value?: string): "SPARE_PART" | "CHEMICAL" | "OIL" {
   return value === "CHEMICAL" || value === "OIL" ? value : "SPARE_PART";
+}
+
+function issueKindLabel(value: string) {
+  if (value === "CHEMICAL") return "สารเคมี";
+  if (value === "OIL") return "น้ำมัน";
+  return "อะไหล่";
 }
 
 function trackingPaginationPageClass(isActive: boolean) {

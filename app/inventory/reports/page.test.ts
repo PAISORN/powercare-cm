@@ -14,5 +14,12 @@ describe("Store reports page", () => {
     expect(source).toContain("summarizeStockMovements");
     expect(source).toContain("VIEW_STORE_REPORTS");
     expect(source).toContain("resolveStorePageScope");
+    expect(source).toContain('action="/inventory/reports/export"');
+    expect(source).toContain('name="reportType"');
+    expect(source).toContain('name="itemKind"');
+    expect(source).toContain('name="movementType"');
+    expect(source).toContain('name="issueStatus"');
+    expect(source).toContain('value="xlsx"');
+    expect(source).toContain('value="pdf"');
   });
 });

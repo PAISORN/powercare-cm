@@ -38,7 +38,7 @@ export default async function InventoryPage() {
   return (
     <AppShell>
       <div className="mx-auto max-w-6xl space-y-5">
-        <header className="overflow-hidden rounded-3xl bg-gradient-to-br from-[#0D1B3D] via-blue-800 to-blue-500 p-6 text-white shadow-xl sm:p-8">
+        <header className="menu-heading-plain overflow-hidden rounded-3xl bg-gradient-to-br from-[#0D1B3D] via-blue-800 to-blue-500 p-6 text-white shadow-xl sm:p-8">
           <p className="inline-flex items-center gap-2 rounded-full bg-white/12 px-3 py-1.5 text-sm font-bold">
             <Store size={17} /> PowerCare Store
           </p>

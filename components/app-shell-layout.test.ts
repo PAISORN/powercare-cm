@@ -28,10 +28,11 @@ describe("AppShell mobile header", () => {
   it("keeps the top app bar visible while the page scrolls", () => {
     const source = fs.readFileSync(path.join(process.cwd(), "components/app-shell.tsx"), "utf8");
 
-    expect(source).toContain("sticky top-3");
+    expect(source).toContain("ops-topbar fixed");
     expect(source).toContain("z-40");
     expect(source).toContain("backdrop-blur");
     expect(source).toContain("data-app-top-bar");
+    expect(source).toContain("data-app-top-bar-spacer");
   });
 
   it("keeps the mobile primary tabs above immersive Store forms", () => {
