@@ -177,7 +177,7 @@ export default async function AdminSitesPage({
 
   return (
     <AppShell>
-      <section className="rounded-3xl border border-[var(--line)] bg-[var(--surface)] p-6 shadow-[var(--shadow)]">
+      <section className="menu-heading-plain rounded-3xl border border-[var(--line)] bg-[var(--surface)] p-6 shadow-[var(--shadow)]">
         <p className="text-sm font-semibold text-[var(--primary)]">Owner Admin</p>
         <h1 className="mt-2 text-3xl font-extrabold">Sites</h1>
         <p className="mt-2 text-sm text-[var(--muted)]">

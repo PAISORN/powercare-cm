@@ -134,7 +134,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
 
   return (
     <AppShell>
-      <section className="cm-hero dashboard-hero relative overflow-hidden rounded-3xl px-6 py-7 text-white shadow-[var(--shadow)]">
+      <section className="menu-heading-plain cm-hero dashboard-hero relative overflow-hidden rounded-3xl px-6 py-7 text-white shadow-[var(--shadow)]">
         <div className="plant-skyline" aria-hidden="true">
           <span />
           <span />
@@ -155,7 +155,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         </div>
       </section>
 
-      <section className="relative z-20 -mt-7">
+      <section className="relative z-20 mt-4">
         <DashboardFilterBar activeCategory={activeCategoryFilter} activeDateFilter={hasExplicitDateFilter ? activeDateFilterInput : undefined} clearHref="/dashboard" />
       </section>
 

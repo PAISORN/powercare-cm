@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { Wrench } from "lucide-react";
 import { permanentRedirect, redirect } from "next/navigation";
 import { AppShell } from "../../components/app-shell";
 import { PublicHeader } from "../../components/public-header";
@@ -131,12 +132,23 @@ function SiteIdentityHeader({
   title: string;
 }) {
   return (
-    <section className="rounded-3xl border border-[var(--line)] bg-[var(--surface)] p-5 shadow-[var(--shadow)]">
-      <p className="text-sm font-black uppercase tracking-[0.16em] text-[var(--primary)]">{label}</p>
-      <h1 className="mt-3 text-3xl font-extrabold leading-tight text-[var(--ink)] md:text-5xl">{title}</h1>
-      <p className="mt-2 text-sm font-semibold text-[var(--muted)]">
-        Site: {plantName} · Code: {plantCode}
-      </p>
+    <section className="px-1 py-2 text-white" data-testid="repair-request-hero">
+      <div className="flex items-start gap-4">
+        <span className="mt-1 grid size-20 shrink-0 place-items-center rounded-2xl border border-white/25 bg-white/10 text-white">
+          <Wrench aria-hidden="true" size={38} strokeWidth={1.7} />
+        </span>
+        <div className="min-w-0 flex-1">
+          <h1 className="text-2xl font-black leading-tight sm:text-3xl">{title}</h1>
+          <p className="mt-1 text-sm font-bold text-white/80">PowerCare CM · {label}</p>
+          <div className="mt-3 flex flex-wrap items-center gap-2 text-xs font-bold">
+            <span className="rounded-full bg-white/10 px-2.5 py-1.5 text-white/90">{plantCode}</span>
+            <span className="rounded-full bg-white/10 px-2.5 py-1.5 text-white/80">{plantName}</span>
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-400/15 px-2.5 py-1.5 text-emerald-300">
+              <span className="size-2 rounded-full bg-emerald-400" /> เปิดรับแจ้งซ่อม
+            </span>
+          </div>
+        </div>
+      </div>
     </section>
   );
 }

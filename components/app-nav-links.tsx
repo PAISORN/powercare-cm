@@ -183,6 +183,10 @@ export function getAppLinks(role: RoleValue, permissionContext: AppPermissionCon
       canUseAny(PermissionKey.VIEW_STORE_STOCK, PermissionKey.ADJUST_STOCK),
     ),
     inventoryLink(
+      { label: "Stock Issue", href: "/inventory/issue?view=tracking", icon: ClipboardList, nested: true, parentSectionId: "inventory" },
+      canUseAny(PermissionKey.VIEW_STORE_TRACKING, PermissionKey.APPROVE_STORE_ISSUE, PermissionKey.ISSUE_STOCK),
+    ),
+    inventoryLink(
       { label: "Issue", href: "/inventory/issue?view=create", icon: ArrowUpFromLine, nested: true, parentSectionId: "inventory" },
       canUse(PermissionKey.CREATE_STORE_ISSUE),
     ),
@@ -202,8 +206,8 @@ export function getAppLinks(role: RoleValue, permissionContext: AppPermissionCon
       canUse(PermissionKey.RECEIVE_STOCK),
     ),
     inventoryLink(
-      { label: "Issue Tracking", href: "/inventory/issue?view=tracking", icon: Search, nested: true, parentSectionId: "inventory" },
-      canUseAny(PermissionKey.VIEW_STORE_TRACKING, PermissionKey.APPROVE_STORE_ISSUE, PermissionKey.ISSUE_STOCK),
+      { label: "Issue Tracking", href: "/inventory/tracking", icon: Search, nested: true, parentSectionId: "inventory" },
+      canUse(PermissionKey.VIEW_STORE_TRACKING),
     ),
     inventoryLink(
       { label: "Stock Movement", href: "/inventory/movements", icon: History, nested: true, parentSectionId: "inventory" },

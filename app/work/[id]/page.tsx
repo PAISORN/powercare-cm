@@ -67,7 +67,7 @@ export default async function WorkDetailPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ assignmentError?: string; storeIssueBlocked?: string; storeIssueCreated?: string; storeIssueError?: string }>;
+  searchParams: Promise<{ assignmentError?: string; storeIssueBlocked?: string; storeIssueCreated?: string; storeIssueError?: string; workspaceTab?: string }>;
 }) {
   const { id } = await params;
   const user = await requireUser();
@@ -76,6 +76,8 @@ export default async function WorkDetailPage({
     db.cmWork.findFirstOrThrow({
       where: { id, ...buildWorkScopeWhere(scope) },
       include: {
+        organization: { select: { name: true } },
+        plant: { select: { name: true, code: true } },
         category: true,
         zone: true,
         claimant: true,
@@ -409,6 +411,7 @@ export default async function WorkDetailPage({
   const latestWorkActivityAt = work.statusHistory.at(-1)?.changedAt ?? null;
   const shouldUpdateProgress = isClaimant && needsProgressUpdateReminder(work, latestWorkActivityAt);
   const mayAssign = canAssignWork(actor, work, engineerAssignmentEnabled);
+  const workspaceTab = query.workspaceTab === "issue" ? "issue" : "operations";
   const technicians = mayAssign
     ? await db.user.findMany({
         where: {
@@ -424,8 +427,8 @@ export default async function WorkDetailPage({
 
   return (
     <AppShell>
-      <section className="work-detail-hero rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-4 shadow-[var(--shadow)]">
-        <div className="flex flex-wrap items-start justify-between gap-4 border-b border-[var(--line)] pb-4">
+      <section className="work-detail-hero mx-auto w-full max-w-3xl rounded-3xl border border-[var(--line)] bg-[var(--surface)] p-5 shadow-[var(--shadow)] sm:p-6">
+        <div className="flex flex-wrap items-start justify-between gap-5 border-b border-[var(--line)] pb-5">
           <div className="flex min-w-0 items-start gap-4">
             <div className="flex size-14 shrink-0 items-center justify-center rounded-xl border border-[var(--line)] bg-[var(--soft)] text-[var(--primary)]">
               <Wrench aria-hidden="true" size={30} />
@@ -440,7 +443,7 @@ export default async function WorkDetailPage({
           <StatusBadge status={work.status} />
         </div>
 
-        <section className="work-detail-grid work-meta-strip mt-4 grid overflow-hidden rounded-xl border border-[var(--line)] bg-[var(--soft)]/45 text-sm sm:grid-cols-2 xl:grid-cols-4">
+        <section className="work-detail-grid work-meta-strip mt-5 grid overflow-hidden rounded-2xl border border-[var(--line)] bg-[var(--soft)]/45 text-sm sm:grid-cols-2 xl:grid-cols-3">
           <WorkMetaItem icon={UserRound} label="ผู้แจ้ง" value={work.requesterName} />
           <WorkMetaItem icon={Building2} label="หน่วยงาน" value={work.requesterDepartment} />
           <WorkMetaItem icon={Zap} label="ความเร่งด่วน" value={urgencyLabels[work.urgency as Urgency]} />
@@ -462,7 +465,7 @@ export default async function WorkDetailPage({
         </p>
       ) : null}
       {query.storeIssueCreated ? (
-        <p className="mt-6 rounded-lg border border-emerald-500/35 bg-emerald-500/10 px-4 py-3 font-semibold text-emerald-700 dark:text-emerald-300" role="status">
+        <p className="mx-auto mt-6 w-full max-w-3xl rounded-lg border border-emerald-500/35 bg-emerald-500/10 px-4 py-3 font-semibold text-emerald-700 dark:text-emerald-300" role="status">
           สร้างใบเบิกอะไหล่แล้ว: {query.storeIssueCreated}
         </p>
       ) : null}
@@ -484,28 +487,27 @@ export default async function WorkDetailPage({
         </section>
       ) : null}
 
-      <div className="work-operations-grid mt-5 grid gap-4 xl:grid-cols-[minmax(320px,4fr)_minmax(0,6fr)]">
-        <div className="order-2 grid content-start gap-4">
-          <StoreIssuePanel
-            cancelOwnPendingStoreIssueAction={cancelOwnPendingStoreIssueAction}
-            currentUserId={user.id}
-            storeIssues={storeIssues}
-          />
+      <nav aria-label="เมนูดำเนินงานและใบเบิก" className="mx-auto mt-6 grid w-full max-w-3xl grid-cols-2 border-b border-white/35" data-testid="work-workspace-tabs">
+        <Link
+          aria-current={workspaceTab === "operations" ? "page" : undefined}
+          className={`inline-flex min-h-14 items-center justify-center gap-2 border-b-2 px-4 font-extrabold transition ${workspaceTab === "operations" ? "border-white text-white" : "border-transparent text-white/65 hover:text-white"}`}
+          href={`/work/${work.id}?workspaceTab=operations`}
+        >
+          <Settings size={20} /> การดำเนินงาน
+        </Link>
+        <Link
+          aria-current={workspaceTab === "issue" ? "page" : undefined}
+          className={`inline-flex min-h-14 items-center justify-center gap-2 border-b-2 px-4 font-extrabold transition ${workspaceTab === "issue" ? "border-white text-white" : "border-transparent text-white/65 hover:text-white"}`}
+          href={`/work/${work.id}?workspaceTab=issue`}
+        >
+          <ShoppingCart size={20} /> สร้างใบเบิก
+        </Link>
+      </nav>
 
+      <div className="work-operations-grid mx-auto mt-6 grid w-full max-w-3xl items-start gap-6">
+        <div className={workspaceTab === "issue" ? "grid content-start gap-4" : "hidden"}>
           {canRequestStoreIssue ? (
-            <section className="rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-5 shadow-[var(--shadow)]">
-          <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
-            <div>
-              <p className="inline-flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-[var(--primary)]">
-                <ShoppingCart size={18} />
-                Store Request สำหรับงานนี้
-              </p>
-              <h2 className="mt-2 text-2xl font-extrabold">เบิกอะไหล่จาก Store</h2>
-              <p className="mt-1 text-sm text-[var(--muted)]">
-                {work.number} <span className="mx-2">•</span> {work.machineName} <span className="mx-2">•</span> {work.problemTitle}
-              </p>
-            </div>
-          </div>
+            <section className="space-y-5" data-testid="work-store-issue-workspace">
           <IssueRequestForm
             action={createWorkStoreIssueAction}
             organizationId={workOrganizationId}
@@ -513,6 +515,12 @@ export default async function WorkDetailPage({
             issueZones={issueZones.map((item) => ({ ...item.zone, code: item.code }))}
             lockedCmWork={{ id: work.id, number: work.number, label: `${work.machineName} · ${work.problemTitle}` }}
             cmWorks={[{ id: work.id, number: work.number, label: `${work.machineName} · ${work.problemTitle}` }]}
+            requesterSummary={{ name: user.fullName, department: user.category?.name }}
+            siteSummary={{
+              organizationName: work.organization?.name ?? "-",
+              plantName: work.plant?.name ?? "-",
+              inventoryCode: work.plant?.code,
+            }}
             singleCard
             stocks={storeStocks.map((stock) => ({
               storeId: stock.store.id,
@@ -537,8 +545,9 @@ export default async function WorkDetailPage({
 
         </div>
 
-        <section className="work-operation-tabs order-1 rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-4 shadow-[var(--shadow)]">
-          <div className="mb-4 flex items-center gap-3">
+        <div className={workspaceTab === "operations" ? "grid content-start gap-6" : "hidden"}>
+        <section className="work-operation-tabs rounded-3xl border border-[var(--line)] bg-[var(--surface)] p-5 shadow-[var(--shadow)]">
+          <div className="mb-5 flex items-center gap-3">
             <Settings className="text-[var(--primary)]" size={23} />
             <h2 className="text-2xl font-extrabold">การดำเนินงาน</h2>
           </div>
@@ -607,29 +616,29 @@ export default async function WorkDetailPage({
       ) : null}
 
       {canRelease ? (
-          <form action={releaseAction} className="work-compact-form mt-5 flex flex-wrap gap-2 rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-4">
-          <input name="reason" required placeholder="เหตุผลปล่อยคืนคิว" className="min-w-72 rounded-md border p-3 text-black" />
-          <button className="rounded-md border border-[var(--line)] px-4 py-2">ปล่อยงานคืนคิว</button>
+          <form action={releaseAction} className="work-compact-form mt-5 grid gap-3 rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-stretch">
+          <input name="reason" required placeholder="เหตุผลปล่อยคืนคิว" className="min-h-12 w-full rounded-xl border border-[var(--line)] bg-white px-4 text-slate-900 outline-none placeholder:text-slate-500 focus:border-[var(--primary)]" />
+          <button className="inline-flex min-h-12 min-w-36 items-center justify-center rounded-xl border border-[var(--line)] px-5 font-bold transition hover:border-[var(--primary)] hover:text-[var(--primary)]">ปล่อยงานคืนคิว</button>
         </form>
       ) : null}
 
       {canMoveToBacklogShutdown ? (
-        <form action={moveToBacklogShutdownAction} className="work-compact-form mt-5 flex flex-wrap gap-2 rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-4">
+        <form action={moveToBacklogShutdownAction} className="work-compact-form mt-5 grid gap-3 rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-stretch">
           <input name="targetStatus" type="hidden" value="BACKLOG_SHUTDOWN" />
-          <input name="reason" required placeholder="เหตุผลย้ายเข้า Backlog Shutdown" className="min-w-72 rounded-md border p-3 text-black" />
-          <button className="rounded-md bg-slate-700 px-4 py-2 text-white">ย้ายเข้า Backlog Shutdown</button>
+          <input name="reason" required placeholder="เหตุผลย้ายเข้า Backlog Shutdown" className="min-h-12 w-full rounded-xl border border-[var(--line)] bg-white px-4 text-slate-900 outline-none placeholder:text-slate-500 focus:border-[var(--primary)]" />
+          <button className="inline-flex min-h-12 min-w-36 items-center justify-center rounded-xl bg-slate-700 px-5 font-bold text-white transition hover:bg-slate-800">ย้ายเข้า Backlog Shutdown</button>
         </form>
       ) : null}
 
       {shouldUpdateProgress ? (
-        <form action={progressUpdateAction} className="mt-6 grid gap-3 rounded-lg border border-amber-300 bg-amber-50 p-5 text-amber-950 shadow-[var(--shadow)] dark:border-amber-400/40 dark:bg-amber-500/10 dark:text-amber-100">
+        <form action={progressUpdateAction} className="mt-6 grid gap-4 rounded-2xl border border-amber-300 bg-amber-50 p-5 text-slate-900 shadow-[var(--shadow)] dark:border-amber-300 dark:bg-amber-50 dark:text-slate-900">
           <div>
-            <p className="text-sm font-bold uppercase tracking-wide">Progress Update</p>
-            <h2 className="mt-1 text-xl font-bold">อัปเดตงาน</h2>
-            <p className="mt-1 text-sm font-semibold opacity-80">งานนี้ไม่มีการอัปเดตหรือดำเนินการมาแล้ว 7 วัน กรุณาบันทึกความคืบหน้าเพื่อให้ทีมเห็นสถานะล่าสุด</p>
+            <p className="text-sm font-extrabold uppercase tracking-wide text-amber-800">Progress Update</p>
+            <h2 className="mt-1 text-xl font-extrabold text-slate-950">อัปเดตงาน</h2>
+            <p className="mt-2 text-sm font-semibold leading-relaxed text-slate-700">งานนี้ไม่มีการอัปเดตหรือดำเนินการมาแล้ว 7 วัน กรุณาบันทึกความคืบหน้าเพื่อให้ทีมเห็นสถานะล่าสุด</p>
           </div>
-          <textarea name="progressNote" required placeholder="บันทึกความคืบหน้า เช่น รออะไหล่, ตรวจสอบหน้างานแล้ว, นัดหยุดเครื่องเพื่อซ่อม" className="min-h-28 rounded-md border border-amber-200 bg-white p-3 text-black" />
-          <button className="w-fit rounded-md bg-amber-600 px-4 py-2 font-bold text-white shadow-sm transition hover:bg-amber-700">บันทึกอัปเดตงาน</button>
+          <textarea name="progressNote" required placeholder="บันทึกความคืบหน้า เช่น รออะไหล่, ตรวจสอบหน้างานแล้ว, นัดหยุดเครื่องเพื่อซ่อม" className="min-h-28 rounded-xl border border-amber-300 bg-white p-3 text-slate-900 outline-none placeholder:text-slate-500 focus:border-amber-600" />
+          <button className="inline-flex min-h-12 w-full items-center justify-center rounded-xl bg-amber-600 px-5 font-bold text-white shadow-sm transition hover:bg-amber-700 sm:w-fit sm:min-w-44">บันทึกอัปเดตงาน</button>
         </form>
       ) : null}
 
@@ -673,9 +682,9 @@ export default async function WorkDetailPage({
       ) : null}
 
       {canCancel ? (
-         <form action={cancelAction} className="work-compact-form mt-5 flex flex-wrap gap-2 rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-4">
-          <input name="reason" required placeholder="เหตุผลยกเลิก" className="min-w-72 rounded-md border p-3 text-black" />
-          <button className="rounded-md bg-red-700 px-4 py-2 text-white">ยกเลิกงาน</button>
+         <form action={cancelAction} className="work-compact-form mt-5 grid gap-3 rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-stretch">
+          <input name="reason" required placeholder="เหตุผลยกเลิก" className="min-h-12 w-full rounded-xl border border-[var(--line)] bg-white px-4 text-slate-900 outline-none placeholder:text-slate-500 focus:border-red-500" />
+          <button className="inline-flex min-h-12 min-w-36 items-center justify-center rounded-xl bg-red-700 px-5 font-bold text-white transition hover:bg-red-800">ยกเลิกงาน</button>
         </form>
       ) : null}
 
@@ -703,6 +712,12 @@ export default async function WorkDetailPage({
           </section>
 
         </section>
+        <StoreIssuePanel
+          cancelOwnPendingStoreIssueAction={cancelOwnPendingStoreIssueAction}
+          currentUserId={user.id}
+          storeIssues={storeIssues}
+        />
+        </div>
       </div>
 
     </AppShell>
@@ -721,11 +736,11 @@ function WorkMetaItem({
   wide?: boolean;
 }) {
   return (
-    <div className={`flex min-w-0 items-center gap-3 border-[var(--line)] px-4 py-3 ${wide ? "sm:col-span-2 xl:col-span-3" : ""}`}>
+    <div className={`flex min-w-0 items-start gap-3 border-[var(--line)] px-4 py-4 sm:px-5 ${wide ? "sm:col-span-2 xl:col-span-2" : ""}`}>
       <Icon aria-hidden="true" className="shrink-0 text-[var(--primary)]" size={22} />
       <div className="min-w-0">
         <p className="text-xs font-bold text-[var(--muted)]">{label}</p>
-        <p className="mt-0.5 truncate font-semibold text-[var(--ink)]">{value || "-"}</p>
+        <p className={`mt-1 font-semibold leading-relaxed text-[var(--ink)] ${wide ? "line-clamp-2" : "truncate"}`}>{value || "-"}</p>
       </div>
     </div>
   );

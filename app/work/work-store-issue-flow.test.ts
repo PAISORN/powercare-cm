@@ -9,7 +9,11 @@ describe("work detail store issue flow", () => {
     expect(source).toContain("IssueRequestForm");
     expect(source).toContain("lockedCmWork={{ id: work.id");
     expect(source).toContain("cmWorks={[{ id: work.id, number: work.number");
+    expect(source).toContain("requesterSummary={{ name: user.fullName");
+    expect(source).toContain("siteSummary={{");
+    expect(source).toContain('data-testid="work-store-issue-workspace"');
     expect(source).toContain("STORE_ISSUE_FROM_WORK_DETAIL");
+    expect(source).toContain("mx-auto mt-6 w-full max-w-3xl rounded-lg border border-emerald-500/35");
   });
 
   it("passes searchable stock metadata into the embedded store request form", () => {
@@ -38,6 +42,9 @@ describe("work detail store issue flow", () => {
     expect(source).toContain("StoreIssueStatusBadge");
     expect(source).toContain("StoreIssuePanel");
     expect(source).toContain("/inventory/tracking");
+    const operationsContent = source.indexOf('workspaceTab === "operations"');
+    const issuePanel = source.indexOf("<StoreIssuePanel", operationsContent);
+    expect(issuePanel).toBeGreaterThan(operationsContent);
   });
 
   it("lets the requester remove a pending store issue before engineer approval", () => {

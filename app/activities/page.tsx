@@ -22,6 +22,7 @@ import { AppShell } from "../../components/app-shell";
 import { StatusBadge } from "../../components/status-badge";
 import { formatThaiDateTime } from "../../lib/date-time/bangkok-time";
 import { db } from "../../lib/db";
+import { paginationWindow } from "../../lib/pagination-window";
 import { requireUser } from "../../lib/session";
 import { adminScopeSearchFromFormData } from "../../modules/admin/admin-site-scope";
 import { canCloseWork } from "../../modules/auth/permission";
@@ -377,7 +378,7 @@ export default async function ActivitiesPage({
   return (
     <AppShell>
       <div className="page-enter">
-        <header className="activities-page-hero relative overflow-hidden rounded-3xl border p-5 shadow-[var(--shadow)] sm:p-6">
+        <header className="menu-heading-plain activities-page-hero relative overflow-hidden rounded-3xl border p-5 shadow-[var(--shadow)] sm:p-6">
         <div className="relative z-10 flex flex-wrap items-start justify-between gap-4">
           <div>
             <p className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1 text-sm font-bold text-white">
@@ -694,8 +695,7 @@ function ActivityBoardView({
           >
             ‹
           </Link>
-          {Array.from({ length: totalPages }).slice(0, 4).map((_, index) => {
-            const page = index + 1;
+          {paginationWindow(currentPage, totalPages).map((page) => {
             return (
               <Link
                 className={`inline-flex size-11 items-center justify-center rounded-xl border text-sm font-extrabold transition ${

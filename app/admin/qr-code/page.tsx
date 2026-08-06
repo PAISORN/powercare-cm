@@ -41,7 +41,7 @@ export default async function AdminQrCodePage({
 
   return (
     <AppShell>
-      <section className="rounded-3xl border border-[var(--line)] bg-[var(--surface)] p-6 shadow-[var(--shadow)] print:border-0 print:shadow-none">
+      <section className="menu-heading-plain rounded-3xl border border-[var(--line)] bg-[var(--surface)] p-6 shadow-[var(--shadow)] print:border-0 print:shadow-none">
         <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-start">
           <div>
             <p className="inline-flex items-center gap-2 rounded-full bg-[var(--soft)] px-4 py-2 text-sm font-bold text-[var(--primary)] print:hidden">

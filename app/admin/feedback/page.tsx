@@ -18,7 +18,7 @@ export default async function AdminFeedbackPage() {
 
   return (
     <AppShell>
-      <section className="rounded-3xl border border-[var(--line)] bg-[var(--surface)] p-5 shadow-[var(--shadow)] md:p-7">
+      <section className="menu-heading-plain rounded-3xl border border-[var(--line)] bg-[var(--surface)] p-5 shadow-[var(--shadow)] md:p-7">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <p className="inline-flex items-center gap-2 rounded-full bg-[var(--soft)] px-4 py-2 text-sm font-semibold text-[var(--primary)]">

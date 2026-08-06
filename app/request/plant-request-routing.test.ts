@@ -13,7 +13,8 @@ describe("Plant-specific repair request routing", () => {
     expect(source).toContain('formData.get("plantCode")');
     expect(source).toContain('name="plantCode"');
     expect(source).toContain("plantName={plantScope.name}");
-    expect(source).toContain("Site: {plantName}");
+    expect(source).toContain(">{plantName}</span>");
+    expect(source).toContain(">{plantCode}</span>");
     expect(source).not.toContain("Plant: {plantName}");
     expect(source).toContain("db.zone.findMany");
     expect(source).toContain("db.category.findMany");

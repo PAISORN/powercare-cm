@@ -262,7 +262,7 @@ export function IssueRequestForm({
             <div className="mt-3 flex flex-nowrap items-center gap-1 text-[11px] font-bold sm:gap-2 sm:text-xs">
               {siteSummary ? (
                 <span className={`whitespace-nowrap rounded-full px-2 py-1.5 sm:px-2.5 ${singleCard ? "bg-white/10 text-white/90" : "bg-[var(--soft)] text-[var(--ink)]"}`}>
-                  {siteSummary.plantName}
+                  {siteSummary.inventoryCode ?? siteSummary.plantName}
                 </span>
               ) : null}
               <span className={`whitespace-nowrap rounded-full px-2 py-1.5 sm:px-2.5 ${singleCard ? "bg-white/10 text-white/80" : "bg-[var(--soft)] text-[var(--muted)]"}`}>

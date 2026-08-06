@@ -6,6 +6,7 @@ import { AppShell } from "../../../components/app-shell";
 import { StockHeaderReplacementController } from "../../../components/stock-header-replacement-controller";
 import { formatThaiMediumDateTime } from "../../../lib/date-time/bangkok-time";
 import { db } from "../../../lib/db";
+import { paginationWindow } from "../../../lib/pagination-window";
 import { requireUser } from "../../../lib/session";
 import { canUseUserPermission, PermissionKey } from "../../../modules/auth/site-admin-permissions";
 import { resolveStorePageScope } from "../../../modules/store/store-page-scope";
@@ -69,7 +70,7 @@ export default async function StockMovementsPage({ searchParams }: { searchParam
   return (
     <AppShell>
       <div className="space-y-5">
-        <header className="rounded-3xl border border-[var(--line)] bg-[var(--surface)] p-5 shadow-[var(--shadow)] sm:p-7">
+        <header className="menu-heading-plain rounded-3xl border border-[var(--line)] bg-[var(--surface)] p-5 shadow-[var(--shadow)] sm:p-7">
           <p className="text-sm font-semibold text-[var(--muted)]">Home &gt; Inventory &gt; Stock Movement</p>
           <div className="mt-3 flex items-center gap-3">
             <span className="flex size-11 items-center justify-center rounded-2xl bg-[var(--soft)] text-[var(--primary)]">
@@ -157,7 +158,7 @@ export default async function StockMovementsPage({ searchParams }: { searchParam
                 >
                   <ChevronLeft size={16} />
                 </Link>
-                {Array.from({ length: totalPages }, (_, index) => index + 1).map((pageNumber) => (
+                {paginationWindow(currentPage, totalPages).map((pageNumber) => (
                   <Link
                     aria-current={pageNumber === currentPage ? "page" : undefined}
                     className={paginationPageClass(pageNumber === currentPage)}
