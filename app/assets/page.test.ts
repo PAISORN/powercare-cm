@@ -17,4 +17,30 @@ describe("Assets registry pagination", () => {
     expect(source).toContain('const hierarchy = query.view !== "list"');
     expect(source).toContain("hierarchy ? { ...where, parentId: null } : where");
   });
+
+  it("filters Assets by Asset Class while preserving the selection in the URL", () => {
+    const source = readFileSync("app/assets/page.tsx", "utf8");
+    expect(source).toContain("assetClassId?: string");
+    expect(source).toContain('name="assetClassId"');
+    expect(source).toContain('aria-label="Asset Class"');
+    expect(source).toContain('query.assetClassId ? { assetClassId: query.assetClassId } : {}');
+    expect(source).toContain("ทุก Asset Class");
+  });
+
+  it("filters Assets by Asset Families while preserving the selection in the URL", () => {
+    const source = readFileSync("app/assets/page.tsx", "utf8");
+    expect(source).toContain("familyId?: string");
+    expect(source).toContain('name="familyId"');
+    expect(source).toContain('aria-label="Asset Families"');
+    expect(source).toContain('query.familyId ? { familyId: query.familyId } : {}');
+    expect(source).toContain("ทุก Asset Families");
+  });
+
+  it("shows the uploaded Asset image as a thumbnail in each registry row", () => {
+    const source = readFileSync("app/assets/page.tsx", "utf8");
+    expect(source).toContain("asset.imageStoragePath?");
+    expect(source).toContain("`/asset-images/${asset.id}`");
+    expect(source).toContain('loading="lazy"');
+    expect(source).toContain('className="h-full w-full object-cover"');
+  });
 });

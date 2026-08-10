@@ -28,6 +28,22 @@ describe("Activities page", () => {
     expect(source).toContain("canCloseWork(actor, work)");
   });
 
+  it("keeps shutdown backlog work out of My Activities", () => {
+    const source = readFileSync("app/activities/page.tsx", "utf8");
+    const activeStatuses = source.slice(
+      source.indexOf("const ACTIVE_OWNER_STATUSES"),
+      source.indexOf("const PENDING_STORE_ISSUE_STATUSES"),
+    );
+    expect(activeStatuses).not.toContain("WorkStatus.BACKLOG_SHUTDOWN");
+  });
+
+  it("shows chemical approval activities for scoped engineers including public requesters", () => {
+    const source = readFileSync("app/activities/page.tsx", "utf8");
+    expect(source).toContain("itemKind: { in: approvalKinds }");
+    expect(source).toContain("{ requesterUserId: null }");
+    expect(source).toContain("{ requesterUserId: { not: user.id } }");
+  });
+
   it("renders readable Thai copy instead of mojibake text", () => {
     const source = readFileSync("app/activities/page.tsx", "utf8");
 
