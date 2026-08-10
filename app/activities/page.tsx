@@ -297,11 +297,10 @@ export default async function ActivitiesPage({
       canApproveStore
         ? db.sparePartIssue.findMany({
             where: {
-              organizationId: scope.organization.id,
               plantId: scope.plant.id,
               status: StoreIssueStatus.WAITING_ENGINEER_APPROVAL,
               itemKind: { in: approvalKinds },
-              requesterUserId: { not: user.id },
+              OR: [{ requesterUserId: null }, { requesterUserId: { not: user.id } }],
             },
             include: { items: { include: { sparePart: { select: { code: true, name: true } } } } },
             orderBy: { requestedAt: "asc" },
@@ -311,12 +310,13 @@ export default async function ActivitiesPage({
       canIssueStore
         ? db.sparePartIssue.findMany({
             where: {
-              organizationId: scope.organization.id,
               plantId: scope.plant.id,
               status: { in: [StoreIssueStatus.WAITING_STORE_ISSUE, StoreIssueStatus.PARTIALLY_ISSUED] },
               itemKind: { in: responsibilityKinds },
-              requesterUserId: { not: user.id },
-              engineerId: { not: user.id },
+              AND: [
+                { OR: [{ requesterUserId: null }, { requesterUserId: { not: user.id } }] },
+                { OR: [{ engineerId: null }, { engineerId: { not: user.id } }] },
+              ],
             },
             include: { items: { include: { sparePart: { select: { code: true, name: true } } } } },
             orderBy: { requestedAt: "asc" },
@@ -325,7 +325,6 @@ export default async function ActivitiesPage({
         : Promise.resolve([]),
       db.sparePartIssue.findMany({
         where: {
-          organizationId: scope.organization.id,
           plantId: scope.plant.id,
           requesterUserId: user.id,
           status: { in: [StoreIssueStatus.RETURNED_FOR_EDIT, StoreIssueStatus.NOT_ENOUGH_STOCK] },
@@ -945,7 +944,7 @@ function WorkActivityPanel({
   scope: ActivityScope;
 }) {
   const isClaimant = work.claimantId === actor.id;
-  const canStart = isClaimant && work.status === WorkStatus.CLAIMED;
+  const canStart = isClaimant && (work.status === WorkStatus.CLAIMED || work.status === WorkStatus.BACKLOG_SHUTDOWN);
   const canSubmitForReview =
     isClaimant && (work.status === WorkStatus.IN_PROGRESS || work.status === WorkStatus.RETURNED_FOR_CORRECTION);
   const canReview = canCloseWork(actor, work);

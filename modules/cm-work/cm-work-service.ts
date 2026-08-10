@@ -3,7 +3,7 @@ import { db } from "../../lib/db";
 import { cacheTags, revalidateCmData } from "../../lib/query-cache";
 import { canAssignWork, canCancelWork, canClaimWork, canCloseWork, canReturnWork } from "../auth/permission";
 import { recordAudit } from "../audit/audit-service";
-import { canTransition } from "./cm-work-state-machine";
+import { canEnterBacklogShutdown, canTransition } from "./cm-work-state-machine";
 import { reserveCmWorkNumber } from "./cm-work-sequence";
 import { RoleName, statusLabels, WorkStatus, type Actor, type Urgency } from "./cm-work-types";
 import { createCmNotifications } from "../notifications/notification-service";
@@ -329,13 +329,10 @@ export async function moveToInProgress(actor: Actor, cmWorkId: string) {
 }
 
 export async function moveToBacklogShutdown(actor: Actor, cmWorkId: string, reason: string) {
-  const work = await db.cmWork.findUniqueOrThrow({ where: { id: cmWorkId } });
+  const work = await db.cmWork.findUniqueOrThrow({ where: { id: cmWorkId }, include: { claimant: { select: { role: true } } } });
   if (!reason.trim()) throw new Error("Backlog shutdown reason is required");
-  if (work.status !== WorkStatus.CLAIMED && work.status !== WorkStatus.IN_PROGRESS) {
-    throw new Error("Only claimed or in-progress work can move to shutdown backlog");
-  }
+  if (!canEnterBacklogShutdown(work.status, work.claimant?.role)) throw new Error("Assign an eligible technician before moving work to shutdown backlog");
   if (!canCancelWork(actor, work)) throw new Error("You cannot move this CM work to shutdown backlog");
-  if (!canTransition(work.status, WorkStatus.BACKLOG_SHUTDOWN)) throw new Error("Invalid status transition");
 
   const updated = await db.cmWork.update({
     where: { id: cmWorkId },

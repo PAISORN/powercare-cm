@@ -35,6 +35,7 @@ import {
   returnForCorrection,
   submitForReview,
 } from "../../../modules/cm-work/cm-work-service";
+import { canEnterBacklogShutdown } from "../../../modules/cm-work/cm-work-state-machine";
 import { RoleName, WorkStatus, statusLabels, urgencyLabels, type Actor, type Urgency } from "../../../modules/cm-work/cm-work-types";
 import { needsProgressUpdateReminder } from "../../../modules/cm-work/progress-update-reminder";
 import { buildUserOperationalScope, type OperationalScope } from "../../../modules/organization/user-plant-scope";
@@ -395,9 +396,7 @@ export default async function WorkDetailPage({
   const isClaimant = work.claimantId === user.id;
   const canReview = canCloseWork(actor, work);
   const canCancel = canCancelWork(actor, work);
-  const canMoveToBacklogShutdown = canCancel && (
-    work.status === WorkStatus.CLAIMED || work.status === WorkStatus.IN_PROGRESS
-  );
+  const canMoveToBacklogShutdown = canCancel && canEnterBacklogShutdown(work.status, work.claimant?.role);
   const canRelease = isClaimant && (work.status === WorkStatus.CLAIMED || work.status === WorkStatus.IN_PROGRESS);
   const hasPendingStoreIssues = storeIssues.some((issue) =>
     pendingStoreIssueStatuses.includes(issue.status as (typeof pendingStoreIssueStatuses)[number]),
@@ -560,7 +559,7 @@ export default async function WorkDetailPage({
                 </button>
               </form>
             ) : null}
-            {isClaimant && work.status === WorkStatus.CLAIMED ? (
+            {isClaimant && (work.status === WorkStatus.CLAIMED || work.status === WorkStatus.BACKLOG_SHUTDOWN) ? (
               <form action={startAction}>
                 <button className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-[var(--line)] px-4 text-sm font-bold transition hover:-translate-y-0.5 hover:border-[var(--primary)] hover:text-[var(--primary)]">
                   <Wrench size={17} />

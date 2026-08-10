@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { WorkStatus } from "./cm-work-types";
-import { canTransition } from "./cm-work-state-machine";
+import { canEnterBacklogShutdown, canTransition } from "./cm-work-state-machine";
 
 describe("canTransition", () => {
   it("allows the main CM workflow", () => {
@@ -19,6 +19,20 @@ describe("canTransition", () => {
 
   it("allows an unassigned returned work to be claimed again", () => {
     expect(canTransition(WorkStatus.RETURNED_FOR_CORRECTION, WorkStatus.CLAIMED)).toBe(true);
+  });
+
+  it("resumes shutdown backlog work through in-progress before closing", () => {
+    expect(canTransition(WorkStatus.BACKLOG_SHUTDOWN, WorkStatus.IN_PROGRESS)).toBe(true);
+    expect(canTransition(WorkStatus.BACKLOG_SHUTDOWN, WorkStatus.CLOSED)).toBe(false);
+  });
+
+  it("requires an assigned technician before entering shutdown backlog", () => {
+    expect(canEnterBacklogShutdown(WorkStatus.CLAIMED, "TECHNICIAN")).toBe(true);
+    expect(canEnterBacklogShutdown(WorkStatus.IN_PROGRESS, "TECHNICIAN")).toBe(true);
+    expect(canEnterBacklogShutdown(WorkStatus.WAITING_TO_CLOSE, "TECHNICIAN")).toBe(true);
+    expect(canEnterBacklogShutdown(WorkStatus.RETURNED_FOR_CORRECTION, "TECHNICIAN")).toBe(true);
+    expect(canEnterBacklogShutdown(WorkStatus.CLAIMED, "ENGINEER")).toBe(false);
+    expect(canEnterBacklogShutdown(WorkStatus.WAITING_TO_CLAIM, null)).toBe(false);
   });
 
   it("blocks closed and canceled work from returning to active workflow", () => {

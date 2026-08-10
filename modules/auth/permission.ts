@@ -48,7 +48,7 @@ export function canCancelWork(actor: Actor, work: WorkAccessContext) {
 
 export function canCloseWork(actor: Actor, work: WorkAccessContext) {
   if (!samePlant(actor, work)) return false;
-  if (work.status !== WorkStatus.WAITING_TO_CLOSE && work.status !== WorkStatus.BACKLOG_SHUTDOWN) return false;
+  if (work.status !== WorkStatus.WAITING_TO_CLOSE) return false;
   if (actor.role === RoleName.ADMIN || actor.role === RoleName.ORGANIZATION_ADMIN) return true;
   if (isSiteAdminRole(actor.role)) return canUseUserPermission(actor, PermissionKey.CLOSE_WORK);
   return actor.role === RoleName.ENGINEER && sameCategory(actor, work);
