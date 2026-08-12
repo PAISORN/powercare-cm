@@ -1,6 +1,10 @@
 import { fireEvent, render } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { AdminUserRoleScopeController } from "./admin-user-role-scope-controller";
+
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: vi.fn() }),
+}));
 
 describe("AdminUserRoleScopeController", () => {
   it("shows only categories for the selected organization and site", () => {

@@ -95,12 +95,10 @@ export default async function WorkListPage({ searchParams }: { searchParams: Pro
     "use server";
     const currentUser = await requireUser();
     const group = String(formData.get("group") ?? "");
-    const href = String(formData.get("href") ?? "/work");
     const scope = buildUserOperationalScope(currentUser);
     if (Object.values(WorkStatus).includes(group as WorkStatus)) {
       await markStatusGroupRead(currentUser.id, group, scope);
     }
-    redirect(href.startsWith("/work") ? href : "/work");
   }
 
   async function openWorkAction(formData: FormData) {

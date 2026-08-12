@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { RoleName } from "../modules/cm-work/cm-work-types";
 
 export function AdminUserRoleScopeController({
@@ -10,6 +11,8 @@ export function AdminUserRoleScopeController({
   formId: string;
   organizationName: string;
 }) {
+  const router = useRouter();
+
   useEffect(() => {
     const form = document.getElementById(formId);
     if (!(form instanceof HTMLFormElement)) return;
@@ -108,7 +111,7 @@ export function AdminUserRoleScopeController({
         currentUrl.searchParams.delete("organizationId");
       }
       currentUrl.searchParams.delete("plantId");
-      window.location.href = currentUrl.toString();
+      router.push(`${currentUrl.pathname}${currentUrl.search}${currentUrl.hash}`, { scroll: false });
     };
 
     const handleOrganizationChange = () => {
@@ -125,7 +128,7 @@ export function AdminUserRoleScopeController({
       siteSelect?.removeEventListener("change", applyRoleScope);
       organizationSelect?.removeEventListener("change", handleOrganizationChange);
     };
-  }, [formId, organizationName]);
+  }, [formId, organizationName, router]);
 
   return null;
 }

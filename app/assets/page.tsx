@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { Boxes, ChevronLeft, ChevronRight, CirclePlus, Download, FolderTree, Gauge, List, Search, Settings2, Upload, Wrench } from "lucide-react";
 import { AppShell } from "../../components/app-shell";
 import { AdminSiteScopeSelector } from "../../components/admin-site-scope-selector";
+import { AutoSubmitSelect } from "../../components/auto-submit-select";
 import { db } from "../../lib/db";
 import { requireUser } from "../../lib/session";
 import { formatThaiDate } from "../../lib/date-time/bangkok-time";
@@ -63,11 +64,11 @@ export default async function AssetsPage({ searchParams }: { searchParams: Promi
     <form className="mt-5 grid gap-2 rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-4 shadow-sm md:grid-cols-2 xl:grid-cols-[minmax(220px,2fr)_repeat(5,minmax(135px,1fr))_auto]">
       <input type="hidden" name="organizationId" value={scope.organization.id}/><input type="hidden" name="plantId" value={scope.plant.id}/><input type="hidden" name="view" value={query.view || "tree"}/>
       <label className="relative"><Search className="absolute left-3 top-3.5 text-[var(--muted)]" size={17}/><input name="search" defaultValue={query.search} className={`${inputClass} w-full pl-10`} placeholder="ค้นหารหัส ชื่อ Serial ผู้ผลิต รุ่น"/></label>
-      <select aria-label="Asset Class" name="assetClassId" defaultValue={query.assetClassId} className={inputClass}><option value="">ทุก Asset Class</option>{assetClasses.map(x => <option key={x.id} value={x.id}>{x.nameEn || x.nameTh}</option>)}</select>
-      <select aria-label="Asset Families" name="familyId" defaultValue={query.familyId} className={inputClass}><option value="">ทุก Asset Families</option>{families.map(x => <option key={x.id} value={x.id}>{x.code} · {x.nameEn || x.nameTh || "ไม่ระบุชื่อ"}</option>)}</select>
-      <select name="zoneId" defaultValue={query.zoneId} className={inputClass}><option value="">ทุก Zone</option>{zones.map(x => <option key={x.id} value={x.id}>{x.name}</option>)}</select>
-      <select name="status" defaultValue={query.status} className={inputClass}><option value="">ทุกสถานะ</option>{["IN_SERVICE","UNDER_REPAIR","STANDBY","TEMPORARILY_OUT","RETIRED"].map(x => <option key={x} value={x}>{assetStatusLabel(x)}</option>)}</select>
-      <select name="criticality" defaultValue={query.criticality} className={inputClass}><option value="">ทุก Criticality</option>{["CRITICAL","HIGH","MEDIUM","LOW"].map(x => <option key={x}>{x}</option>)}</select>
+      <AutoSubmitSelect aria-label="Asset Class" name="assetClassId" defaultValue={query.assetClassId} className={inputClass}><option value="">ทุก Asset Class</option>{assetClasses.map(x => <option key={x.id} value={x.id}>{x.nameEn || x.nameTh}</option>)}</AutoSubmitSelect>
+      <AutoSubmitSelect aria-label="Asset Families" name="familyId" defaultValue={query.familyId} className={inputClass}><option value="">ทุก Asset Families</option>{families.map(x => <option key={x.id} value={x.id}>{x.code} · {x.nameEn || x.nameTh || "ไม่ระบุชื่อ"}</option>)}</AutoSubmitSelect>
+      <AutoSubmitSelect aria-label="Zone" name="zoneId" defaultValue={query.zoneId} className={inputClass}><option value="">ทุก Zone</option>{zones.map(x => <option key={x.id} value={x.id}>{x.name}</option>)}</AutoSubmitSelect>
+      <AutoSubmitSelect aria-label="Asset status" name="status" defaultValue={query.status} className={inputClass}><option value="">ทุกสถานะ</option>{["IN_SERVICE","UNDER_REPAIR","STANDBY","TEMPORARILY_OUT","RETIRED"].map(x => <option key={x} value={x}>{assetStatusLabel(x)}</option>)}</AutoSubmitSelect>
+      <AutoSubmitSelect aria-label="Criticality" name="criticality" defaultValue={query.criticality} className={inputClass}><option value="">ทุก Criticality</option>{["CRITICAL","HIGH","MEDIUM","LOW"].map(x => <option key={x}>{x}</option>)}</AutoSubmitSelect>
       <button className={primaryButton}>ค้นหา</button>
     </form>
     <div className="mt-5 flex items-center justify-between gap-3"><p className="text-sm text-[var(--muted)]">พบ {filteredTotal} รายการ · แสดง {firstShown}-{lastShown}</p><div className="flex rounded-xl border border-[var(--line)] bg-[var(--surface)] p-1"><ViewLink active={!hierarchy} href={viewUrl(query, "list")} icon={List}>รายการ</ViewLink><ViewLink active={hierarchy} href={viewUrl(query, "tree")} icon={FolderTree}>โครงสร้าง</ViewLink></div></div>
