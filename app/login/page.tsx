@@ -1,7 +1,8 @@
 import { redirect } from "next/navigation";
 import { PublicHeader } from "../../components/public-header";
-import { setSession } from "../../lib/session";
+import { getCurrentUser, setSession } from "../../lib/session";
 import { authenticate } from "../../modules/auth/auth-service";
+import { defaultHomeHref } from "../../modules/auth/default-home-route";
 
 async function login(formData: FormData) {
   "use server";
@@ -10,7 +11,8 @@ async function login(formData: FormData) {
   const user = await authenticate(username, password);
   if (!user) redirect("/login?error=1");
   await setSession(user.id);
-  redirect("/dashboard");
+  const currentUser = await getCurrentUser();
+  redirect(currentUser ? defaultHomeHref(currentUser) : "/dashboardcm");
 }
 
 export default async function LoginPage({ searchParams }: { searchParams: Promise<{ error?: string; loggedOut?: string }> }) {

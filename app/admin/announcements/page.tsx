@@ -63,7 +63,7 @@ function inputFrom(formData: FormData, image?: { fileName: string; mimeType: str
 async function createAction(formData: FormData) {
   "use server";
   const user = await requireUser();
-  if (!canManageAnnouncements(user)) redirect("/dashboard");
+  if (!canManageAnnouncements(user)) redirect("/dashboardcm");
   const id = randomUUID();
   const file = formData.get("image");
   let savedImage: Awaited<ReturnType<typeof saveAnnouncementImageFile>> | null = null;
@@ -80,7 +80,7 @@ async function createAction(formData: FormData) {
 async function updateAction(formData: FormData) {
   "use server";
   const user = await requireUser();
-  if (!canManageAnnouncements(user)) redirect("/dashboard");
+  if (!canManageAnnouncements(user)) redirect("/dashboardcm");
   const id = String(formData.get("id") ?? "");
   const existing = await db.announcement.findFirstOrThrow({ where: { id, organizationId: null } });
   const file = formData.get("image");
@@ -105,7 +105,7 @@ async function updateAction(formData: FormData) {
 async function rowAction(formData: FormData) {
   "use server";
   const user = await requireUser();
-  if (!canManageAnnouncements(user)) redirect("/dashboard");
+  if (!canManageAnnouncements(user)) redirect("/dashboardcm");
   const id = String(formData.get("id") ?? "");
   const intent = String(formData.get("intent") ?? "");
   try {
@@ -127,7 +127,7 @@ function dateInput(value: Date) {
 
 export default async function AdminAnnouncementsPage({ searchParams }: { searchParams: Promise<{ saved?: string; error?: string }> }) {
   const user = await requireUser();
-  if (!canManageAnnouncements(user)) redirect("/dashboard");
+  if (!canManageAnnouncements(user)) redirect("/dashboardcm");
   const [announcements, query] = await Promise.all([
     db.announcement.findMany({
       where: { organizationId: null },

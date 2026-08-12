@@ -41,7 +41,7 @@ describe("work detail store issue flow", () => {
     expect(source).toContain("storeIssues");
     expect(source).toContain("StoreIssueStatusBadge");
     expect(source).toContain("StoreIssuePanel");
-    expect(source).toContain("/inventory/tracking");
+    expect(source).toContain("/dashboardstore/tracking");
     const operationsContent = source.indexOf('workspaceTab === "operations"');
     const issuePanel = source.indexOf("<StoreIssuePanel", operationsContent);
     expect(issuePanel).toBeGreaterThan(operationsContent);

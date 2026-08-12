@@ -6,7 +6,7 @@ test("dashboard no longer exposes the old shortcut bar", async ({ page }) => {
   await page.getByPlaceholder("Password").fill("admin1234");
   await page.locator("form button").click();
 
-  await expect(page).toHaveURL(/\/dashboard/);
+  await expect(page).toHaveURL(/\/dashboardcm/);
   await expect(page.getByRole("link", { name: "PowerCare.CM" })).toBeVisible();
   await expect(page.getByRole("link", { name: "Create Request" })).toBeVisible();
   await expect(page.getByRole("link", { name: "Track Work" })).toBeVisible();
@@ -19,7 +19,7 @@ test("signed-in menu request and tracking pages keep the staff session shell", a
   await page.getByPlaceholder("Username").fill("admin");
   await page.getByPlaceholder("Password").fill("admin1234");
   await page.locator("form button").click();
-  await expect(page).toHaveURL(/\/dashboard/);
+  await expect(page).toHaveURL(/\/dashboardcm/);
 
   await page.getByRole("link", { name: "Create Request" }).click();
   await expect(page).toHaveURL(/\/request/);

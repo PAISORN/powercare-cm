@@ -20,7 +20,7 @@ const trackingSteps: { label: string; statuses: WorkStatus[]; icon: typeof Clipb
 export default async function TrackingPage({ searchParams }: { searchParams: Promise<{ number?: string; plant?: string }> }) {
   const query = await searchParams;
   const user = await getCurrentUser();
-  if (user?.role === RoleName.ADMIN) redirect("/dashboard");
+  if (user?.role === RoleName.ADMIN) redirect("/dashboardcm");
   const siteCode = user?.plant?.code ?? query.plant ?? "rtb";
   const params = new URLSearchParams();
   if (query.number) params.set("number", query.number);
@@ -36,7 +36,7 @@ export async function TrackingPageContent({
   plantCode?: string | null;
 }) {
   const user = await getCurrentUser();
-  if (user?.role === RoleName.ADMIN) redirect("/dashboard");
+  if (user?.role === RoleName.ADMIN) redirect("/dashboardcm");
   if (user?.plant?.code && user.plant.code.toLowerCase() !== plantCode?.toLowerCase()) {
     const params = new URLSearchParams();
     if (rawNumber) params.set("number", rawNumber);

@@ -10,7 +10,7 @@ function readProjectFile(path: string) {
 
 describe("chart entry motion", () => {
   test("dashboard charts use shared motion hooks", () => {
-    const content = readProjectFile("app/dashboard/page.tsx");
+    const content = readProjectFile("app/dashboardcm/page.tsx");
 
     expect(content).toContain("cm-donut-motion");
     expect(content).toContain("cm-donut-core");

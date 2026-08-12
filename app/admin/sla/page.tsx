@@ -10,7 +10,7 @@ import { canManageSlaDueDate } from "../../../modules/auth/permission";
 async function updateSla(formData: FormData) {
   "use server";
   const user = await requireUser();
-  if (!canManageSlaDueDate(user)) redirect("/dashboard");
+  if (!canManageSlaDueDate(user)) redirect("/dashboardcm");
   const scope = await resolveAdminSiteScope(user, adminScopeSearchFromFormData(formData));
   const data = {
     claimDays: Math.max(1, Number(formData.get("claimDays")) || 1),
@@ -45,7 +45,7 @@ export default async function AdminSlaPage({
   searchParams: Promise<{ saved?: string; organizationId?: string; plantId?: string }>;
 }) {
   const user = await requireUser();
-  if (!canManageSlaDueDate(user)) redirect("/dashboard");
+  if (!canManageSlaDueDate(user)) redirect("/dashboardcm");
   const query = await searchParams;
   const scope = await resolveAdminSiteScope(user, query);
   const sla =

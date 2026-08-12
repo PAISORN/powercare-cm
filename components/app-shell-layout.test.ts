@@ -41,6 +41,6 @@ describe("AppShell mobile header", () => {
 
     expect(source).toContain("<MobilePrimaryNav elevated={immersiveMobile}");
     expect(mobileNavSource).toContain('elevated?"z-[250]":"z-50"');
-    expect(mobileNavSource).toContain('{ href: "/inventory", label: "Store"');
+    expect(mobileNavSource).toContain('{ href: "/dashboardstore", label: "Store"');
   });
 });

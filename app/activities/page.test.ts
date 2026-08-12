@@ -47,12 +47,12 @@ describe("Activities page", () => {
   it("renders readable Thai copy instead of mojibake text", () => {
     const source = readFileSync("app/activities/page.tsx", "utf8");
 
-    expect(source).toContain("งานที่ต้องดำเนินการ");
-    expect(source).toContain("งานรอตรวจรับ/ปิดงาน");
-    expect(source).toContain("กิจกรรม Store / ใบเบิกอะไหล่");
-    expect(source).not.toContain("à¸");
-    expect(source).not.toContain("Ã Â¸");
-    expect(source).not.toContain("Ãƒ");
+    expect(source).toContain("???????????????????");
+    expect(source).toContain("????????????/??????");
+    expect(source).toContain("??????? Store / ????????????");
+    expect(source).not.toContain("?");
+    expect(source).not.toContain("�");
+    expect(source).not.toContain("�");
   });
 
   it("splits store activity queues by next role action", () => {
@@ -63,9 +63,9 @@ describe("Activities page", () => {
     expect(source).toContain("PARTIALLY_ISSUED");
     expect(source).toContain("RETURNED_FOR_EDIT");
     expect(source).toContain("NOT_ENOUGH_STOCK");
-    expect(source).toContain("รอ Engineer อนุมัติ");
-    expect(source).toContain("รอ Store จ่าย");
-    expect(source).toContain("ส่งกลับให้แก้ไข / ของไม่พอ");
+    expect(source).toContain("?? Engineer ???????");
+    expect(source).toContain("?? Store ????");
+    expect(source).toContain("??????????????? / ????????");
   });
 
   it("renders store workflow action controls directly in My Activities", () => {
@@ -78,7 +78,7 @@ describe("Activities page", () => {
     expect(source).toContain("RETURN");
     expect(source).toContain("REJECT");
     expect(source).toContain("Not enough stock");
-    expect(source).toContain("จ่ายอะไหล่ทั้งใบ");
+    expect(source).toContain("????????????????");
     expect(source).not.toContain('name="issueQty"');
   });
 
@@ -100,8 +100,8 @@ describe("Activities page", () => {
     expect(source).toContain("activity-row-two-line group transition");
     expect(source).toContain("ActivityViewToggle");
     expect(source).toContain("ActivityBoardView");
-    expect(source).toContain('label: "รายการ"');
-    expect(source).toContain('label: "การ์ด"');
+    expect(source).toContain('label: "??????"');
+    expect(source).toContain('label: "?????"');
     expect(source).not.toContain("<ActivityMetric");
   });
 
@@ -114,7 +114,7 @@ describe("Activities page", () => {
     expect(source).toContain("activitySelectionHref");
     expect(source).toContain("selectedItem");
     expect(source).toContain("activityCloseHref");
-    expect(source).toContain("ดำเนินการในหน้านี้");
+    expect(source).toContain("??????????????????");
     expect(source).toContain("query.selectedActivity");
     expect(source).not.toContain("filteredBoardActivities[0]");
     expect(source).not.toContain('href={href}');

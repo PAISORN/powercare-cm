@@ -15,7 +15,7 @@ import { DEFAULT_ORGANIZATION_ID, normalizePlantRecordInput } from "../../../mod
 async function createSite(formData: FormData) {
   "use server";
   const user = await requireUser();
-  if (!canManageSites(user)) redirect("/dashboard");
+  if (!canManageSites(user)) redirect("/dashboardcm");
   const organization = await resolveManageableOrganization(user, String(formData.get("organizationId") ?? ""));
   const site = normalizePlantRecordInput({
     name: String(formData.get("name") ?? ""),
@@ -71,7 +71,7 @@ async function createSite(formData: FormData) {
 async function setSiteActive(formData: FormData) {
   "use server";
   const user = await requireUser();
-  if (!canManageSites(user)) redirect("/dashboard");
+  if (!canManageSites(user)) redirect("/dashboardcm");
   const organization = await resolveManageableOrganization(user, String(formData.get("organizationId") ?? ""));
   const id = String(formData.get("id") ?? "");
   const active = String(formData.get("active")) === "true";
@@ -98,7 +98,7 @@ async function setSiteActive(formData: FormData) {
 async function updateSiteDetails(formData: FormData) {
   "use server";
   const user = await requireUser();
-  if (!canManageSites(user)) redirect("/dashboard");
+  if (!canManageSites(user)) redirect("/dashboardcm");
   const organization = await resolveManageableOrganization(user, String(formData.get("organizationId") ?? ""));
   const id = String(formData.get("id") ?? "");
   const site = normalizePlantRecordInput({
@@ -145,7 +145,7 @@ export default async function AdminSitesPage({
   searchParams: Promise<{ createStatus?: string; organizationId?: string }>;
 }) {
   const user = await requireUser();
-  if (!canManageSites(user)) redirect("/dashboard");
+  if (!canManageSites(user)) redirect("/dashboardcm");
   const query = await searchParams;
   const organizations = user.role === RoleName.ADMIN
     ? await db.organization.findMany({
@@ -347,7 +347,7 @@ async function resolveManageableOrganization(
     where: { id: organizationId, active: true },
     select: { id: true, name: true, slug: true },
   });
-  if (!organization) redirect("/dashboard");
+  if (!organization) redirect("/dashboardcm");
   return organization;
 }
 

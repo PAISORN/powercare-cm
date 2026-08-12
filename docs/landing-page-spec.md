@@ -7,7 +7,7 @@ Replace the public operational dashboard at `/` with a product Landing Page for 
 ## Routing
 
 - Unauthenticated `/` renders the Public Landing Page.
-- Authenticated `/` redirects to `/dashboard`.
+- Authenticated `/` redirects to the user's role-based Home dashboard.
 - `/login` remains the single authenticated product entry.
 - Site-specific public request, tracking, and store-issue links remain available only through each Site URL or QR code.
 - The Landing Page never provides a generic operational request form or Site selector.

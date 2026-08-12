@@ -19,7 +19,7 @@ import { readOrganizationScope } from "../../../modules/organization/organizatio
 async function updateSiteAdminPermissions(formData: FormData) {
   "use server";
   const current = await requireUser();
-  if (!canManageSiteAdminPermissions(current)) redirect("/dashboard");
+  if (!canManageSiteAdminPermissions(current)) redirect("/dashboardcm");
 
   const userId = String(formData.get("userId") ?? "");
   const plantId = String(formData.get("plantId") ?? "");
@@ -78,7 +78,7 @@ async function updateSiteAdminPermissions(formData: FormData) {
 async function updateSiteQuota(formData: FormData) {
   "use server";
   const current = await requireUser();
-  if (!canManageSiteAdminPermissions(current)) redirect("/dashboard");
+  if (!canManageSiteAdminPermissions(current)) redirect("/dashboardcm");
   const plantId = String(formData.get("plantId") ?? "");
   const returnPlantId = String(formData.get("returnPlantId") ?? "");
   const returnOrganizationId = String(formData.get("returnOrganizationId") ?? "");
@@ -116,7 +116,7 @@ async function LegacySiteAdminPermissionsPage({
   searchParams: Promise<{ saved?: string; error?: string; organizationId?: string; plantId?: string }>;
 }) {
   const current = await requireUser();
-  if (!canManageSiteAdminPermissions(current)) redirect("/dashboard");
+  if (!canManageSiteAdminPermissions(current)) redirect("/dashboardcm");
   const scope = await readOrganizationScope();
   const query = await searchParams;
   const organizations = await db.organization.findMany({
@@ -426,6 +426,6 @@ function normalizeLimit(value: FormDataEntryValue | null) {
 
 export default async function SiteAdminPermissionsPage() {
   const current = await requireUser();
-  if (!canManageSiteAdminPermissions(current)) redirect("/dashboard");
+  if (!canManageSiteAdminPermissions(current)) redirect("/dashboardcm");
   redirect("/admin/permissions");
 }

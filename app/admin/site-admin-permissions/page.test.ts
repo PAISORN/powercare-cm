@@ -48,7 +48,7 @@ describe("SiteAdminPermissionsPage", () => {
     expect(source).toContain("resolveActionOrganizationId");
     expect(source).toContain('name="returnOrganizationId"');
     expect(source).not.toContain("const organizationId = current.organizationId");
-    expect(source).not.toContain("if (!organizationId) redirect(\"/dashboard\")");
+    expect(source).not.toContain("if (!organizationId) redirect(\"/dashboardcm\")");
   });
 
   it("provides a site filter and keeps unassigned Site Admins visible in all-site view", () => {

@@ -5,7 +5,7 @@ test("technician can open work list and see seeded CM work", async ({ page }) =>
   await page.getByPlaceholder("Username").fill("tech-electrical");
   await page.getByPlaceholder("Password").fill("password1234");
   await page.locator("form button").click();
-  await expect(page).toHaveURL(/\/dashboard/);
+  await expect(page).toHaveURL(/\/dashboardcm/);
 
   await page.goto("/work");
   await page.getByPlaceholder("Search CM number, machine, requester").fill("CM-2026-06-0001");
@@ -20,7 +20,7 @@ test("technician can upload profile photo and see it in work results", async ({ 
   await page.getByPlaceholder("Username").fill("tech-electrical");
   await page.getByPlaceholder("Password").fill("password1234");
   await page.locator("form button").click();
-  await expect(page).toHaveURL(/\/dashboard/);
+  await expect(page).toHaveURL(/\/dashboardcm/);
 
   await page.goto("/profile");
   await expect(page.getByRole("heading", { name: "Electrical Technician" })).toBeVisible();

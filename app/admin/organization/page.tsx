@@ -94,7 +94,7 @@ async function readOrganizationScopeForUser(user: {
 async function updateOrganizationAction(formData: FormData) {
   "use server";
   const user = await requireUser();
-  if (!canManageOrganization(user) && !canManagePlantProfile(user)) redirect("/dashboard");
+  if (!canManageOrganization(user) && !canManagePlantProfile(user)) redirect("/dashboardcm");
   const actor = actorFrom(user);
   const canEditCompany = canManageCompanyOrganization(user);
   const canEditPlant = canManagePlantProfile(user);
@@ -155,7 +155,7 @@ async function updateOrganizationAction(formData: FormData) {
         user.plantId,
       );
     } else {
-      redirect("/dashboard");
+      redirect("/dashboardcm");
     }
   } catch {
     await deleteStoredFile(uploaded?.storagePath);
@@ -175,7 +175,7 @@ async function updateOrganizationAction(formData: FormData) {
 async function createOrganizationAction(formData: FormData) {
   "use server";
   const user = await requireUser();
-  if (user.role !== RoleName.ADMIN) redirect("/dashboard");
+  if (user.role !== RoleName.ADMIN) redirect("/dashboardcm");
 
   const organization = normalizeOrganizationRecordInput({
     name: String(formData.get("name") ?? ""),
@@ -208,7 +208,7 @@ async function createOrganizationAction(formData: FormData) {
 async function createOrganizationMapUserAction(formData: FormData) {
   "use server";
   const current = await requireUser();
-  if (!canManageUsers(current) || !canCreateManagedUser(current)) redirect("/dashboard");
+  if (!canManageUsers(current) || !canCreateManagedUser(current)) redirect("/dashboardcm");
 
   const nextRole = assertManagedUserRole(
     current,
@@ -300,7 +300,7 @@ async function createOrganizationMapUserAction(formData: FormData) {
 async function updateOrganizationMapUserAction(formData: FormData) {
   "use server";
   const current = await requireUser();
-  if (!canManageUsers(current) || !canUpdateManagedUser(current)) redirect("/dashboard");
+  if (!canManageUsers(current) || !canUpdateManagedUser(current)) redirect("/dashboardcm");
 
   const userId = String(formData.get("userId") ?? "");
   if (!userId || userId === current.id) redirect("/admin/organization");
@@ -447,7 +447,7 @@ export default async function AdminOrganizationPage({
   searchParams: Promise<{ created?: string; saved?: string; error?: string; userStatus?: string }>;
 }) {
   const user = await requireUser();
-  if (!canManageOrganization(user) && !canManagePlantProfile(user)) redirect("/dashboard");
+  if (!canManageOrganization(user) && !canManagePlantProfile(user)) redirect("/dashboardcm");
   const canEditCompany = canManageCompanyOrganization(user);
   const canEditPlant = canManagePlantProfile(user);
   const drawerOrganizationId = user.organizationId ?? DEFAULT_ORGANIZATION_ID;

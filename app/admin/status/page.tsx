@@ -11,7 +11,7 @@ const onlineWindowMs = 5 * 60 * 1000;
 
 export default async function OwnerStatusPage() {
   const currentUser = await requireUser();
-  if (currentUser.role !== RoleName.ADMIN) redirect("/dashboard");
+  if (currentUser.role !== RoleName.ADMIN) redirect("/dashboardcm");
 
   const onlineSince = new Date(Date.now() - onlineWindowMs);
   const users = await db.user.findMany({

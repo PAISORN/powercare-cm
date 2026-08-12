@@ -5,7 +5,7 @@ test("work list can filter by status and clear filters", async ({ page }) => {
   await page.getByPlaceholder("Username").fill("admin");
   await page.getByPlaceholder("Password").fill("admin1234");
   await page.locator("form button").click();
-  await expect(page).toHaveURL(/\/dashboard/);
+  await expect(page).toHaveURL(/\/dashboardcm/);
 
   await page.goto("/work");
   await expect(page.getByLabel("Status KPI strip")).toBeVisible();
@@ -34,7 +34,7 @@ test("work list paginates results after 50 items", async ({ page }) => {
   await page.getByPlaceholder("Username").fill("admin");
   await page.getByPlaceholder("Password").fill("admin1234");
   await page.locator("form button").click();
-  await expect(page).toHaveURL(/\/dashboard/);
+  await expect(page).toHaveURL(/\/dashboardcm/);
 
   await page.goto("/work");
   const pagination = page.getByRole("navigation", { name: "Work results pagination" });
@@ -52,7 +52,7 @@ test("work list can search by machine name", async ({ page }) => {
   await page.getByPlaceholder("Username").fill("admin");
   await page.getByPlaceholder("Password").fill("admin1234");
   await page.locator("form button").click();
-  await expect(page).toHaveURL(/\/dashboard/);
+  await expect(page).toHaveURL(/\/dashboardcm/);
 
   await page.goto("/work");
   await page.getByPlaceholder("Search CM number, machine, requester").fill("Feed Pump");

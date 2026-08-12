@@ -88,7 +88,7 @@
 ### Task 10: Complete Store operational controls
 
 - **Description:** mature the Store foundation for production warehouse use.
-- **Files involved:** `app/inventory/**`, `components/store/**`, `modules/store/**`.
+- **Files involved:** `app/dashboardstore/**`, `components/store/**`, `modules/store/**`.
 - **Suggested implementation:** QR/barcode scan, Excel master/stock import with preview, stock count/reconciliation, transfer between Stores, reservation for approved issues, movement reversal rather than deletion, and stronger audit reporting.
 - **Complexity:** High.
 - **Dependencies:** Task 9.

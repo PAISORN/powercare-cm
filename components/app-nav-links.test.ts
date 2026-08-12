@@ -25,10 +25,10 @@ describe("getAppLinks", () => {
     const createView = new URLSearchParams("view=create");
     const trackingView = new URLSearchParams("view=tracking");
 
-    expect(isActivePath("/inventory/issue", "/inventory/issue?view=create", createView)).toBe(true);
-    expect(isActivePath("/inventory/issue", "/inventory/issue?view=tracking", createView)).toBe(false);
-    expect(isActivePath("/inventory/issue", "/inventory/issue?view=create", trackingView)).toBe(false);
-    expect(isActivePath("/inventory/issue", "/inventory/issue?view=tracking", trackingView)).toBe(true);
+    expect(isActivePath("/dashboardstore/issue", "/dashboardstore/issue?view=create", createView)).toBe(true);
+    expect(isActivePath("/dashboardstore/issue", "/dashboardstore/issue?view=tracking", createView)).toBe(false);
+    expect(isActivePath("/dashboardstore/issue", "/dashboardstore/issue?view=create", trackingView)).toBe(false);
+    expect(isActivePath("/dashboardstore/issue", "/dashboardstore/issue?view=tracking", trackingView)).toBe(true);
   });
 
   it("uses the signed-in user's Site request URL and disables it for Owner Admin", () => {
@@ -170,31 +170,31 @@ describe("getAppLinks", () => {
     expect(links.some((link) => link.kind === "section" && link.label === "Assets")).toBe(true);
     expect(links.some((link) => link.kind === "section" && link.label === "Inventory")).toBe(true);
     expect(links.some((link) => link.label === "Equipment" && link.disabled)).toBe(true);
-    expect(links.some((link) => link.label === "Spare Parts" && link.href === "/inventory/spare-parts" && !link.disabled)).toBe(true);
+    expect(links.some((link) => link.label === "Spare Parts" && link.href === "/dashboardstore/spare-parts" && !link.disabled)).toBe(true);
     expect(visitorLinks.some((link) => link.label === "Spare Parts" && !link.disabled)).toBe(true);
   });
 
   it("shows real Inventory links to Store Officer", () => {
     const links = getAppLinks(RoleName.STORE_OFFICER);
 
-    expect(links.some((link) => link.href === "/inventory/spare-parts" && !link.disabled)).toBe(true);
-    expect(links.some((link) => link.href === "/inventory/stock" && !link.disabled)).toBe(true);
-    expect(links.some((link) => link.href === "/inventory/stock" && link.label === "Stock")).toBe(true);
-    expect(links.some((link) => link.href === "/inventory/issue?view=tracking" && link.label === "Stock Issue" && !link.disabled)).toBe(true);
-    expect(links.some((link) => link.href === "/inventory/issue?view=create" && !link.disabled)).toBe(true);
-    expect(links.some((link) => link.href === "/inventory/public-issue" && !link.disabled)).toBe(true);
-    expect(links.some((link) => link.href === "/inventory/receive" && !link.disabled)).toBe(true);
-    expect(links.some((link) => link.href === "/inventory/tracking" && link.label === "Issue Tracking" && !link.disabled)).toBe(true);
+    expect(links.some((link) => link.href === "/dashboardstore/spare-parts" && !link.disabled)).toBe(true);
+    expect(links.some((link) => link.href === "/dashboardstore/stock" && !link.disabled)).toBe(true);
+    expect(links.some((link) => link.href === "/dashboardstore/stock" && link.label === "Stock")).toBe(true);
+    expect(links.some((link) => link.href === "/dashboardstore/issue?view=tracking" && link.label === "Stock Issue" && !link.disabled)).toBe(true);
+    expect(links.some((link) => link.href === "/dashboardstore/issue?view=create" && !link.disabled)).toBe(true);
+    expect(links.some((link) => link.href === "/dashboardstore/public-issue" && !link.disabled)).toBe(true);
+    expect(links.some((link) => link.href === "/dashboardstore/receive" && !link.disabled)).toBe(true);
+    expect(links.some((link) => link.href === "/dashboardstore/tracking" && link.label === "Issue Tracking" && !link.disabled)).toBe(true);
     expect(links.findIndex((link) => link.label === "Stock Issue")).toBe(
       links.findIndex((link) => link.label === "Stock") + 1,
     );
     expect(links.findIndex((link) => link.label === "Issue Tracking")).toBe(
       links.findIndex((link) => link.label === "Receive") + 1,
     );
-    expect(links.some((link) => link.href === "/inventory/movements" && link.label === "Stock Movement")).toBe(true);
-    expect(links.some((link) => link.href === "/inventory/movements" && !link.disabled)).toBe(true);
-    expect(links.some((link) => link.href === "/inventory/reports" && !link.disabled)).toBe(true);
-    expect(links.some((link) => link.href === "/dashboard")).toBe(false);
+    expect(links.some((link) => link.href === "/dashboardstore/movements" && link.label === "Stock Movement")).toBe(true);
+    expect(links.some((link) => link.href === "/dashboardstore/movements" && !link.disabled)).toBe(true);
+    expect(links.some((link) => link.href === "/dashboardstore/reports" && !link.disabled)).toBe(true);
+    expect(links.some((link) => link.href === "/dashboardcm")).toBe(false);
     expect(links.some((link) => link.href === "/work")).toBe(false);
     expect(links.some((link) => link.href === "/admin/users")).toBe(false);
   });
@@ -216,8 +216,8 @@ describe("getAppLinks", () => {
   it("can render the sidebar as icon-only collapsed navigation", () => {
     render(React.createElement(AppNavLinks, { role: RoleName.ADMIN, collapsed: true }));
 
-    expect(screen.getByRole("link", { name: /^Dashboard$/i })).toBeTruthy();
-    expect(screen.queryByText("Dashboard")).toBeNull();
+    expect(screen.getByRole("link", { name: /^Home$/i })).toBeTruthy();
+    expect(screen.queryByText("Home")).toBeNull();
     expect(screen.getByRole("button", { name: /^Maintenance$/i })).toBeTruthy();
   });
 
@@ -227,7 +227,7 @@ describe("getAppLinks", () => {
     expect(adminActivitiesLink).toBeTruthy();
     expect(adminActivitiesLink?.nested).toBeUndefined();
     expect(adminLinks.findIndex((link) => link.href === "/activities")).toBeGreaterThan(
-      adminLinks.findIndex((link) => link.href === "/dashboard"),
+      adminLinks.findIndex((link) => link.href === "/dashboardcm"),
     );
     expect(getAppLinks(RoleName.ORGANIZATION_ADMIN).some((link) => link.href === "/activities")).toBe(true);
     expect(getAppLinks(RoleName.SITE_ADMIN).some((link) => link.href === "/activities")).toBe(true);
@@ -320,7 +320,7 @@ describe("getAppLinks", () => {
   it("keeps Visitor role read-only in the sidebar", () => {
     const links = getAppLinks(RoleName.VISITOR);
 
-    expect(links.some((link) => link.href === "/dashboard")).toBe(true);
+    expect(links.some((link) => link.href === "/dashboardcm")).toBe(true);
     expect(links.some((link) => link.href === "/work")).toBe(true);
     expect(links.some((link) => link.href === "/members")).toBe(true);
     expect(links.some((link) => link.href === "/profile")).toBe(true);

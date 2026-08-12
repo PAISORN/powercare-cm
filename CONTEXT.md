@@ -8,6 +8,14 @@ This context defines the language for a power plant Corrective Maintenance web a
 The CMMS product umbrella for maintenance operations, covering Corrective Maintenance, spare-parts management, Preventive Maintenance, and asset management as product modules.
 _Avoid_: CM dashboard, repair-request website, Store-only system
 
+**CM Dashboard**:
+The authenticated operational dashboard for Corrective Maintenance, reached at `/dashboardcm`; it is the Home destination for every Role except an authorized Store Officer.
+_Avoid_: `/dashboard`, generic dashboard, Store Dashboard
+
+**Store Dashboard**:
+The authenticated operational dashboard for Store work, reached at `/dashboardstore`; it is the Home destination for a Store Officer who holds Store Dashboard access.
+_Avoid_: `/inventory`, CM Dashboard, stock report
+
 **Available Module**:
 A PowerCare product module that users can open and use for operational work.
 _Avoid_: preview, concept module, planned feature

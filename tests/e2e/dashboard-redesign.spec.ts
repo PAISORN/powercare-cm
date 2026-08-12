@@ -6,7 +6,7 @@ test("dashboard shows operational overview sections without the old shortcut bar
   await page.getByPlaceholder("Password").fill("admin1234");
   await page.locator("form button").click();
 
-  await expect(page).toHaveURL(/\/dashboard/);
+  await expect(page).toHaveURL(/\/dashboardcm/);
   await expect(page.getByRole("link", { name: "Export Report" })).toHaveCount(0);
   await expect(page.getByText("CM Operations Dashboard")).toBeVisible();
   await expect(page.getByRole("link", { name: /KPI Total CM/ })).toBeVisible();
@@ -34,7 +34,7 @@ test("dashboard dropdown filters the operational sections", async ({ page }) => 
 
   await page.getByLabel("Work Category").selectOption("mechanical");
   await page.getByRole("button", { name: "Apply filters" }).click();
-  await expect(page).toHaveURL(/\/dashboard\?category=mechanical/);
+  await expect(page).toHaveURL(/\/dashboardcm\?category=mechanical/);
   await expect(page.getByLabel("Work Category")).toHaveValue("mechanical");
   await expect(page.getByRole("heading", { name: "Status Overview" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Monthly CM Trend" })).toBeVisible();
@@ -53,13 +53,13 @@ test("dashboard time range dropdown applies to the overview", async ({ page }) =
 
   await page.getByLabel("Time Range").selectOption("last-3-months");
   await page.getByRole("button", { name: "Apply filters" }).click();
-  await expect(page).toHaveURL(/\/dashboard\?timeRange=last-3-months/);
+  await expect(page).toHaveURL(/\/dashboardcm\?timeRange=last-3-months/);
   await expect(page.getByLabel("Time Range")).toHaveValue("last-3-months");
   await expect(page.getByRole("heading", { name: "Monthly CM Trend" })).toBeVisible();
 
   await page.getByLabel("Work Category").selectOption("electrical");
   await page.getByRole("button", { name: "Apply filters" }).click();
-  await expect(page).toHaveURL(/\/dashboard\?category=electrical&timeRange=last-3-months/);
+  await expect(page).toHaveURL(/\/dashboardcm\?category=electrical&timeRange=last-3-months/);
 });
 
 test("dashboard KPI cards open the work list with the matching filter", async ({ page }) => {
@@ -72,22 +72,22 @@ test("dashboard KPI cards open the work list with the matching filter", async ({
   await expect(page).toHaveURL(/\/work\?status=NEW/);
   await expect(page.locator('select[name="status"]')).toHaveValue("NEW");
 
-  await page.goto("/dashboard");
+  await page.goto("/dashboardcm");
   await page.getByRole("link", { name: /KPI In Process/ }).click();
   await expect(page).toHaveURL(/\/work\?statusGroup=IN_PROCESS/);
   await expect(page.getByText("In Process")).toBeVisible();
 
-  await page.goto("/dashboard");
+  await page.goto("/dashboardcm");
   await page.getByRole("link", { name: /KPI Closed/ }).click();
   await expect(page).toHaveURL(/\/work\?status=CLOSED/);
   await expect(page.locator('select[name="status"]')).toHaveValue("CLOSED");
 
-  await page.goto("/dashboard");
+  await page.goto("/dashboardcm");
   await page.getByRole("link", { name: /KPI Cancel/ }).click();
   await expect(page).toHaveURL(/\/work\?status=CANCELED/);
   await expect(page.locator('select[name="status"]')).toHaveValue("CANCELED");
 
-  await page.goto("/dashboard");
+  await page.goto("/dashboardcm");
   await page.getByRole("link", { name: /KPI Total CM/ }).click();
   await expect(page).toHaveURL(/\/work$/);
 });

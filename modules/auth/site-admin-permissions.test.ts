@@ -57,11 +57,11 @@ describe("Site Admin permissions", () => {
   it("keeps user-facing configurable permission labels readable", () => {
     const labels = SITE_ADMIN_PERMISSION_OPTIONS.map((option) => option.label).join(" ");
 
-    expect(labels).toContain("กำหนด Category ให้ User");
-    expect(labels).toContain("มอบหมายงาน");
-    expect(labels).toContain("จัดการ Users เฉพาะ Site");
-    expect(labels).not.toContain("à¸");
-    expect(labels).not.toContain("Â");
+    expect(labels).toContain("????? Category ??? User");
+    expect(labels).toContain("??????????");
+    expect(labels).toContain("?????? Users ????? Site");
+    expect(labels).not.toContain("�");
+    expect(labels).not.toContain("�");
   });
 
   it("keeps fixed role permissions for engineer, technician, visitor, and public requester", () => {

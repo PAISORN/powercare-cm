@@ -11,7 +11,7 @@ describe("LINE Store issue event", () => {
       categoryId: "cat-1",
       issueId: "issue-1",
       issueNumber: "SI-RTB-2026-07-0001",
-      statusLabel: "รอ Engineer อนุมัติ",
+      statusLabel: "?? Engineer ???????",
       requesterName: "Somchai",
       siteName: "RTB",
       itemCount: 2,
@@ -20,12 +20,12 @@ describe("LINE Store issue event", () => {
     });
 
     expect(message).toContain("[PowerCare.CM]");
-    expect(message).toContain("เลขที่เบิก: SI-RTB-2026-07-0001");
-    expect(message).toContain("สถานะ: รอ Engineer อนุมัติ");
+    expect(message).toContain("??????????: SI-RTB-2026-07-0001");
+    expect(message).toContain("?????: ?? Engineer ???????");
     expect(message).toContain("Site: RTB");
-    expect(message).toContain("ผู้ขอเบิก: Somchai");
-    expect(message).toContain("รายการ: Bearing, Fuse");
-    expect(message).toContain("ผู้ดำเนินการ: Electrical Engineer");
-    expect(message).not.toContain("à¸");
+    expect(message).toContain("?????????: Somchai");
+    expect(message).toContain("??????: Bearing, Fuse");
+    expect(message).toContain("????????????: Electrical Engineer");
+    expect(message).not.toContain("�");
   });
 });

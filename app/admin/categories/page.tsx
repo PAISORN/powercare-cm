@@ -11,7 +11,7 @@ import { adminScopeSearchFromFormData, resolveAdminSiteScope } from "../../../mo
 async function createCategory(formData: FormData) {
   "use server";
   const user = await requireUser();
-  if (!canManageCategory(user)) redirect("/dashboard");
+  if (!canManageCategory(user)) redirect("/dashboardcm");
   const scope = await resolveAdminSiteScope(user, adminScopeSearchFromFormData(formData));
   const name = String(formData.get("name") ?? "").trim();
   const redirectTo = categoryRedirect(scope);
@@ -33,7 +33,7 @@ async function createCategory(formData: FormData) {
 async function setCategoryActive(formData: FormData) {
   "use server";
   const user = await requireUser();
-  if (!canManageCategory(user)) redirect("/dashboard");
+  if (!canManageCategory(user)) redirect("/dashboardcm");
   const scope = await resolveAdminSiteScope(user, adminScopeSearchFromFormData(formData));
   const id = String(formData.get("id"));
   const active = String(formData.get("active")) === "true";
@@ -58,7 +58,7 @@ async function setCategoryActive(formData: FormData) {
 async function deleteCategory(formData: FormData) {
   "use server";
   const user = await requireUser();
-  if (!canManageCategory(user)) redirect("/dashboard");
+  if (!canManageCategory(user)) redirect("/dashboardcm");
   const scope = await resolveAdminSiteScope(user, adminScopeSearchFromFormData(formData));
   const id = String(formData.get("id"));
   const before = await db.category.findFirstOrThrow({
@@ -82,7 +82,7 @@ async function deleteCategory(formData: FormData) {
 
 export default async function AdminCategoriesPage({ searchParams }: { searchParams: Promise<{ deleteError?: string; organizationId?: string; plantId?: string }> }) {
   const user = await requireUser();
-  if (!canManageCategory(user)) redirect("/dashboard");
+  if (!canManageCategory(user)) redirect("/dashboardcm");
   const query = await searchParams;
   const scope = await resolveAdminSiteScope(user, query);
   const categories = await db.category.findMany({

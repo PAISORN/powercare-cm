@@ -16,7 +16,7 @@ import { readRequestPlantScope } from "../../modules/organization/plant-request-
 async function submitRepairRequest(formData: FormData) {
   "use server";
   const currentUser = await getCurrentUser();
-  if (currentUser?.role === RoleName.ADMIN) redirect("/dashboard");
+  if (currentUser?.role === RoleName.ADMIN) redirect("/dashboardcm");
   const parsed = repairRequestSchema.parse({
     requesterName: formData.get("requesterName"),
     requesterDepartment: formData.get("requesterDepartment"),
@@ -51,7 +51,7 @@ async function submitRepairRequest(formData: FormData) {
 
 async function RequestPage() {
   const user = await getCurrentUser();
-  if (user?.role === RoleName.ADMIN) redirect("/dashboard");
+  if (user?.role === RoleName.ADMIN) redirect("/dashboardcm");
   if (user?.plant?.code) {
     permanentRedirect(`/p/${encodeURIComponent(user.plant.code.toLowerCase())}/request`);
   }
@@ -62,7 +62,7 @@ export default RequestPage;
 
 export async function RequestPageContent({ error, plantCode }: { error?: string | null; plantCode?: string | null }) {
   const user = await getCurrentUser();
-  if (user?.role === RoleName.ADMIN) redirect("/dashboard");
+  if (user?.role === RoleName.ADMIN) redirect("/dashboardcm");
   if (user?.plant?.code && user.plant.code.toLowerCase() !== plantCode?.toLowerCase()) {
     redirect(`/p/${encodeURIComponent(user.plant.code.toLowerCase())}/request`);
   }

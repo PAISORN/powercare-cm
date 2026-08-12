@@ -44,7 +44,7 @@ const processSteps = [
 
 export default async function AdminAuditPage() {
   const user = await requireUser();
-  if (!canViewPlantAuditLog(user)) redirect("/dashboard");
+  if (!canViewPlantAuditLog(user)) redirect("/dashboardcm");
   const auditScopeWhere = buildAuditEventScopeWhere(user);
   const events = await db.auditEvent.findMany({
     where: { ...auditScopeWhere },

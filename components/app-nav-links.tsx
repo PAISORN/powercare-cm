@@ -81,8 +81,10 @@ export function getAppLinks(role: RoleValue, permissionContext: AppPermissionCon
   const inventoryLink = (link: AppLink, allowed: boolean): AppLink => (allowed ? link : { ...link, href: "#", disabled: true });
   const baseLinks: AppLink[] = [];
 
-  if (canUse(PermissionKey.VIEW_DASHBOARD)) {
-    baseLinks.push({ label: "Dashboard", href: "/dashboard", icon: BarChart3 });
+  if (role === RoleName.STORE_OFFICER && canUse(PermissionKey.VIEW_STORE_DASHBOARD)) {
+    baseLinks.push({ label: "Home", href: "/dashboardstore", icon: BarChart3 });
+  } else if (canUse(PermissionKey.VIEW_DASHBOARD)) {
+    baseLinks.push({ label: "Home", href: "/dashboardcm", icon: BarChart3 });
   }
 
   if (role !== RoleName.VISITOR) {
@@ -175,23 +177,23 @@ export function getAppLinks(role: RoleValue, permissionContext: AppPermissionCon
   baseLinks.push(
     { label: "Inventory", kind: "section", icon: Archive, sectionId: "inventory" },
     inventoryLink(
-      { label: "Spare Parts", href: "/inventory/spare-parts", icon: Package, nested: true, parentSectionId: "inventory" },
+      { label: "Spare Parts", href: "/dashboardstore/spare-parts", icon: Package, nested: true, parentSectionId: "inventory" },
       canUseAny(PermissionKey.MANAGE_SPARE_PARTS, PermissionKey.VIEW_STORE_STOCK),
     ),
     inventoryLink(
-      { label: "Stock", href: "/inventory/stock", icon: Boxes, nested: true, parentSectionId: "inventory" },
+      { label: "Stock", href: "/dashboardstore/stock", icon: Boxes, nested: true, parentSectionId: "inventory" },
       canUseAny(PermissionKey.VIEW_STORE_STOCK, PermissionKey.ADJUST_STOCK),
     ),
     inventoryLink(
-      { label: "Stock Issue", href: "/inventory/issue?view=tracking", icon: ClipboardList, nested: true, parentSectionId: "inventory" },
+      { label: "Stock Issue", href: "/dashboardstore/issue?view=tracking", icon: ClipboardList, nested: true, parentSectionId: "inventory" },
       canUseAny(PermissionKey.VIEW_STORE_TRACKING, PermissionKey.APPROVE_STORE_ISSUE, PermissionKey.ISSUE_STOCK),
     ),
     inventoryLink(
-      { label: "Issue", href: "/inventory/issue?view=create", icon: ArrowUpFromLine, nested: true, parentSectionId: "inventory" },
+      { label: "Issue", href: "/dashboardstore/issue?view=create", icon: ArrowUpFromLine, nested: true, parentSectionId: "inventory" },
       canUse(PermissionKey.CREATE_STORE_ISSUE),
     ),
     inventoryLink(
-      { label: "Issue Public", href: "/inventory/public-issue", icon: QrCode, nested: true, parentSectionId: "inventory" },
+      { label: "Issue Public", href: "/dashboardstore/public-issue", icon: QrCode, nested: true, parentSectionId: "inventory" },
       canUseAny(
         PermissionKey.MANAGE_SPARE_PARTS,
         PermissionKey.VIEW_STORE_STOCK,
@@ -202,19 +204,19 @@ export function getAppLinks(role: RoleValue, permissionContext: AppPermissionCon
       ),
     ),
     inventoryLink(
-      { label: "Receive", href: "/inventory/receive", icon: ArrowDownToLine, nested: true, parentSectionId: "inventory" },
+      { label: "Receive", href: "/dashboardstore/receive", icon: ArrowDownToLine, nested: true, parentSectionId: "inventory" },
       canUse(PermissionKey.RECEIVE_STOCK),
     ),
     inventoryLink(
-      { label: "Issue Tracking", href: "/inventory/tracking", icon: Search, nested: true, parentSectionId: "inventory" },
+      { label: "Issue Tracking", href: "/dashboardstore/tracking", icon: Search, nested: true, parentSectionId: "inventory" },
       canUse(PermissionKey.VIEW_STORE_TRACKING),
     ),
     inventoryLink(
-      { label: "Stock Movement", href: "/inventory/movements", icon: History, nested: true, parentSectionId: "inventory" },
+      { label: "Stock Movement", href: "/dashboardstore/movements", icon: History, nested: true, parentSectionId: "inventory" },
       canUseAny(PermissionKey.VIEW_STORE_STOCK, PermissionKey.VIEW_STORE_REPORTS, PermissionKey.ADJUST_STOCK),
     ),
     inventoryLink(
-      { label: "Store Reports", href: "/inventory/reports", icon: FileSpreadsheet, nested: true, parentSectionId: "inventory" },
+      { label: "Store Reports", href: "/dashboardstore/reports", icon: FileSpreadsheet, nested: true, parentSectionId: "inventory" },
       canUse(PermissionKey.VIEW_STORE_REPORTS),
     ),
   );

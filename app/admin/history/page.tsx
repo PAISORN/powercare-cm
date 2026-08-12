@@ -66,7 +66,7 @@ const actionLabels: Record<string, string> = {
 
 export default async function AdminHistoryPage() {
   const user = await requireUser();
-  if (!canViewPlantAuditLog(user)) redirect("/dashboard");
+  if (!canViewPlantAuditLog(user)) redirect("/dashboardcm");
   const auditScopeWhere = buildAuditEventScopeWhere(user);
 
   const events = await db.auditEvent.findMany({

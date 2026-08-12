@@ -363,7 +363,7 @@ function ModeLink({ active, href, label }: { active: boolean; href: string; labe
 
 async function requireOwner() {
   const user = await requireUser();
-  if (user.role !== RoleName.ADMIN) redirect("/dashboard");
+  if (user.role !== RoleName.ADMIN) redirect("/dashboardcm");
   return user;
 }
 

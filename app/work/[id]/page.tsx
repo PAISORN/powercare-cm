@@ -88,7 +88,7 @@ export default async function WorkDetailPage({
     }),
     searchParams,
   ]);
-  if (!work.organizationId || !work.plantId) redirect("/dashboard");
+  if (!work.organizationId || !work.plantId) redirect("/dashboardcm");
   const statusActorIds = [...new Set(work.statusHistory
     .map((event) => event.changedById)
     .filter((actorId): actorId is string => Boolean(actorId)))];
@@ -831,7 +831,7 @@ function StoreIssuePanel({
           <p className="text-sm font-bold uppercase tracking-wide text-[var(--primary)]">Store / Spare Parts</p>
           <h2 className="mt-1 text-xl font-bold">ใบเบิกอะไหล่ที่ผูกกับงานนี้</h2>
         </div>
-        <Link className="rounded-full border border-[var(--line)] px-3 py-1.5 text-sm font-bold text-[var(--primary)]" href="/inventory/tracking">
+        <Link className="rounded-full border border-[var(--line)] px-3 py-1.5 text-sm font-bold text-[var(--primary)]" href="/dashboardstore/tracking">
           ติดตามทั้งหมด
         </Link>
       </div>

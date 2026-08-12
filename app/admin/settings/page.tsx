@@ -15,7 +15,7 @@ import {
 async function updateAssignmentSetting(formData: FormData) {
   "use server";
   const user = await requireUser();
-  if (!canManageEngineerAssignmentSetting(user)) redirect("/dashboard");
+  if (!canManageEngineerAssignmentSetting(user)) redirect("/dashboardcm");
   const scope = await resolveAdminSiteScope(user, adminScopeSearchFromFormData(formData));
 
   try {
@@ -41,7 +41,7 @@ async function updateAssignmentSetting(formData: FormData) {
 async function updatePublicStoreSetting(formData: FormData) {
   "use server";
   const user = await requireUser();
-  if (user.role !== RoleName.ADMIN) redirect("/dashboard");
+  if (user.role !== RoleName.ADMIN) redirect("/dashboardcm");
   const scope = await resolveAdminSiteScope(user, adminScopeSearchFromFormData(formData));
   const publicStoreIssueEnabled = formData.get("publicStoreIssueEnabled") === "on";
   await db.$transaction(async (tx) => {
@@ -75,7 +75,7 @@ export default async function AdminSystemSettingsPage({
   searchParams: Promise<{ saved?: string; error?: string; organizationId?: string; plantId?: string }>;
 }) {
   const user = await requireUser();
-  if (!canManageEngineerAssignmentSetting(user)) redirect("/dashboard");
+  if (!canManageEngineerAssignmentSetting(user)) redirect("/dashboardcm");
 
   const query = await searchParams;
   const scope = await resolveAdminSiteScope(user, query);

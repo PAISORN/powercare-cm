@@ -8,7 +8,7 @@ import { canManageFeedback } from "../../../modules/auth/permission";
 
 export default async function AdminFeedbackPage() {
   const user = await requireUser();
-  if (!canManageFeedback(user)) redirect("/dashboard");
+  if (!canManageFeedback(user)) redirect("/dashboardcm");
   const feedbackItems = await db.publicFeedback.findMany({
     where: { organizationId: null, plantId: null },
     include: { plant: true },

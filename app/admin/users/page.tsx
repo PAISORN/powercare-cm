@@ -39,7 +39,7 @@ import { canUseUserPermission, PermissionKey } from "../../../modules/auth/site-
 async function createUser(formData: FormData) {
   "use server";
   const current = await requireUser();
-  if (!canManageUsers(current)) redirect("/dashboard");
+  if (!canManageUsers(current)) redirect("/dashboardcm");
   if (!canCreateManagedUser(current)) redirect("/admin/users");
   const nextRole = assertManagedUserRole(
     current,
@@ -139,7 +139,7 @@ async function createUser(formData: FormData) {
 async function updateUserProfile(formData: FormData) {
   "use server";
   const current = await requireUser();
-  if (!canManageUsers(current)) redirect("/dashboard");
+  if (!canManageUsers(current)) redirect("/dashboardcm");
   if (!canUpdateManagedUser(current)) redirect("/admin/users");
 
   const userId = String(formData.get("userId") ?? "");
@@ -291,7 +291,7 @@ async function updateUserProfile(formData: FormData) {
 async function deleteUser(formData: FormData) {
   "use server";
   const current = await requireUser();
-  if (!canManageUsers(current)) redirect("/dashboard");
+  if (!canManageUsers(current)) redirect("/dashboardcm");
   if (!canDeleteManagedUser(current)) redirect("/admin/users");
 
   const userId = String(formData.get("userId") ?? "");
@@ -346,7 +346,7 @@ export default async function AdminUsersPage({
   searchParams: Promise<{ createStatus?: string; deleteStatus?: string; organizationId?: string; plantId?: string; role?: string; updateStatus?: string }>;
 }) {
   const user = await requireUser();
-  if (!canManageUsers(user)) redirect("/dashboard");
+  if (!canManageUsers(user)) redirect("/dashboardcm");
   const {
     createStatus,
     deleteStatus,

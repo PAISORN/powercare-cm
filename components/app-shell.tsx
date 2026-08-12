@@ -12,6 +12,7 @@ import { getUnreadCount, listRecentNotifications } from "../modules/notification
 import { buildUserOperationalScope } from "../modules/organization/user-plant-scope";
 import { formatRoleName } from "../modules/users/role-labels";
 import { MobilePrimaryNav } from "./mobile-primary-nav";
+import { defaultHomeHref } from "../modules/auth/default-home-route";
 
 export async function AppShell({ children, immersiveMobile = false }: { children: React.ReactNode; immersiveMobile?: boolean }) {
   const user = await getCurrentUser();
@@ -22,6 +23,7 @@ export async function AppShell({ children, immersiveMobile = false }: { children
     listRecentNotifications(user.id, 10, scope),
   ]);
   const displayName = user.role === RoleName.ADMIN ? formatRoleName(user.role) : user.fullName;
+  const homeHref = defaultHomeHref(user);
 
   return (
     <div className="min-h-screen">
@@ -62,7 +64,7 @@ export async function AppShell({ children, immersiveMobile = false }: { children
                 version={user.profilePhoto?.updatedAt.getTime()}
                 unreadCount={unreadCount}
               />
-              <Link className="grid h-9 w-9 place-items-center rounded-full bg-[var(--primary)] text-white shadow-sm transition hover:bg-[var(--primary-strong)] sm:h-10 sm:w-10" href="/dashboard" aria-label="Home" title="Home">
+              <Link className="grid h-9 w-9 place-items-center rounded-full bg-[var(--primary)] text-white shadow-sm transition hover:bg-[var(--primary-strong)] sm:h-10 sm:w-10" href={homeHref} aria-label="Home" title="Home">
                 <Home size={18} />
               </Link>
             </div>
@@ -79,7 +81,7 @@ export async function AppShell({ children, immersiveMobile = false }: { children
         <div aria-hidden="true" className="h-[4.75rem] md:h-[5.25rem]" data-app-top-bar-spacer />
         {children}
       </main>
-      <MobilePrimaryNav elevated={immersiveMobile} />
+      <MobilePrimaryNav elevated={immersiveMobile} homeHref={homeHref} />
     </div>
   );
 }

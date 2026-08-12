@@ -75,10 +75,10 @@ describe("Admin organization form", () => {
   it("renders readable Thai copy instead of mojibake text", () => {
     const source = readFileSync("app/admin/organization/page.tsx", "utf8");
 
-    expect(source).toContain("ข้อมูลองค์กร");
-    expect(source).toContain("บันทึกข้อมูลองค์กรเรียบร้อยแล้ว");
-    expect(source).not.toContain("à¸");
-    expect(source).not.toContain("Â");
+    expect(source).toContain("????????????");
+    expect(source).toContain("???????????????????????????????");
+    expect(source).not.toContain("�");
+    expect(source).not.toContain("�");
   });
 
   it("renders an organization chart hierarchy from owner admin to organization admins, site admins, and members", () => {

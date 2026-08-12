@@ -11,7 +11,7 @@ import { adminScopeSearchFromFormData, resolveAdminSiteScope } from "../../../mo
 async function createZone(formData: FormData) {
   "use server";
   const user = await requireUser();
-  if (!canManageZone(user)) redirect("/dashboard");
+  if (!canManageZone(user)) redirect("/dashboardcm");
   const scope = await resolveAdminSiteScope(user, adminScopeSearchFromFormData(formData));
   const name = String(formData.get("name") ?? "").trim();
   const redirectTo = zoneRedirect(scope);
@@ -33,7 +33,7 @@ async function createZone(formData: FormData) {
 async function setZoneActive(formData: FormData) {
   "use server";
   const user = await requireUser();
-  if (!canManageZone(user)) redirect("/dashboard");
+  if (!canManageZone(user)) redirect("/dashboardcm");
   const scope = await resolveAdminSiteScope(user, adminScopeSearchFromFormData(formData));
   const id = String(formData.get("id"));
   const active = String(formData.get("active")) === "true";
@@ -58,7 +58,7 @@ async function setZoneActive(formData: FormData) {
 async function deleteZone(formData: FormData) {
   "use server";
   const user = await requireUser();
-  if (!canManageZone(user)) redirect("/dashboard");
+  if (!canManageZone(user)) redirect("/dashboardcm");
   const scope = await resolveAdminSiteScope(user, adminScopeSearchFromFormData(formData));
   const id = String(formData.get("id"));
   const before = await db.zone.findFirstOrThrow({
@@ -82,7 +82,7 @@ async function deleteZone(formData: FormData) {
 
 export default async function AdminZonesPage({ searchParams }: { searchParams: Promise<{ deleteError?: string; organizationId?: string; plantId?: string }> }) {
   const user = await requireUser();
-  if (!canManageZone(user)) redirect("/dashboard");
+  if (!canManageZone(user)) redirect("/dashboardcm");
   const query = await searchParams;
   const scope = await resolveAdminSiteScope(user, query);
   const zones = await db.zone.findMany({

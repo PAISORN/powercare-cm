@@ -18,7 +18,7 @@ const PAGE_SIZE = 50;
 
 export default async function AssetsPage({ searchParams }: { searchParams: Promise<Query> }) {
   const user = await requireUser();
-  if (!canViewAssets(user)) redirect("/dashboard");
+  if (!canViewAssets(user)) redirect("/dashboardcm");
   const query = await searchParams;
   const scope = await resolveAssetScope(user, query);
   const hierarchy = query.view !== "list";

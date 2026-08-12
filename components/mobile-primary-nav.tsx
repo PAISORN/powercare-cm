@@ -4,15 +4,15 @@ import { ClipboardList, Home, Store, UserRound } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-const items = [
-  { href: "/dashboard", label: "Home", Icon: Home },
+const secondaryItems = [
   { href: "/activities", label: "งาน", Icon: ClipboardList },
-  { href: "/inventory", label: "Store", Icon: Store },
+  { href: "/dashboardstore", label: "Store", Icon: Store },
   { href: "/profile", label: "โปรไฟล์", Icon: UserRound },
 ] as const;
 
-export function MobilePrimaryNav({ elevated = false }: { elevated?: boolean }) {
+export function MobilePrimaryNav({ elevated = false, homeHref = "/dashboardcm" }: { elevated?: boolean; homeHref?: string }) {
   const pathname = usePathname();
+  const items = [{ href: homeHref, label: "Home", Icon: Home }, ...secondaryItems];
 
   return (
     <nav
@@ -21,7 +21,7 @@ export function MobilePrimaryNav({ elevated = false }: { elevated?: boolean }) {
     >
       <div className="mx-auto grid max-w-lg grid-cols-4">
         {items.map(({ href, label, Icon }) => {
-          const active = pathname === href || (href !== "/dashboard" && pathname.startsWith(`${href}/`));
+          const active = pathname === href || (href !== homeHref && pathname.startsWith(`${href}/`));
           return (
             <Link
               aria-current={active ? "page" : undefined}

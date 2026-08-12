@@ -40,7 +40,7 @@ Important route groups:
 - `app/dashboard/`: operational CM dashboard.
 - `app/work/`: CM list and detail.
 - `app/activities/`: unified action queue.
-- `app/inventory/`: Store/Spare Parts UI.
+- `app/dashboardstore/`: Store/Spare Parts UI.
 - `app/admin/`: organization, sites, users, permissions, settings, LINE, and master data.
 - `app/p/[plantCode]/`: site-specific public request/tracking/store issue.
 - `app/reports/`: report, export, and print.

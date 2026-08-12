@@ -5,7 +5,7 @@ test("admin can open back office pages", async ({ page }) => {
   await page.getByPlaceholder("Username").fill("admin");
   await page.getByPlaceholder("Password").fill("admin1234");
   await page.locator("form button").click();
-  await expect(page).toHaveURL(/\/dashboard/);
+  await expect(page).toHaveURL(/\/dashboardcm/);
   await page.goto("/admin/users");
   await expect(page.getByRole("heading", { name: "Users" })).toBeVisible();
   await page.goto("/admin/categories");
@@ -35,7 +35,7 @@ test("admin can edit and delete another user's profile details", async ({ page }
   await page.getByPlaceholder("Username").fill("admin");
   await page.getByPlaceholder("Password").fill("admin1234");
   await page.locator("form button").click();
-  await expect(page).toHaveURL(/\/dashboard/);
+  await expect(page).toHaveURL(/\/dashboardcm/);
 
   await page.goto("/admin/users");
   await page.getByPlaceholder("Username").fill(username);

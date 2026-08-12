@@ -17,7 +17,7 @@ describe("updateSparePart inventory responsibility", () => {
   });
 
   it("locks the inventory type selector for non-admin editors on both management pages", () => {
-    for (const page of ["app/inventory/stock/page.tsx", "app/inventory/spare-parts/page.tsx"]) {
+    for (const page of ["app/dashboardstore/stock/page.tsx", "app/dashboardstore/spare-parts/page.tsx"]) {
       const source = readFileSync(page, "utf8");
       expect(source).toContain('aria-disabled={user.role !== "ADMIN"}');
       expect(source).toContain('tabIndex={user.role === "ADMIN" ? 0 : -1}');

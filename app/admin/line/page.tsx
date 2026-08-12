@@ -86,7 +86,7 @@ function actorFrom(
 async function saveAction(formData: FormData) {
   "use server";
   const user = await requireUser();
-  if (!canManageLineSettings(user)) redirect("/dashboard");
+  if (!canManageLineSettings(user)) redirect("/dashboardcm");
   const scope = await resolveAdminSiteScope(user, adminScopeSearchFromFormData(formData));
   try {
     await saveLineDestination(actorFrom(user, scope.organization.id, scope.plant.id), {
@@ -107,7 +107,7 @@ async function saveAction(formData: FormData) {
 async function testAction(formData: FormData) {
   "use server";
   const user = await requireUser();
-  if (!canTestLineMessaging(user)) redirect("/dashboard");
+  if (!canTestLineMessaging(user)) redirect("/dashboardcm");
   const scope = await resolveAdminSiteScope(user, adminScopeSearchFromFormData(formData));
   try {
     await testLineDestination(actorFrom(user, scope.organization.id, scope.plant.id), String(formData.get("id") ?? ""));
@@ -120,7 +120,7 @@ async function testAction(formData: FormData) {
 async function retryAction(formData: FormData) {
   "use server";
   const user = await requireUser();
-  if (!canManageLineSettings(user)) redirect("/dashboard");
+  if (!canManageLineSettings(user)) redirect("/dashboardcm");
   const scope = await resolveAdminSiteScope(user, adminScopeSearchFromFormData(formData));
   try {
     await retryFailedLineDelivery(actorFrom(user, scope.organization.id, scope.plant.id), String(formData.get("id") ?? ""));
@@ -133,7 +133,7 @@ async function retryAction(formData: FormData) {
 async function saveDailyReportAction(formData: FormData) {
   "use server";
   const user = await requireUser();
-  if (!canManageLineSettings(user)) redirect("/dashboard");
+  if (!canManageLineSettings(user)) redirect("/dashboardcm");
   const scope = await resolveAdminSiteScope(user, adminScopeSearchFromFormData(formData));
   try {
     const setting = await saveLineDailyReportSetting({
@@ -168,7 +168,7 @@ async function saveDailyReportAction(formData: FormData) {
 async function sendDailyReportNowAction(formData: FormData) {
   "use server";
   const user = await requireUser();
-  if (!canTestLineMessaging(user)) redirect("/dashboard");
+  if (!canTestLineMessaging(user)) redirect("/dashboardcm");
   const scope = await resolveAdminSiteScope(user, adminScopeSearchFromFormData(formData));
   let result: LineDailyReportDispatchResult;
   try {
@@ -215,7 +215,7 @@ export default async function AdminLineSettingsPage({
   }>;
 }) {
   const user = await requireUser();
-  if (!canManageLineSettings(user)) redirect("/dashboard");
+  if (!canManageLineSettings(user)) redirect("/dashboardcm");
   const query = await searchParams;
   const scope = await resolveAdminSiteScope(user, query);
   const plantId = scope.plant.id || resolveUserOperationalPlantId(user);

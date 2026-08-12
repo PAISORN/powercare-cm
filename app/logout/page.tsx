@@ -15,7 +15,7 @@ export default async function LogoutPage() {
           <button aria-label="Confirm logout" className="rounded-md bg-red-600 px-4 py-3 font-semibold text-white">
             Confirm logout
           </button>
-          <Link className="rounded-md border border-[var(--line)] px-4 py-3" href="/dashboard">
+          <Link className="rounded-md border border-[var(--line)] px-4 py-3" href="/dashboardcm">
             Cancel
           </Link>
         </form>

@@ -17,7 +17,7 @@ export default async function AdminQrCodePage({
   searchParams: Promise<{ organizationId?: string; plantId?: string }>;
 }) {
   const user = await requireUser();
-  if (!canManageQrCode(user)) redirect("/dashboard");
+  if (!canManageQrCode(user)) redirect("/dashboardcm");
   const headerStore = await headers();
   const query = await searchParams;
   const scope = await resolveAdminSiteScope(user, query);

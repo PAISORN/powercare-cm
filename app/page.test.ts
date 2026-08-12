@@ -10,6 +10,6 @@ describe("public product landing", () => {
     expect(source).toContain("db.publicFeedback.create");
     expect(source).toContain("organizationId: null");
     expect(source).toContain("plantId: null");
-    expect(source).toContain("if (user) redirect(\"/dashboard\")");
+    expect(source).toContain("if (user) redirect(defaultHomeHref(user))");
   });
 });

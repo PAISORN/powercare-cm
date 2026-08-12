@@ -9,7 +9,7 @@ describe("Plant-specific repair request routing", () => {
     expect(source).toContain('permanentRedirect("/p/rtb/request")');
     expect(source).toContain("user?.plant?.code");
     expect(source).toContain("RoleName.ADMIN");
-    expect(source).toContain('redirect("/dashboard")');
+    expect(source).toContain('redirect("/dashboardcm")');
     expect(source).toContain('formData.get("plantCode")');
     expect(source).toContain('name="plantCode"');
     expect(source).toContain("plantName={plantScope.name}");

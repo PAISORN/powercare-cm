@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { PublicLanding } from "../components/landing/public-landing";
 import { db } from "../lib/db";
 import { getCurrentUser } from "../lib/session";
+import { defaultHomeHref } from "../modules/auth/default-home-route";
 import { listPublicAnnouncements } from "../modules/announcements/announcement-service";
 
 export const metadata: Metadata = {
@@ -37,7 +38,7 @@ async function submitPlatformFeedback(formData: FormData) {
 
 export default async function LandingPage({ searchParams }: { searchParams: Promise<LandingSearchParams> }) {
   const user = await getCurrentUser();
-  if (user) redirect("/dashboard");
+  if (user) redirect(defaultHomeHref(user));
 
   const [params, announcements] = await Promise.all([searchParams, listPublicAnnouncements()]);
 
