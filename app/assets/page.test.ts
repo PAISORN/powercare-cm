@@ -36,6 +36,17 @@ describe("Assets registry pagination", () => {
     expect(source).toContain("ทุก Asset Families");
   });
 
+  it("applies every dropdown filter immediately after selection", () => {
+    const source = readFileSync("app/assets/page.tsx", "utf8");
+    expect(source).toContain('import { AutoSubmitSelect } from "../../components/auto-submit-select"');
+    expect(source.match(/<AutoSubmitSelect/g)?.length).toBe(5);
+    expect(source).toContain('<AutoSubmitSelect aria-label="Asset Class"');
+    expect(source).toContain('<AutoSubmitSelect aria-label="Asset Families"');
+    expect(source).toContain('<AutoSubmitSelect aria-label="Zone"');
+    expect(source).toContain('<AutoSubmitSelect aria-label="Asset status"');
+    expect(source).toContain('<AutoSubmitSelect aria-label="Criticality"');
+  });
+
   it("shows the uploaded Asset image as a thumbnail in each registry row", () => {
     const source = readFileSync("app/assets/page.tsx", "utf8");
     expect(source).toContain("asset.imageStoragePath?");

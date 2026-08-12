@@ -1,7 +1,7 @@
-import Link from "next/link";
 import { Activity, AlertTriangle, Archive, CheckCircle2, ClipboardList, Gauge, History, RotateCcw, Wrench } from "lucide-react";
 import { WorkStatus, statusLabels } from "../modules/cm-work/cm-work-types";
 import { UnreadBadge } from "./unread-badge";
+import { StatusKpiNavigation } from "./status-kpi-navigation";
 
 type StatusKpiStripProps = {
   statusCountByKey: Map<WorkStatus, number>;
@@ -99,27 +99,19 @@ function MetricCard({
     </>
   );
 
-  if (href && readAction) {
-    return (
-      <div className="relative min-w-0 overflow-visible">
-        <form action={readAction} className="h-full">
-          <input name="group" type="hidden" value={status} />
-          <input name="href" type="hidden" value={href} />
-          <button className={`${className} h-full w-full hover:-translate-y-1 hover:shadow-lg active:translate-y-0`} type="submit" aria-label={ariaLabel}>
-            {content}
-          </button>
-        </form>
-        <UnreadBadge count={unreadCount} position="cardEdge" />
-      </div>
-    );
-  }
-
   if (href) {
     return (
       <div className="relative min-w-0 overflow-visible">
-        <Link className={`${className} h-full hover:-translate-y-1 hover:shadow-lg active:translate-y-0`} href={href} aria-label={ariaLabel}>
+        <StatusKpiNavigation
+          ariaLabel={ariaLabel}
+          className={`${className} h-full hover:-translate-y-1 hover:shadow-lg active:translate-y-0`}
+          href={href}
+          readAction={readAction}
+          status={status}
+          unreadCount={unreadCount}
+        >
           {content}
-        </Link>
+        </StatusKpiNavigation>
         <UnreadBadge count={unreadCount} position="cardEdge" />
       </div>
     );

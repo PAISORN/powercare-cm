@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Script from "next/script";
-import { RevealOnScroll } from "../components/reveal-on-scroll";
+import { NavigationExperience } from "../components/navigation-experience";
 import { themeBootScript } from "./theme-boot-script";
 import "./globals.css";
 
@@ -16,7 +16,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="th" suppressHydrationWarning>
       <body suppressHydrationWarning>
         <Script id="theme-boot" strategy="beforeInteractive" dangerouslySetInnerHTML={{ __html: themeBootScript }} />
-        <RevealOnScroll />
+        <NavigationExperience />
         {children}
       </body>
     </html>
