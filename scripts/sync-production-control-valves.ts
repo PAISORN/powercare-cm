@@ -57,6 +57,15 @@ await db.$transaction(async (tx) => {
   const fieldIds = new Map<string, string>();
   const zoneIds = new Map<string, string>();
   const sourceToProductionAssetIds = new Map<string, string>();
+  const pendingTechnicalValues: Array<{
+    assetId: string;
+    fieldId: string;
+    customLabel: string | null;
+    dataType: string;
+    unit: string | null;
+    value: string | null;
+    sortOrder: number;
+  }> = [];
 
   for (const asset of assets) {
     const key = asset.assetClass.nameTh;
@@ -182,18 +191,14 @@ await db.$transaction(async (tx) => {
     for (const value of asset.technicalValues) {
       const fieldId = fieldIds.get(`${asset.assetType.code}:${value.fieldKey}`);
       if (!fieldId) throw new Error(`Field ${value.fieldKey} is missing for ${asset.code}.`);
-      await tx.assetTechnicalValue.upsert({
-        where: { assetId_fieldId: { assetId: row.id, fieldId } },
-        create: {
-          assetId: row.id,
-          fieldId,
-          customLabel: value.customLabel,
-          dataType: value.dataType,
-          unit: value.unit,
-          value: value.value,
-          sortOrder: value.sortOrder,
-        },
-        update: {},
+      pendingTechnicalValues.push({
+        assetId: row.id,
+        fieldId,
+        customLabel: value.customLabel,
+        dataType: value.dataType,
+        unit: value.unit,
+        value: value.value,
+        sortOrder: value.sortOrder,
       });
     }
   };
@@ -204,7 +209,18 @@ await db.$transaction(async (tx) => {
     if (!parentId) throw new Error(`Parent mapping is missing for ${child.code}.`);
     await syncAsset(child, parentId);
   }
-}, { maxWait: 30_000, timeout: 120_000 });
+
+  const targetAssetIds = [...new Set(pendingTechnicalValues.map((value) => value.assetId))];
+  const existingValues = await tx.assetTechnicalValue.findMany({
+    where: { assetId: { in: targetAssetIds } },
+    select: { assetId: true, fieldId: true },
+  });
+  const existingValueKeys = new Set(existingValues.map((value) => `${value.assetId}:${value.fieldId}`));
+  const missingValues = pendingTechnicalValues.filter(
+    (value) => !existingValueKeys.has(`${value.assetId}:${value.fieldId}`),
+  );
+  if (missingValues.length) await tx.assetTechnicalValue.createMany({ data: missingValues });
+}, { maxWait: 30_000, timeout: 300_000 });
 
 const after = await db.asset.findMany({
   where: { code: { in: codes } },
