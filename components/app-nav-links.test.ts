@@ -216,8 +216,8 @@ describe("getAppLinks", () => {
   it("can render the sidebar as icon-only collapsed navigation", () => {
     render(React.createElement(AppNavLinks, { role: RoleName.ADMIN, collapsed: true }));
 
-    expect(screen.getByRole("link", { name: /^Home$/i })).toBeTruthy();
-    expect(screen.queryByText("Home")).toBeNull();
+    expect(screen.getByRole("link", { name: /^Dashboard$/i })).toBeTruthy();
+    expect(screen.queryByText("Dashboard")).toBeNull();
     expect(screen.getByRole("button", { name: /^Maintenance$/i })).toBeTruthy();
   });
 

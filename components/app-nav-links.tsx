@@ -82,9 +82,9 @@ export function getAppLinks(role: RoleValue, permissionContext: AppPermissionCon
   const baseLinks: AppLink[] = [];
 
   if (role === RoleName.STORE_OFFICER && canUse(PermissionKey.VIEW_STORE_DASHBOARD)) {
-    baseLinks.push({ label: "Home", href: "/dashboardstore", icon: BarChart3 });
+    baseLinks.push({ label: "Dashboard", href: "/dashboardstore", icon: BarChart3 });
   } else if (canUse(PermissionKey.VIEW_DASHBOARD)) {
-    baseLinks.push({ label: "Home", href: "/dashboardcm", icon: BarChart3 });
+    baseLinks.push({ label: "Dashboard", href: "/dashboardcm", icon: BarChart3 });
   }
 
   if (role !== RoleName.VISITOR) {

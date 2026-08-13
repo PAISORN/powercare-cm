@@ -6,7 +6,7 @@ import { getBangkokTheme } from "../lib/date-time/bangkok-time";
 
 const storageKey = "cm-theme-mode";
 
-export function ThemeToggle() {
+export function ThemeToggle({ compact = false }: { compact?: boolean }) {
   const [hydrated, setHydrated] = useState(false);
   const [theme, setTheme] = useState<"day" | "night">("day");
 
@@ -35,6 +35,26 @@ export function ThemeToggle() {
   }
 
   const displayTheme = hydrated ? theme : "day";
+
+  if (compact) {
+    const isDay = displayTheme === "day";
+
+    return (
+      <div aria-label="Theme mode" className="relative">
+        <button
+          aria-label={isDay ? "Day mode" : "Night mode"}
+          aria-pressed={!isDay}
+          className={`grid size-10 shrink-0 place-items-center rounded-full border shadow-sm transition duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 ${isDay ? "border-amber-300/70 bg-amber-400 text-white hover:bg-amber-500" : "border-slate-400/60 bg-slate-600 text-white hover:bg-slate-700"}`}
+          data-testid="theme-toggle-compact"
+          onClick={toggleTheme}
+          title={isDay ? "Switch to night mode" : "Switch to day mode"}
+          type="button"
+        >
+          {isDay ? <Sun aria-hidden="true" size={19} /> : <Moon aria-hidden="true" size={18} />}
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="relative" aria-label="Theme mode">

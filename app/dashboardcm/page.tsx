@@ -13,7 +13,6 @@ import { toChartRows } from "../../modules/dashboard/dashboard-chart-data";
 import { getDashboardSummaryForDateFilter, type DashboardCategoryFilter } from "../../modules/dashboard/dashboard-query";
 import { hasExplicitCmDateFilter, parseCmDateFilter, type CmDateFilterInput } from "../../modules/filters/cm-date-filter";
 import { requireUser } from "../../lib/session";
-import { canUseUserPermission, PermissionKey } from "../../modules/auth/site-admin-permissions";
 import { getUnreadSummary, markStatusGroupRead } from "../../modules/notifications/notification-service";
 import type { NotificationGroup } from "../../modules/notifications/notification-types";
 import { UnreadBadge } from "../../components/unread-badge";
@@ -65,7 +64,6 @@ type DashboardSearchParams = {
 
 export default async function DashboardPage({ searchParams }: { searchParams: Promise<DashboardSearchParams> }) {
   const user = await requireUser();
-  const canViewStoreDashboard = canUseUserPermission(user, PermissionKey.VIEW_STORE_DASHBOARD);
   const params = await searchParams;
   const activeCategoryFilter = normalizeDashboardCategory(params.category);
   const activeDateFilterInput = readDateFilterInput(params);
@@ -158,7 +156,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
       </section>
 
       <section className="relative z-20 mt-4">
-        <DashboardFilterBar activeCategory={activeCategoryFilter} activeDateFilter={hasExplicitDateFilter ? activeDateFilterInput : undefined} clearHref="/dashboardcm" showStoreDashboard={canViewStoreDashboard} />
+        <DashboardFilterBar activeCategory={activeCategoryFilter} activeDateFilter={hasExplicitDateFilter ? activeDateFilterInput : undefined} clearHref="/dashboardcm" />
       </section>
 
       <section className="dashboard-kpi-grid mt-6 grid grid-cols-2 gap-3 sm:gap-5 md:grid-cols-2 xl:grid-cols-5">

@@ -18,12 +18,10 @@ export function DashboardFilterBar({
   activeCategory,
   activeDateFilter,
   clearHref,
-  showStoreDashboard,
 }: {
   activeCategory?: DashboardCategoryFilter;
   activeDateFilter?: CmDateFilterInput;
   clearHref: string;
-  showStoreDashboard: boolean;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -42,14 +40,6 @@ export function DashboardFilterBar({
 
   return (
     <form className="rounded-3xl border border-[var(--line)] bg-[var(--surface)] p-4 shadow-[var(--shadow)]" data-testid="dashboard-filter-bar" method="get" onSubmit={applyFilters}>
-      <div className="mb-4 flex flex-wrap items-center gap-2">
-        <span className="text-sm font-bold text-[var(--muted)]">ประเภท Dashboard</span>
-        <div aria-label="ประเภท Dashboard" className="inline-flex rounded-2xl border border-[var(--line)] bg-[var(--soft)] p-1" role="tablist">
-          <button aria-selected="true" className="min-h-11 rounded-xl bg-[var(--primary)] px-5 text-sm font-extrabold text-white shadow-sm" role="tab" type="button">CM</button>
-          <button aria-disabled="true" className="min-h-11 cursor-not-allowed rounded-xl px-5 text-sm font-extrabold text-[var(--muted)] opacity-60" disabled role="tab" type="button">PM</button>
-          {showStoreDashboard ? <Link aria-selected="false" className="min-h-11 rounded-xl px-5 py-3 text-sm font-extrabold text-[var(--muted)] transition hover:bg-[var(--surface-raised)] hover:text-[var(--ink)]" href="/dashboardstore" role="tab">Store</Link> : null}
-        </div>
-      </div>
       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-[1.1fr_1.4fr_auto_auto] xl:items-end">
         <SelectField label="Work Category" name="category" value={activeCategory ?? ""} options={categoryOptions} />
         <CmDateFilterBar defaultMode={activeDateFilter?.mode} defaultDate={activeDateFilter?.date} defaultStartDate={activeDateFilter?.startDate} defaultEndDate={activeDateFilter?.endDate} defaultMonth={activeDateFilter?.month} defaultYear={activeDateFilter?.year} initiallyUnset={!activeDateFilter} />

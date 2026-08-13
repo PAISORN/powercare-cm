@@ -3,22 +3,22 @@ import { join } from "node:path";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import RootLayout from "./layout";
-import { themeBootScript } from "./theme-boot-script";
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn() }),
 }));
 
-describe("RootLayout theme boot script", () => {
-  it("keeps a saved-theme initializer available to the root layout", () => {
+describe("RootLayout theme initialization", () => {
+  it("renders a server-selected initial theme without an inline script", () => {
     const markup = renderToStaticMarkup(
       <RootLayout>
         <main>content</main>
       </RootLayout>,
     );
 
-    expect(themeBootScript).toContain("cm-theme-mode");
-    expect(themeBootScript).toContain("document.documentElement.dataset.theme");
+    expect(markup).toMatch(/<html[^>]+data-theme="(?:day|night)"/);
+    expect(markup).not.toContain("theme-boot");
+    expect(markup).not.toContain("<script");
     expect(markup).toContain("<body>");
   });
 

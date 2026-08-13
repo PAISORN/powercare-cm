@@ -10,9 +10,10 @@ describe("dashboard default window wiring", () => {
     expect(source).toContain("latestStoreIssues");
   });
 
-  it("exposes Store only for authorized users", () => {
-    const source = readFileSync("components/dashboard-filter-bar.tsx", "utf8");
-    expect(source).toContain("showStoreDashboard");
-    expect(source).toContain('href="/dashboardstore"');
+  it("exposes Store Dashboard through the shared navbar", () => {
+    const shell = readFileSync("components/app-shell.tsx", "utf8");
+    const dashboardNav = readFileSync("components/dashboard-type-nav.tsx", "utf8");
+    expect(shell).toContain("<DashboardTypeNav />");
+    expect(dashboardNav).toContain('href="/dashboardstore"');
   });
 });

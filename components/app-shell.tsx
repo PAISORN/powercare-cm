@@ -13,6 +13,8 @@ import { buildUserOperationalScope } from "../modules/organization/user-plant-sc
 import { formatRoleName } from "../modules/users/role-labels";
 import { MobilePrimaryNav } from "./mobile-primary-nav";
 import { defaultHomeHref } from "../modules/auth/default-home-route";
+import { DashboardTypeNav } from "./dashboard-type-nav";
+import { ScrollLockRecovery } from "./scroll-lock-recovery";
 
 export async function AppShell({ children, immersiveMobile = false }: { children: React.ReactNode; immersiveMobile?: boolean }) {
   const user = await getCurrentUser();
@@ -27,6 +29,7 @@ export async function AppShell({ children, immersiveMobile = false }: { children
 
   return (
     <div className="min-h-screen">
+      <ScrollLockRecovery />
       <DesktopSidebar
         categoryName={user.category?.name}
         fullName={displayName}
@@ -64,18 +67,22 @@ export async function AppShell({ children, immersiveMobile = false }: { children
                 version={user.profilePhoto?.updatedAt.getTime()}
                 unreadCount={unreadCount}
               />
-              <Link className="grid h-9 w-9 place-items-center rounded-full bg-[var(--primary)] text-white shadow-sm transition hover:bg-[var(--primary-strong)] sm:h-10 sm:w-10" href={homeHref} aria-label="Home" title="Home">
+              <Link className="grid size-10 place-items-center rounded-full bg-[var(--primary)] text-white shadow-sm transition hover:bg-[var(--primary-strong)]" href={homeHref} aria-label="Dashboard" title="Dashboard">
                 <Home size={18} />
               </Link>
             </div>
           </div>
-          <div className="min-w-0 md:pl-1">
-            <p className="truncate text-sm font-bold sm:text-base md:hidden"><AppBrand className="flex-nowrap" versionClassName="hidden sm:inline" /></p>
-            <p className="hidden truncate text-xs text-[var(--muted)] min-[390px]:block sm:text-sm">{displayName}</p>
+          <div className="flex min-w-0 items-center gap-4 md:pl-1">
+            <div className="hidden min-w-0 min-[440px]:block md:min-w-24">
+              <p className="truncate text-sm font-bold sm:text-base md:hidden"><AppBrand className="flex-nowrap" versionClassName="hidden sm:inline" /></p>
+              <p className="hidden truncate text-xs text-[var(--muted)] min-[390px]:block sm:text-sm">{displayName}</p>
+            </div>
+            <div className="hidden self-stretch md:block"><DashboardTypeNav /></div>
           </div>
-          <div className="flex shrink-0 items-center gap-1.5 sm:gap-2 md:gap-3">
+          <div className="flex shrink-0 items-center gap-2 md:gap-3">
             <NotificationBell unreadCount={unreadCount} notifications={recentNotifications} />
-            <ThemeToggle />
+            <ThemeToggle compact />
+            <div className="md:hidden"><DashboardTypeNav mobile /></div>
           </div>
         </div>
         <div aria-hidden="true" className="h-[4.75rem] md:h-[5.25rem]" data-app-top-bar-spacer />

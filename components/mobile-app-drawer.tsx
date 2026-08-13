@@ -74,7 +74,7 @@ export function MobileAppDrawer({
   }, [open]);
 
   const drawer = open ? (
-    <div className="fixed inset-0 z-50 md:hidden">
+    <div className="fixed inset-0 z-50 md:hidden" data-body-scroll-lock="true">
       <button
         aria-label="Close menu overlay"
         className="absolute inset-0 bg-slate-950/50"
@@ -129,7 +129,7 @@ export function MobileAppDrawer({
       <button
         ref={buttonRef}
         aria-label="Open menu"
-        className="relative grid h-9 w-9 place-items-center rounded-full border border-[var(--line)] bg-[var(--surface)] shadow-sm transition hover:bg-[var(--soft)] sm:h-10 sm:w-10 md:hidden"
+        className="relative grid size-10 place-items-center rounded-full border border-[var(--line)] bg-[var(--surface)] shadow-sm transition hover:bg-[var(--soft)] md:hidden"
         type="button"
         onClick={() => setOpen(true)}
       >

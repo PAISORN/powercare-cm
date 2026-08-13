@@ -35,7 +35,7 @@ export function LogoutMenuItem({ collapsed = false }: { collapsed?: boolean }) {
   }, [mounted, open]);
 
   const dialog = open ? (
-    <div className="fixed inset-0 z-[100] grid place-items-center p-4">
+    <div className="fixed inset-0 z-[100] grid place-items-center p-4" data-body-scroll-lock="true">
       <button
         aria-label="Cancel logout"
         className="absolute inset-0 cursor-default bg-[#0d1b3d]/60 backdrop-blur-md"
