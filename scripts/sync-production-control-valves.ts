@@ -25,10 +25,21 @@ const organization = await db.organization.findUnique({
 });
 if (!organization) throw new Error(`Organization ${sourcePlant.organizationSlug} was not found.`);
 
-const plant = await db.plant.findFirst({
+let plant = await db.plant.findFirst({
   where: { organizationId: organization.id, code: sourcePlant.code },
 });
-if (!plant) throw new Error(`Plant ${sourcePlant.code} was not found.`);
+if (!plant) {
+  const organizationPlants = await db.plant.findMany({
+    where: { organizationId: organization.id, active: true },
+    orderBy: { code: "asc" },
+  });
+  if (organizationPlants.length !== 1) {
+    const available = organizationPlants.map((candidate) => candidate.code).join(", ") || "none";
+    throw new Error(`Plant ${sourcePlant.code} was not found; active candidates: ${available}.`);
+  }
+  plant = organizationPlants[0];
+  console.log(`[control-valve-sync] Local plant ${sourcePlant.code} mapped to the only active production plant ${plant.code}.`);
+}
 
 const beforeCount = await db.asset.count({ where: { code: { in: codes } } });
 console.log(`[control-valve-sync] Production has ${beforeCount}/${codes.length} matching assets before sync.`);
