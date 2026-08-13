@@ -33,12 +33,18 @@ if (!plant) {
     where: { organizationId: organization.id, active: true },
     orderBy: { code: "asc" },
   });
-  if (organizationPlants.length !== 1) {
+  const caseInsensitiveMatch = organizationPlants.find(
+    (candidate) => candidate.code.toLocaleLowerCase("en-US") === sourcePlant.code.toLocaleLowerCase("en-US"),
+  );
+  if (caseInsensitiveMatch) {
+    plant = caseInsensitiveMatch;
+  } else if (organizationPlants.length === 1) {
+    plant = organizationPlants[0];
+  } else {
     const available = organizationPlants.map((candidate) => candidate.code).join(", ") || "none";
     throw new Error(`Plant ${sourcePlant.code} was not found; active candidates: ${available}.`);
   }
-  plant = organizationPlants[0];
-  console.log(`[control-valve-sync] Local plant ${sourcePlant.code} mapped to the only active production plant ${plant.code}.`);
+  console.log(`[control-valve-sync] Local plant ${sourcePlant.code} mapped to production plant ${plant.code}.`);
 }
 
 const beforeCount = await db.asset.count({ where: { code: { in: codes } } });
