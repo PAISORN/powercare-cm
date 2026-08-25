@@ -13,8 +13,14 @@ if (process.env.VERCEL_ENV !== "production") {
   process.exit(0);
 }
 
-if (!process.env.DIRECT_URL) throw new Error("DIRECT_URL is required for production schema migrations.");
-const db = new PrismaClient({ datasources: { db: { url: process.env.DIRECT_URL } } });
+if (!process.env.DATABASE_URL || !process.env.DIRECT_URL) {
+  throw new Error("DATABASE_URL and DIRECT_URL are required for production schema migrations.");
+}
+const pooledUrl = new URL(process.env.DATABASE_URL);
+const directUrl = new URL(process.env.DIRECT_URL);
+pooledUrl.username = pooledUrl.username.replace(/^[^.]+/, directUrl.username);
+pooledUrl.password = directUrl.password;
+const db = new PrismaClient({ datasources: { db: { url: pooledUrl.toString() } } });
 
 try {
   await db.$executeRawUnsafe(`
