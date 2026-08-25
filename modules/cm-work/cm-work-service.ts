@@ -2,7 +2,6 @@ import { Prisma, type CmWork } from "@prisma/client";
 import { db } from "../../lib/db";
 import { cacheTags, revalidateCmData } from "../../lib/query-cache";
 import { canAssignWork, canCancelWork, canClaimWork, canCloseWork, canReturnWork } from "../auth/permission";
-import { canUseUserPermission, PermissionKey, type PermissionUserContext } from "../auth/site-admin-permissions";
 import { recordAudit } from "../audit/audit-service";
 import { canEnterBacklogShutdown, canTransition } from "./cm-work-state-machine";
 import { reserveCmWorkNumber } from "./cm-work-sequence";
@@ -125,70 +124,24 @@ export async function createRepairRequest(input: {
   problemDetail: string;
   urgency: Urgency;
   plantCode?: string | null;
-  internalPmOrigin?: {
-    organizationId: string;
-    plantId: string;
-    actorId: string;
-    pmWorkId: string;
-    pmWorkUpdatedAt: Date;
-    persistLinkedNotification?: (tx: Prisma.TransactionClient, cmWork: CmWork) => Promise<unknown>;
-  };
 }) {
   const now = new Date();
-  const { plantCode, submissionKey, internalPmOrigin, ...workInput } = input;
+  const { plantCode, submissionKey, ...workInput } = input;
   if (!submissionKey.trim()) throw new Error("Repair request submission key is required");
 
   let transactionResult: { created: boolean; work: CmWork };
   try {
-    const createOperation = async (tx: Prisma.TransactionClient) => {
-      if (internalPmOrigin) {
-        const existingOrigin = await tx.cmWork.findUnique({ where: { originatingPmWorkId: internalPmOrigin.pmWorkId } });
-        if (existingOrigin) {
-          assertCanonicalPmCmWork(existingOrigin, internalPmOrigin, submissionKey);
-          await internalPmOrigin.persistLinkedNotification?.(tx, existingOrigin);
-          return { created: false, work: existingOrigin };
-        }
-      }
-      const existingKey = await tx.cmWork.findUnique({ where: { submissionKey } });
-      if (existingKey) {
-        if (internalPmOrigin || existingKey.originatingPmWorkId) throw new Error("Repair request submission key collision");
-        return { created: false, work: existingKey };
-      }
+    transactionResult = await db.$transaction(async (tx) => {
+      const existing = await tx.cmWork.findUnique({ where: { submissionKey } });
+      if (existing) return { created: false, work: existing };
 
-      const plantScope = internalPmOrigin
-        ? await tx.plant.findFirstOrThrow({
-            where: { id: internalPmOrigin.plantId, organizationId: internalPmOrigin.organizationId, active: true, organization: { active: true } },
-            select: { id: true, code: true, organizationId: true, maxWorkRequests: true },
-          })
-        : await resolveRequestPlantScope(createPrismaRequestPlantScopeStore(tx), plantCode);
-      const pmOrigin = internalPmOrigin
-        ? await tx.pmWork.findFirstOrThrow({
-            where: {
-              id: internalPmOrigin.pmWorkId,
-              updatedAt: internalPmOrigin.pmWorkUpdatedAt,
-              plantId: internalPmOrigin.plantId,
-              status: "COMPLETED",
-              result: "ABNORMAL",
-              pmPlan: { organizationId: internalPmOrigin.organizationId },
-              asset: { registrationStatus: "ACTIVE" },
-            },
-            select: { id: true, number: true, resultNote: true, asset: true },
-          })
-        : null;
-      if (internalPmOrigin) {
-        const [category, zone] = await Promise.all([
-          tx.category.findFirst({ where: { id: input.categoryId, organizationId: internalPmOrigin.organizationId, plantId: internalPmOrigin.plantId, active: true }, select: { id: true } }),
-          tx.zone.findFirst({ where: { id: input.zoneId, plantId: internalPmOrigin.plantId, active: true }, select: { id: true } }),
-        ]);
-        if (!category) throw new Error("Category must be active and belong to the same Site");
-        if (!zone) throw new Error("Zone must be active and belong to the same Site");
-      }
-      const selectedAsset = pmOrigin?.asset ?? (input.assetId
+      const plantScope = await resolveRequestPlantScope(createPrismaRequestPlantScopeStore(tx), plantCode);
+      const selectedAsset = input.assetId
         ? await tx.asset.findFirst({ where: { id: input.assetId, plantId: plantScope.id, registrationStatus: "ACTIVE" } })
-        : null);
+        : null;
       const selectedAssetName = selectedAsset ? selectedAsset.nameEn?.trim() || selectedAsset.nameTh : null;
       const number = await reserveCmWorkNumber(tx, plantScope.code, now);
-      const plant = "maxWorkRequests" in plantScope ? plantScope : await tx.plant.findUnique({ where: { id: plantScope.id }, select: { maxWorkRequests: true } });
+      const plant = await tx.plant.findUnique({ where: { id: plantScope.id }, select: { maxWorkRequests: true } });
       if (plant?.maxWorkRequests) {
         const currentCount = await tx.cmWork.count({ where: { plantId: plantScope.id } });
         if (currentCount >= plant.maxWorkRequests) throw new Error("SITE_REQUEST_LIMIT_REACHED");
@@ -205,8 +158,6 @@ export async function createRepairRequest(input: {
           organizationId: plantScope.organizationId,
           plantId: plantScope.id,
           number,
-          originatingPmWorkId: internalPmOrigin?.pmWorkId ?? null,
-          ...(pmOrigin ? { problemTitle: `ผล PM ผิดปกติ · ${pmOrigin.number}`, problemDetail: pmOrigin.resultNote || `พบผลผิดปกติจาก PM ${pmOrigin.number}` } : {}),
           status: WorkStatus.NEW,
           statusHistory: {
             create: {
@@ -217,23 +168,12 @@ export async function createRepairRequest(input: {
           },
         },
       });
-      if (internalPmOrigin) {
-        await tx.auditEvent.create({ data: { cmWorkId: work.id, actorId: internalPmOrigin.actorId, organizationId: internalPmOrigin.organizationId, plantId: internalPmOrigin.plantId, entityType: "CmWork", entityId: work.id, action: "CREATE_REPAIR_REQUEST", afterJson: JSON.stringify(work) } });
-        await internalPmOrigin.persistLinkedNotification?.(tx, work);
-      }
       return { created: true, work };
-    };
-    transactionResult = internalPmOrigin
-      ? await runInternalPmCreateTransaction(createOperation)
-      : await db.$transaction(createOperation);
+    });
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
-      if (internalPmOrigin) {
-        const existingOrigin = await db.cmWork.findUnique({ where: { originatingPmWorkId: internalPmOrigin.pmWorkId } });
-        if (existingOrigin) { assertCanonicalPmCmWork(existingOrigin, internalPmOrigin, submissionKey); return existingOrigin; }
-      }
-      const existingKey = await db.cmWork.findUnique({ where: { submissionKey } });
-      if (existingKey && !internalPmOrigin && !existingKey.originatingPmWorkId) return existingKey;
+      const existing = await db.cmWork.findUnique({ where: { submissionKey } });
+      if (existing) return existing;
     }
     throw error;
   }
@@ -241,29 +181,20 @@ export async function createRepairRequest(input: {
   const { work } = transactionResult;
   if (!transactionResult.created) return work;
 
-  if (!internalPmOrigin) await recordAudit({ cmWorkId: work.id, organizationId: work.organizationId, plantId: work.plantId, entityType: "CmWork", entityId: work.id, action: "CREATE_REPAIR_REQUEST", after: work });
+  await recordAudit({
+    cmWorkId: work.id,
+    organizationId: work.organizationId,
+    plantId: work.plantId,
+    entityType: "CmWork",
+    entityId: work.id,
+    action: "CREATE_REPAIR_REQUEST",
+    after: work,
+  });
 
   await emitWorkNotification(work.id, null, NotificationEventType.NEW_REQUEST, WorkStatus.NEW);
 
   revalidateCmData([cacheTags.dashboardSummary]);
   return work;
-}
-
-async function runInternalPmCreateTransaction<T>(operation: (tx: Prisma.TransactionClient) => Promise<T>) {
-  for (let attempt = 0; attempt < 3; attempt += 1) {
-    try {
-      return await db.$transaction(operation, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
-    } catch (error) {
-      if (!(error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2034") || attempt === 2) throw error;
-    }
-  }
-  throw new Error("Internal PM-to-CM transaction retry exhausted");
-}
-
-function assertCanonicalPmCmWork(work: CmWork, origin: NonNullable<Parameters<typeof createRepairRequest>[0]["internalPmOrigin"]>, submissionKey: string) {
-  if (work.originatingPmWorkId !== origin.pmWorkId || work.organizationId !== origin.organizationId || work.plantId !== origin.plantId || work.submissionKey !== submissionKey) {
-    throw new Error("PM-to-CM origin collision");
-  }
 }
 
 export async function claimWork(actor: Actor, cmWorkId: string) {
@@ -301,40 +232,6 @@ export async function claimWork(actor: Actor, cmWorkId: string) {
 
   await emitWorkNotification(updated.id, actor.id, NotificationEventType.CLAIMED, WorkStatus.CLAIMED);
 
-  revalidateCmData([cacheTags.dashboardSummary]);
-  return updated;
-}
-
-export async function updateWorkProblemTitle(
-  actor: Actor & PermissionUserContext,
-  cmWorkId: string,
-  problemTitle: string,
-) {
-  const normalizedTitle = problemTitle.trim().replace(/\s+/g, " ");
-  if (!normalizedTitle) throw new Error("Work title is required");
-  if (normalizedTitle.length > 200) throw new Error("Work title must not exceed 200 characters");
-  if (!canUseUserPermission(actor, PermissionKey.EDIT_WORK_TITLE)) throw new Error("You cannot edit this work title");
-
-  const work = await db.cmWork.findUniqueOrThrow({ where: { id: cmWorkId } });
-  if (actor.organizationId && work.organizationId !== actor.organizationId) throw new Error("Work is outside your organization scope");
-  if (actor.plantId && work.plantId !== actor.plantId) throw new Error("Work is outside your Site scope");
-  if (work.problemTitle === normalizedTitle) return work;
-
-  const updated = await db.cmWork.update({
-    where: { id: cmWorkId },
-    data: { problemTitle: normalizedTitle },
-  });
-  await recordAudit({
-    cmWorkId,
-    actorId: actor.id,
-    organizationId: work.organizationId,
-    plantId: work.plantId,
-    entityType: "CmWork",
-    entityId: cmWorkId,
-    action: "UPDATE_WORK_PROBLEM_TITLE",
-    before: { problemTitle: work.problemTitle },
-    after: { problemTitle: updated.problemTitle },
-  });
   revalidateCmData([cacheTags.dashboardSummary]);
   return updated;
 }

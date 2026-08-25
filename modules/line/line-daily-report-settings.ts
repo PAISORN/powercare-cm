@@ -117,8 +117,8 @@ export function normalizeLineDailyReportDateMode(value: FormDataEntryValue | nul
 }
 
 export function normalizeLineDailyReportSendTime(value: FormDataEntryValue | null) {
-  void value;
-  return "08:00";
+  const text = String(value ?? "").trim();
+  return /^\d{2}:\d{2}$/.test(text) ? text : "08:00";
 }
 
 export async function getLineDailyReportSetting(organizationId?: string, plantId?: string | null) {

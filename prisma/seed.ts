@@ -34,9 +34,6 @@ async function upsertUser(input: {
   return db.user.upsert({
     where: { username: input.username },
     update: {
-      // Keep development and disposable E2E fixtures deterministic even when the
-      // template database previously had a manually changed password.
-      passwordHash,
       active: true,
       organizationId: defaultOrganizationRecord.id,
       plantId: defaultPlantRecord.id,

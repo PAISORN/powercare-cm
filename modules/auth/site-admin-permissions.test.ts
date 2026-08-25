@@ -24,7 +24,6 @@ describe("Site Admin permissions", () => {
     expect(SITE_ADMIN_CONFIGURABLE_PERMISSIONS).toContain(PermissionKey.VIEW_STORE_REPORTS);
     expect(SITE_ADMIN_CONFIGURABLE_PERMISSIONS).toContain(PermissionKey.ENABLE_PUBLIC_STORE_ISSUE);
     expect(SITE_ADMIN_CONFIGURABLE_PERMISSIONS).toContain(PermissionKey.REQUIRE_PUBLIC_ISSUE_CONTACT);
-    expect(SITE_ADMIN_CONFIGURABLE_PERMISSIONS).not.toContain(PermissionKey.EXECUTE_PM_WORK);
   });
 
   it("allows super admin regardless of Site Admin checkbox records", () => {
@@ -58,9 +57,10 @@ describe("Site Admin permissions", () => {
   it("keeps user-facing configurable permission labels readable", () => {
     const labels = SITE_ADMIN_PERMISSION_OPTIONS.map((option) => option.label).join(" ");
 
-    expect(labels).toContain("กำหนด Category ให้ User");
-    expect(labels).toContain("มอบหมายงาน");
-    expect(labels).toContain("จัดการ Users เฉพาะ Site");
+    expect(labels).toContain("????? Category ??? User");
+    expect(labels).toContain("??????????");
+    expect(labels).toContain("?????? Users ????? Site");
+    expect(labels).not.toContain("�");
     expect(labels).not.toContain("�");
   });
 
@@ -71,21 +71,6 @@ describe("Site Admin permissions", () => {
     expect(permissionDefaultForRole(RoleName.TECHNICIAN, PermissionKey.CLOSE_WORK)).toBe(false);
     expect(permissionDefaultForRole(RoleName.VISITOR, PermissionKey.VIEW_DASHBOARD)).toBe(true);
     expect(permissionDefaultForRole("PUBLIC_REQUESTER", PermissionKey.CREATE_PUBLIC_REQUEST)).toBe(true);
-    expect(permissionDefaultForRole(RoleName.ADMIN, PermissionKey.EXECUTE_PM_WORK)).toBe(false);
-    expect(permissionDefaultForRole(RoleName.ENGINEER, PermissionKey.EXECUTE_PM_WORK)).toBe(true);
-    expect(permissionDefaultForRole(RoleName.TECHNICIAN, PermissionKey.EXECUTE_PM_WORK)).toBe(true);
-    expect(permissionDefaultForRole(RoleName.ENGINEER, PermissionKey.VIEW_MY_ACTIVITIES)).toBe(true);
-    expect(permissionDefaultForRole(RoleName.TECHNICIAN, PermissionKey.VIEW_MY_ACTIVITIES)).toBe(true);
-    expect(permissionDefaultForRole(RoleName.STORE_OFFICER, PermissionKey.VIEW_MY_ACTIVITIES)).toBe(true);
-    expect(permissionDefaultForRole(RoleName.VISITOR, PermissionKey.VIEW_MY_ACTIVITIES)).toBe(false);
-    for (const role of [RoleName.ORGANIZATION_ADMIN, RoleName.SITE_ADMIN, RoleName.ENGINEER, RoleName.TECHNICIAN, RoleName.STORE_OFFICER]) {
-      expect(permissionDefaultForRole(role, PermissionKey.VIEW_MY_ACTIVITIES_CM)).toBe(true);
-      expect(permissionDefaultForRole(role, PermissionKey.VIEW_MY_ACTIVITIES_STORE)).toBe(true);
-    }
-    expect(permissionDefaultForRole(RoleName.VISITOR, PermissionKey.VIEW_MY_ACTIVITIES_CM)).toBe(false);
-    expect(permissionDefaultForRole(RoleName.VISITOR, PermissionKey.VIEW_MY_ACTIVITIES_STORE)).toBe(false);
-    expect(permissionDefaultForRole(RoleName.ENGINEER, PermissionKey.EDIT_WORK_TITLE)).toBe(true);
-    expect(permissionDefaultForRole(RoleName.TECHNICIAN, PermissionKey.EDIT_WORK_TITLE)).toBe(false);
   });
 
   it("allows Organization Admin to view Store data without receiving stock", () => {

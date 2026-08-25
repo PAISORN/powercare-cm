@@ -83,7 +83,6 @@ export default async function WorkDetailPage({
         zone: true,
         claimant: true,
         reviewer: true,
-        originatingPmWork: { select: { id: true, number: true } },
         statusHistory: { orderBy: { changedAt: "asc" } },
       },
     }),
@@ -452,8 +451,6 @@ export default async function WorkDetailPage({
           <WorkMetaItem icon={FileText} label="รายละเอียด" value={work.problemDetail} wide />
         </section>
       </section>
-
-      {work.originatingPmWork ? <div className="mx-auto mt-4 w-full max-w-3xl rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-sm"><strong>สร้างจากผล PM:</strong> <Link className="font-bold text-emerald-700 underline" href={`/dashboardpm/work/${work.originatingPmWork.id}?organizationId=${work.organizationId}&plantId=${work.plantId}`}>{work.originatingPmWork.number}</Link></div> : null}
 
       {query.assignmentError === "1" ? (
         <p className="mt-6 rounded-lg border border-red-500/35 bg-red-500/10 px-4 py-3 font-semibold text-red-700 dark:text-red-300" role="alert">

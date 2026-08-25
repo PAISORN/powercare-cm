@@ -17,16 +17,10 @@ describe("PermissionToggle", () => {
 
     expect(toggle.getAttribute("aria-checked")).toBe("true");
     expect(input?.value).toBe("ALLOW");
-    expect(container.querySelector('input[name="changedPermissionKeys"]')).toBeNull();
 
     fireEvent.click(toggle);
 
     expect(screen.getByRole("switch", { name: "Receive Stock: Deny" }).getAttribute("aria-checked")).toBe("false");
     expect(input?.value).toBe("DENY");
-    expect(container.querySelector<HTMLInputElement>('input[name="changedPermissionKeys"]')?.value).toBe("receive_stock");
-
-    fireEvent.click(screen.getByRole("switch", { name: "Receive Stock: Deny" }));
-
-    expect(container.querySelector('input[name="changedPermissionKeys"]')).toBeNull();
   });
 });

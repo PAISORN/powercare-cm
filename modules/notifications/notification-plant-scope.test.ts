@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 describe("notification plant scope", () => {
-  it("limits notification reads and summaries to CM and PM work IDs in the user's operational scope", () => {
+  it("limits notification reads and summaries to CM work IDs in the user's operational scope", () => {
     const source = readFileSync("modules/notifications/notification-service.ts", "utf8");
 
     expect(source).toContain("scope?: OperationalScope");
@@ -10,8 +10,7 @@ describe("notification plant scope", () => {
     expect(source).toContain("buildNotificationWorkWhere(scope)");
     expect(source).toContain("organizationId: scope.organizationId");
     expect(source).toContain("plantId: scope.plantId");
-    expect(source).toContain('{ entityType: "CmWork", entityId: { in: workIds.cm } }');
-    expect(source).toContain('{ entityType: "PmWork", entityId: { in: workIds.pm } }');
+    expect(source).toContain("entityId: { in: workIds }");
     expect(source).toContain("entityId: { in: scopedWorkIds }");
     expect(source).toContain("markAllNotificationsRead(userId: string, scope?: OperationalScope)");
   });

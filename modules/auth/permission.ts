@@ -164,24 +164,6 @@ export function canManageAssetQrProfile(input: string | PermissionUserContext) {
   return canUse(input, PermissionKey.MANAGE_ASSET_QR_PROFILE, [RoleName.ADMIN, RoleName.ORGANIZATION_ADMIN]);
 }
 
-export function canViewPm(input: string | PermissionUserContext) {
-  return canUse(input, PermissionKey.VIEW_PM, Object.values(RoleName));
-}
-
-export function canManagePmGroups(input: string | PermissionUserContext) {
-  return canUse(input, PermissionKey.MANAGE_PM_GROUPS, [RoleName.ADMIN, RoleName.ORGANIZATION_ADMIN, RoleName.SITE_ADMIN]);
-}
-
-export function canManagePmPlans(input: string | PermissionUserContext) {
-  return canUse(input, PermissionKey.MANAGE_PM_PLANS, [RoleName.ADMIN, RoleName.ORGANIZATION_ADMIN, RoleName.SITE_ADMIN]);
-}
-
-export function canExecutePmWork(input: string | PermissionUserContext) {
-  // A role string cannot carry the explicit override required for administrative roles.
-  if (typeof input === "string") return input === RoleName.ENGINEER || input === RoleName.TECHNICIAN;
-  return canUseUserPermission(input, PermissionKey.EXECUTE_PM_WORK);
-}
-
 export function canViewPlantAuditLog(input: string | PermissionUserContext) {
   if (typeof input === "string") return input === RoleName.ADMIN || input === RoleName.ORGANIZATION_ADMIN;
   return canUseUserPermission(input, PermissionKey.VIEW_AUDIT_LOG_ALL_PLANTS) || canUseUserPermission(input, PermissionKey.VIEW_AUDIT_LOG_PLANT);

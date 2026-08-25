@@ -8,8 +8,6 @@ coverage/
 .env*.local
 prisma/dev.db
 prisma/dev.db-journal
-prisma/e2e*.db
-prisma/dev-before-*.db
 storage/
 .superpowers/
 .npm-cache/

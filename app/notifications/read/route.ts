@@ -16,6 +16,6 @@ export async function POST(request: Request) {
 
   const result = await markNotificationRead(user.id, notification.id, scope);
   if (result.count === 0) return NextResponse.redirect(new URL("/notifications?targetUnavailable=1", request.url), 303);
-  const destination = notification.href?.startsWith("/work/") || notification.href?.startsWith("/dashboardpm/work/") ? notification.href : "/notifications";
+  const destination = notification.href?.startsWith("/work/") ? notification.href : "/notifications";
   return NextResponse.redirect(new URL(destination, request.url), 303);
 }

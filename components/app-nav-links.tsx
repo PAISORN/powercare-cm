@@ -87,7 +87,7 @@ export function getAppLinks(role: RoleValue, permissionContext: AppPermissionCon
     baseLinks.push({ label: "Dashboard", href: "/dashboardcm", icon: BarChart3 });
   }
 
-  if (canUse(PermissionKey.VIEW_MY_ACTIVITIES)) {
+  if (role !== RoleName.VISITOR) {
     baseLinks.push({ label: "My Activities", href: "/activities", icon: ClipboardList });
   }
 
@@ -134,7 +134,7 @@ export function getAppLinks(role: RoleValue, permissionContext: AppPermissionCon
   }
 
   if (maintenanceLinks.length > 0) {
-    baseLinks.push({ label: "CM", kind: "section", icon: Wrench, sectionId: "maintenance" }, ...maintenanceLinks);
+    baseLinks.push({ label: "Maintenance", kind: "section", icon: Wrench, sectionId: "maintenance" }, ...maintenanceLinks);
   }
 
   if (canUse(PermissionKey.VIEW_ASSETS)) {
@@ -150,23 +150,10 @@ export function getAppLinks(role: RoleValue, permissionContext: AppPermissionCon
     }
     baseLinks.push(
       { label: "Equipment", href: "#", icon: Factory, nested: true, disabled: true, parentSectionId: "assets" },
+      { label: "Preventive Maintenance", href: "#", icon: ClipboardList, nested: true, disabled: true, parentSectionId: "assets" },
       { label: "Meter Reading", href: "#", icon: CalendarDays, nested: true, disabled: true, parentSectionId: "assets" },
       { label: "Asset Analytics", href: "#", icon: BarChart3, nested: true, disabled: true, parentSectionId: "assets" },
     );
-  }
-
-  const pmLinks: AppLink[] = [];
-  if (canUse(PermissionKey.VIEW_PM)) {
-    pmLinks.push(
-      { label: "PM Calendar", href: "/dashboardpm", icon: CalendarDays, nested: true, parentSectionId: "pm" },
-      { label: "PM Work", href: "/dashboardpm/work", icon: ClipboardList, nested: true, parentSectionId: "pm" },
-    );
-  }
-  if (canUse(PermissionKey.MANAGE_PM_GROUPS)) {
-    pmLinks.splice(1, 0, { label: "PM Groups", href: "/dashboardpm/groups", icon: Boxes, nested: true, parentSectionId: "pm" });
-  }
-  if (pmLinks.length > 0) {
-    baseLinks.push({ label: "PM", kind: "section", icon: ClipboardList, sectionId: "pm" }, ...pmLinks);
   }
 
   const organizationLinks: AppLink[] = [];
@@ -282,32 +269,10 @@ export function getAppLinks(role: RoleValue, permissionContext: AppPermissionCon
     baseLinks.push({ label: "Administration", kind: "section", icon: Settings, sectionId: "administration" }, ...administrationLinks);
   }
 
-  const orderedLinks = orderPrimaryNavigation(baseLinks);
-  orderedLinks.push({ label: "Profile", href: "/profile", icon: UserRound });
-  orderedLinks.push({ label: "Logout", href: "/logout", icon: LogOut, accent: "danger" });
+  baseLinks.push({ label: "Profile", href: "/profile", icon: UserRound });
+  baseLinks.push({ label: "Logout", href: "/logout", icon: LogOut, accent: "danger" });
 
-  return orderedLinks;
-}
-
-function orderPrimaryNavigation(links: AppLink[]) {
-  const priority = new Map([
-    ["Dashboard", 0],
-    ["My Activities", 1],
-    ["CM", 2],
-    ["PM", 3],
-    ["Inventory", 4],
-    ["Assets", 5],
-    ["Organization", 6],
-  ]);
-  const groups: AppLink[][] = [];
-  for (const link of links) {
-    if (!link.nested || groups.length === 0) groups.push([link]);
-    else groups.at(-1)!.push(link);
-  }
-  return groups
-    .map((group, index) => ({ group, index, priority: priority.get(group[0].label) ?? 7 }))
-    .sort((a, b) => a.priority - b.priority || a.index - b.index)
-    .flatMap(({ group }) => group);
+  return baseLinks;
 }
 
 export function AppNavLinks({
@@ -486,8 +451,7 @@ export function isActivePath(pathname: string, href: string, searchParams?: Pick
   const [hrefWithoutHash] = href.split("#");
   const [cleanHref, hrefQuery = ""] = hrefWithoutHash.split("?");
   if (!cleanHref || cleanHref === "#") return false;
-  const exactPmCalendar = cleanHref === "/dashboardpm";
-  if (pathname !== cleanHref && (exactPmCalendar || !pathname.startsWith(`${cleanHref}/`))) return false;
+  if (pathname !== cleanHref && !pathname.startsWith(`${cleanHref}/`)) return false;
   if (!hrefQuery) return true;
 
   const expectedParams = new URLSearchParams(hrefQuery);

@@ -37,27 +37,6 @@
 7. การซ่อนเมนูไม่เพียงพอ ทุก action ที่กระทบข้อมูลต้องตรวจ permission ฝั่ง server เสมอ
 8. ข้อมูลใหม่ที่รองรับหลายองค์กรควรมี `organizationId` และเมื่อเกี่ยวกับโรงงานควรมี `plantId` เสมอ
 
-## Preventive Maintenance (PM)
-
-PM ใช้ permission กลางชุดเดียวกับระบบ ไม่ใช้ checkbox `SiteAdminPermission` รุ่นเดิม และทุก Server Action/API ต้องตรวจทั้ง action permission และ Organization/Site scope ซ้ำที่ฝั่ง server
-
-| Permission key | Owner Admin | Organization Admin | Site Admin | Engineer | Technician | Store Officer / Visitor |
-| --- | --- | --- | --- | --- | --- | --- |
-| `view_pm` | ทุก Site | ทุก Site ใน Organization | Site ของตน | Site ของตน | Site ของตน | Site ของตน (อ่านอย่างเดียว) |
-| `manage_pm_groups` | จัดการทุก Site | จัดการใน Organization | จัดการ Site ของตน | ต้องมี override | ต้องมี override | ต้องมี override |
-| `manage_pm_plans` | จัดการทุก Site | จัดการใน Organization | จัดการ Site ของตน | ต้องมี override | ต้องมี override | ต้องมี override |
-| `execute_pm_work` | **ปิดโดยค่าเริ่มต้น** | **ปิดโดยค่าเริ่มต้น** | **ปิดโดยค่าเริ่มต้น** | เปิดโดยค่าเริ่มต้น | เปิดโดยค่าเริ่มต้น | ต้องมี override |
-
-ข้อกำหนดสำคัญ:
-
-- Owner Admin เป็นผู้เปิด/ปิด Role Permission และ User Permission override; User `DENY` มีลำดับเหนือ Role/Organization `ALLOW`
-- สิทธิ์จัดการ PM ไม่ได้แปลว่ามีสิทธิ์ลงมือ PM ผู้ดูแลทุกระดับต้องได้รับ `execute_pm_work` แบบ explicit override ก่อนจึง Claim, Start หรือบันทึกผลได้
-- Organization Admin ถูกจำกัดด้วย Organization และ Site Admin/Role อื่นถูกจำกัดด้วย Site แม้ request จะส่ง ID ของ scope อื่นมา
-- Engineer/Technician เริ่มและบันทึกผลได้เฉพาะงานที่ได้รับมอบหมาย หรือ Claim งานว่างที่อยู่ใน Site ของตน
-- การแก้ผล Completed เป็นหน้าที่ผู้มี `manage_pm_plans` และต้องระบุเหตุผล ไม่ใช่สิทธิ์ execution ปกติ
-- การสร้าง CM จากผล PM ยังต้องผ่าน `create_internal_request` และเลือก Category/Zone ที่ Active ใน Site เดียวกัน
-- การซ่อนเมนูหรือปุ่มเป็นเพียง UX; service เป็น source of truth ของ authorization
-
 ## Site Admin Configurable Permissions
 
 สิทธิ์ต่อไปนี้เป็น checkbox permission สำหรับ Site Admin โดยค่าเริ่มต้นควรเป็น `OFF`

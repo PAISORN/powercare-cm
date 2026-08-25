@@ -60,7 +60,6 @@ type DashboardSearchParams = {
   month?: string;
   year?: string;
   includeTerminal?: string;
-  reportDate?: string;
 };
 
 export default async function DashboardPage({ searchParams }: { searchParams: Promise<DashboardSearchParams> }) {
@@ -72,7 +71,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const activeDateFilter = hasExplicitDateFilter ? safeParseDateFilter(activeDateFilterInput) : undefined;
   const scope = buildUserOperationalScope(user);
   const [summary, unreadSummary, dashboardProfile] = await Promise.all([
-    getDashboardSummaryForDateFilter({ category: activeCategoryFilter, dateFilter: activeDateFilter, defaultTrendMonthCount: 12, reportDate: params.reportDate, scope }),
+    getDashboardSummaryForDateFilter({ category: activeCategoryFilter, dateFilter: activeDateFilter, defaultTrendMonthCount: 12, scope }),
     getUnreadSummary(user.id, scope),
     scope.plantId ? readPlantProfile(scope.plantId) : readOrganizationProfile(scope.organizationId),
   ]);
@@ -263,15 +262,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
           </div>
         </Panel>
 
-        <Panel title="Report รายวัน" icon={<CalendarDays size={22} className="text-[#14b8a6]" />} aside={formatDashboardIsoDate(summary.yesterdayReport.date)}>
-          <form action="/dashboardcm" className="mt-4 flex flex-wrap items-end gap-2">
-            {activeCategoryFilter ? <input name="category" type="hidden" value={activeCategoryFilter} /> : null}
-            <label className="grid gap-1.5 text-sm font-bold">
-              เลือกวันที่ย้อนหลัง
-              <input aria-label="วันที่รายงานย้อนหลัง" className="min-h-11 rounded-xl border border-[var(--line)] bg-[var(--surface)] px-3 text-[var(--ink)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]/40" defaultValue={summary.yesterdayReport.date} max={getPreviousDashboardDate()} name="reportDate" type="date" />
-            </label>
-            <button className="min-h-11 rounded-xl bg-[var(--primary)] px-4 text-sm font-extrabold text-white transition hover:bg-[var(--primary-strong)]">ดูรายงาน</button>
-          </form>
+        <Panel title="Report เมื่อวาน" icon={<CalendarDays size={22} className="text-[#14b8a6]" />} aside={formatDashboardIsoDate(summary.yesterdayReport.date)}>
           <YesterdayCategoryReport report={summary.yesterdayReport} />
         </Panel>
       </section>
@@ -374,12 +365,6 @@ const dashboardDateFormatter = new Intl.DateTimeFormat("th-TH-u-ca-buddhist-nu-l
 
 function formatDashboardIsoDate(date: string) {
   return dashboardDateFormatter.format(new Date(`${date}T00:00:00+07:00`));
-}
-
-function getPreviousDashboardDate(now = new Date()) {
-  const formatter = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Bangkok", year: "numeric", month: "2-digit", day: "2-digit" });
-  const parts = Object.fromEntries(formatter.formatToParts(now).map((part) => [part.type, part.value]));
-  return new Date(Date.UTC(Number(parts.year), Number(parts.month) - 1, Number(parts.day) - 1)).toISOString().slice(0, 10);
 }
 
 function buildWorkHref(categoryParam: string, filters: { status?: WorkStatus; statusGroup?: string } = {}) {

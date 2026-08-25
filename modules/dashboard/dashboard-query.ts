@@ -92,15 +92,6 @@ export function getPreviousBangkokDayWindow(now = new Date()) {
   return { date: previousDate, ...bangkokDayWindow(previousDate) };
 }
 
-export function getBangkokDailyReportWindow(requestedDate: string | undefined, now = new Date()) {
-  const fallback = getPreviousBangkokDayWindow(now);
-  if (!requestedDate || !/^\d{4}-\d{2}-\d{2}$/.test(requestedDate)) return fallback;
-  const requestedWindow = bangkokDayWindow(requestedDate);
-  return requestedWindow.start < bangkokDayWindow(getBangkokDateString(now)).start
-    ? { date: requestedDate, ...requestedWindow }
-    : fallback;
-}
-
 export function normalizeDashboardTimeRange(value?: string): DashboardTimeRangeFilter | undefined {
   return value === "this-month" || value === "last-3-months" || value === "last-6-months" ? value : undefined;
 }
@@ -135,14 +126,12 @@ export async function getDashboardSummaryForDateFilter(filter?: {
   dateFilter?: ParsedCmDateFilter;
   defaultTrendMonthCount?: number;
   scope?: OperationalScope;
-  reportDate?: string;
 }) {
   const summary = await loadDashboardSummary({
     category: filter?.category,
     dateFilter: filter?.dateFilter,
     defaultTrendMonthCount: filter?.defaultTrendMonthCount,
     scope: filter?.scope,
-    reportDate: filter?.reportDate,
   });
   return reviveDashboardSummary(summary);
 }
@@ -153,7 +142,6 @@ export async function loadDashboardSummary(filter?: {
   dateFilter?: ParsedCmDateFilter;
   defaultTrendMonthCount?: number;
   scope?: OperationalScope;
-  reportDate?: string;
 }) {
   const activeCategoryName = filter?.category ? categoryNameByFilter[filter.category] : null;
   const categoryWhere: Prisma.CmWorkWhereInput = activeCategoryName ? { category: { name: activeCategoryName } } : {};
@@ -186,7 +174,7 @@ export async function loadDashboardSummary(filter?: {
     : filter?.scope?.organizationId
       ? { organizationId: filter.scope.organizationId }
       : {};
-  const yesterdayWindow = getBangkokDailyReportWindow(filter?.reportDate, now);
+  const yesterdayWindow = getPreviousBangkokDayWindow(now);
   const yesterdayCategoryBaseWhere: Prisma.CmWorkWhereInput = {
     ...scopeWhere,
     ...categoryWhere,

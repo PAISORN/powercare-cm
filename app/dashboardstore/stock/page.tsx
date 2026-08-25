@@ -905,17 +905,23 @@ export default async function StockPage({ searchParams }: { searchParams: Promis
                   {sparePartTypes.map((type) => <option key={type.id} value={type.id}>{type.code} · {type.name}</option>)}
                 </select>
               </label>
-              <SparePartClassificationFields
-                categories={categories}
-                className={inputClass}
-                defaultCategoryId={editPart.categoryId ?? ""}
-                defaultMaterialGroupId={editPart.materialGroupId ?? ""}
-                groups={materialGroups}
-                key={editPart.id}
-              />
+              <label className={labelClass}>
+                หมวดหมู่อะไหล่
+                <select className={inputClass} defaultValue={editPart.categoryId ?? ""} name="categoryId" required>
+                  <option value="" disabled>เลือกหมวดหมู่</option>
+                  {categories.map((category) => <option key={category.id} value={category.id}>{category.code} · {category.name}</option>)}
+                </select>
+              </label>
               <label className={labelClass}>
                 หน่วยนับ
                 <input className={inputClass} defaultValue={editPart.unit} name="unit" required />
+              </label>
+              <label className={labelClass}>
+                กลุ่มอะไหล่/วัสดุ
+                <select className={inputClass} defaultValue={editPart.materialGroupId ?? ""} name="materialGroupId" required>
+                  <option value="" disabled>เลือกกลุ่มอะไหล่/วัสดุ</option>
+                  {materialGroups.map((group) => <option key={group.id} value={group.id}>{group.code} · {group.name}</option>)}
+                </select>
               </label>
               <div className="grid gap-4 sm:grid-cols-3">
                 <label className={labelClass}>

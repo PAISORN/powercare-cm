@@ -17,6 +17,5 @@ describe("notification unread groups", () => {
     expect(groupToStatuses("IN_PROCESS")).toEqual(["WAITING_TO_CLAIM", "CLAIMED", "IN_PROGRESS", "BACKLOG_SHUTDOWN", "WAITING_TO_CLOSE", "RETURNED_FOR_CORRECTION"]);
     expect(groupToStatuses("NEW")).toEqual(["NEW"]);
     expect(groupToStatuses("ALL_CM")).toBeNull();
-    expect(groupToStatuses("ALL_PM")).toBeNull();
   });
 });

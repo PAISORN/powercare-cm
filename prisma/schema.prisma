@@ -44,15 +44,6 @@ model User {
   requestedStoreIssues        SparePartIssue[]         @relation("StoreIssueRequester")
   engineerStoreIssues         SparePartIssue[]         @relation("StoreIssueEngineer")
   officerStoreIssues          SparePartIssue[]         @relation("StoreIssueOfficer")
-  confirmedPmPlans            PmPlan[]                 @relation("PmPlanConfirmedBy")
-  canceledPmPlans             PmPlan[]                 @relation("PmPlanCanceledBy")
-  rescheduledPmPlans          PmPlan[]                 @relation("PmPlanRescheduledBy")
-  backdatedPmPlans            PmPlan[]                 @relation("PmPlanBackdatedBy")
-  completedPmWorks            PmWork[]                 @relation("PmWorkCompletedBy")
-  canceledPmWorks             PmWork[]                 @relation("PmWorkCanceledBy")
-  correctedPmWorks            PmWork[]                 @relation("PmWorkCorrectedBy")
-  pmWorkAssignments           PmWorkAssignee[]         @relation("PmWorkAssigneeUser")
-  assignedPmWorks             PmWorkAssignee[]         @relation("PmWorkAssignedBy")
 
   @@index([lastSeenAt])
 }
@@ -103,8 +94,6 @@ model Organization {
   sparePartReceives       SparePartReceive[]
   sparePartIssues         SparePartIssue[]
   rolePermissionOverrides RolePermissionOverride[]
-  pmGroups                PmGroup[]
-  pmPlans                 PmPlan[]
 
   @@index([active])
 }
@@ -155,12 +144,9 @@ model Plant {
   assets                  Asset[]
   assetSequences          AssetSequence[]
   assetQrSetting          AssetQrSetting?
-  pmGroups                PmGroup[]
-  pmPlans                 PmPlan[]
 
   @@unique([organizationId, code])
   @@unique([organizationId, name])
-  @@unique([id, organizationId])
   @@index([organizationId, active])
 }
 
@@ -333,8 +319,6 @@ model CmWork {
   canceledAt          DateTime?
   reviewerId          String?
   reviewer            User?         @relation("EngineerReviewer", fields: [reviewerId], references: [id])
-  originatingPmWorkId String?       @unique
-  originatingPmWork   PmWork?       @relation(fields: [originatingPmWorkId], references: [id], onDelete: Restrict)
 
   statusHistory   StatusHistory[]
   auditEvents     AuditEvent[]
@@ -348,187 +332,6 @@ model CmNumberSequence {
   lastNumber Int
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
-}
-
-model PmGroup {
-  id             String                @id @default(cuid())
-  organizationId String
-  organization   Organization          @relation(fields: [organizationId], references: [id], onDelete: Restrict)
-  plantId        String
-  plant          Plant                 @relation(fields: [plantId, organizationId], references: [id, organizationId], onDelete: Restrict)
-  code           String
-  name           String
-  active         Boolean               @default(true)
-  firstUsedAt    DateTime?
-  createdAt      DateTime              @default(now())
-  updatedAt      DateTime              @updatedAt
-  assets         PmGroupAsset[]
-  snapshots      PmPlanGroupSnapshot[]
-  draftPlans     PmPlanDraftGroup[]
-
-  @@unique([plantId, code])
-  @@unique([id, plantId])
-  @@index([organizationId, plantId, active])
-}
-
-model PmGroupAsset {
-  id        String   @id @default(cuid())
-  plantId   String
-  pmGroupId String
-  pmGroup   PmGroup  @relation(fields: [pmGroupId, plantId], references: [id, plantId], onDelete: Cascade)
-  assetId   String
-  asset     Asset    @relation(fields: [assetId, plantId], references: [id, plantId], onDelete: Restrict)
-  createdAt DateTime @default(now())
-
-  @@unique([pmGroupId, assetId])
-  @@index([assetId, plantId])
-}
-
-model PmPlanSequence {
-  id              String   @id @default(cuid())
-  siteCodeSegment String
-  creationDateKey String
-  lastNumber      Int      @default(0)
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-
-  @@unique([siteCodeSegment, creationDateKey])
-}
-
-model PmPlan {
-  id                     String                @id @default(cuid())
-  organizationId         String
-  organization           Organization          @relation(fields: [organizationId], references: [id], onDelete: Restrict)
-  plantId                String
-  plant                  Plant                 @relation(fields: [plantId, organizationId], references: [id, organizationId], onDelete: Restrict)
-  number                 String?               @unique
-  creationDateKey        String?
-  plannedDateKey         String
-  status                 String                @default("DRAFT")
-  lastWorkSequence       Int                   @default(0)
-  submissionKey          String?               @unique
-  confirmedAt            DateTime?
-  confirmedById          String?
-  confirmedBy            User?                 @relation("PmPlanConfirmedBy", fields: [confirmedById], references: [id], onDelete: Restrict)
-  canceledAt             DateTime?
-  canceledById           String?
-  canceledBy             User?                 @relation("PmPlanCanceledBy", fields: [canceledById], references: [id], onDelete: Restrict)
-  cancellationReason     String?
-  rescheduledAt          DateTime?
-  rescheduledById        String?
-  rescheduledBy          User?                 @relation("PmPlanRescheduledBy", fields: [rescheduledById], references: [id], onDelete: Restrict)
-  previousPlannedDateKey String?
-  rescheduleReason       String?
-  backdatedAt            DateTime?
-  backdatedById          String?
-  backdatedBy            User?                 @relation("PmPlanBackdatedBy", fields: [backdatedById], references: [id], onDelete: Restrict)
-  backdateReason         String?
-  createdAt              DateTime              @default(now())
-  updatedAt              DateTime              @updatedAt
-  draftGroups            PmPlanDraftGroup[]
-  groupSnapshots         PmPlanGroupSnapshot[]
-  works                  PmWork[]
-
-  @@index([organizationId, plantId, plannedDateKey])
-  @@unique([id, plantId])
-  @@index([plantId, status, plannedDateKey])
-}
-
-model PmPlanDraftGroup {
-  id        String   @id @default(cuid())
-  plantId   String
-  pmPlanId  String
-  pmPlan    PmPlan   @relation(fields: [pmPlanId, plantId], references: [id, plantId], onDelete: Cascade)
-  pmGroupId String
-  pmGroup   PmGroup  @relation(fields: [pmGroupId, plantId], references: [id, plantId], onDelete: Restrict)
-  createdAt DateTime @default(now())
-
-  @@unique([pmPlanId, pmGroupId])
-  @@index([pmGroupId])
-}
-
-model PmPlanGroupSnapshot {
-  id              String              @id @default(cuid())
-  plantId         String
-  pmPlanId        String
-  pmPlan          PmPlan              @relation(fields: [pmPlanId, plantId], references: [id, plantId], onDelete: Restrict)
-  sourcePmGroupId String
-  sourcePmGroup   PmGroup             @relation(fields: [sourcePmGroupId, plantId], references: [id, plantId], onDelete: Restrict)
-  codeSnapshot    String
-  nameSnapshot    String
-  createdAt       DateTime            @default(now())
-  workSources     PmWorkSourceGroup[]
-
-  @@unique([pmPlanId, sourcePmGroupId])
-  @@unique([id, pmPlanId])
-  @@index([sourcePmGroupId])
-}
-
-model PmWork {
-  id                     String              @id @default(cuid())
-  plantId                String
-  pmPlanId               String
-  pmPlan                 PmPlan              @relation(fields: [pmPlanId, plantId], references: [id, plantId], onDelete: Restrict)
-  assetId                String
-  asset                  Asset               @relation(fields: [assetId, plantId], references: [id, plantId], onDelete: Restrict)
-  assetCodeSnapshot      String?
-  assetNameSnapshot      String
-  number                 String              @unique
-  status                 String              @default("PLANNED")
-  result                 String?
-  resultNote             String?
-  startedAt              DateTime?
-  completedAt            DateTime?
-  completedById          String?
-  completedBy            User?               @relation("PmWorkCompletedBy", fields: [completedById], references: [id], onDelete: Restrict)
-  canceledAt             DateTime?
-  canceledById           String?
-  canceledBy             User?               @relation("PmWorkCanceledBy", fields: [canceledById], references: [id], onDelete: Restrict)
-  cancellationReason     String?
-  correctedAt            DateTime?
-  correctedById          String?
-  correctedBy            User?               @relation("PmWorkCorrectedBy", fields: [correctedById], references: [id], onDelete: Restrict)
-  correctionReason       String?
-  addedAfterConfirmation Boolean             @default(false)
-  createdAt              DateTime            @default(now())
-  updatedAt              DateTime            @updatedAt
-  sourceGroups           PmWorkSourceGroup[]
-  assignees              PmWorkAssignee[]
-  originatingCmWork      CmWork?
-
-  @@unique([pmPlanId, assetId])
-  @@unique([id, pmPlanId])
-  @@index([assetId, status])
-  @@index([pmPlanId, status])
-}
-
-model PmWorkSourceGroup {
-  id                    String              @id @default(cuid())
-  pmWorkId              String
-  pmPlanId              String
-  pmWork                PmWork              @relation(fields: [pmWorkId, pmPlanId], references: [id, pmPlanId], onDelete: Restrict)
-  pmPlanGroupSnapshotId String
-  pmPlanGroupSnapshot   PmPlanGroupSnapshot @relation(fields: [pmPlanGroupSnapshotId, pmPlanId], references: [id, pmPlanId], onDelete: Restrict)
-  createdAt             DateTime            @default(now())
-
-  @@unique([pmWorkId, pmPlanGroupSnapshotId])
-  @@index([pmPlanId])
-  @@index([pmPlanGroupSnapshotId])
-}
-
-model PmWorkAssignee {
-  id           String   @id @default(cuid())
-  pmWorkId     String
-  pmWork       PmWork   @relation(fields: [pmWorkId], references: [id], onDelete: Restrict)
-  userId       String
-  user         User     @relation("PmWorkAssigneeUser", fields: [userId], references: [id], onDelete: Restrict)
-  role         String
-  assignedAt   DateTime @default(now())
-  assignedById String?
-  assignedBy   User?    @relation("PmWorkAssignedBy", fields: [assignedById], references: [id], onDelete: Restrict)
-
-  @@unique([pmWorkId, userId])
-  @@index([userId, role])
 }
 
 model StatusHistory {
@@ -618,7 +421,6 @@ model UserNotification {
   title        String
   message      String
   href         String?
-  dispatchKey  String?   @unique
   createdAt    DateTime  @default(now())
   readAt       DateTime?
 
@@ -1254,11 +1056,8 @@ model Asset {
   technicalValues      AssetTechnicalValue[]
   documents            AssetDocument[]
   cmWorks              CmWork[]
-  pmGroups             PmGroupAsset[]
-  pmWorks              PmWork[]
 
   @@unique([parentId, componentCode])
-  @@unique([id, plantId])
   @@index([plantId, registrationStatus])
   @@index([familyId])
   @@index([assetClassId, assetTypeId])

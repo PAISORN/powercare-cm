@@ -7,7 +7,7 @@ describe("dashboard plant scope", () => {
 
     expect(source).toContain("buildUserOperationalScope");
     expect(source).toContain("const scope = buildUserOperationalScope(user)");
-    expect(source).toContain("getDashboardSummaryForDateFilter({ category: activeCategoryFilter, dateFilter: activeDateFilter, defaultTrendMonthCount: 12, reportDate: params.reportDate, scope })");
+    expect(source).toContain("getDashboardSummaryForDateFilter({ category: activeCategoryFilter, dateFilter: activeDateFilter, defaultTrendMonthCount: 12, scope })");
     expect(source).toContain("getUnreadSummary(user.id, scope)");
   });
 });

@@ -2,16 +2,6 @@ import { existsSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 describe("Store stock page", () => {
-  it("filters edit material groups by the selected spare-part category", () => {
-    const source = readFileSync("app/dashboardstore/stock/page.tsx", "utf8");
-    const editRegion = source.slice(source.indexOf('id="edit-spare-part"'), source.indexOf("{selectedStock && stockAction"));
-
-    expect(editRegion).toContain("<SparePartClassificationFields");
-    expect(editRegion).toContain("defaultCategoryId={editPart.categoryId");
-    expect(editRegion).toContain("defaultMaterialGroupId={editPart.materialGroupId");
-    expect(editRegion).not.toContain("materialGroups.map");
-  });
-
   it("uses distinct soft color surfaces for important stock summary cards", () => {
     const source = readFileSync("app/dashboardstore/stock/page.tsx", "utf8");
 
