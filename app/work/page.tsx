@@ -12,7 +12,8 @@ import { paginationWindow } from "../../lib/pagination-window";
 import { getActiveCategoriesForPlantScope, getActiveClaimantsForReportScope, getActiveZonesForReportScope } from "../../lib/query-cache";
 import { requireUser } from "../../lib/session";
 import { canClaimWork } from "../../modules/auth/permission";
-import { claimWork } from "../../modules/cm-work/cm-work-service";
+import { canUseUserPermission, PermissionKey } from "../../modules/auth/site-admin-permissions";
+import { claimWork, updateWorkProblemTitle } from "../../modules/cm-work/cm-work-service";
 import { WorkStatus, type Actor } from "../../modules/cm-work/cm-work-types";
 import { hasExplicitCmDateFilter, parseCmDateFilter, type CmDateFilterInput, type ParsedCmDateFilter } from "../../modules/filters/cm-date-filter";
 import { getCmDatePreset } from "../../modules/filters/cm-date-filter-presets";
@@ -74,6 +75,7 @@ export default async function WorkListPage({ searchParams }: { searchParams: Pro
     siteAdminPermissions: user.siteAdminPermissions,
   };
   const returnTo = buildWorkListHref(filters);
+  const canEditWorkTitle = canUseUserPermission(user, PermissionKey.EDIT_WORK_TITLE);
 
   async function claimFromListAction(formData: FormData) {
     "use server";
@@ -110,6 +112,29 @@ export default async function WorkListPage({ searchParams }: { searchParams: Pro
     if (!work) redirect("/work");
     await markWorkRead(currentUser.id, work.id, scope);
     redirect(`/work/${work.id}`);
+  }
+
+  async function updateWorkTitleFromListAction(formData: FormData) {
+    "use server";
+    const currentUser = await requireUser();
+    const scope = buildUserOperationalScope(currentUser);
+    const workId = String(formData.get("workId") ?? "");
+    const problemTitle = String(formData.get("problemTitle") ?? "");
+    const safeReturnTo = String(formData.get("returnTo") ?? "/work");
+    const scopedWork = await db.cmWork.findFirst({ where: { id: workId, ...buildWorkScopeWhere(scope) }, select: { id: true } });
+    if (!scopedWork) redirect("/work");
+    await updateWorkProblemTitle({
+      id: currentUser.id,
+      role: currentUser.role as Actor["role"],
+      organizationId: currentUser.organizationId,
+      plantId: scope.plantId,
+      categoryId: currentUser.categoryId,
+      categoryIds: currentUser.categories.map((category) => category.categoryId),
+      siteAdminPermissions: currentUser.siteAdminPermissions,
+      rolePermissionOverrides: currentUser.rolePermissionOverrides,
+      userPermissionOverrides: currentUser.userPermissionOverrides,
+    }, workId, problemTitle);
+    redirect(safeReturnTo.startsWith("/work") ? safeReturnTo : "/work");
   }
 
   const [works, total, categories, zones, claimants, byStatus, unreadSummary] = await Promise.all([
@@ -222,6 +247,22 @@ export default async function WorkListPage({ searchParams }: { searchParams: Pro
                          <span>รับงาน</span>
                        </button>
                     </form>
+                  ) : null}
+                  {canEditWorkTitle ? (
+                    <details className="group relative">
+                      <summary className="cursor-pointer list-none rounded-full border border-[var(--line)] px-4 py-1.5 text-xs font-bold text-[var(--ink)] transition hover:border-[var(--primary)] hover:text-[var(--primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]/40">
+                        แก้ไขชื่อ
+                      </summary>
+                      <form action={updateWorkTitleFromListAction} className="mt-2 grid min-w-[min(20rem,calc(100vw-3rem))] gap-2 rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-3 shadow-lg md:absolute md:right-0 md:z-20">
+                        <input name="workId" type="hidden" value={work.id} />
+                        <input name="returnTo" type="hidden" value={returnTo} />
+                        <label className="grid gap-1 text-left text-xs font-bold">
+                          ชื่อใบแจ้งซ่อม
+                          <input className="min-h-11 rounded-xl border border-[var(--line)] bg-[var(--soft)] px-3 text-sm text-[var(--ink)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]/40" defaultValue={work.problemTitle} maxLength={200} name="problemTitle" required />
+                        </label>
+                        <button className="min-h-11 rounded-xl bg-[var(--primary)] px-4 text-sm font-extrabold text-white transition hover:bg-[var(--primary-strong)]" type="submit">บันทึกชื่อใหม่</button>
+                      </form>
+                    </details>
                   ) : null}
                 </span>
               </div>

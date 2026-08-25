@@ -317,3 +317,25 @@ When adding a permission:
 5. Add navigation/UI visibility only after server checks.
 6. Add role, Site, organization, and negative tests.
 7. Update this document.
+
+## 17. Preventive Maintenance Permissions
+
+PM ใช้ layered permission resolver (`System Role default -> Organization Role override -> User override`) และใช้ scope resolver เดียวกันทั้งหน้าเว็บ, Server Action, query และ CSV export
+
+| Capability | Owner Admin | Organization Admin | Site Admin | Engineer | Technician | Store Officer | Visitor |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| View PM | ทุก Site | Organization | Site | Site | Site | Site | Site |
+| Manage PM Groups | ทุก Site | Organization | Site | override | override | override | override |
+| Manage PM Plans/assignment/correction | ทุก Site | Organization | Site | override | override | override | override |
+| Execute PM Work | explicit override | explicit override | explicit override | default | default | override | override |
+
+Implementation rules:
+
+1. Keys are `view_pm`, `manage_pm_groups`, `manage_pm_plans`, and `execute_pm_work`.
+2. `execute_pm_work` is an explicit-grant key for Admin roles. The global Owner shortcut must not bypass this exception.
+3. Owner Admin manages PM across Sites but only Owner Admin manages permission overrides. Organization/Site scope still applies to every other role.
+4. Management, execution, and PM-to-CM creation are separate decisions. Do not infer one from another.
+5. Assignee candidates must be active Users whose effective `execute_pm_work` is allowed in the exact Site. One work has at most one Lead and may have multiple Collaborators.
+6. Claim is limited to an unassigned Planned work. Start/complete is limited to an assigned performer; correction of Completed results requires plan-management permission and a reason.
+7. Every mutation resolves trusted Organization/Site scope and re-reads current lifecycle state inside its transaction. Posted hidden fields never grant authority.
+8. Filters, summaries, notifications, Asset history, and CSV must use the same scoped PM query contract.

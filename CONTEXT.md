@@ -302,7 +302,123 @@ _Avoid_: account page, personal settings
 
 **Zone**:
 A Site-defined plant system, area, or operational location used consistently to classify Assets, repair requests, and CM Work.
-_Avoid_: Asset System, Site, maintenance Category
+_Avoid_: PM Group, Asset System, Site, maintenance Category
+
+**PM Group**:
+A Site-defined, reusable collection of Assets selected independently from their Zones for Preventive Maintenance planning. Its PM Group Code is Site-unique and becomes immutable after first use, while its name remains editable; one Asset may belong to multiple PM Groups but appears at most once within the same group.
+_Avoid_: Zone, Asset Family, maintenance Category
+
+**PM Schedule Conflict**:
+A review notice that the same Asset has been included through multiple PM Groups in one PM Plan. Confirmation produces only one PM Work for that Asset while preserving every source PM Group.
+_Avoid_: duplicate PM Work, automatic PM Group removal, CM conflict
+
+**PM Group Member**:
+A registered, active Asset selected directly into a PM Group without PM interpreting its Parent or Child relationship. Operating states such as Under Repair, Standby, or Temporarily Out of Service do not prevent selection; a later-retired Asset remains on confirmed work with a warning rather than disappearing automatically.
+_Avoid_: inherited Child coverage, free-text machine, Zone membership
+
+**Inactive PM Group**:
+A PM Group closed to new planning while its historical plans and captured identity remain available. An unused PM Group may be deleted; a used group is deactivated and may later be reactivated.
+_Avoid_: deleted PM history, selectable planning group, canceled PM Plan
+
+**Empty PM Group**:
+An active PM Group saved without Asset members for future preparation. It creates no PM Work and cannot by itself support plan confirmation; when combined with non-empty groups it is skipped with a warning.
+_Avoid_: invalid PM Group, placeholder Asset, empty confirmed work
+
+**PM Work**:
+A Preventive Maintenance record for a selected Asset on a planned occurrence. When completed, it becomes part of that Asset's PM history; detailed checklists and discipline-specific data are outside the current scope.
+_Avoid_: PM Group, inherited Parent or Child work, CM Work
+
+**PM Work Status**:
+The lifecycle state of PM Work: Planned, In Progress, Completed, or Canceled. Cancellation requires a reason, and a Daily PM Plan is complete when every PM Work is either Completed or Canceled.
+_Avoid_: CM Work status, manually closed PM Plan, checklist result
+
+**Overdue PM Work**:
+A Planned or In Progress PM Work whose plan date has passed without completion or cancellation. Overdue is a derived warning, not a lifecycle transition; the work remains actionable and retains both its planned date and actual activity times.
+_Avoid_: automatic cancellation, automatic reschedule, separate work status
+
+**PM Result**:
+The completion outcome of PM Work, recorded as Normal or Abnormal together with the completing User and completion time. An Abnormal result requires a note; attachments, checklists, measurements, and discipline-specific fields are outside the initial scope.
+_Avoid_: PM Work Status, CM diagnosis, inspection checklist
+
+**PM Result Correction**:
+An audited correction to completed PM data by an authorized Owner Admin, Organization Admin, or Site Admin within scope. It requires a reason and preserves the old and new values; the completed Asset and owning PM Plan cannot be replaced.
+_Avoid_: performer self-edit after completion, silent history rewrite, moving completed work
+
+**PM-originated CM Work**:
+A CM Work explicitly created from an Abnormal PM Result by an authorized User, prefilled with the Asset and abnormality note and linked back to its PM Work. An Abnormal result does not create CM Work automatically.
+_Avoid_: automatic CM creation, unlinked repair request, PM Work
+
+**Asset PM Record**:
+The Asset-centered PM view containing upcoming Planned, In Progress, and Overdue work separately from Completed and Canceled history, including results, performers, notes, and any linked PM-originated CM Work.
+_Avoid_: PM calendar, CM history, completed-only Asset view
+
+**PM Read Access**:
+The baseline capability for every authenticated Role to view PM plans and work within its Site scope without changing PM data.
+_Avoid_: public PM access, PM management permission, cross-Site access
+
+**PM Group Management Permission**:
+The action permission for creating, editing, deactivating, and changing Asset membership of PM Groups within the User's authorized scope. Owner Admin holds it across all Sites, Organization Admin across its Organization, and Site Admin within its Site.
+_Avoid_: PM Plan management, Asset management permission, Zone management
+
+**PM Plan Management Permission**:
+The action permission for creating, editing, confirming, and canceling PM Plans and editing their PM Works within the User's authorized scope. Owner Admin holds it across all Sites, Organization Admin across its Organization, and Site Admin within its Site.
+_Avoid_: PM Group management, PM execution, CM management
+
+**PM Permission Authority**:
+Owner Admin authority to enable or disable PM permissions for Roles or individual Users in addition to Owner Admin's own cross-Site PM management access.
+_Avoid_: Site-scoped permission administration, PM Execution Permission, implicit Role expansion
+
+**PM Execution Permission**:
+The action permission for starting PM Work and recording its result. Engineer and Technician hold it by default; Owner Admin, Organization Admin, and Site Admin require an explicit override to act as PM performers.
+_Avoid_: PM planning, CM closing permission, PM Read Access
+
+**PM Work Assignment**:
+The optional designation of one lead performer and multiple collaborators before work begins. Every assignee must hold PM Execution Permission in the same Site; an unassigned PM Work may be claimed, and the User who completes it is recorded separately from the team.
+_Avoid_: mandatory pre-assignment, cross-Site claim, unrestricted result editing
+
+**PM Plan**:
+A Preventive Maintenance commitment placed on one calendar date for one Site and containing one or more PM Groups. Each selected Asset produces its own PM Work under the plan; the initial planning scope has no start or end time.
+_Avoid_: CM Work, live PM Group membership, maintenance calendar event
+
+**Daily PM Plan**:
+The sole PM Plan for one Site on one calendar date. Additional PM Groups for that date are added to the same plan rather than creating parallel plans.
+_Avoid_: one plan per PM Group, timed calendar event, cross-Site plan
+
+**PM Plan Number**:
+A permanent human-readable reference formatted as `PMP-{SITE_CODE}-{CREATION_DATE}-{PLAN_SEQUENCE}`. It does not change when the planned date moves; the current planned date is read from plan data rather than inferred from the number.
+_Avoid_: mutable date-based identifier, database ID, PM Work Number
+
+**PM Work Number**:
+A permanent human-readable reference formatted as `PM-{SITE_CODE}-{CREATION_DATE}-{PLAN_SEQUENCE}-{WORK_SEQUENCE}`, identifying one Asset's PM Work within its PM Plan.
+_Avoid_: PM Plan Number, Asset Code, mutable planned-date identifier
+
+**Manual PM Planning**:
+The initial planning mode in which an authorized User explicitly selects a calendar date and one or more PM Groups. Recurring schedules and automatically generated future plans are outside the initial scope.
+_Avoid_: recurring PM template, automatic future plan, condition-based scheduling
+
+**Backdated PM Plan**:
+A PM Plan entered for a past calendar date solely by an authorized Owner Admin or Organization Admin to recover omitted records. It requires a reason and Audit History; ordinary PM planning begins on the current or a future date.
+_Avoid_: routine retrospective planning, Site Admin backdating, silent history insertion
+
+**Draft PM Plan**:
+An editable PM Plan whose PM Groups and prospective Assets may still change. It creates no PM Work until an authorized user confirms it.
+_Avoid_: confirmed work, active PM Work, completed PM history
+
+**Confirmed PM Plan**:
+A PM Plan whose Asset membership has been fixed and expanded into one PM Work per selected Asset. Its snapshotted PM Groups are not edited afterward; authorized additions are individual, audited Assets, while removals are represented by canceling unstarted PM Work.
+_Avoid_: editable draft, live PM Group membership, calendar placeholder
+
+**PM Plan Reschedule**:
+An audited change of a PM Plan's calendar date. Draft plans may move freely; a Confirmed PM Plan may move only while every PM Work remains Planned, and a plan with started work must instead preserve its date and use explicit cancellation and replanning.
+_Avoid_: silent date change, moving in-progress PM Work, automatic replanning
+
+**Canceled PM Plan**:
+A Confirmed PM Plan withdrawn with a required reason only while all of its PM Works remain Planned. Once any work starts or completes, the plan is preserved and only unperformed PM Works may be canceled individually.
+_Avoid_: deleted confirmed plan, canceled completed work, partial-history removal
+
+**PM Asset Snapshot**:
+The fixed set of Assets captured from the selected PM Groups when a PM Plan is confirmed. Later PM Group membership changes do not silently alter the plan; adding another Asset to the confirmed plan is an explicit, audited action.
+_Avoid_: live Asset query, current PM Group membership, automatic plan rewrite
 
 **Machine**:
 The equipment or asset name related to a repair request or CM work.

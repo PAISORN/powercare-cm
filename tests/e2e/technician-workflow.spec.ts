@@ -1,17 +1,16 @@
 import { expect, test } from "@playwright/test";
 
-test("technician can open work list and see seeded CM work", async ({ page }) => {
+test("technician can open seeded CM work detail", async ({ page }) => {
   await page.goto("/login");
   await page.getByPlaceholder("Username").fill("tech-electrical");
   await page.getByPlaceholder("Password").fill("password1234");
   await page.locator("form button").click();
   await expect(page).toHaveURL(/\/dashboardcm/);
 
-  await page.goto("/work");
+  await page.goto("/work?mode=range&startDate=2026-01-01&endDate=2026-12-31");
   await page.getByPlaceholder("Search CM number, machine, requester").fill("CM-2026-06-0001");
   await page.getByRole("button", { name: "Filter" }).click();
-  await expect(page.getByText("CM-2026-06-0001")).toBeVisible();
-  await page.getByText("CM-2026-06-0001").click();
+  await page.getByText("CM-2026-06-0001", { exact: true }).click();
   await expect(page.getByRole("heading", { name: "CM-2026-06-0001" })).toBeVisible();
 });
 
@@ -34,7 +33,7 @@ test("technician can upload profile photo and see it in work results", async ({ 
 
   await expect(page.getByTestId("sidebar-user-avatar").getByAltText("Electrical Technician profile photo")).toBeVisible();
 
-  await page.goto("/work");
+  await page.goto("/work?mode=range&startDate=2026-01-01&endDate=2026-12-31");
   await page.getByPlaceholder("Search CM number, machine, requester").fill("CM-2026-06-0002");
   await page.getByRole("button", { name: "Filter" }).click();
   await expect(page.getByAltText("Electrical Technician profile photo").first()).toBeVisible();

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   composePriorityQueue,
+  getBangkokDailyReportWindow,
   getPreviousBangkokDayWindow,
   getDashboardTimeRangeWindow,
   normalizeDashboardTimeRange,
@@ -78,6 +79,16 @@ describe("dashboard query contract", () => {
       start: new Date("2026-06-19T17:00:00.000Z"),
       endExclusive: new Date("2026-06-20T17:00:00.000Z"),
     });
+  });
+
+  it("uses a selected past Bangkok date and rejects today for the daily report", () => {
+    const now = new Date("2026-06-21T03:00:00.000Z");
+    expect(getBangkokDailyReportWindow("2026-06-10", now)).toEqual({
+      date: "2026-06-10",
+      start: new Date("2026-06-09T17:00:00.000Z"),
+      endExclusive: new Date("2026-06-10T17:00:00.000Z"),
+    });
+    expect(getBangkokDailyReportWindow("2026-06-21", now).date).toBe("2026-06-20");
   });
 
   it("applies an explicit range to every dashboard section", () => {

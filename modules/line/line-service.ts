@@ -11,8 +11,11 @@ import type { LineDeliveryPayload, LineStoreIssueEvent, LineWorkEvent } from "./
 import { formatLineStoreIssueMessage } from "./line-store-event";
 import { formatLineWorkMessage } from "./line-work-event";
 
-function isUniqueConstraintError(error: unknown) {
-  return Boolean(error && typeof error === "object" && "code" in error && error.code === "P2002");
+function isDeliveryIdentityCollision(error: unknown) {
+  if (!(error && typeof error === "object" && "code" in error && error.code === "P2002")) return false;
+  const target = "meta" in error && error.meta && typeof error.meta === "object" && "target" in error.meta ? error.meta.target : undefined;
+  const fields = Array.isArray(target) ? target.map(String) : [String(target ?? "")];
+  return fields.some(field => field.includes("eventId") && field.includes("destinationId")) || (fields.includes("eventId") && fields.includes("destinationId"));
 }
 
 const repository: LineDeliveryRepository = {
@@ -31,7 +34,7 @@ const repository: LineDeliveryRepository = {
         },
       });
     } catch (error) {
-      if (isUniqueConstraintError(error)) return null;
+      if (isDeliveryIdentityCollision(error)) return null;
       throw error;
     }
   },
@@ -48,6 +51,14 @@ const repository: LineDeliveryRepository = {
         attempts: true,
       },
     });
+  },
+  findByEvent(eventId, destinationId) {
+    return db.lineDeliveryLog.findUnique({ where: { eventId_destinationId: { eventId, destinationId } }, select: { id: true, eventId: true, destinationId: true, eventType: true, payloadJson: true, status: true, attempts: true } });
+  },
+  async claimFailed(id, maxAttempts) {
+    const claimed = await db.lineDeliveryLog.updateMany({ where: { id, status: "FAILED", attempts: { lt: maxAttempts } }, data: { status: "PENDING" } });
+    if (claimed.count !== 1) return null;
+    return db.lineDeliveryLog.findUnique({ where: { id }, select: { id: true, eventId: true, destinationId: true, eventType: true, payloadJson: true, status: true, attempts: true } });
   },
   async markSent(id, attempts, sentAt) {
     await db.lineDeliveryLog.update({
@@ -140,6 +151,8 @@ export async function deliverLineDailyReport(input: {
     destinationId: input.destinationId,
     targetId: input.targetId,
     payload: { text: input.text },
+    retryFailed: true,
+    throwOnFailure: true,
   });
 }
 

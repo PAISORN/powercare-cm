@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { dispatchAllLineDailyReports } from "../../../../modules/line/line-daily-report-dispatcher";
+import { isAuthorizedCronRequest } from "../../../../modules/cron/cron-authorization";
 
 export const dynamic = "force-dynamic";
 
@@ -12,10 +13,4 @@ export async function GET(request: Request) {
   const force = url.searchParams.get("force") === "1";
   const result = await dispatchAllLineDailyReports({ force });
   return NextResponse.json({ ok: true, ...result });
-}
-
-function isAuthorizedCronRequest(request: Request) {
-  const secret = process.env.CRON_SECRET?.trim();
-  if (!secret) return process.env.NODE_ENV !== "production";
-  return request.headers.get("authorization") === `Bearer ${secret}`;
 }

@@ -26,6 +26,7 @@ import { paginationWindow } from "../../lib/pagination-window";
 import { requireUser } from "../../lib/session";
 import { adminScopeSearchFromFormData } from "../../modules/admin/admin-site-scope";
 import { canCloseWork } from "../../modules/auth/permission";
+import { defaultHomeHref } from "../../modules/auth/default-home-route";
 import { canUseUserPermission, PermissionKey } from "../../modules/auth/site-admin-permissions";
 import { RoleName, WorkStatus, type Actor } from "../../modules/cm-work/cm-work-types";
 import { closeWork, moveToInProgress, returnForCorrection, submitForReview } from "../../modules/cm-work/cm-work-service";
@@ -245,6 +246,9 @@ export default async function ActivitiesPage({
   searchParams: Promise<PageQuery>;
 }) {
   const user = await requireUser();
+  if (!canUseUserPermission(user, PermissionKey.VIEW_MY_ACTIVITIES)) redirect(defaultHomeHref(user));
+  const canViewCmActivities = canUseUserPermission(user, PermissionKey.VIEW_MY_ACTIVITIES_CM);
+  const canViewStoreActivities = canUseUserPermission(user, PermissionKey.VIEW_MY_ACTIVITIES_STORE);
   const query = await searchParams;
   const scope = await resolveStorePageScope(user, query);
   const activityView: ActivityView = query.activityView === "current" ? "current" : "visual";
@@ -261,8 +265,8 @@ export default async function ActivitiesPage({
       [user.categoryId, ...user.categories.map((category) => category.categoryId)].filter(Boolean) as string[],
     ),
   ];
-  const canApproveStore = canUseUserPermission(user, PermissionKey.APPROVE_STORE_ISSUE);
-  const canIssueStore = canUseUserPermission(user, PermissionKey.ISSUE_STOCK);
+  const canApproveStore = canViewStoreActivities && canUseUserPermission(user, PermissionKey.APPROVE_STORE_ISSUE);
+  const canIssueStore = canViewStoreActivities && canUseUserPermission(user, PermissionKey.ISSUE_STOCK);
   const approvalKinds = user.role === RoleName.ADMIN
     ? ["SPARE_PART", "CHEMICAL", "OIL"]
     : user.inventoryScopes.filter((item) => item.approvalEnabled).map((item) => item.itemKind);
@@ -272,7 +276,7 @@ export default async function ActivitiesPage({
 
   const [ownedWorks, waitingCloseWorks, approvalIssues, issueQueueIssues, requesterFollowUpIssues] =
     await Promise.all([
-      db.cmWork.findMany({
+      canViewCmActivities ? db.cmWork.findMany({
         where: {
           organizationId: scope.organization.id,
           plantId: scope.plant.id,
@@ -282,8 +286,8 @@ export default async function ActivitiesPage({
         include: { category: true, zone: true, claimant: true },
         orderBy: [{ urgency: "desc" }, { createdAt: "desc" }],
         take: 30,
-      }),
-      db.cmWork.findMany({
+      }) : Promise.resolve([]),
+      canViewCmActivities ? db.cmWork.findMany({
         where: {
           organizationId: scope.organization.id,
           plantId: scope.plant.id,
@@ -293,7 +297,7 @@ export default async function ActivitiesPage({
         include: { category: true, zone: true, claimant: true },
         orderBy: [{ waitingToCloseAt: "asc" }, { createdAt: "asc" }],
         take: 30,
-      }),
+      }) : Promise.resolve([]),
       canApproveStore
         ? db.sparePartIssue.findMany({
             where: {
@@ -323,7 +327,7 @@ export default async function ActivitiesPage({
             take: 30,
           })
         : Promise.resolve([]),
-      db.sparePartIssue.findMany({
+      canViewStoreActivities ? db.sparePartIssue.findMany({
         where: {
           plantId: scope.plant.id,
           requesterUserId: user.id,
@@ -332,7 +336,7 @@ export default async function ActivitiesPage({
         include: { items: { include: { sparePart: { select: { code: true, name: true } } } } },
         orderBy: { updatedAt: "desc" },
         take: 30,
-      }),
+      }) : Promise.resolve([]),
     ]);
 
   const reviewWorks = waitingCloseWorks.filter((work) => canCloseWork(actor, work));
