@@ -11,7 +11,7 @@
     "dev:local": "prisma generate && next dev",
     "dev:supabase": "npm run db:check:development && prisma generate --schema prisma/schema.supabase.prisma && next dev",
     "build": "next build",
-    "build:vercel": "prisma generate --schema prisma/schema.supabase.prisma && next build",
+    "build:vercel": "tsx scripts/apply-supabase-migrations.ts && prisma generate --schema prisma/schema.supabase.prisma && next build",
     "start": "next start",
     "start:local": "prisma generate && next start",
     "start:supabase": "prisma generate --schema prisma/schema.supabase.prisma && next start",
