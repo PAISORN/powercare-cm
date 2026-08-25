@@ -3,6 +3,7 @@ import {
   buildLineDailyReportMessage,
   defaultLineDailyReportTemplate,
   parseLineDailyReportTemplate,
+  normalizeLineDailyReportSendTime,
 } from "./line-daily-report-settings";
 
 describe("LINE daily report settings", () => {
@@ -26,6 +27,10 @@ describe("LINE daily report settings", () => {
 
   it("falls back to defaults when stored template JSON is invalid", () => {
     expect(parseLineDailyReportTemplate("{bad json")).toEqual(defaultLineDailyReportTemplate);
+  });
+
+  it("aligns the configurable time to the single 08:00 Bangkok coordinator schedule", () => {
+    expect(normalizeLineDailyReportSendTime("14:30")).toBe("08:00");
   });
 
   it("builds a concise report message using the selected visible fields", () => {

@@ -14,10 +14,10 @@ export function ThemeToggle({ compact = false }: { compact?: boolean }) {
     const savedTheme = sessionStorage.getItem(storageKey);
     const htmlTheme = document.documentElement.dataset.theme;
     const initial =
-      htmlTheme === "day" || htmlTheme === "night"
-        ? htmlTheme
-        : savedTheme === "day" || savedTheme === "night"
-          ? savedTheme
+      savedTheme === "day" || savedTheme === "night"
+        ? savedTheme
+        : htmlTheme === "day" || htmlTheme === "night"
+          ? htmlTheme
           : getBangkokTheme();
     setTheme(initial);
     document.documentElement.dataset.theme = initial;

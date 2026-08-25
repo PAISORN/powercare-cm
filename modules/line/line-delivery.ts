@@ -18,6 +18,8 @@ export type LineDeliveryRepository = {
     payloadJson: string;
   }): Promise<LineDeliveryRecord | null>;
   findById(id: string): Promise<LineDeliveryRecord | null>;
+  findByEvent(eventId: string, destinationId: string): Promise<LineDeliveryRecord | null>;
+  claimFailed(id: string, maxAttempts: number): Promise<LineDeliveryRecord | null>;
   markSent(id: string, attempts: number, sentAt: Date): Promise<void>;
   markFailed(id: string, attempts: number, errorSummary: string): Promise<void>;
 };
@@ -32,6 +34,8 @@ type NewDelivery = {
   eventType: string;
   targetId: string;
   payload: LineDeliveryPayload;
+  retryFailed?: boolean;
+  throwOnFailure?: boolean;
 };
 
 const MAX_DELIVERY_ATTEMPTS = 3;
@@ -43,15 +47,16 @@ export function createLineDeliveryService({
   repository: LineDeliveryRepository;
   client: LineTextClient;
 }) {
-  async function send(record: LineDeliveryRecord, targetId: string, payload: LineDeliveryPayload) {
+  async function send(record: LineDeliveryRecord, targetId: string, payload: LineDeliveryPayload, throwOnFailure = false) {
     if (record.attempts >= MAX_DELIVERY_ATTEMPTS) throw new Error("LINE delivery retry limit reached");
     const attempts = record.attempts + 1;
 
     try {
       await client.pushText(targetId, payload.text);
       await repository.markSent(record.id, attempts, new Date());
-    } catch {
+    } catch (error) {
       await repository.markFailed(record.id, attempts, "LINE delivery failed");
+      if (throwOnFailure) throw error;
     }
   }
 
@@ -63,17 +68,28 @@ export function createLineDeliveryService({
         eventType: input.eventType,
         payloadJson: JSON.stringify(input.payload),
       });
-      if (!record) return;
-      await send(record, input.targetId, input.payload);
+      if (!record) {
+        if (!input.retryFailed) return;
+        const existing = await repository.findByEvent(input.eventId, input.destinationId);
+        if (!existing || existing.status !== "FAILED") return;
+        const claimed = await repository.claimFailed(existing.id, MAX_DELIVERY_ATTEMPTS);
+        if (!claimed) return;
+        await send(claimed, input.targetId, JSON.parse(claimed.payloadJson) as LineDeliveryPayload, input.throwOnFailure);
+        return;
+      }
+      await send(record, input.targetId, input.payload, input.throwOnFailure);
     },
 
     async retry(deliveryId: string, targetId: string) {
       const record = await repository.findById(deliveryId);
       if (!record) throw new Error("LINE delivery not found");
       if (record.status === "SENT") return;
+      if (record.status !== "FAILED") return;
       if (record.attempts >= MAX_DELIVERY_ATTEMPTS) throw new Error("LINE delivery retry limit reached");
-      const payload = JSON.parse(record.payloadJson) as LineDeliveryPayload;
-      await send(record, targetId, payload);
+      const claimed = await repository.claimFailed(record.id, MAX_DELIVERY_ATTEMPTS);
+      if (!claimed) return;
+      const payload = JSON.parse(claimed.payloadJson) as LineDeliveryPayload;
+      await send(claimed, targetId, payload);
     },
   };
 }

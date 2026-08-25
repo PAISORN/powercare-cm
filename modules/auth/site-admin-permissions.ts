@@ -10,6 +10,9 @@ export const PermissionKey = {
   LOGIN: "login",
   ACCESS_PUBLIC_QR: "access_public_qr",
   VIEW_DASHBOARD: "view_dashboard",
+  VIEW_MY_ACTIVITIES: "view_my_activities",
+  VIEW_MY_ACTIVITIES_CM: "view_my_activities_cm",
+  VIEW_MY_ACTIVITIES_STORE: "view_my_activities_store",
   SELECT_PLANT_CONTEXT: "select_plant_context",
   VIEW_ALL_WORK: "view_all_work",
   VIEW_PROFILE: "view_profile",
@@ -26,6 +29,7 @@ export const PermissionKey = {
   UPDATE_PRIORITY: "update_priority",
   UPDATE_WORK_ZONE: "update_work_zone",
   UPDATE_WORK_CATEGORY: "update_work_category",
+  EDIT_WORK_TITLE: "edit_work_title",
   DELETE_WORK: "delete_work",
   CLAIM_WORK: "claim_work",
   CLAIM_WORK_FOR_OTHER: "claim_work_for_other",
@@ -125,6 +129,10 @@ export const PermissionKey = {
   MANAGE_ASSET_QR_PROFILE: "manage_asset_qr_profile",
   RECODE_ASSETS: "recode_assets",
   CANCEL_ASSET_REGISTRATION: "cancel_asset_registration",
+  VIEW_PM: "view_pm",
+  MANAGE_PM_GROUPS: "manage_pm_groups",
+  MANAGE_PM_PLANS: "manage_pm_plans",
+  EXECUTE_PM_WORK: "execute_pm_work",
 } as const;
 
 export type PermissionKey = (typeof PermissionKey)[keyof typeof PermissionKey];
@@ -272,6 +280,9 @@ const alwaysAllowedByRole: Record<PermissionRole, ReadonlySet<PermissionKey>> = 
   [RoleName.ORGANIZATION_ADMIN]: new Set([
     PermissionKey.LOGIN,
     PermissionKey.VIEW_DASHBOARD,
+    PermissionKey.VIEW_MY_ACTIVITIES,
+    PermissionKey.VIEW_MY_ACTIVITIES_CM,
+    PermissionKey.VIEW_MY_ACTIVITIES_STORE,
     PermissionKey.SELECT_PLANT_CONTEXT,
     PermissionKey.VIEW_ALL_WORK,
     PermissionKey.VIEW_PROFILE,
@@ -353,10 +364,16 @@ const alwaysAllowedByRole: Record<PermissionRole, ReadonlySet<PermissionKey>> = 
     PermissionKey.MANAGE_ASSETS,
     PermissionKey.MANAGE_ASSET_MASTERS,
     PermissionKey.MANAGE_ASSET_DOCUMENTS,
+    PermissionKey.VIEW_PM,
+    PermissionKey.MANAGE_PM_GROUPS,
+    PermissionKey.MANAGE_PM_PLANS,
   ]),
   [RoleName.SITE_ADMIN]: new Set([
     PermissionKey.LOGIN,
     PermissionKey.VIEW_DASHBOARD,
+    PermissionKey.VIEW_MY_ACTIVITIES,
+    PermissionKey.VIEW_MY_ACTIVITIES_CM,
+    PermissionKey.VIEW_MY_ACTIVITIES_STORE,
     PermissionKey.VIEW_ALL_WORK,
     PermissionKey.VIEW_PROFILE,
     PermissionKey.UPDATE_OWN_PROFILE,
@@ -404,10 +421,18 @@ const alwaysAllowedByRole: Record<PermissionRole, ReadonlySet<PermissionKey>> = 
     PermissionKey.MANAGE_ASSETS,
     PermissionKey.MANAGE_ASSET_MASTERS,
     PermissionKey.MANAGE_ASSET_DOCUMENTS,
+    PermissionKey.VIEW_PM,
+    PermissionKey.MANAGE_PM_GROUPS,
+    PermissionKey.MANAGE_PM_PLANS,
   ]),
   [RoleName.ENGINEER]: new Set([
+    PermissionKey.VIEW_PM,
+    PermissionKey.EXECUTE_PM_WORK,
     PermissionKey.LOGIN,
     PermissionKey.VIEW_DASHBOARD,
+    PermissionKey.VIEW_MY_ACTIVITIES,
+    PermissionKey.VIEW_MY_ACTIVITIES_CM,
+    PermissionKey.VIEW_MY_ACTIVITIES_STORE,
     PermissionKey.VIEW_ALL_WORK,
     PermissionKey.VIEW_PROFILE,
     PermissionKey.UPDATE_OWN_PROFILE,
@@ -418,6 +443,7 @@ const alwaysAllowedByRole: Record<PermissionRole, ReadonlySet<PermissionKey>> = 
     PermissionKey.ATTACH_WORK_FILES,
     PermissionKey.UPDATE_PRIORITY,
     PermissionKey.UPDATE_WORK_ZONE,
+    PermissionKey.EDIT_WORK_TITLE,
     PermissionKey.CLAIM_WORK,
     PermissionKey.START_WORK,
     PermissionKey.UPDATE_WORK_PROGRESS,
@@ -455,8 +481,13 @@ const alwaysAllowedByRole: Record<PermissionRole, ReadonlySet<PermissionKey>> = 
     PermissionKey.VIEW_ASSETS,
   ]),
   [RoleName.TECHNICIAN]: new Set([
+    PermissionKey.VIEW_PM,
+    PermissionKey.EXECUTE_PM_WORK,
     PermissionKey.LOGIN,
     PermissionKey.VIEW_DASHBOARD,
+    PermissionKey.VIEW_MY_ACTIVITIES,
+    PermissionKey.VIEW_MY_ACTIVITIES_CM,
+    PermissionKey.VIEW_MY_ACTIVITIES_STORE,
     PermissionKey.VIEW_ALL_WORK,
     PermissionKey.VIEW_PROFILE,
     PermissionKey.UPDATE_OWN_PROFILE,
@@ -489,7 +520,11 @@ const alwaysAllowedByRole: Record<PermissionRole, ReadonlySet<PermissionKey>> = 
     PermissionKey.VIEW_ASSETS,
   ]),
   [RoleName.STORE_OFFICER]: new Set([
+    PermissionKey.VIEW_PM,
     PermissionKey.LOGIN,
+    PermissionKey.VIEW_MY_ACTIVITIES,
+    PermissionKey.VIEW_MY_ACTIVITIES_CM,
+    PermissionKey.VIEW_MY_ACTIVITIES_STORE,
     PermissionKey.VIEW_PROFILE,
     PermissionKey.UPDATE_OWN_PROFILE,
     PermissionKey.VIEW_STORE_DASHBOARD,
@@ -505,6 +540,7 @@ const alwaysAllowedByRole: Record<PermissionRole, ReadonlySet<PermissionKey>> = 
     PermissionKey.VIEW_ASSETS,
   ]),
   [RoleName.VISITOR]: new Set([
+    PermissionKey.VIEW_PM,
     PermissionKey.LOGIN,
     PermissionKey.VIEW_DASHBOARD,
     PermissionKey.VIEW_ALL_WORK,
@@ -526,8 +562,14 @@ const alwaysAllowedByRole: Record<PermissionRole, ReadonlySet<PermissionKey>> = 
   ]),
 };
 
+/** Permissions which even Owner Admin receives only through a layered explicit ALLOW. */
+export const EXPLICIT_GRANT_PERMISSIONS = new Set<PermissionKey>([
+  PermissionKey.EXECUTE_PM_WORK,
+]);
+
 export function permissionDefaultForRole(role: string, permissionKey: PermissionKey) {
   const normalizedRole = isSiteAdminRole(role) ? RoleName.SITE_ADMIN : role;
+  if (normalizedRole === RoleName.ADMIN && EXPLICIT_GRANT_PERMISSIONS.has(permissionKey)) return false;
   if (
     permissionKey === PermissionKey.VIEW_STORE_STOCK &&
     Object.values(RoleName).includes(normalizedRole as RoleName)
@@ -554,7 +596,7 @@ export function canUsePermission(
   rolePermissionOverrides: RolePermissionOverrideRecord[] = [],
   userPermissionOverrides: UserPermissionOverrideRecord[] = [],
 ) {
-  if (actor.role === RoleName.ADMIN) return true;
+  if (actor.role === RoleName.ADMIN && !EXPLICIT_GRANT_PERMISSIONS.has(permissionKey)) return true;
   const normalizedRole = isSiteAdminRole(actor.role) ? RoleName.SITE_ADMIN : actor.role;
   let allowed = permissionDefaultForRole(normalizedRole, permissionKey);
   const systemDecision = rolePermissionOverrides.find(
@@ -584,6 +626,7 @@ export function canUsePermission(
 
   const legacySiteAdminGrant = actor.id && actor.plantId && siteAdminPermissions.some(
     (permission) =>
+      isSiteAdminConfigurablePermission(permissionKey) &&
       permission.enabled &&
       permission.userId === actor.id &&
       permission.plantId === actor.plantId &&

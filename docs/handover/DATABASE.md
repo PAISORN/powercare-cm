@@ -370,14 +370,40 @@ Long-term option: use tenant-aware PostgreSQL policies based on trusted request 
 - Check constraints against existing data before making optional codes required.
 - Never edit a migration already applied to production; add a new corrective migration.
 
-## 10. Future Planned Tables
+## 10. Preventive Maintenance Tables
+
+PM is implemented and owned by Organization + Site (`Plant`). The local SQLite and production PostgreSQL Prisma schemas must remain field/model compatible.
+
+| Model | Purpose and important constraints |
+| --- | --- |
+| `PmGroup` | Flexible Site-scoped grouping independent of Zone/Parent/Child; unique normalized code per Site; `firstUsedAt` locks code after confirmation. |
+| `PmGroupAsset` | Explicit Group-to-Asset membership; unique pair; composite keys prevent cross-Site membership. |
+| `PmPlanSequence` | Atomic plan number allocator keyed by normalized Site-code segment and creation date. |
+| `PmPlan` | One current Draft/Confirmed plan per Site/date through a provider-specific partial unique index; Draft has no human number; `lastWorkSequence` allocates later work suffixes. |
+| `PmPlanDraftGroup` | Mutable group selection used only before confirmation. |
+| `PmPlanGroupSnapshot` | Immutable code/name source snapshot created at confirmation. |
+| `PmWork` | One snapshotted Asset work per confirmed plan; status is `PLANNED/IN_PROGRESS/COMPLETED/CANCELED`; Overdue is derived and never stored. |
+| `PmWorkSourceGroup` | Preserves every source group after duplicate Assets are collapsed into one work. |
+| `PmWorkAssignee` | One Lead plus Collaborators; unique work/user pair and partial unique Lead index. |
+| `CmWork.originatingPmWorkId` | Optional unique, restricted link so one abnormal Completed PM Work creates at most one CM Work. |
+| `UserNotification.dispatchKey` | Optional unique idempotency key for PM scheduled/transactional notifications. |
+
+Database rules:
+
+- Confirmation reserves the plan number, snapshots groups/Assets, creates distinct works, sources, and audit rows in one Serializable transaction.
+- Confirmed data never follows later live Group membership changes. Additional Assets are explicit audited works and use `PmPlan.lastWorkSequence`; never use `count + 1`.
+- Foreign keys use `Restrict` for historical PM/CM identity. Used groups deactivate; confirmed work/snapshots are not cascade-deleted.
+- SQLite uses migrations `20260815000100_pm_planning`, `20260815000200_pm_plan_work_sequence`, and `20260815000300_pm_notification_idempotency`. PostgreSQL has equivalent chronological SQL under `prisma/supabase-migrations` including RLS/grants for the established Prisma server role.
+- Before production release: back up, execute the PostgreSQL migrations in order in a disposable environment first, validate both schemas, generate the production client, and run parity/integration gates. Never apply production SQL as part of an ordinary build.
+
+## 11. Future Planned Tables
 
 These do not yet exist as complete production models:
 
-### Asset and PM
+### Asset extensions and advanced PM
 
 - `Asset`, `Equipment`, `AssetLocation`, `AssetCategory`.
-- `PreventiveMaintenancePlan`, `PmTask`, `PmSchedule`, `PmWorkOrder`.
+- Recurring PM templates/schedules, maintenance checklists, meter-driven triggers, and automatic future plan generation are not implemented.
 - `Meter`, `MeterReading`, `MeterThreshold`.
 
 ### Purchase

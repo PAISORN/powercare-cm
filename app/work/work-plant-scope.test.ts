@@ -16,7 +16,7 @@ describe("work list plant scope", () => {
   it("keeps work result action labels readable", () => {
     const source = readFileSync("app/work/page.tsx", "utf8");
 
-    expect(source).toContain("??????");
+    expect(source).toContain("รับงาน");
     expect(source).not.toContain("�");
     expect(source).not.toContain("�");
   });

@@ -14,10 +14,13 @@ export function PermissionToggle({
   title: string;
 }) {
   const [allowed, setAllowed] = useState(defaultAllowed);
+  const [changed, setChanged] = useState(false);
+  const permissionKey = name.startsWith("permission:") ? name.slice("permission:".length) : name;
 
   return (
     <div className="flex min-h-16 items-center justify-between gap-3 rounded-xl bg-[var(--surface)] px-4 py-3 transition-colors">
       <input name={name} type="hidden" value={allowed ? "ALLOW" : "DENY"} />
+      {changed ? <input name="changedPermissionKeys" type="hidden" value={permissionKey} /> : null}
       <span className="min-w-0">
         <span className="block text-sm font-extrabold">{title}</span>
         <span className="mt-1 block text-xs leading-5 text-[var(--muted)]">{description}</span>
@@ -30,7 +33,11 @@ export function PermissionToggle({
             ? "bg-[var(--primary)]"
             : "bg-slate-300 dark:bg-slate-600"
         }`}
-        onClick={() => setAllowed((current) => !current)}
+        onClick={() => setAllowed((current) => {
+          const next = !current;
+          setChanged(next !== defaultAllowed);
+          return next;
+        })}
         role="switch"
         type="button"
       >

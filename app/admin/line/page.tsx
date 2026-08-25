@@ -452,7 +452,8 @@ function DailyReportSettingsForm({
           </label>
           <label className="grid gap-1 text-sm font-semibold">
             เวลาส่ง
-            <input className="min-h-11 rounded-md border border-[var(--line)] bg-[var(--soft)] px-3" defaultValue={setting.sendTime} name="dailyReportSendTime" type="time" />
+            <input className="min-h-11 rounded-md border border-[var(--line)] bg-[var(--soft)] px-3" defaultValue="08:00" name="dailyReportSendTime" readOnly type="time" />
+            <span className="text-xs text-[var(--muted)]">Daily coordinator runs once at 08:00 Asia/Bangkok.</span>
           </label>
           <label className="grid gap-1 text-sm font-semibold lg:col-span-2">
             วันที่ใช้ทำรายงาน

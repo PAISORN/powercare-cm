@@ -6,13 +6,14 @@ test("requester submits repair request and sees tracking number", async ({ page 
   await page.getByPlaceholder("หน่วยงาน/แผนก").fill("Operations");
   await page.locator("select[name='categoryId']").selectOption({ index: 1 });
   await page.locator("select[name='zoneId']").selectOption({ index: 1 });
-  await page.getByPlaceholder("ชื่อเครื่องจักร").fill("Feed Pump");
+  await page.locator('input[name="machineName"]').fill("Feed Pump");
   await page.getByPlaceholder("หัวข้อปัญหา").fill("Pump vibration");
   await page.getByPlaceholder("รายละเอียดปัญหา").fill("Vibration detected during operation");
   await page.locator("select[name='urgency']").selectOption("URGENT");
-  await page.getByRole("button", { name: "ส่งแจ้งซ่อม" }).click();
-  await expect(page).toHaveURL(/\/request\/success\/CM-\d{4}-\d{2}-\d{4}/);
-  await expect(page.getByText(/CM-\d{4}-\d{2}-\d{4}/)).toBeVisible();
+  await page.getByRole("button", { name: "ตรวจสอบก่อนส่งแจ้งซ่อม" }).click();
+  await page.getByRole("button", { name: "ยืนยันส่งแจ้งซ่อม" }).click();
+  await expect(page).toHaveURL(/\/request\/success\/CM-[A-Z]+-\d{4}-\d{2}-\d{4}/);
+  await expect(page.getByText(/CM-[A-Z]+-\d{4}-\d{2}-\d{4}/)).toBeVisible();
   await expect(page.getByLabel("request-success-icon")).toBeVisible();
 });
 

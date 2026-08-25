@@ -31,6 +31,30 @@ describe("getAppLinks", () => {
     expect(isActivePath("/dashboardstore/issue", "/dashboardstore/issue?view=tracking", trackingView)).toBe(true);
   });
 
+  it("keeps PM Calendar active only on the PM root route", () => {
+    expect(isActivePath("/dashboardpm", "/dashboardpm")).toBe(true);
+    expect(isActivePath("/dashboardpm/groups", "/dashboardpm")).toBe(false);
+    expect(isActivePath("/dashboardpm/work", "/dashboardpm")).toBe(false);
+    expect(isActivePath("/dashboardpm/groups", "/dashboardpm/groups")).toBe(true);
+    expect(isActivePath("/dashboardpm/work", "/dashboardpm/work")).toBe(true);
+  });
+
+  it("orders and names the primary sidebar navigation as requested", () => {
+    const primaryLabels = getAppLinks(RoleName.ADMIN)
+      .filter((link) => !link.nested)
+      .map((link) => link.label);
+
+    expect(primaryLabels.slice(0, 7)).toEqual([
+      "Dashboard",
+      "My Activities",
+      "CM",
+      "PM",
+      "Inventory",
+      "Assets",
+      "Organization",
+    ]);
+  });
+
   it("uses the signed-in user's Site request URL and disables it for Owner Admin", () => {
     const siteLinks = getAppLinks(RoleName.ENGINEER, {
       plantId: "plant-rayong",
@@ -156,7 +180,7 @@ describe("getAppLinks", () => {
   it("shows one Report link under Maintenance instead of separate daily and CM report pages", () => {
     const links = getAppLinks(RoleName.ENGINEER);
 
-    expect(links.some((link) => link.kind === "section" && link.label === "Maintenance")).toBe(true);
+    expect(links.some((link) => link.kind === "section" && link.label === "CM")).toBe(true);
     expect(links.some((link) => link.label === "Report" && link.href === "/reports" && link.nested && link.parentSectionId === "maintenance")).toBe(true);
     expect(links.some((link) => link.kind === "section" && link.label === "Reports")).toBe(false);
     expect(links.some((link) => link.href === "/reports/daily")).toBe(false);
@@ -199,6 +223,23 @@ describe("getAppLinks", () => {
     expect(links.some((link) => link.href === "/admin/users")).toBe(false);
   });
 
+  it("shows PM calendar and work to viewers, while PM Groups requires management", () => {
+    const technicianLinks = getAppLinks(RoleName.TECHNICIAN);
+    const adminLinks = getAppLinks(RoleName.ADMIN);
+    const deniedViewerLinks = getAppLinks(RoleName.TECHNICIAN, {
+      id: "tech-denied",
+      userPermissionOverrides: [
+        { userId: "tech-denied", permissionKey: PermissionKey.VIEW_PM, decision: "DENY" },
+      ],
+    });
+
+    expect(technicianLinks.some((link) => link.href === "/dashboardpm")).toBe(true);
+    expect(technicianLinks.some((link) => link.href === "/dashboardpm/work")).toBe(true);
+    expect(technicianLinks.some((link) => link.href === "/dashboardpm/groups")).toBe(false);
+    expect(adminLinks.some((link) => link.href === "/dashboardpm/groups")).toBe(true);
+    expect(deniedViewerLinks.some((link) => link.parentSectionId === "pm")).toBe(false);
+  });
+
   it("opens the Assets section without turning future items into links", () => {
     render(React.createElement(AppNavLinks, { role: RoleName.ADMIN }));
 
@@ -208,9 +249,8 @@ describe("getAppLinks", () => {
 
     expect(screen.getAllByText("Assets").length).toBeGreaterThanOrEqual(2);
     expect(screen.getByText("Equipment")).toBeTruthy();
-    expect(screen.getByText("Preventive Maintenance")).toBeTruthy();
     expect(screen.queryByRole("link", { name: /Equipment/i })).toBeNull();
-    expect(screen.getAllByText("Soon").length).toBeGreaterThanOrEqual(4);
+    expect(screen.getAllByText("Soon").length).toBeGreaterThanOrEqual(3);
   });
 
   it("can render the sidebar as icon-only collapsed navigation", () => {
@@ -218,7 +258,7 @@ describe("getAppLinks", () => {
 
     expect(screen.getByRole("link", { name: /^Dashboard$/i })).toBeTruthy();
     expect(screen.queryByText("Dashboard")).toBeNull();
-    expect(screen.getByRole("button", { name: /^Maintenance$/i })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /^CM$/i })).toBeTruthy();
   });
 
   it("shows My Activities to logged-in working roles", () => {
@@ -257,6 +297,19 @@ describe("getAppLinks", () => {
     expect(links.some((link) => link.href === "/activities" && link.label === "My Activities")).toBe(true);
   });
 
+  it("hides My Activities when its dedicated permission is denied", () => {
+    const links = getAppLinks(RoleName.ENGINEER, {
+      id: "engineer-without-activities",
+      userPermissionOverrides: [{
+        userId: "engineer-without-activities",
+        permissionKey: PermissionKey.VIEW_MY_ACTIVITIES,
+        decision: "DENY",
+      }],
+    });
+
+    expect(links.some((link) => link.href === "/activities")).toBe(false);
+  });
+
   it("hides administration links until the Administration trigger is clicked", () => {
     render(React.createElement(AppNavLinks, { role: RoleName.ADMIN }));
 
@@ -272,7 +325,7 @@ describe("getAppLinks", () => {
   it("renders submenu links as indented bullet items without submenu icons", () => {
     render(React.createElement(AppNavLinks, { role: RoleName.ADMIN }));
 
-    fireEvent.click(screen.getByRole("button", { name: /^Maintenance$/i }));
+    fireEvent.click(screen.getByRole("button", { name: /^CM$/i }));
 
     const allWorkLink = screen.getByRole("link", { name: /All Work/i });
 
@@ -310,7 +363,7 @@ describe("getAppLinks", () => {
 
     expect(screen.queryByRole("link", { name: /^Report$/i })).toBeNull();
 
-    fireEvent.click(screen.getByRole("button", { name: /Maintenance/i }));
+    fireEvent.click(screen.getByRole("button", { name: /^CM$/i }));
 
     expect(screen.getByRole("link", { name: /^Report$/i })).toBeTruthy();
     expect(screen.queryByRole("link", { name: /Daily Report/i })).toBeNull();

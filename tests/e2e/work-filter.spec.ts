@@ -1,4 +1,7 @@
 import { expect, test } from "@playwright/test";
+import { db } from "../../lib/db";
+
+test.afterAll(async () => { await db.$disconnect(); });
 
 test("work list can filter by status and clear filters", async ({ page }) => {
   await page.goto("/login");
@@ -30,6 +33,16 @@ test("work list can filter by status and clear filters", async ({ page }) => {
 });
 
 test("work list paginates results after 50 items", async ({ page }) => {
+  const admin = await db.user.findUniqueOrThrow({ where: { username: "admin" } });
+  const category = await db.category.findFirstOrThrow({ where: { plantId: admin.plantId! } });
+  const zone = await db.zone.findFirstOrThrow({ where: { plantId: admin.plantId! } });
+  const stamp = Date.now();
+  await db.cmWork.createMany({ data: Array.from({ length: 51 }, (_, index) => ({
+    number: `CM-E2E-PAGE-${stamp}-${String(index).padStart(2, "0")}`,
+    requesterName: "Pagination E2E", requesterDepartment: "Maintenance", organizationId: admin.organizationId!, plantId: admin.plantId!,
+    categoryId: category.id, zoneId: zone.id, machineName: `Pagination Asset ${index}`,
+    problemTitle: "Pagination coverage", problemDetail: "Deterministic E2E row", urgency: "NORMAL", status: "NEW",
+  })) });
   await page.goto("/login");
   await page.getByPlaceholder("Username").fill("admin");
   await page.getByPlaceholder("Password").fill("admin1234");

@@ -12,10 +12,17 @@ import {
   canUseUserPermission,
   permissionDefaultForRole,
 } from "../../../modules/auth/site-admin-permissions";
+import {
+  activePermissionPlantWhere,
+  activePermissionTargetWhere,
+  buildUserPermissionOverrideRows,
+  editableUserPermissionKeys,
+} from "../../../modules/auth/permission-center-policy";
 import { RoleName } from "../../../modules/cm-work/cm-work-types";
 import { INVENTORY_ITEM_KINDS, normalizeInventoryScopeKinds } from "../../../modules/store/inventory-user-scope";
 
 const roles = [
+  RoleName.ADMIN,
   RoleName.ORGANIZATION_ADMIN,
   RoleName.SITE_ADMIN,
   RoleName.ENGINEER,
@@ -27,33 +34,44 @@ const roles = [
 const decisions = new Set(["INHERIT", "ALLOW", "DENY"]);
 const permissionKeys = Object.values(PermissionKey);
 
+function changedPermissionKeys(formData: FormData, editablePermissionKeys: PermissionKey[]) {
+  const editable = new Set(editablePermissionKeys);
+  return [...new Set(formData.getAll("changedPermissionKeys").map(String))]
+    .filter((permissionKey): permissionKey is PermissionKey => editable.has(permissionKey as PermissionKey));
+}
+
 async function saveRolePermissions(formData: FormData) {
   "use server";
   const actor = await requireOwner();
   const organizationId = String(formData.get("organizationId") ?? "");
   const role = String(formData.get("role") ?? "");
-  if (!organizationId || !roles.includes(role as (typeof roles)[number])) redirect("/admin/permissions?error=invalid-role");
-  await db.organization.findFirstOrThrow({ where: { id: organizationId, active: true } });
-  const scopeKey = `ORG:${organizationId}`;
-  const before = await db.rolePermissionOverride.findMany({ where: { scopeKey, role } });
+  if (!roles.includes(role as (typeof roles)[number])) redirect("/admin/permissions?error=invalid-role");
+  const isOwnerRole = role === RoleName.ADMIN;
+  if (!isOwnerRole && !organizationId) redirect("/admin/permissions?error=invalid-role");
+  if (!isOwnerRole) await db.organization.findFirstOrThrow({ where: { id: organizationId, active: true } });
+  const scopeKey = isOwnerRole ? "SYSTEM" : `ORG:${organizationId}`;
+  const editablePermissionKeys = isOwnerRole ? [PermissionKey.EXECUTE_PM_WORK] : permissionKeys;
+  const changedKeys = changedPermissionKeys(formData, editablePermissionKeys);
+  if (!changedKeys.length) redirect(`/admin/permissions?mode=role&organizationId=${organizationId}&role=${role}&saved=1`);
+  const before = await db.rolePermissionOverride.findMany({ where: { scopeKey, role, permissionKey: { in: changedKeys } } });
   await db.$transaction(async (tx) => {
-    await tx.rolePermissionOverride.deleteMany({ where: { scopeKey, role } });
-    const rows = permissionKeys.flatMap((permissionKey) => {
+    await tx.rolePermissionOverride.deleteMany({ where: { scopeKey, role, permissionKey: { in: changedKeys } } });
+    const rows = changedKeys.flatMap((permissionKey) => {
       const decision = String(formData.get(`permission:${permissionKey}`) ?? "INHERIT");
       return decision !== "INHERIT" && decisions.has(decision)
-        ? [{ scopeKey, organizationId, role, permissionKey, decision, grantedById: actor.id }]
+        ? [{ scopeKey, organizationId: isOwnerRole ? null : organizationId, role, permissionKey, decision, grantedById: actor.id }]
         : [];
     });
     if (rows.length) await tx.rolePermissionOverride.createMany({ data: rows });
   });
   await recordAudit({
     actorId: actor.id,
-    organizationId,
+    organizationId: isOwnerRole ? undefined : organizationId,
     entityType: "RolePermissionOverride",
     entityId: `${scopeKey}:${role}`,
     action: "UPDATE_ROLE_PERMISSIONS",
     before,
-    after: permissionKeys.map((permissionKey) => ({
+    after: changedKeys.map((permissionKey) => ({
       permissionKey,
       decision: String(formData.get(`permission:${permissionKey}`) ?? "INHERIT"),
     })),
@@ -67,49 +85,61 @@ async function saveUserPermissions(formData: FormData) {
   const userId = String(formData.get("userId") ?? "");
   const plantId = String(formData.get("plantId") ?? "");
   const target = await db.user.findFirstOrThrow({
-    where: { id: userId, plantId, active: true, role: { not: RoleName.ADMIN } },
-    select: { id: true, organizationId: true, role: true },
+    where: activePermissionTargetWhere(userId, plantId),
+    select: { id: true, organizationId: true, plantId: true, role: true },
   });
+  const isOwnerTarget = target.role === RoleName.ADMIN;
+  const editablePermissionKeys = editableUserPermissionKeys(target.role);
+  const changedKeys = changedPermissionKeys(formData, editablePermissionKeys);
   const responsibilityKinds = normalizeInventoryScopeKinds(formData.getAll("inventoryResponsibility"));
   const approvalKinds = normalizeInventoryScopeKinds(formData.getAll("inventoryApproval"));
   const approvalAllowed = String(formData.get(`permission:${PermissionKey.APPROVE_STORE_ISSUE}`)) === "ALLOW";
-  if (target.role === RoleName.STORE_OFFICER && responsibilityKinds.length === 0) {
+  if (!isOwnerTarget && target.role === RoleName.STORE_OFFICER && responsibilityKinds.length === 0) {
     redirect(`/admin/permissions?mode=user&plantId=${plantId}&userId=${userId}&error=responsibility-required`);
   }
-  if (approvalAllowed && approvalKinds.length === 0) {
+  if (!isOwnerTarget && approvalAllowed && approvalKinds.length === 0) {
     redirect(`/admin/permissions?mode=user&plantId=${plantId}&userId=${userId}&error=approval-required`);
   }
-  await assertPendingInventoryCoverage({ userId, plantId, responsibilityKinds, approvalKinds, approvalAllowed, issueAllowed: String(formData.get(`permission:${PermissionKey.ISSUE_STOCK}`)) === "ALLOW" });
-  const before = await db.userPermissionOverride.findMany({ where: { userId } });
+  if (!isOwnerTarget) {
+    await assertPendingInventoryCoverage({ userId, plantId, responsibilityKinds, approvalKinds, approvalAllowed, issueAllowed: String(formData.get(`permission:${PermissionKey.ISSUE_STOCK}`)) === "ALLOW" });
+  }
+  const before = await db.userPermissionOverride.findMany({
+    where: { userId, permissionKey: { in: changedKeys } },
+  });
   await db.$transaction(async (tx) => {
-    await tx.userPermissionOverride.deleteMany({ where: { userId } });
-    const rows = permissionKeys.flatMap((permissionKey) => {
-      const decision = String(formData.get(`permission:${permissionKey}`) ?? "INHERIT");
-      return decision !== "INHERIT" && decisions.has(decision)
-        ? [{ userId, permissionKey, decision, grantedById: actor.id }]
-        : [];
+    if (changedKeys.length) await tx.userPermissionOverride.deleteMany({ where: { userId, permissionKey: { in: changedKeys } } });
+    const rows = buildUserPermissionOverrideRows({
+      role: target.role,
+      userId,
+      grantedById: actor.id,
+      decisionFor: (permissionKey) => String(formData.get(`permission:${permissionKey}`) ?? "INHERIT"),
+      permissionKeys: changedKeys,
     });
     if (rows.length) await tx.userPermissionOverride.createMany({ data: rows });
-    await tx.userInventoryScope.deleteMany({ where: { userId } });
-    const scopeRows = INVENTORY_ITEM_KINDS.flatMap((itemKind) => {
-      const responsibilityEnabled = responsibilityKinds.includes(itemKind);
-      const approvalEnabled = approvalKinds.includes(itemKind);
-      return responsibilityEnabled || approvalEnabled ? [{ userId, itemKind, responsibilityEnabled, approvalEnabled }] : [];
+    if (!isOwnerTarget) {
+      await tx.userInventoryScope.deleteMany({ where: { userId } });
+      const scopeRows = INVENTORY_ITEM_KINDS.flatMap((itemKind) => {
+        const responsibilityEnabled = responsibilityKinds.includes(itemKind);
+        const approvalEnabled = approvalKinds.includes(itemKind);
+        return responsibilityEnabled || approvalEnabled ? [{ userId, itemKind, responsibilityEnabled, approvalEnabled }] : [];
+      });
+      if (scopeRows.length) await tx.userInventoryScope.createMany({ data: scopeRows });
+    }
+  });
+  if (changedKeys.length) {
+    await recordAudit({
+      actorId: actor.id,
+      organizationId: target.organizationId ?? undefined,
+      entityType: "UserPermissionOverride",
+      entityId: userId,
+      action: "UPDATE_USER_PERMISSIONS",
+      before,
+      after: changedKeys.map((permissionKey) => ({
+        permissionKey,
+        decision: String(formData.get(`permission:${permissionKey}`) ?? "INHERIT"),
+      })),
     });
-    if (scopeRows.length) await tx.userInventoryScope.createMany({ data: scopeRows });
-  });
-  await recordAudit({
-    actorId: actor.id,
-    organizationId: target.organizationId ?? undefined,
-    entityType: "UserPermissionOverride",
-    entityId: userId,
-    action: "UPDATE_USER_PERMISSIONS",
-    before,
-    after: permissionKeys.map((permissionKey) => ({
-      permissionKey,
-      decision: String(formData.get(`permission:${permissionKey}`) ?? "INHERIT"),
-    })),
-  });
+  }
   redirect(`/admin/permissions?mode=user&plantId=${plantId}&userId=${userId}&saved=1`);
 }
 
@@ -137,7 +167,7 @@ export default async function PermissionsPage({
     ? query.organizationId!
     : organizations[0]?.id ?? "";
   const plants = await db.plant.findMany({
-    where: { active: true },
+    where: activePermissionPlantWhere,
     select: { id: true, code: true, name: true, organization: { select: { name: true } } },
     orderBy: [{ organization: { name: "asc" } }, { name: "asc" }],
   });
@@ -146,7 +176,7 @@ export default async function PermissionsPage({
     : plants[0]?.id ?? "";
   const role = roles.includes(query.role as (typeof roles)[number]) ? query.role! : RoleName.STORE_OFFICER;
   const users = await db.user.findMany({
-    where: { active: true, role: { not: RoleName.ADMIN }, plantId },
+    where: activePermissionTargetWhere(undefined, plantId),
     select: {
       id: true,
       fullName: true,
@@ -163,9 +193,10 @@ export default async function PermissionsPage({
   const effectiveRole = mode === "role"
     ? role
     : selectedUser?.role === "PLANT_ADMIN" ? RoleName.SITE_ADMIN : selectedUser?.role ?? RoleName.VISITOR;
-  const roleRows = effectiveOrganizationId
+  const roleScopeKey = effectiveRole === RoleName.ADMIN ? "SYSTEM" : `ORG:${effectiveOrganizationId}`;
+  const roleRows = (effectiveRole === RoleName.ADMIN || effectiveOrganizationId)
     ? await db.rolePermissionOverride.findMany({
-        where: { scopeKey: `ORG:${effectiveOrganizationId}`, role: effectiveRole },
+        where: { scopeKey: roleScopeKey, role: effectiveRole },
       })
     : [];
   const userRows = mode === "user" && userId
@@ -188,7 +219,10 @@ export default async function PermissionsPage({
       ];
     }),
   );
-  const groupedPermissions = groupPermissionKeys(permissionKeys);
+  const visiblePermissionKeys = effectiveRole === RoleName.ADMIN
+    ? [PermissionKey.EXECUTE_PM_WORK]
+    : permissionKeys;
+  const groupedPermissions = groupPermissionKeys(visiblePermissionKeys);
 
   return (
     <AppShell>
@@ -210,10 +244,11 @@ export default async function PermissionsPage({
         <input name="mode" type="hidden" value={mode} />
         {mode === "role" ? (
           <>
-            <label className="grid gap-1.5 text-sm font-bold">Organization
+            <label className={`grid gap-1.5 text-sm font-bold ${role === RoleName.ADMIN ? "opacity-50" : ""}`}>Organization
               <select className={selectClass} defaultValue={organizationId} name="organizationId">
                 {organizations.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
               </select>
+              {role === RoleName.ADMIN ? <span className="text-xs font-normal text-[var(--muted)]">Owner Admin ใช้สิทธิ์ระดับระบบ</span> : null}
             </label>
             <label className="grid gap-1.5 text-sm font-bold">Role
               <select className={selectClass} defaultValue={role} name="role">
@@ -298,7 +333,7 @@ export default async function PermissionsPage({
           ))}
         </div>
 
-        {mode === "user" ? (
+        {mode === "user" && effectiveRole !== RoleName.ADMIN ? (
           <div className="border-t border-[var(--line)] p-5">
             <h2 className="text-lg font-extrabold">ขอบเขตคลังตามประเภท</h2>
             <p className="mt-1 text-sm text-[var(--muted)]">มองเห็นสต็อกได้ทุกประเภท แต่แก้ไข อนุมัติ และจ่ายได้เฉพาะประเภทที่เปิดไว้ร่วมกับ Permission ด้านบน</p>
@@ -368,6 +403,10 @@ async function requireOwner() {
 }
 
 function friendly(value: string) {
+  if (value === PermissionKey.VIEW_MY_ACTIVITIES) return "My Activities";
+  if (value === PermissionKey.VIEW_MY_ACTIVITIES_CM) return "My Activities · งาน CM";
+  if (value === PermissionKey.VIEW_MY_ACTIVITIES_STORE) return "My Activities · งาน Store";
+  if (value === PermissionKey.EDIT_WORK_TITLE) return "แก้ไขชื่อใบแจ้งซ่อม";
   return value.toLowerCase().split("_").map((word) => word.charAt(0).toUpperCase() + word.slice(1)).join(" ");
 }
 
@@ -500,6 +539,10 @@ const thaiPermissionWords: Record<string, string> = {
 
 function thaiPermissionDescription(key: PermissionKey) {
   if (key === PermissionKey.LOGIN) return "อนุญาตให้ผู้ใช้เข้าสู่ระบบ";
+  if (key === PermissionKey.VIEW_MY_ACTIVITIES) return "อนุญาตให้เห็นเมนูและเปิดหน้า My Activities";
+  if (key === PermissionKey.VIEW_MY_ACTIVITIES_CM) return "อนุญาตให้มองเห็นงาน CM ที่ตนรับผิดชอบหรือต้องตรวจรับใน My Activities";
+  if (key === PermissionKey.VIEW_MY_ACTIVITIES_STORE) return "อนุญาตให้มองเห็นใบเบิก Store ที่ตนต้องอนุมัติ จ่าย หรือแก้ไขใน My Activities";
+  if (key === PermissionKey.EDIT_WORK_TITLE) return "อนุญาตให้แก้ไขชื่อใบแจ้งซ่อมจากหน้า All Work";
   const words = key.split("_");
   const action = thaiActionWords[words[0]] ?? "ใช้งาน";
   const target = words.slice(1)
@@ -513,11 +556,12 @@ function thaiPermissionDescription(key: PermissionKey) {
 const selectClass = "min-h-12 rounded-2xl border border-[var(--line)] bg-[var(--surface)] px-4 text-[var(--ink)]";
 
 const permissionGroupDefinitions = [
-  { id: "access", title: "การเข้าใช้งานและข้อมูลส่วนตัว", description: "การเข้าสู่ระบบ Dashboard โปรไฟล์ และสิทธิ์พื้นฐานของผู้ใช้งาน", matches: ["login", "access_public_qr", "view_dashboard", "view_profile", "update_own_profile", "select_plant_context"] },
+  { id: "access", title: "การเข้าใช้งานและข้อมูลส่วนตัว", description: "การเข้าสู่ระบบ Dashboard, My Activities, โปรไฟล์ และสิทธิ์พื้นฐานของผู้ใช้งาน", matches: ["login", "access_public_qr", "view_dashboard", "view_my_activities", "view_my_activities_cm", "view_my_activities_store", "view_profile", "update_own_profile", "select_plant_context"] },
   { id: "users", title: "ผู้ใช้ Role และการมอบหมายสิทธิ์", description: "สร้าง แก้ไข ปิดใช้งาน User รวมถึง Role, Site, Category และขอบเขต Inventory", matches: ["assign_inventory_responsibility"], tokens: ["user", "member", "super_admin", "site_admin_permission", "checkbox_permission"] },
   { id: "maintenance", title: "งานซ่อมและขั้นตอนดำเนินงาน", description: "การสร้าง รับงาน ดำเนินงาน ตรวจรับ ปิดงาน และจัดการข้อมูลในใบงาน CM", matches: ["record_spare_parts"], tokens: ["work", "request", "claim", "assign", "reassign", "cancel", "priority", "progress", "fix_method", "before_after", "waiting_close", "reopen", "close_detail", "review", "close_work", "completion_document", "completion_pdf"] },
   { id: "inventory", title: "Store และ Inventory", description: "คลังสินค้า สต็อก รับเข้า ปรับยอด ใบเบิก การอนุมัติ และการตัดจ่าย", matches: ["manage_spare_parts"], tokens: ["store", "stock", "public_store_issue"] },
   { id: "assets", title: "Assets และทะเบียนเครื่องจักร", description: "การดู จัดการเอกสาร QR เปลี่ยนรหัส และยกเลิกทะเบียน Assets", tokens: ["asset"] },
+  { id: "pm", title: "Preventive Maintenance", description: "สิทธิ์สำหรับ PM Group แผน PM และการปฏิบัติงาน PM", matches: ["view_pm", "manage_pm_groups", "manage_pm_plans", "execute_pm_work"] },
   { id: "reports", title: "รายงาน KPI และประวัติ", description: "รายงาน สถิติ KPI, MTTR/MTBF, Backlog, History, Audit และการส่งออกข้อมูล", tokens: ["report", "kpi", "mttr", "mtbf", "backlog", "history", "audit", "export", "backup", "developer_system_log"] },
   { id: "communication", title: "การแจ้งเตือนและการสื่อสาร", description: "Notification, Announcement, LINE และ Feedback", tokens: ["notification", "announcement", "line", "feedback"] },
   { id: "configuration", title: "Organization, Site และการตั้งค่า", description: "โครงสร้างองค์กร ข้อมูล Site, Category, Zone, SLA, QR และการตั้งค่าระบบ", tokens: ["organization", "plant", "category", "zone", "qr_code", "system_setting", "sla", "work_status", "cross_plant"] },

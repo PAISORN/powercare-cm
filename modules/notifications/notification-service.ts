@@ -3,12 +3,12 @@ import { db } from "../../lib/db";
 import { RoleName, SITE_ADMIN_ROLE_VALUES } from "../cm-work/cm-work-types";
 import type { OperationalScope } from "../organization/user-plant-scope";
 import { selectRecipients } from "./notification-recipient";
-import type { CmNotificationEvent, NotificationGroup } from "./notification-types";
+import type { CmNotificationEvent, NotificationEntityType, NotificationGroup } from "./notification-types";
 
 export const IN_PROCESS_STATUSES = ["WAITING_TO_CLAIM", "CLAIMED", "IN_PROGRESS", "BACKLOG_SHUTDOWN", "WAITING_TO_CLOSE", "RETURNED_FOR_CORRECTION"];
 
 export function groupToStatuses(group: NotificationGroup): string[] | null {
-  if (group === "ALL_CM") return null;
+  if (group === "ALL_CM" || group === "ALL_PM") return null;
   if (group === "IN_PROCESS") return IN_PROCESS_STATUSES;
   return [group];
 }
@@ -68,7 +68,7 @@ export async function getUnreadSummary(userId: string, scope?: OperationalScope)
 
 export async function getUnreadWorkIds(userId: string, workIds: string[], scope?: OperationalScope) {
   if (!workIds.length) return new Set<string>();
-  const scopedWorkIds = await filterWorkIdsByScope(workIds, scope);
+  const scopedWorkIds = await filterWorkIdsByScope("CmWork", workIds, scope);
   if (!scopedWorkIds.length) return new Set<string>();
   const rows = await db.userNotification.findMany({
     where: { recipientId: userId, readAt: null, entityType: "CmWork", entityId: { in: scopedWorkIds } },
@@ -76,6 +76,16 @@ export async function getUnreadWorkIds(userId: string, workIds: string[], scope?
     distinct: ["entityId"],
   });
   return new Set(rows.map((row) => row.entityId));
+}
+
+export async function getPmUnreadSummary(userId: string, scope?: OperationalScope) {
+  const scopeFilter = await getScopedNotificationWorkFilter(scope);
+  const rows = await db.userNotification.groupBy({
+    by: ["targetStatus"],
+    where: { recipientId: userId, readAt: null, entityType: "PmWork", ...scopeFilter },
+    _count: { _all: true },
+  });
+  return groupUnreadByStatus(rows.map(row => ({ targetStatus: row.targetStatus, count: row._count._all })));
 }
 
 export async function getUnreadCount(userId: string, scope?: OperationalScope) {
@@ -101,16 +111,29 @@ export async function markNotificationRead(userId: string, notificationId: strin
 export async function markStatusGroupRead(userId: string, group: NotificationGroup, scope?: OperationalScope) {
   const statuses = groupToStatuses(group);
   const scopeFilter = await getScopedNotificationWorkFilter(scope);
+  const entityType: NotificationEntityType = group.startsWith("PM_") || group === "ALL_PM" ? "PmWork" : "CmWork";
   return db.userNotification.updateMany({
-    where: { recipientId: userId, readAt: null, entityType: "CmWork", ...scopeFilter, ...(statuses ? { targetStatus: { in: statuses } } : {}) },
+    where: { recipientId: userId, readAt: null, entityType, ...scopeFilter, ...(statuses ? { targetStatus: { in: statuses } } : {}) },
+    data: { readAt: new Date() },
+  });
+}
+
+export async function markPmStatusGroupRead(userId: string, status: string | null, scope?: OperationalScope) {
+  const scopeFilter = await getScopedNotificationWorkFilter(scope);
+  return db.userNotification.updateMany({
+    where: { recipientId: userId, readAt: null, entityType: "PmWork", ...scopeFilter, ...(status ? { targetStatus: status } : {}) },
     data: { readAt: new Date() },
   });
 }
 
 export async function markWorkRead(userId: string, cmWorkId: string, scope?: OperationalScope) {
-  const scopedWorkIds = await filterWorkIdsByScope([cmWorkId], scope);
+  return markEntityRead(userId, "CmWork", cmWorkId, scope);
+}
+
+export async function markEntityRead(userId: string, entityType: NotificationEntityType, entityId: string, scope?: OperationalScope) {
+  const scopedWorkIds = await filterWorkIdsByScope(entityType, [entityId], scope);
   if (!scopedWorkIds.length) return { count: 0 };
-  return db.userNotification.updateMany({ where: { recipientId: userId, readAt: null, entityType: "CmWork", entityId: { in: scopedWorkIds } }, data: { readAt: new Date() } });
+  return db.userNotification.updateMany({ where: { recipientId: userId, readAt: null, entityType, entityId: { in: scopedWorkIds } }, data: { readAt: new Date() } });
 }
 
 export async function markAllNotificationsRead(userId: string, scope?: OperationalScope) {
@@ -120,23 +143,32 @@ export async function markAllNotificationsRead(userId: string, scope?: Operation
 
 async function getScopedNotificationWorkIds(scope?: OperationalScope) {
   if (!scope?.plantId && !scope?.organizationId) return null;
-  const works = await db.cmWork.findMany({
-    where: buildNotificationWorkWhere(scope),
-    select: { id: true },
-  });
-  return works.map((work) => work.id);
+  const [cmWorks, pmWorks] = await Promise.all([
+    db.cmWork.findMany({ where: buildNotificationWorkWhere(scope), select: { id: true } }),
+    db.pmWork.findMany({ where: buildPmNotificationWorkWhere(scope), select: { id: true } }),
+  ]);
+  return { cm: cmWorks.map(work => work.id), pm: pmWorks.map(work => work.id) };
 }
 
 async function getScopedNotificationWorkFilter(scope?: OperationalScope): Promise<Prisma.UserNotificationWhereInput> {
   const workIds = await getScopedNotificationWorkIds(scope);
-  return workIds ? { entityType: "CmWork", entityId: { in: workIds } } : {};
+  return workIds ? { OR: [
+    { entityType: "CmWork", entityId: { in: workIds.cm } },
+    { entityType: "PmWork", entityId: { in: workIds.pm } },
+  ] } : {};
 }
 
-async function filterWorkIdsByScope(workIds: string[], scope?: OperationalScope) {
+async function filterWorkIdsByScope(entityType: NotificationEntityType, workIds: string[], scope?: OperationalScope) {
   const scopedWorkIds = await getScopedNotificationWorkIds(scope);
   if (!scopedWorkIds) return workIds;
-  const allowed = new Set(scopedWorkIds);
+  const allowed = new Set(entityType === "CmWork" ? scopedWorkIds.cm : scopedWorkIds.pm);
   return workIds.filter((workId) => allowed.has(workId));
+}
+
+function buildPmNotificationWorkWhere(scope?: OperationalScope): Prisma.PmWorkWhereInput {
+  if (scope?.plantId) return { plantId: scope.plantId };
+  if (scope?.organizationId) return { pmPlan: { organizationId: scope.organizationId } };
+  return {};
 }
 
 function buildNotificationWorkWhere(scope?: OperationalScope): Prisma.CmWorkWhereInput {

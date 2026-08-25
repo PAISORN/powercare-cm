@@ -75,8 +75,8 @@ describe("Admin organization form", () => {
   it("renders readable Thai copy instead of mojibake text", () => {
     const source = readFileSync("app/admin/organization/page.tsx", "utf8");
 
-    expect(source).toContain("????????????");
-    expect(source).toContain("???????????????????????????????");
+    expect(source).toContain("ข้อมูลองค์กร");
+    expect(source).toContain("จัดการข้อมูลบริษัท โลโก้ และโครงสร้าง Organization / Site");
     expect(source).not.toContain("�");
     expect(source).not.toContain("�");
   });

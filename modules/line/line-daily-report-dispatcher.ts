@@ -138,13 +138,15 @@ export async function dispatchAllLineDailyReports(input: { now?: Date; force?: b
     select: { organizationId: true, plantId: true },
   });
   const results = [];
+  const failures: Error[] = [];
   for (const setting of settings) {
-    results.push(await dispatchLineDailyReport({
-      ...input,
-      organizationId: setting.organizationId ?? undefined,
-      plantId: setting.plantId,
-    }));
+    try {
+      results.push(await dispatchLineDailyReport({ ...input, organizationId: setting.organizationId ?? undefined, plantId: setting.plantId }));
+    } catch (error) {
+      failures.push(error instanceof Error ? error : new Error("LINE daily report failed"));
+    }
   }
+  if (failures.length) throw new AggregateError(failures, `LINE daily report failed for ${failures.length} setting(s)`);
   return {
     status: "DONE",
     total: results.length,

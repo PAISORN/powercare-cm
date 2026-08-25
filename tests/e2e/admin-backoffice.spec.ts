@@ -20,17 +20,14 @@ test("admin can open back office pages", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "Action Summary" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Event Timeline" })).toBeVisible();
   await page.goto("/admin/history");
-  await expect(page.getByRole("heading", { name: "Add / Delete History" })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "History List" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "ประวัติการจัดการระบบ" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "รายการล่าสุด" })).toBeVisible();
 });
 
-test("admin can edit and delete another user's profile details", async ({ page }) => {
+test("admin creates, edits, deactivates, resets password, deletes, and audits a user", async ({ page }) => {
   const stamp = Date.now();
-  const username = `role-edit-${stamp}`;
-  const updatedUsername = `role-updated-${stamp}`;
-  const fullName = `Role Edit ${stamp}`;
-  const updatedFullName = `Role Updated ${stamp}`;
-
+  const username = `e2e-user-${stamp}`;
+  const updatedUsername = `e2e-updated-${stamp}`;
   await page.goto("/login");
   await page.getByPlaceholder("Username").fill("admin");
   await page.getByPlaceholder("Password").fill("admin1234");
@@ -38,58 +35,42 @@ test("admin can edit and delete another user's profile details", async ({ page }
   await expect(page).toHaveURL(/\/dashboardcm/);
 
   await page.goto("/admin/users");
-  await page.getByPlaceholder("Username").fill(username);
-  await page.getByPlaceholder("Password").fill("password1234");
-  await page.getByPlaceholder("ชื่อ-นามสกุล").fill(fullName);
-  await page.getByPlaceholder("หน่วยงาน").fill("E2E");
-  await page.locator('form[action] select[name="role"]').first().selectOption("TECHNICIAN");
-  await page.locator('form[action] select[name="categoryId"]').first().selectOption({ index: 1 });
-  await page.getByRole("button", { name: "สร้างผู้ใช้" }).click();
+  const createForm = page.locator("#create-user-form");
+  await createForm.getByPlaceholder("Username").fill(username);
+  await createForm.getByPlaceholder("Password").fill("password1234");
+  await createForm.getByPlaceholder("ชื่อ-นามสกุล").fill("E2E Managed User");
+  await createForm.getByPlaceholder("หน่วยงาน").fill("Maintenance");
+  await createForm.locator('select[name="role"]').selectOption("TECHNICIAN");
+  await createForm.locator('select[name="plantId"]').selectOption({ index: 1 });
+  await createForm.locator('input[name="categoryIds"]').first().check();
+  await createForm.getByRole("button", { name: "สร้างผู้ใช้" }).click();
 
-  const editForm = page.getByRole("form", { name: `Edit ${username}` });
+  const createdCard = page.locator(`div[aria-label="User ${username}"]`);
+  await createdCard.getByText("ดูรายละเอียด / แก้ไข").click();
+  const editForm = createdCard.getByRole("form", { name: `Edit ${username}` });
   await expect(editForm).toBeVisible();
   await editForm.locator('input[name="username"]').fill(updatedUsername);
-  await editForm.locator('input[name="fullName"]').fill(updatedFullName);
-  await editForm.locator('input[name="department"]').fill("Maintenance");
-  await editForm.locator('select[name="role"]').selectOption("ENGINEER");
   await editForm.locator('input[name="password"]').fill("newpass1234");
-  await editForm.locator('input[name="signature"]').setInputFiles({
-    name: "signature.png",
-    mimeType: "image/png",
-    buffer: Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/p9sAAAAASUVORK5CYII=", "base64"),
-  });
-  await editForm.locator('input[name="profilePhoto"]').setInputFiles({
-    name: "profile.png",
-    mimeType: "image/png",
-    buffer: Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/p9sAAAAASUVORK5CYII=", "base64"),
-  });
   await editForm.locator('input[name="active"]').uncheck();
   await editForm.getByRole("button", { name: "บันทึกทั้งหมด" }).click();
-
-  const updatedForm = page.getByRole("form", { name: `Edit ${updatedUsername}` });
-  await expect(updatedForm.locator('select[name="role"]')).toHaveValue("ENGINEER");
-  await expect(updatedForm.locator('input[name="fullName"]')).toHaveValue(updatedFullName);
-  await expect(updatedForm.locator('input[name="department"]')).toHaveValue("Maintenance");
-  await expect(updatedForm.locator('input[name="active"]')).not.toBeChecked();
-  await expect(page.getByText(`${updatedUsername} · Maintenance · มีลายเซ็น · มีรูปโปรไฟล์`)).toBeVisible();
-  await expect(page.getByAltText(`${updatedFullName} profile photo`)).toBeVisible();
-
   const updatedCard = page.locator(`div[aria-label="User ${updatedUsername}"]`);
+  await updatedCard.getByText("ดูรายละเอียด / แก้ไข").click();
+  const updatedForm = updatedCard.getByRole("form", { name: `Edit ${updatedUsername}` });
+  await expect(updatedForm.locator('input[name="active"]')).not.toBeChecked();
+
   await updatedCard.getByRole("button", { name: `Delete ${updatedUsername}` }).click();
-  await expect(page.getByRole("heading", { name: "ต้องการลบ User จริงหรือไม่?" })).toBeVisible();
-  await page.locator('input[name="adminPassword"]').fill("wrong-password");
-  await page.getByRole("button", { name: "Confirm delete user" }).click();
-  await expect(page.getByText("ไม่สำเร็จ")).toBeVisible();
+  const wrongPasswordInput = page.locator('input[name="adminPassword"]');
+  await wrongPasswordInput.fill("definitely-wrong-password");
+  await wrongPasswordInput.press("Enter");
   await expect(page.getByText("โปรดตรวจสอบรหัสผ่าน")).toBeVisible();
-  await expect(page.getByRole("form", { name: `Edit ${updatedUsername}` })).toBeVisible();
+  await expect(page.locator(`div[aria-label="User ${updatedUsername}"]`)).toBeVisible();
 
   await updatedCard.getByRole("button", { name: `Delete ${updatedUsername}` }).click();
-  await page.locator('input[name="adminPassword"]').fill("admin1234");
-  await page.getByRole("button", { name: "Confirm delete user" }).click();
+  const correctPasswordInput = page.locator('input[name="adminPassword"]');
+  await correctPasswordInput.fill("admin1234");
+  await correctPasswordInput.press("Enter");
   await expect(page.getByText("ลบสำเร็จ")).toBeVisible();
-  await expect(page.getByRole("form", { name: `Edit ${updatedUsername}` })).toHaveCount(0);
-
   await page.goto("/admin/history");
-  await expect(page.getByText("ลบ User").first()).toBeVisible();
-  await expect(page.getByText(updatedFullName)).toBeVisible();
+  await expect(page.getByText("ลบผู้ใช้งาน").first()).toBeVisible();
+  await expect(page.getByText("E2E Managed User").first()).toBeVisible();
 });

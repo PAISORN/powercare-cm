@@ -2,7 +2,7 @@
   "buildCommand": "npm run build:vercel",
   "crons": [
     {
-      "path": "/api/line/daily-report",
+      "path": "/api/cron/daily",
       "schedule": "0 1 * * *"
     }
   ]
