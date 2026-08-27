@@ -40,6 +40,14 @@ type NewDelivery = {
 
 const MAX_DELIVERY_ATTEMPTS = 3;
 
+export function safeLineDeliveryError(error: unknown) {
+  const message = error instanceof Error ? error.message : "";
+  const status = message.match(/^LINE (?:push|group summary) failed with status (\d{3})$/)?.[1];
+  if (status) return `LINE API rejected the request (HTTP ${status})`;
+  if (/timeout|abort/i.test(message)) return "LINE API request timed out";
+  return "LINE delivery failed";
+}
+
 export function createLineDeliveryService({
   repository,
   client,
@@ -55,7 +63,7 @@ export function createLineDeliveryService({
       await client.pushText(targetId, payload.text);
       await repository.markSent(record.id, attempts, new Date());
     } catch (error) {
-      await repository.markFailed(record.id, attempts, "LINE delivery failed");
+      await repository.markFailed(record.id, attempts, safeLineDeliveryError(error));
       if (throwOnFailure) throw error;
     }
   }
@@ -89,7 +97,7 @@ export function createLineDeliveryService({
       const claimed = await repository.claimFailed(record.id, MAX_DELIVERY_ATTEMPTS);
       if (!claimed) return;
       const payload = JSON.parse(claimed.payloadJson) as LineDeliveryPayload;
-      await send(claimed, targetId, payload);
+      await send(claimed, targetId, payload, true);
     },
   };
 }

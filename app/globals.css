@@ -162,6 +162,20 @@ html[data-stock-header-replacement="active"] .stock-replacement-header {
   transform: translateY(0);
 }
 
+.stock-right-sidebar {
+  top: var(--stock-app-topbar-offset, 5.25rem);
+}
+
+html[data-stock-header-replacement="active"] .stock-right-sidebar {
+  top: var(--stock-replacement-header-height, 4rem);
+}
+
+@media (max-width: 767px) {
+  .stock-right-sidebar {
+    top: var(--stock-app-topbar-offset, 4.75rem);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   :where(a, button, input, select, textarea, section, article, aside, header, nav, main, div, span),
   body {

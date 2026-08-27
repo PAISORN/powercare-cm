@@ -26,6 +26,8 @@ import {
 import { AppShell } from "../../../components/app-shell";
 import { AutoSubmitSelect } from "../../../components/auto-submit-select";
 import { ConfirmSubmitButton } from "../../../components/confirm-submit-button";
+import { ExclusiveDetails } from "../../../components/exclusive-details";
+import { PreserveListPositionLink, RestoreListPosition } from "../../../components/preserve-list-position";
 import { StockHeaderReplacementController } from "../../../components/stock-header-replacement-controller";
 import { SparePartClassificationFields } from "../../../components/store/spare-part-classification-fields";
 import { db } from "../../../lib/db";
@@ -80,6 +82,7 @@ async function updateSparePartFromStockAction(formData: FormData) {
     return text ? Number(text) : null;
   };
   const sparePartId = String(formData.get("sparePartId") ?? "");
+  const requestedReturnTo = String(formData.get("returnTo") ?? "");
   const existingPrice = canUseUserPermission(user, PermissionKey.VIEW_STOCK_VALUE)
     ? optionalNumber(formData.get("latestUnitPrice"))
     : (await db.sparePart.findFirstOrThrow({
@@ -111,7 +114,10 @@ async function updateSparePartFromStockAction(formData: FormData) {
       active: formData.get("active") === "on",
     },
   );
-  redirect(`/dashboardstore/stock?organizationId=${encodeURIComponent(scope.organization.id)}&plantId=${encodeURIComponent(scope.plant.id)}&saved=spare-part-updated`);
+  const scopedPrefix = `/dashboardstore/stock?organizationId=${encodeURIComponent(scope.organization.id)}&plantId=${encodeURIComponent(scope.plant.id)}`;
+  const safeReturnTo = requestedReturnTo.startsWith(scopedPrefix) ? requestedReturnTo : scopedPrefix;
+  const [returnPath, returnHash] = safeReturnTo.split("#", 2);
+  redirect(`${returnPath}${returnPath.includes("?") ? "&" : "?"}saved=spare-part-updated${returnHash ? `#${returnHash}` : ""}`);
 }
 
 async function importSparePartsExcelAction(formData: FormData) {
@@ -460,10 +466,12 @@ export default async function StockPage({ searchParams }: { searchParams: Promis
   const selectedStock = query.stockId ? stocks.find((stock) => stock.id === query.stockId) : null;
   const requestedStockAction = selectedStock ? query.stockAction : undefined;
   const stockAction = requestedStockAction === "adjust" && !canAdjust ? undefined : requestedStockAction;
+  const stockListPositionKey = `stock:${stockPageHref(currentPage)}`;
 
   return (
     <AppShell>
       <div className="space-y-5">
+        <RestoreListPosition enabled={!editPart && !stockAction} storageKey={stockListPositionKey} />
         <header className="menu-heading-plain stock-page-hero relative overflow-hidden rounded-3xl border p-5 shadow-[var(--shadow)] sm:p-6">
           <div className="relative z-10 flex flex-wrap items-start justify-between gap-4">
           <div>
@@ -651,18 +659,17 @@ export default async function StockPage({ searchParams }: { searchParams: Promis
             className="stock-replacement-header"
             data-stock-replacement-header
           >
-            <table className="w-full min-w-[1460px] table-fixed border-separate border-spacing-0 text-left text-sm">
+            <table className="w-full min-w-[1340px] table-fixed border-separate border-spacing-0 text-left text-sm">
               <StockTableColGroup />
               <thead className="bg-[var(--soft)] text-xs font-extrabold text-[var(--muted)]">
                 <tr>
                   <th className="w-20 px-4 py-4 text-center">ลำดับ</th>
                   <th className="px-4 py-4">ชื่อและรหัสอะไหล่</th>
                   <th className="px-4 py-4">Item code</th>
-                  <th className="px-4 py-4">รายละเอียดอะไหล่</th>
                   <th className="px-4 py-4">หมวดหมู่</th>
                   <th className="px-4 py-4">ประเภท</th>
-                  <th className="px-4 py-4">คลังอะไหล่ / ตำแหน่ง</th>
-                  <th className="px-4 py-4 text-right">คงเหลือ</th>
+                  <th className="py-4 pl-4 pr-1">คลังอะไหล่ / ตำแหน่ง</th>
+                  <th className="py-4 pl-1 pr-3 text-right">คงเหลือ</th>
                   <th className="px-4 py-4 text-right">Max / Min</th>
                   <th className="px-4 py-4">สถานะสต็อก</th>
                   <th className="px-4 py-4 text-left">มูลค่าอะไหล่</th>
@@ -672,7 +679,7 @@ export default async function StockPage({ searchParams }: { searchParams: Promis
             </table>
           </div>
           <div className="relative overflow-x-auto rounded-t-3xl bg-[var(--surface)]" data-stock-table-scroll>
-            <table className="w-full min-w-[1460px] table-fixed border-separate border-spacing-0 text-left text-sm">
+            <table className="w-full min-w-[1340px] table-fixed border-separate border-spacing-0 text-left text-sm">
               <StockTableColGroup />
               <thead
                 className="sticky top-0 z-40 bg-[var(--soft)] text-xs font-extrabold text-[var(--muted)] shadow-[0_1px_0_var(--line)]"
@@ -682,11 +689,10 @@ export default async function StockPage({ searchParams }: { searchParams: Promis
                   <th className="w-20 px-4 py-4 text-center">ลำดับ</th>
                   <th className="px-4 py-4">ชื่อและรหัสอะไหล่</th>
                   <th className="px-4 py-4">Item code</th>
-                  <th className="px-4 py-4">รายละเอียดอะไหล่</th>
                   <th className="px-4 py-4">หมวดหมู่</th>
                   <th className="px-4 py-4">ประเภท</th>
-                  <th className="px-4 py-4">คลังอะไหล่ / ตำแหน่ง</th>
-                  <th className="px-4 py-4 text-right">คงเหลือ</th>
+                  <th className="py-4 pl-4 pr-1">คลังอะไหล่ / ตำแหน่ง</th>
+                  <th className="py-4 pl-1 pr-3 text-right">คงเหลือ</th>
                   <th className="px-4 py-4 text-right">Max / Min</th>
                   <th className="px-4 py-4">สถานะสต็อก</th>
                   <th className="px-4 py-4 text-left">มูลค่าอะไหล่</th>
@@ -700,6 +706,7 @@ export default async function StockPage({ searchParams }: { searchParams: Promis
                   return (
                     <tr
                       key={stock.id}
+                      id={`stock-row-${stock.sparePart.id}`}
                       className="bg-[var(--surface)] transition hover:bg-[var(--soft)]/80 [&>td]:border-b [&>td]:border-[var(--line)] last:[&>td]:border-b-0"
                     >
                       <td className="px-4 py-3 text-center">
@@ -719,21 +726,21 @@ export default async function StockPage({ searchParams }: { searchParams: Promis
                         </div>
                       </td>
                       <td className="px-4 py-3 font-mono text-xs font-bold">{stock.sparePart.itemCode ?? "-"}</td>
-                      <td className="max-w-[240px] px-4 py-3 text-sm text-[var(--muted)]">
-                        <span className="line-clamp-2">{stock.sparePart.description?.trim() || "-"}</span>
+                      <td className="px-4 py-3">
+                        <p className="font-bold">{stock.sparePart.category?.name ?? "-"}</p>
+                        <p className="mt-1 text-xs text-[var(--muted)]">{stock.sparePart.materialGroup?.name ?? "-"}</p>
                       </td>
-                      <td className="px-4 py-3">{stock.sparePart.category?.name ?? "-"}</td>
                       <td className="px-4 py-3">
                         <p className="font-mono font-bold">{stock.sparePart.type?.code ?? "-"}</p>
                         {stock.sparePart.type?.name ? (
                           <p className="mt-1 text-xs text-[var(--muted)]">{stock.sparePart.type.name}</p>
                         ) : null}
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="py-3 pl-4 pr-1">
                         <p className="font-semibold">{stock.store.name}</p>
                         <p className="text-xs text-[var(--muted)]">{stock.store.location ?? stock.store.code}</p>
                       </td>
-                      <td className="px-4 py-3 text-right">
+                      <td className="py-3 pl-1 pr-3 text-right">
                         <p className="font-extrabold">{formatQuantity(quantity)}</p>
                         <p className="mt-1 text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
                           {stock.sparePart.unit}
@@ -755,38 +762,50 @@ export default async function StockPage({ searchParams }: { searchParams: Promis
                         <div className="flex items-center justify-end gap-1">
                           <div className="grid gap-1">
                             {canIssue ? (
-                              <Link className={issueRowActionClass} href={`${scopedHref}&stockAction=issue&stockId=${encodeURIComponent(stock.id)}#stock-action-drawer`}>
+                              <PreserveListPositionLink
+                                className={issueRowActionClass}
+                                href={`${stockPageHref(currentPage)}&stockAction=issue&stockId=${encodeURIComponent(stock.id)}#stock-action-drawer`}
+                                storageKey={stockListPositionKey}
+                                targetId={`stock-row-${stock.sparePart.id}`}
+                              >
                                 <span className={rowActionIconClass}>
                                   <ArrowUp size={14} />
                                 </span>
                                 <span className={rowActionLabelClass}>Issue</span>
-                              </Link>
+                              </PreserveListPositionLink>
                             ) : null}
                             {canReceive ? (
-                              <Link className={receiveRowActionClass} href={`${scopedHref}&stockAction=receive&stockId=${encodeURIComponent(stock.id)}#stock-action-drawer`}>
+                              <PreserveListPositionLink
+                                className={receiveRowActionClass}
+                                href={`${stockPageHref(currentPage)}&stockAction=receive&stockId=${encodeURIComponent(stock.id)}#stock-action-drawer`}
+                                storageKey={stockListPositionKey}
+                                targetId={`stock-row-${stock.sparePart.id}`}
+                              >
                                 <span className={rowActionIconClass}>
                                   <ArrowDown size={14} />
                                 </span>
                                 <span className={rowActionLabelClass}>Receive</span>
-                              </Link>
+                              </PreserveListPositionLink>
                             ) : null}
                           </div>
                           {canManageParts ? (
-                            <details className="group relative">
+                            <ExclusiveDetails className="group relative">
                               <summary
                                 aria-label={`จัดการ ${stock.sparePart.name}`}
                                 className="inline-flex size-7 shrink-0 cursor-pointer list-none items-center justify-center rounded-full text-[var(--muted)] transition hover:bg-[var(--soft)] hover:text-[var(--ink)] [&::-webkit-details-marker]:hidden"
                               >
                                 <MoreVertical size={18} />
                               </summary>
-                              <div className="absolute right-0 top-9 z-50 grid w-36 gap-1 rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-2 text-sm font-bold shadow-xl">
-                                <Link
+                              <div className="grid w-36 gap-1 rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-2 text-sm font-bold shadow-xl">
+                                <PreserveListPositionLink
                                   className="inline-flex min-h-9 items-center gap-2 rounded-xl px-3 text-[var(--ink)] transition hover:bg-[var(--soft)]"
                                   href={sparePartEditHref(stock.sparePart.id)}
+                                  storageKey={stockListPositionKey}
+                                  targetId={`stock-row-${stock.sparePart.id}`}
                                 >
                                   <Edit3 size={15} />
                                   แก้ไข
-                                </Link>
+                                </PreserveListPositionLink>
                                 <form action={deleteSparePartFromStockAction}>
                                   <AdminScopeHiddenFields scope={scope} />
                                   <input name="sparePartId" type="hidden" value={stock.sparePart.id} />
@@ -798,7 +817,7 @@ export default async function StockPage({ searchParams }: { searchParams: Promis
                                   </ConfirmSubmitButton>
                                 </form>
                               </div>
-                            </details>
+                            </ExclusiveDetails>
                           ) : null}
                         </div>
                       </td>
@@ -845,6 +864,36 @@ export default async function StockPage({ searchParams }: { searchParams: Promis
                   </Link>
                 </nav>
               ) : null}
+              {totalPages > 1 ? (
+                <form action="/dashboardstore/stock#stock-table-region" aria-label="ไปยังหน้าที่ต้องการ" className="flex items-center gap-1" method="get">
+                  <input name="organizationId" type="hidden" value={scope.organization.id} />
+                  <input name="plantId" type="hidden" value={scope.plant.id} />
+                  {search ? <input name="search" type="hidden" value={search} /> : null}
+                  {query.storeId ? <input name="storeId" type="hidden" value={query.storeId} /> : null}
+                  {query.typeId ? <input name="typeId" type="hidden" value={query.typeId} /> : null}
+                  {query.categoryId ? <input name="categoryId" type="hidden" value={query.categoryId} /> : null}
+                  {query.materialGroupId ? <input name="materialGroupId" type="hidden" value={query.materialGroupId} /> : null}
+                  {query.itemKind ? <input name="itemKind" type="hidden" value={query.itemKind} /> : null}
+                  {query.unit ? <input name="unit" type="hidden" value={query.unit} /> : null}
+                  {stockStatus !== "all" ? <input name="stockStatus" type="hidden" value={stockStatus} /> : null}
+                  <label className="inline-flex items-center gap-1 font-bold">
+                    ไปหน้า
+                    <input
+                      aria-label="เลขหน้า"
+                      className="h-9 w-16 rounded-xl border border-[var(--line)] bg-[var(--surface)] px-2 text-center font-bold text-[var(--ink)] outline-none focus:border-[var(--primary)]"
+                      defaultValue={currentPage}
+                      max={totalPages}
+                      min="1"
+                      name="page"
+                      required
+                      type="number"
+                    />
+                  </label>
+                  <button className="h-9 rounded-xl bg-[var(--primary)] px-3 font-bold text-white transition hover:bg-[var(--primary-strong)]" type="submit">
+                    ไป
+                  </button>
+                </form>
+              ) : null}
               <span className="rounded-full bg-[var(--soft)] px-3 py-1 font-bold">Site: {scope.plant.name}</span>
             </div>
           </footer>
@@ -852,7 +901,7 @@ export default async function StockPage({ searchParams }: { searchParams: Promis
 
         {editPart && canManageParts ? (
           <aside
-            className="fixed inset-y-0 right-0 z-50 w-full max-w-xl overflow-y-auto border-l border-[var(--line)] bg-[var(--surface)] p-5 shadow-2xl sm:p-6"
+            className="stock-right-sidebar fixed bottom-0 right-0 z-[80] w-full max-w-xl overflow-y-auto border-l border-[var(--line)] bg-[var(--surface)] p-5 shadow-2xl sm:p-6"
             id="edit-spare-part"
           >
             <div className="flex items-start justify-between gap-4">
@@ -861,13 +910,14 @@ export default async function StockPage({ searchParams }: { searchParams: Promis
                 <h2 className="mt-1 text-2xl font-extrabold">{editPart.name}</h2>
                 <p className="mt-1 font-mono text-xs text-[var(--muted)]">{editPart.code}</p>
               </div>
-              <Link className="rounded-full bg-[var(--soft)] px-3 py-1.5 text-sm font-bold" href={stockPageHref(currentPage)}>
+              <Link className="rounded-full bg-[var(--soft)] px-3 py-1.5 text-sm font-bold" href={`${stockPageHref(currentPage)}#stock-row-${editPart.id}`} scroll={false}>
                 ปิด
               </Link>
             </div>
             <form action={updateSparePartFromStockAction} className="mt-5 grid gap-4">
               <AdminScopeHiddenFields scope={scope} />
               <input name="sparePartId" type="hidden" value={editPart.id} />
+              <input name="returnTo" type="hidden" value={`${stockPageHref(currentPage)}#stock-row-${editPart.id}`} />
               <label className={labelClass}>
                 ชนิดรายการ
                 <select
@@ -954,7 +1004,7 @@ export default async function StockPage({ searchParams }: { searchParams: Promis
 
         {selectedStock && stockAction ? (
           <aside
-            className="fixed inset-y-0 right-0 z-50 w-full max-w-lg overflow-y-auto border-l border-[var(--line)] bg-[var(--surface)] p-5 shadow-2xl sm:p-6"
+            className="stock-right-sidebar fixed bottom-0 right-0 z-[80] w-full max-w-lg overflow-y-auto border-l border-[var(--line)] bg-[var(--surface)] p-5 shadow-2xl sm:p-6"
             id="stock-action-drawer"
           >
             <div className="flex items-start justify-between gap-4">
@@ -968,7 +1018,7 @@ export default async function StockPage({ searchParams }: { searchParams: Promis
                   {selectedStock.store.name} · คงเหลือ {formatQuantity(Number(selectedStock.quantity))} {selectedStock.sparePart.unit}
                 </p>
               </div>
-              <Link className="rounded-full bg-[var(--soft)] px-3 py-1.5 text-sm font-bold" href={scopedHref}>
+              <Link className="rounded-full bg-[var(--soft)] px-3 py-1.5 text-sm font-bold" href={`${stockPageHref(currentPage)}#stock-row-${selectedStock.sparePart.id}`} scroll={false}>
                 ปิด
               </Link>
             </div>
@@ -1077,7 +1127,7 @@ export default async function StockPage({ searchParams }: { searchParams: Promis
               href={scopedHref}
             />
             <aside
-              className="fixed inset-y-0 right-0 z-50 w-full max-w-2xl overflow-y-auto border-l border-[var(--line)] bg-[var(--surface)] p-5 shadow-2xl sm:p-7"
+              className="stock-right-sidebar fixed bottom-0 right-0 z-[80] w-full max-w-2xl overflow-y-auto border-l border-[var(--line)] bg-[var(--surface)] p-5 shadow-2xl sm:p-7"
               id="excel-import-drawer"
             >
               <div className="flex items-start justify-between gap-4">
@@ -1302,11 +1352,10 @@ function StockTableColGroup() {
       <col style={{ width: "60px" }} />
       <col style={{ width: "270px" }} />
       <col style={{ width: "100px" }} />
-      <col style={{ width: "170px" }} />
-      <col style={{ width: "105px" }} />
+      <col style={{ width: "150px" }} />
       <col style={{ width: "110px" }} />
-      <col style={{ width: "145px" }} />
-      <col style={{ width: "75px" }} />
+      <col style={{ width: "105px" }} />
+      <col style={{ width: "65px" }} />
       <col style={{ width: "75px" }} />
       <col style={{ width: "120px" }} />
       <col style={{ width: "110px" }} />

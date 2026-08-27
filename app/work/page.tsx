@@ -3,6 +3,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { AppShell } from "../../components/app-shell";
 import { FilterBar } from "../../components/filter-bar";
+import { PreserveListPositionLink, RestoreListPosition } from "../../components/preserve-list-position";
 import { StatusBadge } from "../../components/status-badge";
 import { StatusKpiStrip } from "../../components/status-kpi-strip";
 import { UserAvatar } from "../../components/user-avatar";
@@ -13,8 +14,8 @@ import { getActiveCategoriesForPlantScope, getActiveClaimantsForReportScope, get
 import { requireUser } from "../../lib/session";
 import { canClaimWork } from "../../modules/auth/permission";
 import { canUseUserPermission, PermissionKey } from "../../modules/auth/site-admin-permissions";
-import { claimWork, updateWorkProblemTitle } from "../../modules/cm-work/cm-work-service";
-import { WorkStatus, type Actor } from "../../modules/cm-work/cm-work-types";
+import { claimWork, updateWorkRequest } from "../../modules/cm-work/cm-work-service";
+import { urgencyLabels, WorkStatus, type Actor, type Urgency } from "../../modules/cm-work/cm-work-types";
 import { hasExplicitCmDateFilter, parseCmDateFilter, type CmDateFilterInput, type ParsedCmDateFilter } from "../../modules/filters/cm-date-filter";
 import { getCmDatePreset } from "../../modules/filters/cm-date-filter-presets";
 import { getUnreadSummary, getUnreadWorkIds, markStatusGroupRead, markWorkRead } from "../../modules/notifications/notification-service";
@@ -29,10 +30,13 @@ type WorkSearchParams = CmDateFilterInput & {
   urgency?: string;
   claimantId?: string;
   page?: string;
+  editWorkId?: string;
 };
 
 const IN_PROCESS_GROUP = "IN_PROCESS";
 const pageSize = 50;
+const workEditLabelClass = "grid gap-1.5 text-sm font-bold text-[var(--ink)]";
+const workEditInputClass = "min-h-12 w-full rounded-xl border border-[var(--line)] bg-[var(--soft)] px-3 text-[var(--ink)] outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/20";
 const inProcessStatuses = [
   WorkStatus.WAITING_TO_CLAIM,
   WorkStatus.CLAIMED,
@@ -75,7 +79,8 @@ export default async function WorkListPage({ searchParams }: { searchParams: Pro
     siteAdminPermissions: user.siteAdminPermissions,
   };
   const returnTo = buildWorkListHref(filters);
-  const canEditWorkTitle = canUseUserPermission(user, PermissionKey.EDIT_WORK_TITLE);
+  const workListPositionKey = `work:${returnTo}`;
+  const canEditWorkRequest = canUseUserPermission(user, PermissionKey.EDIT_WORK_REQUEST);
 
   async function claimFromListAction(formData: FormData) {
     "use server";
@@ -114,16 +119,15 @@ export default async function WorkListPage({ searchParams }: { searchParams: Pro
     redirect(`/work/${work.id}`);
   }
 
-  async function updateWorkTitleFromListAction(formData: FormData) {
+  async function updateWorkFromListAction(formData: FormData) {
     "use server";
     const currentUser = await requireUser();
     const scope = buildUserOperationalScope(currentUser);
     const workId = String(formData.get("workId") ?? "");
-    const problemTitle = String(formData.get("problemTitle") ?? "");
     const safeReturnTo = String(formData.get("returnTo") ?? "/work");
     const scopedWork = await db.cmWork.findFirst({ where: { id: workId, ...buildWorkScopeWhere(scope) }, select: { id: true } });
     if (!scopedWork) redirect("/work");
-    await updateWorkProblemTitle({
+    await updateWorkRequest({
       id: currentUser.id,
       role: currentUser.role as Actor["role"],
       organizationId: currentUser.organizationId,
@@ -133,10 +137,19 @@ export default async function WorkListPage({ searchParams }: { searchParams: Pro
       siteAdminPermissions: currentUser.siteAdminPermissions,
       rolePermissionOverrides: currentUser.rolePermissionOverrides,
       userPermissionOverrides: currentUser.userPermissionOverrides,
-    }, workId, problemTitle);
+    }, workId, {
+      requesterName: String(formData.get("requesterName") ?? ""),
+      requesterDepartment: String(formData.get("requesterDepartment") ?? ""),
+      categoryId: String(formData.get("categoryId") ?? ""),
+      zoneId: String(formData.get("zoneId") ?? ""),
+      assetId: String(formData.get("assetId") ?? "") || null,
+      machineName: String(formData.get("machineName") ?? ""),
+      problemTitle: String(formData.get("problemTitle") ?? ""),
+      problemDetail: String(formData.get("problemDetail") ?? ""),
+      urgency: String(formData.get("urgency") ?? "") as Urgency,
+    });
     redirect(safeReturnTo.startsWith("/work") ? safeReturnTo : "/work");
   }
-
   const [works, total, categories, zones, claimants, byStatus, unreadSummary] = await Promise.all([
     db.cmWork.findMany({
       where,
@@ -158,12 +171,23 @@ export default async function WorkListPage({ searchParams }: { searchParams: Pro
     getUnreadSummary(user.id, scope),
   ]);
   const unreadWorkIds = await getUnreadWorkIds(user.id, works.map((work) => work.id), scope);
+  const editWork = canEditWorkRequest && filters.editWorkId
+    ? works.find((work) => work.id === filters.editWorkId) ?? null
+    : null;
+  const [editCategories, editZones, editAssets] = editWork?.plantId
+    ? await Promise.all([
+        db.category.findMany({ where: { active: true, AND: [{ OR: [{ organizationId: editWork.organizationId }, { organizationId: null }] }, { OR: [{ plantId: editWork.plantId }, { plantId: null }] }] }, select: { id: true, name: true }, orderBy: { name: "asc" } }),
+        db.zone.findMany({ where: { active: true, OR: [{ plantId: editWork.plantId }, { plantId: null }] }, select: { id: true, name: true }, orderBy: { name: "asc" } }),
+        db.asset.findMany({ where: { registrationStatus: "ACTIVE", plantId: editWork.plantId }, select: { id: true, code: true, nameEn: true, nameTh: true, zoneId: true }, orderBy: [{ code: "asc" }, { nameTh: "asc" }] }),
+      ])
+    : [[], [], []];
   const statusCountByKey = new Map<WorkStatus, number>(byStatus.map((item) => [item.status as WorkStatus, item._count._all]));
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const safeCurrentPage = Math.min(currentPage, totalPages);
 
   return (
     <AppShell>
+      <RestoreListPosition enabled={!editWork} storageKey={workListPositionKey} />
       <section className="menu-heading-plain cm-hero relative overflow-hidden rounded-3xl px-6 py-7 text-white shadow-[var(--shadow)]">
         <div className="plant-skyline" aria-hidden="true">
           <span />
@@ -217,7 +241,7 @@ export default async function WorkListPage({ searchParams }: { searchParams: Pro
         <div className="mt-4 overflow-hidden rounded-2xl border border-[var(--line)]">
           {works.length ? (
             works.map((work) => (
-              <div key={work.id} className="grid gap-3 border-b border-[var(--line)] bg-[var(--surface)] p-4 transition duration-300 ease-out last:border-b-0 hover:bg-[var(--soft)] md:grid-cols-[1fr_auto]">
+              <div key={work.id} id={`work-row-${work.id}`} className="grid gap-3 border-b border-[var(--line)] bg-[var(--surface)] p-4 transition duration-300 ease-out last:border-b-0 hover:bg-[var(--soft)] md:grid-cols-[1fr_auto]">
                 <form action={openWorkAction} className="min-w-0">
                   <input name="workId" type="hidden" value={work.id} />
                   <button className="relative block w-full min-w-0 rounded-xl text-left transition duration-300 ease-out hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-[var(--primary)] focus:ring-offset-2 focus:ring-offset-[var(--surface)]" type="submit">
@@ -248,21 +272,10 @@ export default async function WorkListPage({ searchParams }: { searchParams: Pro
                        </button>
                     </form>
                   ) : null}
-                  {canEditWorkTitle ? (
-                    <details className="group relative">
-                      <summary className="cursor-pointer list-none rounded-full border border-[var(--line)] px-4 py-1.5 text-xs font-bold text-[var(--ink)] transition hover:border-[var(--primary)] hover:text-[var(--primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]/40">
-                        แก้ไขชื่อ
-                      </summary>
-                      <form action={updateWorkTitleFromListAction} className="mt-2 grid min-w-[min(20rem,calc(100vw-3rem))] gap-2 rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-3 shadow-lg md:absolute md:right-0 md:z-20">
-                        <input name="workId" type="hidden" value={work.id} />
-                        <input name="returnTo" type="hidden" value={returnTo} />
-                        <label className="grid gap-1 text-left text-xs font-bold">
-                          ชื่อใบแจ้งซ่อม
-                          <input className="min-h-11 rounded-xl border border-[var(--line)] bg-[var(--soft)] px-3 text-sm text-[var(--ink)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]/40" defaultValue={work.problemTitle} maxLength={200} name="problemTitle" required />
-                        </label>
-                        <button className="min-h-11 rounded-xl bg-[var(--primary)] px-4 text-sm font-extrabold text-white transition hover:bg-[var(--primary-strong)]" type="submit">บันทึกชื่อใหม่</button>
-                      </form>
-                    </details>
+                  {canEditWorkRequest ? (
+                    <PreserveListPositionLink className="rounded-full border border-[var(--line)] px-4 py-1.5 text-xs font-bold text-[var(--ink)] transition hover:border-[var(--primary)] hover:text-[var(--primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]/40" href={buildWorkEditHref(filters, work.id)} storageKey={workListPositionKey} targetId={`work-row-${work.id}`}>
+                      แก้ไข
+                    </PreserveListPositionLink>
                   ) : null}
                 </span>
               </div>
@@ -273,6 +286,36 @@ export default async function WorkListPage({ searchParams }: { searchParams: Pro
         </div>
         {totalPages > 1 ? <Pagination filters={filters} currentPage={safeCurrentPage} totalPages={totalPages} /> : null}
       </section>
+      {editWork ? (
+        <>
+          <Link aria-label="ปิดหน้าต่างแก้ไขใบแจ้งซ่อม" className="fixed inset-0 z-40 bg-black/30 backdrop-blur-[1px]" href={`${returnTo}#work-row-${editWork.id}`} scroll={false} />
+          <aside aria-labelledby="edit-work-title" className="fixed inset-y-0 right-0 z-50 w-full max-w-2xl overflow-y-auto border-l border-[var(--line)] bg-[var(--surface)] p-5 shadow-2xl sm:p-7" id="edit-work-drawer">
+            <div className="flex items-start justify-between gap-4 border-b border-[var(--line)] pb-4">
+              <div><p className="text-sm font-bold text-[var(--primary)]">Edit Repair Request</p><h2 className="mt-1 text-2xl font-extrabold" id="edit-work-title">{editWork.number}</h2><p className="mt-1 text-sm text-[var(--muted)]">ทุกการเปลี่ยนแปลงถูกบันทึกใน Audit Log</p></div>
+              <Link className="rounded-full bg-[var(--soft)] px-4 py-2 text-sm font-bold" href={`${returnTo}#work-row-${editWork.id}`} scroll={false}>ปิด</Link>
+            </div>
+            <form action={updateWorkFromListAction} className="mt-5 grid gap-4">
+              <input name="workId" type="hidden" value={editWork.id} /><input name="returnTo" type="hidden" value={`${returnTo}#work-row-${editWork.id}`} />
+              <div className="grid gap-4 sm:grid-cols-2">
+                <label className={workEditLabelClass}>ชื่อผู้แจ้ง<input className={workEditInputClass} defaultValue={editWork.requesterName} maxLength={120} name="requesterName" required /></label>
+                <label className={workEditLabelClass}>หน่วยงาน / แผนก<input className={workEditInputClass} defaultValue={editWork.requesterDepartment} maxLength={120} name="requesterDepartment" required /></label>
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <label className={workEditLabelClass}>Category<select className={workEditInputClass} defaultValue={editWork.categoryId} name="categoryId" required>{editCategories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}</select></label>
+                <label className={workEditLabelClass}>Zone<select className={workEditInputClass} defaultValue={editWork.zoneId} name="zoneId" required>{editZones.map((zone) => <option key={zone.id} value={zone.id}>{zone.name}</option>)}</select></label>
+              </div>
+              <label className={workEditLabelClass}>เชื่อมกับทะเบียน Asset (ไม่บังคับ)<select className={workEditInputClass} defaultValue={editWork.assetId ?? ""} name="assetId"><option value="">ไม่เชื่อมทะเบียน Asset</option>{editAssets.map((asset) => <option key={asset.id} value={asset.id}>{asset.code ?? "—"} · {asset.nameEn?.trim() || asset.nameTh}{asset.zoneId ? ` · ${editZones.find((zone) => zone.id === asset.zoneId)?.name ?? ""}` : ""}</option>)}</select></label>
+              <label className={workEditLabelClass}>ชื่อเครื่องจักร<input className={workEditInputClass} defaultValue={editWork.machineName} maxLength={200} name="machineName" required /></label>
+              <label className={workEditLabelClass}>หัวข้อปัญหา<input className={workEditInputClass} defaultValue={editWork.problemTitle} maxLength={200} name="problemTitle" required /></label>
+              <label className={workEditLabelClass}>รายละเอียดปัญหา<textarea className={`${workEditInputClass} min-h-32 py-3`} defaultValue={editWork.problemDetail} maxLength={4000} name="problemDetail" required /></label>
+              <label className={workEditLabelClass}>สถานะความเร่งด่วน<select className={workEditInputClass} defaultValue={editWork.urgency} name="urgency" required>{Object.entries(urgencyLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
+              <div className="sticky bottom-0 -mx-5 mt-2 flex items-center justify-end gap-3 border-t border-[var(--line)] bg-[var(--surface)] px-5 py-4 sm:-mx-7 sm:px-7">
+                <Link className="inline-flex min-h-12 items-center justify-center rounded-xl border border-[var(--line)] px-5 font-bold" href={`${returnTo}#work-row-${editWork.id}`} scroll={false}>ยกเลิก</Link><button className="min-h-12 rounded-xl bg-[var(--primary)] px-6 font-extrabold text-white transition hover:bg-[var(--primary-strong)]" type="submit">บันทึกการแก้ไข</button>
+              </div>
+            </form>
+          </aside>
+        </>
+      ) : null}
     </AppShell>
   );
 }
@@ -331,6 +374,15 @@ function buildWorkListHref(filters: WorkSearchParams) {
   return query ? `/work?${query}` : "/work";
 }
 
+function buildWorkEditHref(filters: WorkSearchParams, workId: string) {
+  const params = new URLSearchParams();
+  for (const key of [...pagedWorkFilterKeys, "page"] as const) {
+    const value = filters[key];
+    if (value) params.set(key, value);
+  }
+  params.set("editWorkId", workId);
+  return `/work?${params.toString()}#edit-work-drawer`;
+}
 function Pagination({ filters, currentPage, totalPages }: { filters: WorkSearchParams; currentPage: number; totalPages: number }) {
   const pages = paginationWindow(currentPage, totalPages);
   return (

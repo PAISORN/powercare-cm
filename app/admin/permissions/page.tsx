@@ -406,7 +406,7 @@ function friendly(value: string) {
   if (value === PermissionKey.VIEW_MY_ACTIVITIES) return "My Activities";
   if (value === PermissionKey.VIEW_MY_ACTIVITIES_CM) return "My Activities · งาน CM";
   if (value === PermissionKey.VIEW_MY_ACTIVITIES_STORE) return "My Activities · งาน Store";
-  if (value === PermissionKey.EDIT_WORK_TITLE) return "แก้ไขชื่อใบแจ้งซ่อม";
+  if (value === PermissionKey.EDIT_WORK_REQUEST) return "แก้ไขข้อมูลใบแจ้งซ่อม";
   return value.toLowerCase().split("_").map((word) => word.charAt(0).toUpperCase() + word.slice(1)).join(" ");
 }
 
@@ -542,7 +542,7 @@ function thaiPermissionDescription(key: PermissionKey) {
   if (key === PermissionKey.VIEW_MY_ACTIVITIES) return "อนุญาตให้เห็นเมนูและเปิดหน้า My Activities";
   if (key === PermissionKey.VIEW_MY_ACTIVITIES_CM) return "อนุญาตให้มองเห็นงาน CM ที่ตนรับผิดชอบหรือต้องตรวจรับใน My Activities";
   if (key === PermissionKey.VIEW_MY_ACTIVITIES_STORE) return "อนุญาตให้มองเห็นใบเบิก Store ที่ตนต้องอนุมัติ จ่าย หรือแก้ไขใน My Activities";
-  if (key === PermissionKey.EDIT_WORK_TITLE) return "อนุญาตให้แก้ไขชื่อใบแจ้งซ่อมจากหน้า All Work";
+  if (key === PermissionKey.EDIT_WORK_REQUEST) return "อนุญาตให้แก้ไขข้อมูลผู้แจ้ง หมวด โซน เครื่องจักร ปัญหา และความเร่งด่วนจากหน้า All Work";
   const words = key.split("_");
   const action = thaiActionWords[words[0]] ?? "ใช้งาน";
   const target = words.slice(1)

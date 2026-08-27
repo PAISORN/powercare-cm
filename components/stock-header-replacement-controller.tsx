@@ -34,6 +34,7 @@ export function StockHeaderReplacementController({ regionId }: { regionId: strin
       const shouldReplace = regionRect.top <= topBarHeight && regionRect.bottom > headerHeight + 24;
 
       root.style.setProperty("--stock-app-topbar-offset", `${topBarHeight}px`);
+      root.style.setProperty("--stock-replacement-header-height", `${headerHeight}px`);
       root.style.setProperty("--stock-replacement-left", `${Math.max(0, tableRect.left)}px`);
       root.style.setProperty("--stock-replacement-width", `${Math.max(0, tableRect.width)}px`);
       root.style.setProperty("--stock-replacement-table-width", `${Math.max(0, table.offsetWidth)}px`);
@@ -67,6 +68,7 @@ export function StockHeaderReplacementController({ regionId }: { regionId: strin
       resizeObserver?.disconnect();
       delete root.dataset.stockHeaderReplacement;
       root.style.removeProperty("--stock-app-topbar-offset");
+      root.style.removeProperty("--stock-replacement-header-height");
       root.style.removeProperty("--stock-replacement-left");
       root.style.removeProperty("--stock-replacement-width");
       root.style.removeProperty("--stock-replacement-table-width");

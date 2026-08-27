@@ -84,8 +84,8 @@ describe("Site Admin permissions", () => {
     }
     expect(permissionDefaultForRole(RoleName.VISITOR, PermissionKey.VIEW_MY_ACTIVITIES_CM)).toBe(false);
     expect(permissionDefaultForRole(RoleName.VISITOR, PermissionKey.VIEW_MY_ACTIVITIES_STORE)).toBe(false);
-    expect(permissionDefaultForRole(RoleName.ENGINEER, PermissionKey.EDIT_WORK_TITLE)).toBe(true);
-    expect(permissionDefaultForRole(RoleName.TECHNICIAN, PermissionKey.EDIT_WORK_TITLE)).toBe(false);
+    expect(permissionDefaultForRole(RoleName.ENGINEER, PermissionKey.EDIT_WORK_REQUEST)).toBe(true);
+    expect(permissionDefaultForRole(RoleName.TECHNICIAN, PermissionKey.EDIT_WORK_REQUEST)).toBe(false);
   });
 
   it("allows Organization Admin to view Store data without receiving stock", () => {

@@ -6,7 +6,7 @@ import { canUseUserPermission, PermissionKey, type PermissionUserContext } from 
 import { recordAudit } from "../audit/audit-service";
 import { canEnterBacklogShutdown, canTransition } from "./cm-work-state-machine";
 import { reserveCmWorkNumber } from "./cm-work-sequence";
-import { RoleName, statusLabels, WorkStatus, type Actor, type Urgency } from "./cm-work-types";
+import { RoleName, statusLabels, urgencyLabels, WorkStatus, type Actor, type Urgency } from "./cm-work-types";
 import { createCmNotifications } from "../notifications/notification-service";
 import { NotificationEventType } from "../notifications/notification-types";
 import { dispatchLineWorkEvent } from "../line/line-service";
@@ -305,25 +305,72 @@ export async function claimWork(actor: Actor, cmWorkId: string) {
   return updated;
 }
 
-export async function updateWorkProblemTitle(
+export type EditableWorkRequestInput = {
+  requesterName: string;
+  requesterDepartment: string;
+  categoryId: string;
+  zoneId: string;
+  assetId?: string | null;
+  machineName: string;
+  problemTitle: string;
+  problemDetail: string;
+  urgency: Urgency;
+};
+
+export async function updateWorkRequest(
   actor: Actor & PermissionUserContext,
   cmWorkId: string,
-  problemTitle: string,
+  input: EditableWorkRequestInput,
 ) {
-  const normalizedTitle = problemTitle.trim().replace(/\s+/g, " ");
-  if (!normalizedTitle) throw new Error("Work title is required");
-  if (normalizedTitle.length > 200) throw new Error("Work title must not exceed 200 characters");
-  if (!canUseUserPermission(actor, PermissionKey.EDIT_WORK_TITLE)) throw new Error("You cannot edit this work title");
+  const normalized = {
+    requesterName: input.requesterName.trim().replace(/\s+/g, " "),
+    requesterDepartment: input.requesterDepartment.trim().replace(/\s+/g, " "),
+    machineName: input.machineName.trim().replace(/\s+/g, " "),
+    problemTitle: input.problemTitle.trim().replace(/\s+/g, " "),
+    problemDetail: input.problemDetail.trim(),
+  };
+  if (Object.values(normalized).some((value) => !value)) throw new Error("All repair request fields are required");
+  if (normalized.requesterName.length > 120 || normalized.requesterDepartment.length > 120 || normalized.machineName.length > 200 || normalized.problemTitle.length > 200 || normalized.problemDetail.length > 4000) {
+    throw new Error("Repair request field is too long");
+  }
+  if (!(Object.keys(urgencyLabels) as string[]).includes(input.urgency)) throw new Error("Invalid urgency");
+  if (!canUseUserPermission(actor, PermissionKey.EDIT_WORK_REQUEST)) throw new Error("You cannot edit this repair request");
 
   const work = await db.cmWork.findUniqueOrThrow({ where: { id: cmWorkId } });
   if (actor.organizationId && work.organizationId !== actor.organizationId) throw new Error("Work is outside your organization scope");
   if (actor.plantId && work.plantId !== actor.plantId) throw new Error("Work is outside your Site scope");
-  if (work.problemTitle === normalizedTitle) return work;
+  const [category, zone, asset] = await Promise.all([
+    db.category.findFirst({ where: { id: input.categoryId, active: true, AND: [{ OR: [{ organizationId: work.organizationId }, { organizationId: null }] }, { OR: [{ plantId: work.plantId }, { plantId: null }] }] }, select: { id: true } }),
+    db.zone.findFirst({ where: { id: input.zoneId, active: true, OR: [{ plantId: work.plantId }, { plantId: null }] }, select: { id: true } }),
+    input.assetId && work.plantId
+      ? db.asset.findFirst({ where: { id: input.assetId, plantId: work.plantId, registrationStatus: "ACTIVE", OR: [{ zoneId: input.zoneId }, { zoneId: null }] }, select: { id: true, code: true, nameEn: true, nameTh: true } })
+      : null,
+  ]);
+  if (!category) throw new Error("Category must be active and belong to the same Site");
+  if (!zone) throw new Error("Zone must be active and belong to the same Site");
+  if (input.assetId && !asset) throw new Error("Asset must be active and belong to the selected Site and Zone");
 
-  const updated = await db.cmWork.update({
-    where: { id: cmWorkId },
-    data: { problemTitle: normalizedTitle },
-  });
+  const before = {
+    requesterName: work.requesterName,
+    requesterDepartment: work.requesterDepartment,
+    categoryId: work.categoryId,
+    zoneId: work.zoneId,
+    assetId: work.assetId,
+    machineName: work.machineName,
+    problemTitle: work.problemTitle,
+    problemDetail: work.problemDetail,
+    urgency: work.urgency,
+  };
+  const data = {
+    ...normalized,
+    categoryId: category.id,
+    zoneId: zone.id,
+    assetId: asset?.id ?? null,
+    assetCodeSnapshot: asset?.code ?? null,
+    assetNameSnapshot: asset ? asset.nameEn?.trim() || asset.nameTh : null,
+    urgency: input.urgency,
+  };
+  const updated = await db.cmWork.update({ where: { id: cmWorkId }, data });
   await recordAudit({
     cmWorkId,
     actorId: actor.id,
@@ -331,14 +378,13 @@ export async function updateWorkProblemTitle(
     plantId: work.plantId,
     entityType: "CmWork",
     entityId: cmWorkId,
-    action: "UPDATE_WORK_PROBLEM_TITLE",
-    before: { problemTitle: work.problemTitle },
-    after: { problemTitle: updated.problemTitle },
+    action: "UPDATE_WORK_REQUEST",
+    before,
+    after: data,
   });
   revalidateCmData([cacheTags.dashboardSummary]);
   return updated;
 }
-
 export async function assignWork(actor: Actor, cmWorkId: string, technicianId: string) {
   const updated = await db.$transaction((tx) =>
     assignWorkWithStore(createPrismaAssignmentStore(tx), actor, cmWorkId, technicianId),

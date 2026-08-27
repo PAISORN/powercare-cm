@@ -20,8 +20,8 @@ describe("Permission Center categories", () => {
     expect(source).toContain('value === PermissionKey.VIEW_MY_ACTIVITIES_STORE');
     expect(source).toContain("งาน CM ที่ตนรับผิดชอบหรือต้องตรวจรับ");
     expect(source).toContain("ใบเบิก Store ที่ตนต้องอนุมัติ");
-    expect(source).toContain('value === PermissionKey.EDIT_WORK_TITLE');
-    expect(source).toContain("แก้ไขชื่อใบแจ้งซ่อมจากหน้า All Work");
+    expect(source).toContain('value === PermissionKey.EDIT_WORK_REQUEST');
+    expect(source).toContain("แก้ไขข้อมูลผู้แจ้ง หมวด โซน เครื่องจักร ปัญหา และความเร่งด่วนจากหน้า All Work");
     expect(source).toContain("md:grid-cols-2 xl:grid-cols-3");
     expect(source).toContain("<fieldset");
   });

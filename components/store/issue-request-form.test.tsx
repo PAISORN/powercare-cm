@@ -205,6 +205,12 @@ describe("IssueRequestForm", () => {
       "store-main:bearing",
       "store-elec:cable",
     ]);
+    const firstLine = firstSearch.closest("article");
+    const secondLine = secondSearch.closest("article");
+    expect(firstLine?.parentElement).toBe(secondLine?.parentElement);
+    expect(firstLine?.parentElement?.className).toContain("rounded-2xl border");
+    expect(firstLine?.className).toContain("border-b");
+    expect(firstLine?.className).not.toContain("rounded-2xl");
   });
 
   it("supports keyboard search and selection in each stock autocomplete", () => {

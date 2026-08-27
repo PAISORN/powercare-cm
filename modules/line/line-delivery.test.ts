@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { createLineDeliveryService, type LineDeliveryRecord, type LineDeliveryRepository } from "./line-delivery";
+import { createLineDeliveryService, safeLineDeliveryError, type LineDeliveryRecord, type LineDeliveryRepository } from "./line-delivery";
 
 function repository(initial?: Partial<LineDeliveryRecord>) {
   const record: LineDeliveryRecord = {
@@ -118,5 +118,19 @@ describe("LINE delivery lifecycle", () => {
 
     await expect(service.retry("delivery-1", "group-id")).rejects.toThrow("LINE delivery retry limit reached");
     expect(client.pushText).not.toHaveBeenCalled();
+  });
+
+  it("keeps actionable LINE HTTP status without leaking arbitrary error text", () => {
+    expect(safeLineDeliveryError(new Error("LINE push failed with status 401"))).toBe("LINE API rejected the request (HTTP 401)");
+    expect(safeLineDeliveryError(new Error("secret-token network failure"))).toBe("LINE delivery failed");
+    expect(safeLineDeliveryError(new Error("request timeout"))).toBe("LINE API request timed out");
+  });
+
+  it("rejects a failed manual retry so the UI does not report success", async () => {
+    const repo = repository({ status: "FAILED", attempts: 1 });
+    const client = { pushText: vi.fn().mockRejectedValue(new Error("LINE push failed with status 403")) };
+    const service = createLineDeliveryService({ repository: repo.adapter, client });
+    await expect(service.retry("delivery-1", "group-id")).rejects.toThrow("LINE push failed with status 403");
+    expect(repo.adapter.markFailed).toHaveBeenCalledWith("delivery-1", 2, "LINE API rejected the request (HTTP 403)");
   });
 });

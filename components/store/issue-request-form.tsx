@@ -473,11 +473,11 @@ export function IssueRequestForm({
           </details>
 
           <div className="max-w-full pt-3">
-            <div className="grid w-full gap-3 overflow-visible">
+            <div className="w-full overflow-visible rounded-2xl border border-[var(--line)] bg-[var(--surface)]">
               {lines.map((line, index) => {
                 const stock = stockForKey(stocks, line.stockKey);
                 return (
-                  <article className="relative grid grid-cols-12 gap-x-2 gap-y-4 rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-4 shadow-[var(--shadow)] transition hover:border-[var(--primary)]/30 hover:shadow-lg sm:gap-x-3 sm:p-5" key={line.id}>
+                  <article className="relative grid grid-cols-12 gap-x-2 gap-y-4 border-b border-[var(--line)] p-4 transition last:border-b-0 hover:bg-[var(--soft)]/60 sm:gap-x-3 sm:p-5" key={line.id}>
                     <label className={`${labelClass} col-span-12`}>
                       <span className="flex h-5 items-center gap-3 text-xs text-[var(--muted)]">
                         <strong className="text-base font-black leading-none text-[var(--primary)]">{String(index + 1).padStart(2, "0")}</strong>
