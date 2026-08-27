@@ -107,6 +107,13 @@ export function ExclusiveDetails({ children, onToggle, ...props }: DetailsHTMLAt
               data-exclusive-floating-menu
               ref={menuRef}
               className="fixed z-[200]"
+              onPointerDownCapture={(event) => {
+                const target = event.target;
+                if (!(target instanceof Element) || !target.closest("a,button")) return;
+
+                if (detailsRef.current) detailsRef.current.open = false;
+                setOpen(false);
+              }}
               style={menuStyle}
             >
               {menu}

@@ -87,4 +87,23 @@ describe("ExclusiveDetails", () => {
     expect(details.open).toBe(false);
     expect(document.querySelector("[data-exclusive-floating-menu]")).toBeNull();
   });
+
+  it("closes immediately when an action inside the floating menu is pressed", () => {
+    const { getByText } = render(
+      <ExclusiveDetails>
+        <summary>Actions</summary>
+        <a href="?editPartId=part-1">Edit</a>
+      </ExclusiveDetails>,
+    );
+    const details = getByText("Actions").closest("details");
+    if (!details) throw new Error("Expected details element");
+
+    details.open = true;
+    fireEvent(details, new Event("toggle"));
+    expect(details.open).toBe(true);
+
+    fireEvent.pointerDown(getByText("Edit"));
+    expect(details.open).toBe(false);
+    expect(document.querySelector("[data-exclusive-floating-menu]")).toBeNull();
+  });
 });
