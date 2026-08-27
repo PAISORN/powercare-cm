@@ -1,6 +1,6 @@
 "use client";
 
-import { ClipboardList, Home, Plus, Store, UserRound, Wrench } from "lucide-react";
+import { Home, Plus, Store, UserRound, Wrench } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -9,10 +9,7 @@ export function MobilePrimaryNav({ elevated = false, homeHref = "/dashboardcm" }
   const alternateDashboard = homeHref === "/dashboardstore"
     ? { href: "/dashboardcm", label: "CM", Icon: Wrench }
     : { href: "/dashboardstore", label: "Store", Icon: Store };
-  const leftItems = [
-    { href: homeHref, label: "Dashboard", Icon: Home },
-    { href: "/activities", label: "งาน", Icon: ClipboardList },
-  ];
+  const leftItems = [{ href: homeHref, label: "Dashboard", Icon: Home }];
   const rightItems = [alternateDashboard, { href: "/profile", label: "โปรไฟล์", Icon: UserRound }];
   const createActive = pathname === "/request" || pathname.startsWith("/request/");
 
@@ -27,6 +24,7 @@ export function MobilePrimaryNav({ elevated = false, homeHref = "/dashboardcm" }
 
       <div className="relative z-10 mx-auto grid max-w-lg grid-cols-[1fr_1fr_4.5rem_1fr_1fr] items-end">
         {leftItems.map((item) => <MobileNavItem active={isActive(pathname, item.href, homeHref)} key={item.href} {...item} />)}
+        <div aria-hidden="true" className="min-h-14" />
 
         <div className="relative min-h-14" aria-hidden="true" />
         <Link
