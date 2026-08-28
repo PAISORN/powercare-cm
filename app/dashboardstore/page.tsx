@@ -116,7 +116,7 @@ export default async function StoreDashboardPage({ searchParams }: { searchParam
 
   return (
     <AppShell>
-      <main className="w-full min-w-0 space-y-5 pb-4">
+      <main className="dashboard-glass-scope w-full min-w-0 space-y-5 pb-4">
         <header className="menu-heading-plain px-1 py-2">
           <div className="flex flex-wrap items-end justify-between gap-4">
             <div>
@@ -128,7 +128,7 @@ export default async function StoreDashboardPage({ searchParams }: { searchParam
           </div>
         </header>
 
-        {(scope.canSelectOrganization || scope.canSelectPlant) ? <AdminSiteScopeSelector action="/dashboardstore" scope={scope} title="ขอบเขตคลังสินค้า" description="เลือก Organization และ Site ที่ต้องการดู Dashboard" /> : null}
+        {(scope.canSelectOrganization || scope.canSelectPlant) ? <div className="dashboard-glass-host"><AdminSiteScopeSelector action="/dashboardstore" scope={scope} title="ขอบเขตคลังสินค้า" description="เลือก Organization และ Site ที่ต้องการดู Dashboard" /></div> : null}
         <StoreDashboardFilter activeDateFilter={activeDateFilter} organizationId={scope.organization.id} plantId={scope.plant.id} />
 
         <section aria-label="สรุปข้อมูลคลังสินค้า" className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5">
@@ -203,7 +203,7 @@ function MetricCard({ detail, href, icon, label, tone, value }: { detail: string
 }
 
 function DashboardPanel({ action, children, eyebrow, title }: { action?: { href: string; label: string }; children: React.ReactNode; eyebrow: string; title: string }) {
-  return <section className="min-w-0 rounded-3xl border border-[var(--line)] bg-[var(--surface)] p-5 shadow-sm"><div className="mb-4 flex items-start justify-between gap-3"><div className="min-w-0"><p className="text-xs font-extrabold uppercase tracking-[0.12em] text-[var(--primary)]">{eyebrow}</p><h2 className="mt-1 text-lg font-black sm:text-xl">{title}</h2></div>{action ? <Link className="inline-flex shrink-0 cursor-pointer items-center gap-1 whitespace-nowrap text-sm font-extrabold text-[var(--primary)] hover:underline" href={action.href}>{action.label}<ArrowRight size={15} /></Link> : null}</div>{children}</section>;
+  return <section className="dashboard-panel min-w-0 rounded-3xl border border-[var(--line)] bg-[var(--surface)] p-5 shadow-sm"><div className="mb-4 flex items-start justify-between gap-3"><div className="min-w-0"><p className="text-xs font-extrabold uppercase tracking-[0.12em] text-[var(--primary)]">{eyebrow}</p><h2 className="mt-1 text-lg font-black sm:text-xl">{title}</h2></div>{action ? <Link className="inline-flex shrink-0 cursor-pointer items-center gap-1 whitespace-nowrap text-sm font-extrabold text-[var(--primary)] hover:underline" href={action.href}>{action.label}<ArrowRight size={15} /></Link> : null}</div>{children}</section>;
 }
 
 function LowStockRow({ stock }: { stock: { id: string; quantity: { toString(): string }; store: { name: string }; sparePart: { code: string; name: string; unit: string; minStock: { toString(): string } } } }) {

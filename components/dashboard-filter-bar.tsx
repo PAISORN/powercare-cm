@@ -39,7 +39,7 @@ export function DashboardFilterBar({
   }
 
   return (
-    <form className="rounded-3xl border border-[var(--line)] bg-[var(--surface)] p-4 shadow-[var(--shadow)]" data-testid="dashboard-filter-bar" method="get" onSubmit={applyFilters}>
+    <form className="dashboard-glass-card rounded-3xl border border-[var(--line)] bg-[var(--surface)] p-4 shadow-[var(--shadow)]" data-testid="dashboard-filter-bar" method="get" onSubmit={applyFilters}>
       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-[1.1fr_1.4fr_auto_auto] xl:items-end">
         <SelectField label="Work Category" name="category" value={activeCategory ?? ""} options={categoryOptions} />
         <CmDateFilterBar defaultMode={activeDateFilter?.mode} defaultDate={activeDateFilter?.date} defaultStartDate={activeDateFilter?.startDate} defaultEndDate={activeDateFilter?.endDate} defaultMonth={activeDateFilter?.month} defaultYear={activeDateFilter?.year} initiallyUnset={!activeDateFilter} />

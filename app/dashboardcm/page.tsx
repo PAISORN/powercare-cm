@@ -135,6 +135,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
 
   return (
     <AppShell>
+      <div className="dashboard-glass-scope contents">
       <section className="menu-heading-plain cm-hero dashboard-hero relative overflow-hidden rounded-3xl px-6 py-7 text-white shadow-[var(--shadow)]">
         <div className="plant-skyline" aria-hidden="true">
           <span />
@@ -281,6 +282,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         <MiniPanel label="Average Close Time" value={`${summary.avgCloseDays}d`} note="จากงานที่ปิดแล้ว" color="#14b8a6" />
         <MiniPanel label="Waiting Close" value={String(waitingCloseCount)} note="พร้อมตรวจรับ/ปิดงาน" color="#ef4444" />
       </section>
+    </div>
     </AppShell>
   );
 }
@@ -794,7 +796,7 @@ function ZoneBar({ row, color }: { row: ChartRow; color: string }) {
 
 function MiniPanel({ label, value, note, color }: { label: string; value: string; note: string; color: string }) {
   return (
-    <section className="rounded-3xl border border-[var(--line)] bg-[var(--surface)] p-5 shadow-[var(--shadow)]">
+    <section className="dashboard-glass-card rounded-3xl border border-[var(--line)] bg-[var(--surface)] p-5 shadow-[var(--shadow)]">
       <div className="flex items-center justify-between gap-3">
         <p className="font-bold">{label}</p>
         <Gauge size={20} style={{ color }} />

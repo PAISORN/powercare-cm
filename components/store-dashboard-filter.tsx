@@ -15,7 +15,7 @@ export function StoreDashboardFilter({
   const clearHref = `/dashboardstore?organizationId=${encodeURIComponent(organizationId)}&plantId=${encodeURIComponent(plantId)}`;
 
   return (
-    <form className="rounded-3xl border border-[var(--line)] bg-[var(--surface)] p-4 shadow-[var(--shadow)]" method="get">
+    <form className="dashboard-glass-card rounded-3xl border border-[var(--line)] bg-[var(--surface)] p-4 shadow-[var(--shadow)]" method="get">
       <input name="organizationId" type="hidden" value={organizationId} />
       <input name="plantId" type="hidden" value={plantId} />
       <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:items-end">

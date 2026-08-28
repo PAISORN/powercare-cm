@@ -41,7 +41,7 @@ describe("Store Dashboard", () => {
     const filter = readFileSync("components/store-dashboard-filter.tsx", "utf8");
     const charts = readFileSync("components/store-dashboard-charts.tsx", "utf8");
 
-    expect(page).toContain('className="w-full min-w-0 space-y-5 pb-4"');
+    expect(page).toContain('className="dashboard-glass-scope w-full min-w-0 space-y-5 pb-4"');
     expect(page).not.toContain("max-w-[1536px]");
     expect(page).toContain("min-w-0 rounded-3xl");
     expect(page).toContain("overflow-x-auto");

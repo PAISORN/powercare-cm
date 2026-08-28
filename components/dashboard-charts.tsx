@@ -14,7 +14,7 @@ type MonthlyTrendChartProps = {
 
 export function HorizontalBarChart({ title, rows }: HorizontalBarChartProps) {
   return (
-    <section className="rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-5 shadow-[var(--shadow)]" aria-label={title}>
+    <section className="dashboard-glass-card rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-5 shadow-[var(--shadow)]" aria-label={title}>
       <div className="flex items-end justify-between gap-3">
         <h2 className="text-xl font-semibold">{title}</h2>
         <span className="text-sm text-[var(--muted)]">{rows.reduce((sum, row) => sum + row.count, 0)} jobs</span>
@@ -46,7 +46,7 @@ export function MonthlyTrendChart({ title, rows, caption, square = false }: Mont
 
   return (
     <section
-      className={`rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-5 shadow-[var(--shadow)] ${square ? "aspect-square overflow-hidden" : ""}`}
+      className={`dashboard-glass-card rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-5 shadow-[var(--shadow)] ${square ? "aspect-square overflow-hidden" : ""}`}
       aria-label={title}
     >
       <div className="flex flex-wrap items-end justify-between gap-3">
