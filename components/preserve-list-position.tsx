@@ -13,6 +13,14 @@ type StoredListPosition = {
 const storagePrefix = "powercare:list-position:";
 const maxAgeMs = 30 * 60 * 1000;
 
+export function saveListPosition(storageKey: string, targetId: string) {
+  try {
+    const value: StoredListPosition = { scrollY: window.scrollY, targetId, savedAt: Date.now() };
+    window.sessionStorage.setItem(`${storagePrefix}${storageKey}`, JSON.stringify(value));
+  } catch {
+    // The row anchor remains a safe fallback when session storage is unavailable.
+  }
+}
 export function PreserveListPositionLink({
   storageKey,
   targetId,

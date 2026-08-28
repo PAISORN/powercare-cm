@@ -60,19 +60,11 @@ describe("AppShell mobile header", () => {
     expect(source).toContain("MoreVertical");
   });
 
-  it("keeps the mobile primary tabs above immersive Store forms", () => {
+  it("temporarily hides the complete mobile primary navigation and releases its reserved space", () => {
     const source = fs.readFileSync(path.join(process.cwd(), "components/app-shell.tsx"), "utf8");
-    const mobileNavSource = fs.readFileSync(path.join(process.cwd(), "components/mobile-primary-nav.tsx"), "utf8");
 
-    expect(source).toContain("<MobilePrimaryNav elevated={immersiveMobile}");
-    expect(mobileNavSource).toContain('elevated?"z-[250]":"z-50"');
-    expect(mobileNavSource).toContain('href="/request"');
-    expect(mobileNavSource).toContain('aria-label="แจ้งซ่อม"');
-    expect(mobileNavSource).toContain("grid-cols-[1fr_1fr_4.5rem_1fr_1fr]");
-    expect(mobileNavSource).toContain('homeHref === "/dashboardstore"');
-    expect(mobileNavSource).toContain("mobile-primary-nav-surface");
-    expect(mobileNavSource).toContain("C 201 1 206 9 206 20");
-    expect(mobileNavSource).toContain("A 44 44 0 0 0 294 20");
-    expect(mobileNavSource).toContain("top-3 grid size-16");
+    expect(source).not.toContain('from "./mobile-primary-nav"');
+    expect(source).not.toContain("<MobilePrimaryNav");
+    expect(source).not.toContain("pb-28");
   });
 });

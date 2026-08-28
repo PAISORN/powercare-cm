@@ -1,12 +1,14 @@
 import { redirect } from "next/navigation";
 import { CheckCircle2, XCircle } from "lucide-react";
 import { AdminStructureTabs } from "../../../components/admin-structure-tabs";
+import { AdminUserEditModal } from "../../../components/admin-user-edit-modal";
 import { AppShell } from "../../../components/app-shell";
 import { AutoSubmitSelect } from "../../../components/auto-submit-select";
 import { AdminUserRoleScopeController } from "../../../components/admin-user-role-scope-controller";
 import { DeleteUserDialog } from "../../../components/delete-user-dialog";
 import { ProfilePhotoPreview } from "../../../components/profile-photo-preview";
 import { UserAvatar } from "../../../components/user-avatar";
+import { RestoreListPosition } from "../../../components/preserve-list-position";
 import { db } from "../../../lib/db";
 import { deleteStoredFile, saveProfilePhotoFile, saveSignatureFile } from "../../../lib/file-storage";
 import { cacheTags, getActiveCategoriesForPlantScope, getActivePlantsForScope, revalidateCmData } from "../../../lib/query-cache";
@@ -35,6 +37,8 @@ import { readOrganizationScope } from "../../../modules/organization/organizatio
 import { DEFAULT_ORGANIZATION_ID } from "../../../modules/organization/organization-foundation";
 import { INVENTORY_ITEM_KINDS, normalizeInventoryScopeKinds } from "../../../modules/store/inventory-user-scope";
 import { canUseUserPermission, PermissionKey } from "../../../modules/auth/site-admin-permissions";
+
+const adminUsersListPositionKey = "admin-users:list";
 
 async function createUser(formData: FormData) {
   "use server";
@@ -144,6 +148,10 @@ async function updateUserProfile(formData: FormData) {
 
   const userId = String(formData.get("userId") ?? "");
   if (!userId || userId === current.id) redirect("/admin/users");
+  const requestedReturnTo = String(formData.get("returnTo") ?? "");
+  const returnTo = requestedReturnTo === "/admin/users" || requestedReturnTo.startsWith("/admin/users?")
+    ? requestedReturnTo
+    : "/admin/users";
 
   const before = await db.user.findUniqueOrThrow({ where: { id: userId }, include: { signature: true, profilePhoto: true, categories: true, inventoryScopes: true } });
   assertCanManageTargetUser(current, before);
@@ -285,7 +293,7 @@ async function updateUserProfile(formData: FormData) {
   }
 
   revalidateCmData([cacheTags.usersActive, cacheTags.dashboardSummary]);
-  redirect("/admin/users");
+  redirect(`${returnTo}#user-${encodeURIComponent(userId)}`);
 }
 
 async function deleteUser(formData: FormData) {
@@ -412,6 +420,11 @@ export default async function AdminUsersPage({
     : categories.map((category) => ({ ...category, organizationId: formOrganizationId, plantId: formPlantId ?? null }));
   const roleOptions = getRoleOptionsForUserManager(user.role);
   const defaultCreateUserRole = RoleName.TECHNICIAN;
+  const returnParams = new URLSearchParams();
+  if (selectedOrganizationId) returnParams.set("organizationId", selectedOrganizationId);
+  if (selectedRole) returnParams.set("role", selectedRole);
+  if (selectedPlantId) returnParams.set("plantId", selectedPlantId);
+  const adminUsersReturnHref = returnParams.size ? `/admin/users?${returnParams.toString()}` : "/admin/users";
   const userPermissions = {
     canCreate: canCreateManagedUser(user),
     canUpdate: canUpdateManagedUser(user),
@@ -426,6 +439,7 @@ export default async function AdminUsersPage({
 
   return (
     <AppShell>
+      <RestoreListPosition enabled storageKey={adminUsersListPositionKey} />
       <h1 className="text-3xl font-bold">Users</h1>
       <AdminStructureTabs activeTab="users" />
       <DuplicateUsernameNotice createStatus={createStatus} updateStatus={updateStatus} />
@@ -544,18 +558,21 @@ export default async function AdminUsersPage({
                 <span>Status: {item.active ? "Active" : "Inactive"}</span>
               </div>
             ) : userPermissions.canUpdate ? (
-              <details className="mt-4 overflow-hidden rounded-2xl bg-[var(--soft)] p-3">
-                <summary className="cursor-pointer select-none rounded-xl px-2 py-2 text-sm font-bold text-[var(--primary)] transition hover:bg-[var(--surface)]">
-                  ดูรายละเอียด / แก้ไข
-                </summary>
+              <AdminUserEditModal
+                fullName={item.fullName}
+                storageKey={adminUsersListPositionKey}
+                targetId={`user-${item.id}`}
+                username={item.username}
+              >
               <form
                 id={`edit-user-form-${item.id}`}
                 action={updateUserProfile}
                 aria-label={`Edit ${item.username}`}
-                className="mt-3 grid min-w-0 gap-4 overflow-hidden rounded-2xl bg-[var(--soft)] p-1"
+                className="grid min-w-0 gap-4"
               >
                 <AdminUserRoleScopeController formId={`edit-user-form-${item.id}`} organizationName={organizationName} />
                 <input name="userId" type="hidden" value={item.id} />
+                <input name="returnTo" type="hidden" value={adminUsersReturnHref} />
                 {user.role === RoleName.ADMIN ? (
                   <label className="grid gap-1 text-sm font-semibold" data-edit-user-organization-scope>
                     Organization
@@ -661,7 +678,7 @@ export default async function AdminUsersPage({
                   </button>
                 </div>
               </form>
-              </details>
+              </AdminUserEditModal>
             ) : (
               <div className="mt-4 grid gap-3 rounded-2xl bg-[var(--soft)] p-4 text-sm text-[var(--muted)] md:grid-cols-4">
                  <span>Role: {formatRoleName(item.role)}</span>

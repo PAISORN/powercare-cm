@@ -11,12 +11,11 @@ import { NotificationBell } from "./notification-bell";
 import { getUnreadCount, listRecentNotifications } from "../modules/notifications/notification-service";
 import { buildUserOperationalScope } from "../modules/organization/user-plant-scope";
 import { formatRoleName } from "../modules/users/role-labels";
-import { MobilePrimaryNav } from "./mobile-primary-nav";
 import { defaultHomeHref } from "../modules/auth/default-home-route";
 import { DashboardTypeNav } from "./dashboard-type-nav";
 import { ScrollLockRecovery } from "./scroll-lock-recovery";
 
-export async function AppShell({ children, immersiveMobile = false }: { children: React.ReactNode; immersiveMobile?: boolean }) {
+export async function AppShell({ children }: { children: React.ReactNode; immersiveMobile?: boolean }) {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
   const scope = buildUserOperationalScope(user);
@@ -45,7 +44,7 @@ export async function AppShell({ children, immersiveMobile = false }: { children
         version={user.profilePhoto?.updatedAt.getTime()}
       />
 
-      <main className="app-workspace min-h-screen p-5 pb-28 transition-[margin] duration-300 md:ml-[var(--app-sidebar-width,18rem)] md:p-8">
+      <main className="app-workspace min-h-screen p-5 transition-[margin] duration-300 md:ml-[var(--app-sidebar-width,18rem)] md:p-8">
         <div
           className="ops-topbar fixed z-40 grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 rounded-2xl border border-[var(--line)] bg-[var(--surface-raised)]/94 px-2.5 py-2.5 shadow-[var(--shadow)] backdrop-blur sm:gap-3 sm:px-3 md:rounded-3xl md:px-4 md:py-3"
           data-app-top-bar
@@ -88,7 +87,6 @@ export async function AppShell({ children, immersiveMobile = false }: { children
         <div aria-hidden="true" className="h-[4.75rem] md:h-[5.25rem]" data-app-top-bar-spacer />
         {children}
       </main>
-      <MobilePrimaryNav elevated={immersiveMobile} homeHref={homeHref} />
     </div>
   );
 }

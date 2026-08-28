@@ -65,13 +65,13 @@ describe("Admin users plant scope", () => {
     expect(source).toContain("RoleName.ORGANIZATION_ADMIN");
   });
 
-  it("uses compact reveal cards with clickable edit details for admin users", () => {
+  it("uses compact cards with modal edit details for admin users", () => {
     const source = readFileSync("app/admin/users/page.tsx", "utf8");
 
     expect(source).toContain('id={`user-${item.id}`}');
     expect(source).toContain("reveal-on-scroll");
-    expect(source).toContain("<details");
-    expect(source).toContain("<summary");
+    expect(source).toContain("<AdminUserEditModal");
+    expect(source).toContain('storageKey={adminUsersListPositionKey}');
     expect(source).toContain("rounded-3xl border border-[var(--line)] bg-[var(--surface)] p-5");
   });
 
