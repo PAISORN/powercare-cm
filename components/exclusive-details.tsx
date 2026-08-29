@@ -107,12 +107,16 @@ export function ExclusiveDetails({ children, onToggle, ...props }: DetailsHTMLAt
               data-exclusive-floating-menu
               ref={menuRef}
               className="fixed z-[200]"
-              onPointerDownCapture={(event) => {
+              onClickCapture={(event) => {
                 const target = event.target;
                 if (!(target instanceof Element) || !target.closest("a,button")) return;
 
-                if (detailsRef.current) detailsRef.current.open = false;
-                setOpen(false);
+                // Let the link navigation or form submission finish its click
+                // before unmounting the portalled menu.
+                window.setTimeout(() => {
+                  if (detailsRef.current) detailsRef.current.open = false;
+                  setOpen(false);
+                }, 0);
               }}
               style={menuStyle}
             >

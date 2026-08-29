@@ -88,11 +88,12 @@ describe("ExclusiveDetails", () => {
     expect(document.querySelector("[data-exclusive-floating-menu]")).toBeNull();
   });
 
-  it("closes immediately when an action inside the floating menu is pressed", () => {
+  it("lets an action run before closing the floating menu", async () => {
+    const onClick = vi.fn();
     const { getByText } = render(
       <ExclusiveDetails>
         <summary>Actions</summary>
-        <a href="?editPartId=part-1">Edit</a>
+        <a href="?editPartId=part-1" onClick={(event) => { event.preventDefault(); onClick(); }}>Edit</a>
       </ExclusiveDetails>,
     );
     const details = getByText("Actions").closest("details");
@@ -102,8 +103,27 @@ describe("ExclusiveDetails", () => {
     fireEvent(details, new Event("toggle"));
     expect(details.open).toBe(true);
 
-    fireEvent.pointerDown(getByText("Edit"));
-    expect(details.open).toBe(false);
-    expect(document.querySelector("[data-exclusive-floating-menu]")).toBeNull();
+    fireEvent.click(getByText("Edit"));
+    expect(onClick).toHaveBeenCalledOnce();
+    await waitFor(() => {
+      expect(details.open).toBe(false);
+      expect(document.querySelector("[data-exclusive-floating-menu]")).toBeNull();
+    });
+  });
+
+  it("opens the floating menu when its summary is clicked", async () => {
+    const { getByText } = render(
+      <ExclusiveDetails>
+        <summary>Stock row actions</summary>
+        <a href="?editPartId=part-1">Edit stock</a>
+      </ExclusiveDetails>,
+    );
+
+    fireEvent.click(getByText("Stock row actions"));
+
+    await waitFor(() => {
+      expect(getByText("Stock row actions").closest("details")?.open).toBe(true);
+      expect(document.querySelector("[data-exclusive-floating-menu]")).not.toBeNull();
+    });
   });
 });
