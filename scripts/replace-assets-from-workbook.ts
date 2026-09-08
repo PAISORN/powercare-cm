@@ -191,6 +191,7 @@ async function replaceAssets(rows: PreparedRow[]) {
   const incomingIds = new Set(rows.map(row => row.id));
   for (const newAssetId of confirmedCmMapping.values()) if (!incomingIds.has(newAssetId)) throw new Error(`CM mapping target not found in workbook: ${newAssetId}`);
   return db.$transaction(async tx => {
+    if ((process.env.DATABASE_URL || "").startsWith("postgres")) await tx.$executeRawUnsafe(`LOCK TABLE "CmWork", "Asset" IN SHARE ROW EXCLUSIVE MODE`);
     const legacyCmLinks = await tx.cmWork.findMany({
       where: { asset: { plantId: plant.id } },
       select: { id: true, assetId: true, asset: { select: { code: true, nameTh: true, nameEn: true } } },
