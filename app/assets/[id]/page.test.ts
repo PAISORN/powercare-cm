@@ -37,4 +37,11 @@ describe("Asset image upload", () => {
     expect(source).toContain("db.asset.findFirst({where:{id,...accessScope}");
     expect(source).toContain("where:{assetId:asset.id,plantId:asset.plantId}");
   });
+
+  it("shows one technical-field name instead of joining Thai and English labels", () => {
+    const source = readFileSync("app/assets/[id]/page.tsx", "utf8");
+    expect(source).toContain("preferredName(field.labelTh,field.labelEn)");
+    expect(source).not.toContain('field.labelEn?` / ${field.labelEn}`');
+    expect(source).toContain('<InfoTable items={[...(asset.assetType?.fields.map');
+  });
 });

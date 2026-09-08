@@ -1,0 +1,22 @@
+﻿Type Code,Asset Type / Equipment,Example Asset Code,Notes
+BOL,Boiler,MC-BOL-001,
+TUB,Steam Turbine,MC-TUB-001,
+GEB,Gearbox,MC-GEB-001,Existing convention
+BFP,Boiler Feed Pump,MC-BFP-001,
+IDF,Induced Draft Fan,MC-IDF-001,
+PAF,Primary Air Fan,MC-PAF-001,
+SAF,Secondary Air Fan,MC-SAF-001,
+SPA,Spreader Air Fan,MC-SPA-001,
+CTW,Cooling Tower,MC-CTW-001,
+MCP,Main Cooling Pump,MC-MCP-001,
+CDP,Condensate Pump,MC-CDP-001,
+DET,Deaerator Storage Tank,MC-DET-001,
+FBC,Fuel Belt Conveyor,MC-FBC-001,
+BCY,Belt Conveyor,MC-BCY-001,
+ASC,Ash Screw Conveyor,MC-ASC-001,
+WAC,Wet Ash Chain Conveyor,MC-WAC-001,
+ARC,Rotary Air Lock,MC-ARC-5001,Legacy numbering retained
+UFU,UF Unit,MC-UFU-001,
+ROP,RO Unit,MC-ROP-001,
+EDI,EDI Unit,MC-EDI-001,
+EFP,EDI Feed Pump,MC-EFP-001,

@@ -1,0 +1,49 @@
+{
+  "hierarchy": [
+    "SITE",
+    "SYSTEM",
+    "MAIN_ASSET",
+    "SUB_ASSET",
+    "PART"
+  ],
+  "asset_levels": [
+    "MAIN_ASSET",
+    "SUB_ASSET",
+    "PART"
+  ],
+  "allowed_parents": {
+    "MAIN_ASSET": [
+      "SYSTEM"
+    ],
+    "SUB_ASSET": [
+      "MAIN_ASSET"
+    ],
+    "PART": [
+      "MAIN_ASSET",
+      "SUB_ASSET"
+    ]
+  },
+  "confirmed_counts": {
+    "Control Valve": 19,
+    "Pressure Regulating Valve": 3
+  },
+  "asset_name_forbidden_suffix_regex": "\\s+Z[0-9A-Za-z._-]+$",
+  "instrument_is_system": false,
+  "asset_code": {
+    "prefix": "MC",
+    "new_asset_regex": "^MC-[A-Z]{3}-\\d{3}$",
+    "format": "MC-{TYPE_CODE}-{RUNNING_3_DIGITS}",
+    "unique": true,
+    "preserve_existing_approved_codes": true,
+    "tag_kks_is_separate_field": true,
+    "legacy_exceptions": [
+      "MC-ARC-5001",
+      "MC-ARC-5002",
+      "MC-ARC-5003",
+      "MC-ARC-5004",
+      "MC-ARC-5005",
+      "MC-ARC-5006",
+      "MC-ARC-5007"
+    ]
+  }
+}

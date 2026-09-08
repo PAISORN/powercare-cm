@@ -152,6 +152,10 @@ export function canManageAssets(input: string | PermissionUserContext) {
   return canUse(input, PermissionKey.MANAGE_ASSETS, [RoleName.ADMIN, RoleName.ORGANIZATION_ADMIN, RoleName.SITE_ADMIN]);
 }
 
+export function canRecodeAssets(input: string | PermissionUserContext) {
+  return canUse(input, PermissionKey.RECODE_ASSETS, [RoleName.ADMIN]);
+}
+
 export function canManageAssetMasters(input: string | PermissionUserContext) {
   return canUse(input, PermissionKey.MANAGE_ASSET_MASTERS, [RoleName.ADMIN, RoleName.ORGANIZATION_ADMIN, RoleName.SITE_ADMIN]);
 }

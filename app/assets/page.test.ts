@@ -12,10 +12,11 @@ describe("Assets registry pagination", () => {
     expect(source).toContain("function pageUrl(query: Query, page: number)");
   });
 
-  it("counts parents in tree view and all Assets in list view", () => {
+  it("builds the new hierarchy from every Asset level while paginating matches", () => {
     const source = readFileSync("app/assets/page.tsx", "utf8");
     expect(source).toContain('const hierarchy = query.view !== "list"');
-    expect(source).toContain("hierarchy ? { ...where, parentId: null } : where");
+    expect(source).toContain("buildAssetHierarchy(treeAssets");
+    expect(source).toContain("รอตรวจสอบโครงสร้าง");
   });
 
   it("filters Assets by Asset Class while preserving the selection in the URL", () => {
@@ -39,7 +40,12 @@ describe("Assets registry pagination", () => {
   it("applies every dropdown filter immediately after selection", () => {
     const source = readFileSync("app/assets/page.tsx", "utf8");
     expect(source).toContain('import { AutoSubmitSelect } from "../../components/auto-submit-select"');
-    expect(source.match(/<AutoSubmitSelect/g)?.length).toBe(5);
+    expect(source.match(/<AutoSubmitSelect/g)?.length).toBe(10);
+    expect(source).toContain('<AutoSubmitSelect aria-label="System"');
+    expect(source).toContain('<AutoSubmitSelect aria-label="Asset Type"');
+    expect(source).toContain('<AutoSubmitSelect aria-label="Asset Level"');
+    expect(source).toContain('<AutoSubmitSelect aria-label="Discipline"');
+    expect(source).toContain('<AutoSubmitSelect aria-label="เรียงลำดับ"');
     expect(source).toContain('<AutoSubmitSelect aria-label="Asset Class"');
     expect(source).toContain('<AutoSubmitSelect aria-label="Asset Families"');
     expect(source).toContain('<AutoSubmitSelect aria-label="Zone"');

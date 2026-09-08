@@ -155,6 +155,8 @@ model Plant {
   sparePartIssues         SparePartIssue[]
   sparePartSequence       SparePartSequence?
   storeIssueSequences     StoreIssueSequence[]
+  assetSystems            AssetSystem[]
+  assetCodeSequences      AssetCodeSequence[]
   assetClasses            AssetClass[]
   assetTypes              AssetType[]
   assetFamilies           AssetFamily[]
@@ -1154,6 +1156,36 @@ model PublicFeedback {
   @@index([plantId, createdAt])
 }
 
+model AssetCodeSequence {
+  id         String   @id @default(cuid())
+  plantId    String
+  plant      Plant    @relation(fields: [plantId], references: [id], onDelete: Cascade)
+  typeCode   String
+  lastNumber Int      @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([plantId, typeCode])
+  @@index([plantId])
+}
+model AssetSystem {
+  id        String   @id @default(cuid())
+  plantId   String
+  plant     Plant    @relation(fields: [plantId], references: [id], onDelete: Cascade)
+  code      String
+  nameTh    String
+  nameEn    String?
+  active    Boolean  @default(true)
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  assets    Asset[]
+
+  @@unique([plantId, code])
+  @@unique([id, plantId])
+  @@index([plantId, active, sortOrder])
+}
+
 model AssetClass {
   id        String      @id @default(cuid())
   plantId   String
@@ -1176,6 +1208,8 @@ model AssetType {
   plant        Plant                 @relation(fields: [plantId], references: [id], onDelete: Cascade)
   assetClassId String
   assetClass   AssetClass            @relation(fields: [assetClassId], references: [id])
+  defaultLevel String?
+  discipline   String?
   code         String
   nameTh       String
   nameEn       String?
@@ -1242,19 +1276,28 @@ model AssetSequence {
 
 model Asset {
   id                   String                @id @default(cuid())
+  systemId             String?
+  system               AssetSystem?          @relation(fields: [systemId, plantId], references: [id, plantId], onDelete: Restrict)
+  assetLevel           String                @default("MAIN_ASSET")
+  discipline           String?
+  tagKks               String?
+  registrationCode     String?
+  keySpecification     String?
+  metadataJson         String?
+  migrationStatus      String                @default("NEED_REVIEW")
   publicToken          String                @unique @default(cuid())
   plantId              String
   plant                Plant                 @relation(fields: [plantId], references: [id], onDelete: Cascade)
-  familyId             String
-  family               AssetFamily           @relation(fields: [familyId], references: [id])
-  assetClassId         String
-  assetClass           AssetClass            @relation(fields: [assetClassId], references: [id])
+  familyId             String?
+  family               AssetFamily?          @relation(fields: [familyId], references: [id], onDelete: Restrict)
+  assetClassId         String?
+  assetClass           AssetClass?           @relation(fields: [assetClassId], references: [id], onDelete: Restrict)
   assetTypeId          String?
   assetType            AssetType?            @relation(fields: [assetTypeId], references: [id])
   zoneId               String?
   zone                 Zone?                 @relation(fields: [zoneId], references: [id], onDelete: SetNull)
   parentId             String?
-  parent               Asset?                @relation("AssetHierarchy", fields: [parentId], references: [id], onDelete: Restrict)
+  parent               Asset?                @relation("AssetHierarchy", fields: [parentId, plantId], references: [id, plantId], onDelete: Restrict)
   children             Asset[]               @relation("AssetHierarchy")
   code                 String?               @unique
   sequence             Int?
@@ -1293,6 +1336,10 @@ model Asset {
   @@index([zoneId])
   @@index([parentId])
   @@index([serialNormalized])
+  @@index([systemId])
+  @@index([tagKks])
+  @@index([plantId, assetLevel])
+  @@index([plantId, migrationStatus])
 }
 
 model AssetTechnicalValue {

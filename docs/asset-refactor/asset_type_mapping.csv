@@ -1,0 +1,13 @@
+﻿Old Value,New Asset Type,Note
+AC Motor,Motor,Normalize
+PUMP,Pump,Normalize
+GEAR,Gearbox,Normalize
+Gear Box,Gearbox,Normalize
+BELT CONVEYOR,Conveyor,Normalize
+Fuel Belt Conveyor,Conveyor,Normalize
+ROTARY AIR LOCK,Rotary Air Lock,Normalize
+TANK,Tank,Normalize
+Boiler & Combustion,,System name; infer real type
+Water Treatment,,System name; infer real type
+Fire Protection,,System name; infer real type
+Fuel Preparation,,Category/System; infer real type

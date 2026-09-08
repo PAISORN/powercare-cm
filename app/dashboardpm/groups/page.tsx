@@ -82,7 +82,7 @@ export default async function PmGroupsPage({ searchParams }: { searchParams: Pro
   const [groups, assets] = await Promise.all([listPmGroups(user, serviceScope), listEligiblePmGroupAssets(user, serviceScope)]);
   const options: PmGroupAssetOption[] = assets.map((asset) => ({
     id: asset.id, code: asset.code, nameTh: asset.nameTh, nameEn: asset.nameEn,
-    typeName: asset.assetType?.nameTh ?? asset.assetClass.nameTh,
+    typeName: asset.assetType?.nameTh ?? asset.assetClass?.nameTh ?? "ไม่ระบุประเภท",
     zoneName: asset.zone?.name ?? null, operatingStatus: asset.operatingStatus,
   }));
   const eligibleAssetIds = new Set(options.map((asset) => asset.id));
@@ -118,7 +118,7 @@ export default async function PmGroupsPage({ searchParams }: { searchParams: Pro
                     code: asset.code,
                     nameTh: asset.nameTh,
                     nameEn: asset.nameEn,
-                    typeName: asset.assetType?.nameTh ?? asset.assetClass.nameTh,
+                    typeName: asset.assetType?.nameTh ?? asset.assetClass?.nameTh ?? "ไม่ระบุประเภท",
                     zoneName: asset.zone?.name ?? null,
                     operatingStatus: asset.operatingStatus,
                   }))}

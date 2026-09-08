@@ -300,8 +300,12 @@ _Avoid_: approval stamp, initials
 A role-bound user record that stores identity details and a signature for roles that appear on CM completion documents.
 _Avoid_: account page, personal settings
 
+**System**:
+A Site-defined process or functional system that an Asset serves, such as Condensate & Feedwater or Boiler & Combustion. It is distinct from the physical Area/Zone and from Asset Type, which identifies what the equipment is.
+_Avoid_: Area/Zone, Asset Type, PM Group
+
 **Zone**:
-A Site-defined plant system, area, or operational location used consistently to classify Assets, repair requests, and CM Work.
+A Site-defined physical area or installation location, also called Area/Zone. It describes where an Asset is installed, independently from the process System the Asset serves.
 _Avoid_: PM Group, Asset System, Site, maintenance Category
 
 **PM Group**:
@@ -428,16 +432,24 @@ _Avoid_: device, asset, equipment
 A uniquely coded maintainable item registered within one Site and available for future CM and PM linkage. An Asset may represent either a complete machine set or an independently maintained component.
 _Avoid_: free-text machine name, inventory item, spare part
 
+**Main Asset**:
+An Asset representing a real machine set, such as a Boiler Feed Pump set, or a standalone machine. A standalone machine does not require an extra enclosing set, and a machine set may be registered before its components are recorded.
+_Avoid_: artificial container, folder, PM Group
+
+**Sub-Asset**:
+An independently maintained item beneath one Main Asset, such as the Pump or Motor in a Boiler Feed Pump set. It has its own Asset identity and maintenance history.
+_Avoid_: technical field, asset attachment, inventory item
+
 **Parent Asset**:
-An Asset representing a complete machine set that may stand alone when its components have not been registered, such as a Boiler Feed Pump set.
-_Avoid_: asset group, code-only container, folder
+The Asset immediately above another Asset in the equipment hierarchy. Parent describes a relationship, not an Asset Level.
+_Avoid_: synonym for Main Asset, folder, PM Group
 
 **Child Asset**:
-An independently maintained component registered beneath one Parent Asset, such as the Pump or Motor in a Boiler Feed Pump set.
-_Avoid_: spare part, technical field, asset attachment
+An Asset immediately beneath another Asset in the equipment hierarchy. Child describes a relationship, not an Asset Level.
+_Avoid_: synonym for Sub-Asset, technical field, asset attachment
 
 **Asset Code**:
-A unique, permanent human-readable identifier composed from the Site, Asset Family, optional Child Asset component, and a system-generated sequence. Zone classifies the Asset's system or location but never forms part of this code.
+A unique, permanent human-readable identifier composed from the Site, Asset Family, optional Child Asset component, and a system-generated sequence. Zone identifies the Asset's physical area or installation location but never forms part of this code.
 _Avoid_: serial number, QR payload, location code
 
 **Site Code Segment**:
@@ -473,7 +485,7 @@ A broad Site-defined grouping for managing different kinds of Assets, such as He
 _Avoid_: maintenance Category, Asset Type, technical template
 
 **Asset Type**:
-A technical kind of Asset, such as Pump, Motor, Transformer, or VFD, that owns a Type Code and an Asset Type Template.
+A technical kind of Asset that owns a Type Code and an Asset Type Template. A real machine set has a distinct type, such as Pump Set, from its individual equipment types, such as Pump or Motor; set types describe machine sets actually used at the Site.
 _Avoid_: Asset Class, maintenance Category, machine name
 
 **Asset Family**:
