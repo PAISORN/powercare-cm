@@ -9,13 +9,16 @@ def lit(v,boolean=False):
     if isinstance(v,(int,float)):return str(v)
     return "'"+str(v).replace("'","''")+"'"
 def ident(s):return '"'+s.replace('"','""')+'"'
+def pg_lit(col,v,boolean=False):
+    if col in {"createdAt","updatedAt"} and isinstance(v,(int,float)):return f"to_timestamp({v}/1000.0)::timestamp"
+    return lit(v,boolean)
 def query(sql,args=()):return [dict(r) for r in c.execute(sql,args)]
 def scoped(table):return query(f'SELECT * FROM {ident(table)} WHERE "plantId"=?',(LOCAL_PLANT,))
 def insert_many(table,data,bools=set(),transforms=None):
     if not data:return ""
     cols=list(data[0]); values=[]
     for row in data:
-        values.append("("+",".join((transforms[col](row) if transforms and col in transforms else lit(row[col],col in bools)) for col in cols)+")")
+        values.append("("+",".join((transforms[col](row) if transforms and col in transforms else pg_lit(col,row[col],col in bools)) for col in cols)+")")
     return f'INSERT INTO {ident(table)} ({",".join(map(ident,cols))}) VALUES\n'+",\n".join(values)+";\n"
 mapping=list(csv.DictReader(open("prisma/data/production-cm-asset-mapping.csv",encoding="utf-8-sig")))
 assets=scoped("Asset"); classes=scoped("AssetClass"); types=scoped("AssetType"); systems=scoped("AssetSystem"); sequences=scoped("AssetCodeSequence")
@@ -57,7 +60,7 @@ for a in assets:
         elif col=="parentId":row.append("NULL")
         elif col=="zoneId":
             name=zone_by_id.get(a[col]); row.append("NULL" if not name else f'(SELECT "id" FROM "Zone" WHERE "plantId"={lit(PROD_PLANT)} AND "name"={lit(name)})')
-        else:row.append(lit(a[col]))
+        else:row.append(pg_lit(col,a[col]))
     vals.append("("+",".join(row)+")")
     if a["parentId"]:parent_updates.append(f'UPDATE "Asset" SET "parentId"={lit(a["parentId"])} WHERE "id"={lit(a["id"])};')
 s.append(f'INSERT INTO "Asset" ({",".join(map(ident,cols))}) VALUES\n'+",\n".join(vals)+";\n"+"\n".join(parent_updates)+"\n")
@@ -75,3 +78,5 @@ COMMIT;
 """)
 OUT.write_text("".join(s),encoding="utf-8",newline="\n")
 print({"path":str(OUT),"bytes":OUT.stat().st_size,"assets":len(assets),"classes":len(classes),"zones":len(zone_names),"mappings":len(mapping)})
+
+
