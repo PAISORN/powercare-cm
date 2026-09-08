@@ -1,7 +1,7 @@
 BEGIN;
 SET LOCAL lock_timeout = '30s';
 SET LOCAL statement_timeout = '10min';
-LOCK TABLE "CmWork", "Asset" IN SHARE ROW EXCLUSIVE MODE;
+LOCK TABLE "CmWork", "PmWork", "PmGroupAsset", "Asset" IN SHARE ROW EXCLUSIVE MODE;
 CREATE TABLE asset_refactor_backup_20260908."Asset_at_replace" AS TABLE public."Asset";
 CREATE TABLE asset_refactor_backup_20260908."CmWork_at_replace" AS TABLE public."CmWork";
 CREATE TEMP TABLE "_cm_asset_map" ("oldAssetId" TEXT PRIMARY KEY, "newAssetId" TEXT NOT NULL);
@@ -30,14 +30,10 @@ INSERT INTO "_cm_asset_map" ("oldAssetId","newAssetId") VALUES
 ('cmss3izgb005dauyt5s4osxsk','AST-000625');
 DO $$ BEGIN
 IF EXISTS (SELECT 1 FROM "CmWork" c JOIN "Asset" a ON a."id"=c."assetId" WHERE a."plantId"='primary-plant' AND NOT EXISTS (SELECT 1 FROM "_cm_asset_map" m WHERE m."oldAssetId"=a."id")) THEN RAISE EXCEPTION 'Linked CM Asset is missing from confirmed mapping'; END IF;
+IF EXISTS (SELECT 1 FROM "PmWork" w JOIN "Asset" a ON a."id"=w."assetId" AND a."plantId"=w."plantId" WHERE a."plantId"='primary-plant') OR EXISTS (SELECT 1 FROM "PmGroupAsset" g JOIN "Asset" a ON a."id"=g."assetId" AND a."plantId"=g."plantId" WHERE a."plantId"='primary-plant') THEN RAISE EXCEPTION 'PM Asset dependency appeared after preflight; preserving PM history requires abort'; END IF;
 END $$;
 CREATE TEMP TABLE "_cm_work_remap" AS SELECT c."id" "cmWorkId",m."newAssetId" FROM "CmWork" c JOIN "Asset" a ON a."id"=c."assetId" JOIN "_cm_asset_map" m ON m."oldAssetId"=a."id" WHERE a."plantId"='primary-plant';
 UPDATE "CmWork" c SET "assetCodeSnapshot"=a."code","assetNameSnapshot"=COALESCE(a."nameTh",a."nameEn"),"assetId"=NULL FROM "Asset" a WHERE c."assetId"=a."id" AND a."plantId"='primary-plant';
-DELETE FROM "PmGroupAsset" WHERE "plantId"='primary-plant';
-UPDATE "CmWork" SET "originatingPmWorkId"=NULL WHERE "originatingPmWorkId" IN (SELECT "id" FROM "PmWork" WHERE "plantId"='primary-plant');
-DELETE FROM "PmWorkAssignee" WHERE "pmWorkId" IN (SELECT "id" FROM "PmWork" WHERE "plantId"='primary-plant');
-DELETE FROM "PmWorkSourceGroup" WHERE "pmWorkId" IN (SELECT "id" FROM "PmWork" WHERE "plantId"='primary-plant');
-DELETE FROM "PmWork" WHERE "plantId"='primary-plant';
 UPDATE "Asset" SET "parentId"=NULL WHERE "plantId"='primary-plant';
 DELETE FROM "AssetTechnicalValue" v USING "Asset" a WHERE v."assetId"=a."id" AND a."plantId"='primary-plant';
 DELETE FROM "AssetDocument" d USING "Asset" a WHERE d."assetId"=a."id" AND a."plantId"='primary-plant';
