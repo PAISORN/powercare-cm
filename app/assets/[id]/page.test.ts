@@ -38,10 +38,13 @@ describe("Asset image upload", () => {
     expect(source).toContain("where:{assetId:asset.id,plantId:asset.plantId}");
   });
 
-  it("shows one technical-field name instead of joining Thai and English labels", () => {
+  it("shows only the 15 R8 headings in the Asset identity table", () => {
     const source = readFileSync("app/assets/[id]/page.tsx", "utf8");
-    expect(source).toContain("preferredName(field.labelTh,field.labelEn)");
-    expect(source).not.toContain('field.labelEn?` / ${field.labelEn}`');
-    expect(source).toContain('<InfoTable items={[...(asset.assetType?.fields.map');
+    const headings = ["SYSTEM", "MAIN ASSET", "SUB-ASSET", "PART-ASSET", "CODE ASSET", "ASSET LEVEL", "AREA / ZONE", "ASSET TYPE", "DISCIPLINE", "CRITICALITY", "MANUFACTURER", "MODEL / TYPE", "SERIAL NO.", "STATUS", "KEY SPECIFICATION"];
+    for (const heading of headings) expect(source).toContain('["' + heading + '",');
+    for (const removed of ["Parent Asset", "Tag / KKS", "Registration Code", "Asset Class (legacy)", "Asset Family (legacy)", "Migration Status", "วันที่ติดตั้ง", "วันที่เริ่มใช้งาน", "ข้อมูลทางเทคนิค"]) expect(source).not.toContain(removed);
+    expect(source).toContain("resolveAssetR8Names(asset)");
+    expect(source).toContain("parent:{include:{family:true,assetClass:true,assetType:true,parent:true}}");
+    expect(source).toContain("<InfoTable items={r8InfoItems}/>");
   });
 });
