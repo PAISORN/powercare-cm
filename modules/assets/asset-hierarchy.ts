@@ -10,8 +10,8 @@ export function isSystemAssetType(value: string): boolean { return systemNames.h
 export function isInstrumentType(value: string): boolean { return instruments.has(normalizeAssetTypeName(value).toLowerCase()); }
 export function isValveType(value: string): boolean { return /\bvalve$/i.test(value.trim()); }
 export function defaultAssetLevelForType(value: string): AssetLevel { const name = normalizeAssetTypeName(value); return isInstrumentType(name) || isValveType(name) || parts.has(name.toLowerCase()) ? AssetLevel.PART : ["motor", "gearbox"].includes(name.toLowerCase()) ? AssetLevel.SUB_ASSET : AssetLevel.MAIN_ASSET; }
-export function cleanAssetName(value: string): string { return value.trim().replace(/\s+Z[0-9A-Za-z._-]+$/, ""); }
-export function isValidAssetSystemName(value: string): boolean { return !!value.trim() && !/^instrument(?:\s+system)?$/i.test(value.trim()); }
+export function cleanAssetName(value: string): string { return value.trim(); }
+export function isValidAssetSystemName(value: string): boolean { return !!value.trim(); }
 export interface AssetHierarchyNode {
   id: string; plantId: string; systemId: string | null; parentId: string | null; assetLevel: string;
   nameTh?: string; nameEn?: string | null; assetTypeName?: string | null; discipline?: string | null; migrationStatus?: string;
@@ -22,13 +22,10 @@ export function validateAssetHierarchy(input: AssetHierarchyNode, nodes: readonl
   const graph = new Map(nodes.map(n => [n.id, n])); graph.set(input.id, input);
   if (!ASSET_LEVELS.includes(input.assetLevel as AssetLevel)) errors.add("INVALID_LEVEL");
   if (!input.systemId) errors.add("SYSTEM_REQUIRED");
-  for (const name of [input.nameTh, input.nameEn]) if (name && /\s+Z[0-9A-Za-z._-]+$/.test(name.trim())) errors.add("ZONE_SUFFIX");
   if (input.assetTypeName && isSystemAssetType(input.assetTypeName)) errors.add("INVALID_ASSET_TYPE");
-  if ((isInstrumentType(input.assetTypeName ?? "") || input.discipline?.toLowerCase() === "instrument") && input.assetLevel !== AssetLevel.PART) errors.add("INSTRUMENT_MUST_BE_PART");
-  if (isValveType(input.assetTypeName ?? "") && input.assetLevel !== AssetLevel.PART) errors.add("VALVE_MUST_BE_PART");
   function checkEdge(node: AssetHierarchyNode) {
     if (node.assetLevel === AssetLevel.MAIN_ASSET) { if (node.parentId) errors.add("INVALID_PARENT_LEVEL"); }
-    else if (!node.parentId) errors.add("PARENT_REQUIRED");
+    else if (node.assetLevel === AssetLevel.SUB_ASSET && !node.parentId) errors.add("PARENT_REQUIRED");
     if (!node.parentId) return;
     const parent = graph.get(node.parentId);
     if (!parent) { errors.add("PARENT_NOT_FOUND"); return; }

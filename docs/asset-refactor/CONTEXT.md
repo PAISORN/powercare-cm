@@ -1,67 +1,50 @@
-# PowerCare Asset Hierarchy Refactor — Context
+# PowerCare Asset R8 — Context
 
 ## เป้าหมาย
-ปรับโมดูล Asset ให้ค้นหาประวัติ, PM, CM และข้อมูลเครื่องจักรง่าย โดยแยกความหมายของ System, Area/Zone, Asset Type และ Asset Level ให้ชัดเจน
+ใช้ `prisma/data/assets-rungtiva-sol-r8.xlsx` เป็น Asset master ชุดใหม่แทนข้อมูลเดิมทั้งหมด โดยเก็บประวัติ CM และ PM ผ่าน controlled migration เท่านั้น
 
-## โครงสร้างหลัก
+## โครงสร้าง Tree
+
+```text
 Site
 └── System
-    └── Main Asset
-        └── Sub-Asset
-            └── Part
+    ├── Main Asset
+    │   ├── Sub-Asset
+    │   │   └── Part
+    │   └── Part
+    └── Part
+```
 
-Area / Zone ไม่ใช่ระดับใน Tree แต่เป็นข้อมูลตำแหน่ง
+Area / Zone เป็นข้อมูลตำแหน่ง ไม่ใช่ระดับใน Tree
 
-## คำจำกัดความ
-- System = ระบบกระบวนการ เช่น Boiler & Combustion, Steam Turbine, Fuel Handling
-- Main Asset = เครื่องจักรหลักที่ควรมีประวัติแยก
-- Sub-Asset = อุปกรณ์สำคัญใต้ Main Asset เช่น Motor, Gearbox
-- Part = ชิ้นส่วน/อุปกรณ์ย่อย เช่น Bearing, Coupling, Valve, Instrument
-- Asset Type = ชนิดอุปกรณ์จริง เช่น Pump, Fan, Motor, Gearbox
-- Discipline = Mechanical / Electrical / Instrument / Control ฯลฯ
+## การตัดสินใจที่ล็อกแล้วสำหรับ R8
 
-## การตัดสินใจที่ล็อกแล้ว
-1. System ห้ามใช้เป็น Asset Type
-2. Zone ห้ามต่อท้าย Asset Name
-3. Instrument ไม่ใช่ System แยก
-4. Instrument เป็น Part และต้องเกาะกับ Main Asset/Sub-Asset ที่เกี่ยวข้อง
-5. Manual Valve / Control Valve / Safety Valve / Pressure Regulating Valve เป็น Part
-6. Control Valve ยืนยันแล้ว 19 ตัว
-7. Pressure Regulating Valve ยืนยันแล้ว 3 ตัว:
-   - Pressure Control Valve For ACOP
-   - Pressure Control Valve For AOP
-   - Pressure Control Valve Lube Oil
+1. R8 เป็นแหล่งข้อมูลหลัก โดยเฉพาะ Instrument และ Control Valve
+2. Instrument และ Control Valve เป็น System ตามที่ระบุในไฟล์
+3. Instrument/Control Valve ใช้ tag เดิม เช่น `DPT2001`, `PT-110`, `CV-3009` เป็น CODE ASSET ได้
+4. Sub-Asset ต้องอยู่ใต้ Main Asset
+5. Part อาจอยู่ใต้ Main Asset, Sub-Asset หรืออยู่ใต้ System โดยตรง
+6. Parent หาโดยเทียบส่วนรหัสหลัง prefix แบบ longest match; ห้ามเดาจากลำดับแถว
+7. ตัวอย่างที่ยืนยัน: `SA-GVC-001-01` และ `PA-GVC-001-02` อยู่ใต้ `MA-GVC-001`
+8. ถ้ารหัสซ้ำ ให้เปลี่ยนอักษรย่อสามตัวโดยเก็บเลขรันเดิม
+9. ข้อความ `@...` และ `Z08a` ที่อยู่ในชื่อเครื่องจักรต้องเก็บไว้
+10. Criticality: A = HIGH, B = MEDIUM, C = LOW
+11. สถานะ Active ในไฟล์ = `operatingStatus=IN_SERVICE` และ `registrationStatus=ACTIVE`
+12. แก้ชื่อ `ASH handing` เป็น `ASH Handling`
+13. เปลี่ยน Zone เดิม `Water Treatment Plant` เป็น `Water Treatment` ตาม R8
+14. CM ที่อ้าง Assets เดิมต้องใช้ mapping ที่ผู้ใช้ยืนยันก่อนย้าย
+15. Migration ต้องหยุดทันทีถ้าพบ PM dependency ใหม่ที่ยังไม่ได้อนุมัติ mapping
 
-## Control Valve 19 ตัว
-CV-3001, CV-3002, CV-3003, CV-3004, CV-3005, CV-3006, CV-3007, CV-3008, CV-3009,
-CV-3101, CV-3102, CV-3103, CV-3104, CV-3105,
-CV-3201, CV-3202, CV-3203, CV-3204, CV-3205
+## ผลลัพธ์ R8 ที่ตรวจแล้ว
 
-## Asset Name Cleanup
-ตัวอย่าง:
-`Pressure Transmitter PT-3001 Z08b`
-ต้องเป็น
-`Pressure Transmitter PT-3001`
+- Source rows: 590
+- Assets หลังรวม Instrument tags ที่ซ้ำ: 583
+- Main Assets: 188
+- Sub-Assets: 367
+- Parts: 28
+- Systems: 13
+- Asset Types: 21
+- Parts ใต้ Main/Sub: 21
+- Parts ใต้ System โดยตรง: 7
 
-Zone ให้เก็บใน Area/Zone field เท่านั้น
-
-## Asset Code Standard
-Asset Code ใหม่ใช้รูปแบบ:
-
-`MC-[3 LETTER TYPE CODE]-[RUNNING NUMBER]`
-
-ตัวอย่าง:
-- MC-BOL-001
-- MC-BFP-001
-- MC-BFP-002
-- MC-TUB-001
-- MC-IDF-001
-
-Asset Code และ Tag/KKS เป็นคนละ field
-
-ตัวอย่าง:
-- Asset Code = MC-BFP-001
-- Tag/KKS = RTB-BFP-3201
-
-Existing approved codes ต้อง preserve ระหว่าง migration
-รายละเอียดดู `ASSET_CODE_STANDARD.md`
+Workbook SHA-256: `711ed08fba13865200e2b8c4c112c1f091d50f428e1f936cac670623d30f2978`

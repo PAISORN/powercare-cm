@@ -18,11 +18,14 @@ export const AssetCriticality = {
 } as const;
 
 export const STANDARD_ASSET_CODE = /^MC-[A-Z]{3}-\d{3}$/;
+export const R8_HIERARCHY_ASSET_CODE = /^(?:(?:MA|PA)-[A-Z0-9]{3}-\d{3}|(?:SA|PA)-[A-Z0-9]{3}-\d{3}(?:-\d{2})+)$/;
+export const R8_TAG_ASSET_CODE = /^[A-Z0-9][A-Z0-9_-]{1,31}$/;
 export const LEGACY_ASSET_CODE_EXCEPTIONS = new Set(["MC-ARC-5001", "MC-ARC-5002", "MC-ARC-5003", "MC-ARC-5004", "MC-ARC-5005", "MC-ARC-5006", "MC-ARC-5007"]);
 
-export function isAllowedAssetCode(value: string) {
+export function isAllowedAssetCode(value: string, systemName?: string | null) {
   const code = value.trim().toUpperCase();
-  return STANDARD_ASSET_CODE.test(code) || LEGACY_ASSET_CODE_EXCEPTIONS.has(code);
+  const tagCodeSystem = /^(?:INSTRUMENT|CONTROL VALVE)$/.test(systemName?.trim().toUpperCase() || "");
+  return STANDARD_ASSET_CODE.test(code) || R8_HIERARCHY_ASSET_CODE.test(code) || LEGACY_ASSET_CODE_EXCEPTIONS.has(code) || (tagCodeSystem && R8_TAG_ASSET_CODE.test(code));
 }
 
 export function normalizeAssetTypeCode(value: string) {
@@ -64,7 +67,6 @@ const clean = (s?: string | null) => s?.trim() || null;
 export async function validateRegisteredAsset(tx: Prisma.TransactionClient, input: RegisteredAssetInput, id: string, graph?: readonly AssetHierarchyNode[]) {
   if (!input.nameTh.trim()) throw new Error("กรุณาระบุชื่อ Asset");
   if (!clean(input.code)) throw new Error("กรุณาระบุ Asset Code");
-  if (!isAllowedAssetCode(input.code!)) throw new Error("Asset Code ต้องเป็น MC-XXX-001 หรือ exception ที่อนุมัติไว้");
   if (!input.systemId || !input.assetTypeId) throw new Error("กรุณาระบุ System และ Asset Type");
   if (!Object.values(AssetOperatingStatus).includes(input.operatingStatus as never) || !Object.values(AssetCriticality).includes(input.criticality as never)) throw new Error("สถานะหรือ Criticality ไม่ถูกต้อง");
   const [system, type, zone, family, assetClass, duplicate, assets] = await Promise.all([
@@ -77,12 +79,13 @@ export async function validateRegisteredAsset(tx: Prisma.TransactionClient, inpu
     tx.asset.findMany({ where: { plantId: input.plantId }, include: { assetType: true } }),
   ]);
   if (!system || !type || (input.zoneId && !zone) || (input.familyId && !family) || (input.assetClassId && !assetClass)) throw new Error("Master Data ไม่ถูกต้องหรืออยู่คนละ Site");
+  if (!isAllowedAssetCode(input.code!, system.nameTh)) throw new Error("Asset Code ไม่ตรงกับรูปแบบที่อนุมัติสำหรับ System นี้");
   const selectedParent = input.parentId ? assets.find(asset => asset.id === input.parentId) : null;
   const stagedParent = input.parentId && graph ? graph.find(asset => asset.id === input.parentId) : null;
   if (input.parentId && ((!selectedParent && !stagedParent) || (selectedParent && (selectedParent.registrationStatus !== "ACTIVE" || selectedParent.migrationStatus !== "READY")))) {
     throw new Error("Parent Asset ต้องอยู่ใน Site เดียวกัน มีสถานะ ACTIVE และผ่านการตรวจสอบ migration แล้ว");
   }
-  if (!isValidAssetSystemName(system.nameTh) || (system.nameEn && !isValidAssetSystemName(system.nameEn))) throw new Error("Instrument ไม่สามารถเป็น System ได้");
+  if (!isValidAssetSystemName(system.nameTh) || (system.nameEn && !isValidAssetSystemName(system.nameEn))) throw new Error("ชื่อ System ไม่ถูกต้อง");
   if (isSystemAssetType(type.nameTh) || (type.nameEn && isSystemAssetType(type.nameEn))) throw new Error("ชื่อ System ไม่สามารถใช้เป็น Asset Type ได้");
   if (type.discipline) input.discipline = type.discipline;
   if (isInstrumentType(type.nameTh) || isInstrumentType(type.nameEn || "")) input.discipline = "Instrument";

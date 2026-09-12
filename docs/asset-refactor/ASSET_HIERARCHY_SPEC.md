@@ -1,29 +1,33 @@
-# Asset Hierarchy Specification
-
-## Tree
-Site -> System -> Main Asset -> Sub-Asset -> Part
+# Asset Hierarchy Specification — R8
 
 ## Allowed Parent-Child
+
 | Parent | Child |
 |---|---|
 | Site | System |
 | System | Main Asset |
+| System | Part |
 | Main Asset | Sub-Asset |
 | Main Asset | Part |
 | Sub-Asset | Part |
 
-ห้าม Part มีลูก และห้ามสร้างวงจร parent
+Part ห้ามมีลูก และทุก Asset ต้องสังกัด System
 
-## Asset Level
-- MAIN_ASSET
-- SUB_ASSET
-- PART
+## Parent Resolution
 
-## Validation
-- Main Asset ต้องสังกัด System
-- Sub-Asset ต้องมี Main Asset เป็น parent
-- Part ต้องมี Main Asset หรือ Sub-Asset เป็น parent
-- Asset Type ห้ามเป็นชื่อ System
-- Asset Name ห้ามลงท้าย Zone pattern: `\s+Z[0-9A-Za-z._-]+$`
-- Motor / Gearbox โดยทั่วไปเป็น Sub-Asset
-- Bearing / Coupling / Filter / Seal / Impeller / Valve / Instrument โดยทั่วไปเป็น Part
+- Main Asset ไม่มี parent
+- Sub-Asset ต้องหา Main Asset จากส่วนรหัสหลัง `MA-` / `SA-`
+- Part ใช้ parent ที่มีส่วนรหัสตรงกันยาวที่สุด โดยเลือก Sub-Asset ก่อน Main Assetเมื่อรหัสรองรับ
+- Part ที่ไม่พบรหัส Main/Sub ที่ตรงกันให้อยู่ใต้ System โดยตรง
+- ห้ามใช้ตำแหน่งแถวใน Excel เป็นหลักฐาน parent
+
+ตัวอย่าง:
+
+```text
+System: Steam Turbine
+└── MA-GVC-001  Gland Vent Condenser
+    ├── SA-GVC-001-01  Motor Gland Vent Condenser
+    └── PA-GVC-001-02  Sealing Gland Vent Exhaust
+```
+
+Instrument และ Control Valve เป็น System ที่ตั้งใจใช้ tag code สำหรับ Sub-Asset ตาม R8

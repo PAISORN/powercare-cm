@@ -1,5 +1,20 @@
 # Asset Code Standard
 
+## R8 authoritative codes
+
+สำหรับ Asset master R8 ให้ยึด CODE ASSET ในไฟล์และ correction ที่ยืนยันแล้วเป็นหลัก รูปแบบที่รองรับคือ:
+
+```text
+MA-XXX-001
+SA-XXX-001-01
+PA-XXX-001
+PA-XXX-001-01
+```
+
+Instrument และ Control Valve ใช้ tag code เช่น `DPT2001`, `PT-110`, `PS-204A`, `CV-3009` ได้เฉพาะสอง System นี้ หากรหัสชนกันให้เปลี่ยนเฉพาะอักษรย่อและเก็บเลขรันเดิม
+
+มาตรฐาน `MC-XXX-001` ด้านล่างยังใช้กับการสร้าง Asset ใหม่ผ่านระบบ แต่ไม่ใช้เขียนทับรหัสที่อนุมัติใน R8
+
 ## Objective
 กำหนดมาตรฐาน Asset Code ใหม่ของ PowerCare ให้ Codex ใช้เป็นกติกาหลักในการสร้าง ตรวจสอบ และ migrate Asset
 

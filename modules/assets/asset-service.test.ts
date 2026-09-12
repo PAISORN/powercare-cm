@@ -4,6 +4,16 @@ import { isAllowedAssetCode, normalizeAssetTypeCode } from "./asset-service";
 describe("Asset Code standard", () => {
   it("accepts a standard generated code", () => {
     expect(isAllowedAssetCode("MC-PMP-001")).toBe(true);
+    expect(isAllowedAssetCode("MA-GVC-001")).toBe(true);
+    expect(isAllowedAssetCode("SA-GVC-001-01")).toBe(true);
+    expect(isAllowedAssetCode("PA-GVC-001-02")).toBe(true);
+    expect(isAllowedAssetCode("PA-OTS-001")).toBe(true);
+  });
+
+  it("accepts tag-style codes only for Instrument and Control Valve Systems", () => {
+    expect(isAllowedAssetCode("DPT2001", "Instrument")).toBe(true);
+    expect(isAllowedAssetCode("CV-3009", "Control Valve")).toBe(true);
+    expect(isAllowedAssetCode("DPT2001", "Steam Turbine")).toBe(false);
   });
 
   it("accepts only the seven approved ARC exceptions", () => {
