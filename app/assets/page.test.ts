@@ -16,7 +16,8 @@ describe("Assets registry pagination", () => {
     const source = readFileSync("app/assets/page.tsx", "utf8");
     expect(source).toContain('const hierarchy = query.view !== "list"');
     expect(source).toContain("buildAssetHierarchy(treeAssets");
-    expect(source).toContain("รอตรวจสอบโครงสร้าง");
+    expect(source).toContain("<AssetTreeWorkspace");
+    expect(source).toContain("const treeSystems = systems.map");
   });
 
   it("filters Assets by Asset Class while preserving the selection in the URL", () => {

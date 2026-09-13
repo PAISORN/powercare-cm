@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { AssetBranches, buildAssetHierarchy, assetLevelLabel } from "../../components/asset-hierarchy";
+import { buildAssetHierarchy, assetLevelLabel } from "../../components/asset-hierarchy";
+import { AssetTreeWorkspace, type AssetTreeItem } from "../../components/asset-tree-workspace";
 import { PreserveListPositionLink, RestoreListPosition } from "../../components/preserve-list-position";
 import { redirect } from "next/navigation";
 import { Boxes, ChevronLeft, ChevronRight, CirclePlus, Download, FolderTree, Gauge, List, Search, Settings2, Upload, Wrench } from "lucide-react";
@@ -61,7 +62,53 @@ export default async function AssetsPage({ searchParams }: { searchParams: Promi
   const shown = assets;
   const tree = buildAssetHierarchy(treeAssets, new Set(assets.map(asset => asset.id)), new Set(systems.map(system => system.id)));
   const listUrl = pageUrl({ ...query, organizationId: scope.organization.id, plantId: scope.plant.id }, currentPage);
-  const row = (asset: typeof assets[number], contextOnly = false) => <AssetRow asset={asset} contextOnly={contextOnly} listUrl={listUrl}/>;
+  const treeAssetsById = new Map(treeAssets.map(asset => [asset.id, asset]));
+  function toTreeItem(branch: typeof tree.roots[number]): AssetTreeItem {
+    const asset = branch.asset;
+    const parent = asset.parentId ? treeAssetsById.get(asset.parentId) : null;
+    const grandParent = parent?.parentId ? treeAssetsById.get(parent.parentId) : null;
+    const mainAsset = asset.assetLevel === "MAIN_ASSET" ? asset : asset.assetLevel === "SUB_ASSET" ? parent : parent?.assetLevel === "MAIN_ASSET" ? parent : parent?.assetLevel === "SUB_ASSET" ? grandParent : null;
+    const subAsset = asset.assetLevel === "SUB_ASSET" ? asset : asset.assetLevel === "PART" && parent?.assetLevel === "SUB_ASSET" ? parent : null;
+    const partAsset = asset.assetLevel === "PART" ? asset : null;
+    const r8Level = asset.assetLevel === "MAIN_ASSET" ? "Main Asset" : asset.assetLevel === "SUB_ASSET" ? "Sub-Asset" : "Part-Asset";
+    const text = (value: string | null | undefined) => value?.trim() || "";
+    return {
+      id: asset.id,
+      code: text(asset.code) || "ยังไม่ระบุรหัส",
+      name: text(asset.nameEn) || text(asset.nameTh) || "ยังไม่ระบุชื่อ",
+      levelLabel: r8Level,
+      statusLabel: assetStatusLabel(asset.operatingStatus),
+      criticalityLabel: criticalityLabel(asset.criticality),
+      contextOnly: branch.contextOnly,
+      imageUrl: asset.imageStoragePath ? `/asset-images/${asset.id}` : null,
+      detailHref: `/assets/${asset.id}?returnTo=${encodeURIComponent(listUrl)}`,
+      details: [
+        { label: "SYSTEM", value: text(asset.system?.nameTh) || text(asset.system?.nameEn) },
+        { label: "MAIN ASSET", value: text(mainAsset?.nameEn) || text(mainAsset?.nameTh) },
+        { label: "SUB-ASSET", value: text(subAsset?.nameEn) || text(subAsset?.nameTh) },
+        { label: "PART-ASSET", value: text(partAsset?.nameEn) || text(partAsset?.nameTh) },
+        { label: "CODE ASSET", value: text(asset.code) },
+        { label: "ASSET LEVEL", value: r8Level },
+        { label: "AREA / ZONE", value: text(asset.zone?.name) },
+        { label: "ASSET TYPE", value: text(asset.assetType?.nameTh) || text(asset.assetType?.nameEn) },
+        { label: "DISCIPLINE", value: text(asset.discipline) },
+        { label: "CRITICALITY", value: criticalityLabel(asset.criticality) },
+        { label: "MANUFACTURER", value: text(asset.manufacturer) },
+        { label: "MODEL / TYPE", value: text(asset.model) },
+        { label: "SERIAL NO.", value: text(asset.serialNumber) },
+        { label: "STATUS", value: assetStatusLabel(asset.operatingStatus) },
+        { label: "KEY SPECIFICATION", value: text(asset.keySpecification) },
+      ],
+      children: branch.children.map(toTreeItem),
+    };
+  }
+  const treeSystems = systems.map(system => ({
+    id: system.id,
+    code: system.code,
+    name: system.nameTh || system.nameEn || system.code,
+    branches: tree.roots.filter(root => root.asset.systemId === system.id).map(toTreeItem),
+  })).filter(system => system.branches.length);
+  const reviewItems = tree.review.map(asset => toTreeItem({ asset, contextOnly: false, children: [] }));
   const firstShown = filteredTotal ? (currentPage - 1) * PAGE_SIZE + 1 : 0;
   const lastShown = Math.min(currentPage * PAGE_SIZE, filteredTotal);
   return <AppShell>
@@ -90,11 +137,11 @@ export default async function AssetsPage({ searchParams }: { searchParams: Promi
       <button className={primaryButton}>ค้นหา</button>
     </form>
     <div className="mt-5 flex items-center justify-between gap-3"><p className="text-sm text-[var(--muted)]">พบ {filteredTotal} รายการ · แสดง {firstShown}-{lastShown}</p><div className="flex rounded-xl border border-[var(--line)] bg-[var(--surface)] p-1"><ViewLink active={!hierarchy} href={viewUrl(query, "list")} icon={List}>รายการ</ViewLink><ViewLink active={hierarchy} href={viewUrl(query, "tree")} icon={FolderTree}>โครงสร้าง</ViewLink></div></div>
-    <section className="mt-3 overflow-hidden rounded-2xl border border-[var(--line)] bg-[var(--surface)] shadow-sm">
+    {hierarchy ? <div className="mt-3"><AssetTreeWorkspace siteCode={scope.plant.code} systems={treeSystems} review={reviewItems}/></div> : <section className="mt-3 overflow-hidden rounded-2xl border border-[var(--line)] bg-[var(--surface)] shadow-sm">
       <div className="hidden grid-cols-[minmax(300px,2fr)_1fr_1fr_1fr_1fr] gap-3 border-b border-[var(--line)] bg-[var(--soft)] px-4 py-3 text-xs font-bold uppercase tracking-wide text-[var(--muted)] md:grid"><span>Asset</span><span>Zone</span><span>Type</span><span>Status</span><span>CM / PM ล่าสุด</span></div>
-      {hierarchy ? <div className="p-3"><h2 className="px-2 py-3 text-lg font-black">Site {scope.plant.code}</h2><p className="mb-3 px-2 text-xs text-[var(--muted)]">แสดงผลที่ตรงตัวกรองในหน้านี้ พร้อมลำดับแม่เพื่อบอกตำแหน่ง</p>{systems.map(system => {const roots=tree.roots.filter(root=>root.asset.systemId===system.id);return roots.length ? <section key={system.id} className="mb-3 rounded-xl border border-[var(--line)]"><h3 className="border-b border-[var(--line)] bg-[var(--soft)] px-4 py-3 font-bold">System · {system.code} · {system.nameEn || system.nameTh}</h3><AssetBranches branches={roots} renderRow={row}/></section>:null;})}{tree.review.length>0?<section className="mt-4 rounded-xl border border-amber-500/40 p-3"><h3 className="font-bold text-amber-700 dark:text-amber-400">รอตรวจสอบโครงสร้าง ({tree.review.length})</h3><p className="my-2 text-sm text-[var(--muted)]">ยังไม่ยืนยัน System ระดับ หรือ Parent ที่เกี่ยวข้อง</p>{tree.review.map(asset=><div key={asset.id}>{row(asset)}</div>)}</section>:null}</div> : shown.map(asset => <AssetRow key={asset.id} asset={asset} listUrl={listUrl}/>)}
+      {shown.map(asset => <AssetRow key={asset.id} asset={asset} listUrl={listUrl}/>)}
       {!shown.length ? <div className="px-5 py-16 text-center"><Boxes className="mx-auto text-[var(--muted)]"/><h2 className="mt-3 font-bold">ยังไม่พบ Asset</h2><p className="mt-1 text-sm text-[var(--muted)]">ลองเปลี่ยนตัวกรองหรือสร้าง Asset รายการแรก</p></div> : null}
-    </section>
+    </section>}
     {totalPages > 1 ? <Pagination query={query} currentPage={currentPage} totalPages={totalPages}/> : null}
   </AppShell>;
 }

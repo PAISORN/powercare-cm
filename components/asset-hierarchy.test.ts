@@ -24,4 +24,10 @@ describe("Asset tree filtering", () => {
     expect(tree.roots).toEqual([]);
     expect(tree.review.map(item => item.id)).toEqual(["review"]);
   });
+  it("keeps a Part Asset that belongs directly to a System as a root", () => {
+    const directPart = { id: "direct-part", parentId: null, systemId: "system", assetLevel: "PART", migrationStatus: "READY" };
+    const tree = buildAssetHierarchy([directPart], new Set([directPart.id]), new Set(["system"]));
+    expect(tree.roots).toEqual([{ asset: directPart, contextOnly: false, children: [] }]);
+    expect(tree.review).toEqual([]);
+  });
 });
