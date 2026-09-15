@@ -35,7 +35,7 @@ export function AssetTreeWorkspace({ siteCode, systems, review }: { siteCode: st
     ...systems.map(system => systemKey(system.id)),
     ...allItems.filter(item => item.children.length).map(item => assetKey(item.id)),
   ]), [systems, allItems]);
-  const [expanded, setExpanded] = useState<Set<string>>(() => new Set(expandableIds));
+  const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
 
   function toggle(key: string) {
     setExpanded(current => {
@@ -73,6 +73,7 @@ export function AssetTreeWorkspace({ siteCode, systems, review }: { siteCode: st
                 <Globe2 aria-hidden="true" className="ml-1 shrink-0 text-slate-300" size={17}/>
                 <span className="ml-3 w-7 shrink-0 font-mono text-xs font-black text-slate-500">{index + 1}.</span>
                 <span className="min-w-0 truncate text-[15px] font-black">{system.name}</span>
+                <ChildCount items={system.branches} levels={["Main Asset", "Part-Asset"]}/>
               </button>
               <span aria-label="ไม่มี Code Asset" className="text-sm text-slate-500">—</span>
               <span className="text-xs font-bold uppercase tracking-wide text-slate-600">System</span>
@@ -136,7 +137,10 @@ function TreeRows({
           <CircleDot aria-hidden="true" className="relative z-10 ml-1 shrink-0 bg-white text-slate-300" size={17}/>
           <span className="relative z-10 ml-3 w-7 shrink-0 bg-white font-mono text-xs font-black text-slate-500">{assetOrdinal(depth, index)}</span>
           <span className="relative z-10 min-w-0 bg-white">
-            <Link className={`block truncate text-sm decoration-emerald-500 decoration-2 underline-offset-4 hover:text-emerald-700 hover:underline focus-visible:rounded focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-600 font-semibold text-slate-700`} href={branch.detailHref}>{branch.name}</Link>
+            <span className="flex min-w-0 items-center gap-2">
+              <Link className={`block min-w-0 truncate text-sm decoration-emerald-500 decoration-2 underline-offset-4 hover:text-emerald-700 hover:underline focus-visible:rounded focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-600 font-semibold text-slate-700`} href={branch.detailHref}>{branch.name}</Link>
+              {branch.levelLabel === "Main Asset" ? <ChildCount items={branch.children} levels={["Sub-Asset", "Part-Asset"]}/> : null}
+            </span>
             {branch.contextOnly ? <span className="mt-0.5 block text-[10px] font-semibold text-amber-700">ลำดับแม่ · ไม่ตรงตัวกรอง</span> : null}
           </span>
         </div>
@@ -147,6 +151,15 @@ function TreeRows({
       {branch.children.length && open ? <TreeRows branches={branch.children} depth={depth + 1} expanded={expanded} onToggle={onToggle} ancestorContinues={[...ancestorContinues, !isLast]}/> : null}
     </div>;
   })}</>;
+}
+
+function ChildCount({ items, levels }: { items: AssetTreeItem[]; levels: string[] }) {
+  const summary = levels
+    .map(level => ({ level, count: items.filter(item => item.levelLabel === level).length }))
+    .filter(item => item.count > 0)
+    .map(item => `${item.level} ${item.count} รายการ`)
+    .join(" · ");
+  return summary ? <span className="shrink-0 rounded-full bg-slate-100 px-2 py-1 text-[10px] font-bold text-slate-500">{summary}</span> : null;
 }
 
 const toolbarButton = "flex min-h-10 cursor-pointer items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-3 text-xs font-bold text-slate-600 transition hover:border-slate-400 hover:text-slate-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-600";

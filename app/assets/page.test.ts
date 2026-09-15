@@ -1,18 +1,17 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
-describe("Assets registry pagination", () => {
-  it("paginates Asset rows in groups of 50 and preserves filters", () => {
+describe("Assets registry tree view", () => {
+  it("shows every filtered Asset without pagination", () => {
     const source = readFileSync("app/assets/page.tsx", "utf8");
-    expect(source).toContain("const PAGE_SIZE = 50");
-    expect(source).toContain("skip: (currentPage - 1) * PAGE_SIZE");
-    expect(source).toContain("take: PAGE_SIZE");
-    expect(source).toContain('aria-label="Asset pagination"');
-    expect(source).toContain("หน้าที่ {currentPage} จาก {totalPages}");
-    expect(source).toContain("function pageUrl(query: Query, page: number)");
+    expect(source).toContain("db.asset.findMany({ where,");
+    expect(source).toContain("function assetsUrl(query: Query)");
+    expect(source).not.toContain("const PAGE_SIZE");
+    expect(source).not.toContain("skip:");
+    expect(source).not.toContain('aria-label="Asset pagination"');
   });
 
-  it("builds the new hierarchy from every Asset level while paginating matches", () => {
+  it("builds the new hierarchy from every Asset level and all filtered matches", () => {
     const source = readFileSync("app/assets/page.tsx", "utf8");
     expect(source).toContain('const hierarchy = query.view !== "list"');
     expect(source).toContain("buildAssetHierarchy(treeAssets");
