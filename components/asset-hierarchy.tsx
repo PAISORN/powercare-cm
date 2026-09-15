@@ -11,7 +11,7 @@ export function buildAssetHierarchy<T extends HierarchyAsset>(assets: T[], match
     if (valid.has(asset.id)) return valid.get(asset.id)!;
     if (visiting.has(asset.id) || !asset.systemId || !systemIds.has(asset.systemId) || (asset.migrationStatus && asset.migrationStatus !== "READY")) return false;
     visiting.add(asset.id);
-    let result = !asset.parentId && ["MAIN_ASSET", "PART"].includes(asset.assetLevel || "");
+    let result = !asset.parentId && ["MAIN_ASSET", "SUB_ASSET", "PART"].includes(asset.assetLevel || "");
     if (asset.parentId) {
       const parent = byId.get(asset.parentId);
       result = !!parent && parent.systemId === asset.systemId && ((asset.assetLevel === "SUB_ASSET" && parent.assetLevel === "MAIN_ASSET") || (asset.assetLevel === "PART" && ["MAIN_ASSET", "SUB_ASSET"].includes(parent.assetLevel || ""))) && isValid(parent, visiting);

@@ -19,6 +19,24 @@ describe("Assets registry tree view", () => {
     expect(source).toContain("const treeSystems = systems.map");
   });
 
+  it("creates Tree Assets through a permission-checked Server Action and passes R8 drawer options", () => {
+    const source = readFileSync("app/assets/page.tsx", "utf8");
+    expect(source).toContain("async function createTreeAsset");
+    expect(source).toContain("if (!canManageAssets(user))");
+    expect(source).toContain('allowedLevels = ["MAIN_ASSET", "SUB_ASSET", "PART"]');
+    expect(source).toContain('parent.assetLevel === "MAIN_ASSET" ? ["SUB_ASSET", "PART"]');
+    expect(source).toContain('parent.assetLevel === "SUB_ASSET" ? ["PART"]');
+    expect(source).toContain("createAction={createTreeAsset}");
+    expect(source).toContain("createOptions={{ organizationId: scope.organization.id");
+  });
+
+  it("loads the latest CM and PM status for each Tree Asset", () => {
+    const source = readFileSync("app/assets/page.tsx", "utf8");
+    expect(source).toContain('cmWorks: { orderBy: { createdAt: "desc" }, take: 1');
+    expect(source).toContain('pmWorks: { orderBy: { updatedAt: "desc" }, take: 1');
+    expect(source).toContain("cmStatus: asset.cmWorks[0]?.status || null");
+    expect(source).toContain("pmStatus: asset.pmWorks[0]?.status || null");
+  });
   it("filters Assets by Asset Class while preserving the selection in the URL", () => {
     const source = readFileSync("app/assets/page.tsx", "utf8");
     expect(source).toContain("assetClassId?: string");

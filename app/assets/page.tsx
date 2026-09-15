@@ -1,8 +1,10 @@
 import Link from "next/link";
 import { buildAssetHierarchy, assetLevelLabel } from "../../components/asset-hierarchy";
 import { AssetTreeWorkspace, type AssetTreeItem } from "../../components/asset-tree-workspace";
+import type { TreeAssetCreateState, TreeAssetLevel } from "../../components/asset-tree-create-drawer";
 import { PreserveListPositionLink, RestoreListPosition } from "../../components/preserve-list-position";
 import { redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
 import { Boxes, CirclePlus, Download, FolderTree, Gauge, List, Search, Settings2, Upload, Wrench } from "lucide-react";
 import { AppShell } from "../../components/app-shell";
 import { AdminSiteScopeSelector } from "../../components/admin-site-scope-selector";
@@ -12,9 +14,70 @@ import { requireUser } from "../../lib/session";
 import { formatThaiDate } from "../../lib/date-time/bangkok-time";
 import { canManageAssetMasters, canManageAssets, canViewAssets } from "../../modules/auth/permission";
 import { resolveAssetScope } from "../../modules/assets/asset-scope";
-import { assetStatusLabel, criticalityLabel } from "../../modules/assets/asset-service";
+import { assetStatusLabel, createRegisteredAsset, criticalityLabel } from "../../modules/assets/asset-service";
+import { recordAudit } from "../../modules/audit/audit-service";
 
 type Query = { organizationId?: string; plantId?: string; search?: string; assetClassId?: string; familyId?: string; zoneId?: string; status?: string; criticality?: string; systemId?: string; assetTypeId?: string; assetLevel?: string; discipline?: string; sort?: string; view?: string };
+
+async function createTreeAsset(_previousState: TreeAssetCreateState, formData: FormData): Promise<TreeAssetCreateState> {
+  "use server";
+  const user = await requireUser();
+  if (!canManageAssets(user)) return { status: "error", message: "ไม่มีสิทธิ์เพิ่ม Asset" };
+
+  try {
+    const scope = await resolveAssetScope(user, {
+      organizationId: formText(formData, "organizationId"),
+      plantId: formText(formData, "plantId"),
+    });
+    const sourceKind = formText(formData, "sourceKind");
+    const sourceId = formText(formData, "sourceId");
+    const assetLevel = formText(formData, "assetLevel") as TreeAssetLevel;
+    let systemId = "";
+    let parentId: string | null = null;
+    let allowedLevels: TreeAssetLevel[] = [];
+
+    if (sourceKind === "system") {
+      const system = await db.assetSystem.findFirstOrThrow({ where: { id: sourceId, plantId: scope.plant.id, active: true }, select: { id: true } });
+      systemId = system.id;
+      allowedLevels = ["MAIN_ASSET", "SUB_ASSET", "PART"];
+    } else if (sourceKind === "asset") {
+      const parent = await db.asset.findFirstOrThrow({ where: { id: sourceId, plantId: scope.plant.id, registrationStatus: "ACTIVE", migrationStatus: "READY" }, select: { id: true, systemId: true, assetLevel: true } });
+      if (!parent.systemId) throw new Error("Parent Asset ไม่มี System");
+      systemId = parent.systemId;
+      parentId = parent.id;
+      allowedLevels = parent.assetLevel === "MAIN_ASSET" ? ["SUB_ASSET", "PART"] : parent.assetLevel === "SUB_ASSET" ? ["PART"] : [];
+    } else {
+      throw new Error("ตำแหน่งที่จะเพิ่ม Asset ไม่ถูกต้อง");
+    }
+
+    if (!allowedLevels.includes(assetLevel)) throw new Error("ระดับ Asset ไม่ตรงกับกิ่งที่เลือก");
+    const asset = await createRegisteredAsset({
+      plantId: scope.plant.id,
+      code: formText(formData, "code"),
+      systemId,
+      parentId,
+      assetLevel,
+      assetTypeId: formText(formData, "assetTypeId"),
+      zoneId: optionalFormText(formData, "zoneId"),
+      nameTh: formText(formData, "nameTh"),
+      discipline: optionalFormText(formData, "discipline"),
+      manufacturer: optionalFormText(formData, "manufacturer"),
+      model: optionalFormText(formData, "model"),
+      serialNumber: optionalFormText(formData, "serialNumber"),
+      keySpecification: optionalFormText(formData, "keySpecification"),
+      operatingStatus: formText(formData, "operatingStatus"),
+      criticality: formText(formData, "criticality"),
+    });
+    await recordAudit({ actorId: user.id, organizationId: scope.organization.id, plantId: scope.plant.id, entityType: "Asset", entityId: asset.id, action: "CREATE_ASSET", after: { code: asset.code, nameTh: asset.nameTh, assetLevel: asset.assetLevel, systemId: asset.systemId, parentId: asset.parentId, source: "TREE_DRAWER" } });
+    revalidatePath("/assets");
+    return { status: "success" };
+  } catch (caught) {
+    return { status: "error", message: caught instanceof Error ? caught.message : "สร้าง Asset ไม่สำเร็จ" };
+  }
+}
+
+function formText(formData: FormData, key: string) { return String(formData.get(key) || "").trim(); }
+function optionalFormText(formData: FormData, key: string) { return formText(formData, key) || null; }
 
 export default async function AssetsPage({ searchParams }: { searchParams: Promise<Query> }) {
   const user = await requireUser();
@@ -50,7 +113,7 @@ export default async function AssetsPage({ searchParams }: { searchParams: Promi
     db.asset.count({ where: { plantId: scope.plant.id, registrationStatus: "ACTIVE", criticality: "CRITICAL" } }),
     db.assetSystem.findMany({ where: { plantId: scope.plant.id }, orderBy: [{ sortOrder: "asc" }, { code: "asc" }] }),
     db.assetType.findMany({ where: { plantId: scope.plant.id, active: true }, orderBy: { nameTh: "asc" } }),
-    hierarchy ? db.asset.findMany({ where: { plantId: scope.plant.id, registrationStatus: "ACTIVE" }, include: { family: true, assetType: true, zone: true, system: true, cmWorks: { where: { status: "CLOSED" }, orderBy: { closedAt: "desc" }, take: 1 } }, orderBy: query.sort === "name" ? [{ nameTh: "asc" }, { code: "asc" }] : [{ code: query.sort === "codeDesc" ? "desc" : "asc" }] }) : Promise.resolve([]),
+    hierarchy ? db.asset.findMany({ where: { plantId: scope.plant.id, registrationStatus: "ACTIVE" }, include: { family: true, assetType: true, zone: true, system: true, cmWorks: { orderBy: { createdAt: "desc" }, take: 1, select: { status: true, closedAt: true } }, pmWorks: { orderBy: { updatedAt: "desc" }, take: 1, select: { status: true } } }, orderBy: query.sort === "name" ? [{ nameTh: "asc" }, { code: "asc" }] : [{ code: query.sort === "codeDesc" ? "desc" : "asc" }] }) : Promise.resolve([]),
   ]);
   const shown = assets;
   const tree = buildAssetHierarchy(treeAssets, new Set(assets.map(asset => asset.id)), new Set(systems.map(system => system.id)));
@@ -67,10 +130,16 @@ export default async function AssetsPage({ searchParams }: { searchParams: Promi
     const text = (value: string | null | undefined) => value?.trim() || "";
     return {
       id: asset.id,
+      systemId: asset.systemId || "",
+      systemName: text(asset.system?.nameTh) || text(asset.system?.nameEn) || "ไม่ระบุ System",
+      assetLevel: asset.assetLevel as TreeAssetLevel,
       code: text(asset.code) || "ยังไม่ระบุรหัส",
       name: text(asset.nameEn) || text(asset.nameTh) || "ยังไม่ระบุชื่อ",
       levelLabel: r8Level,
       areaZone: text(asset.zone?.name),
+      cmStatus: asset.cmWorks[0]?.status || null,
+      cmStatusDetail: asset.cmWorks[0]?.closedAt ? formatThaiDate(asset.cmWorks[0].closedAt) : null,
+      pmStatus: asset.pmWorks[0]?.status || null,
       statusLabel: assetStatusLabel(asset.operatingStatus),
       criticalityLabel: criticalityLabel(asset.criticality),
       contextOnly: branch.contextOnly,
@@ -129,7 +198,7 @@ export default async function AssetsPage({ searchParams }: { searchParams: Promi
       <button className={primaryButton}>ค้นหา</button>
     </form>
     <div className="mt-5 flex items-center justify-between gap-3"><p className="text-sm text-[var(--muted)]">พบ {filteredTotal} รายการ</p><div className="flex rounded-xl border border-[var(--line)] bg-[var(--surface)] p-1"><ViewLink active={!hierarchy} href={viewUrl(query, "list")} icon={List}>รายการ</ViewLink><ViewLink active={hierarchy} href={viewUrl(query, "tree")} icon={FolderTree}>โครงสร้าง</ViewLink></div></div>
-    {hierarchy ? <div className="mt-3"><AssetTreeWorkspace siteCode={scope.plant.code} systems={treeSystems} review={reviewItems}/></div> : <section className="mt-3 overflow-hidden rounded-2xl border border-[var(--line)] bg-[var(--surface)] shadow-sm">
+    {hierarchy ? <div className="mt-3"><AssetTreeWorkspace canCreateAssets={canManageAssets(user)} createAction={createTreeAsset} createOptions={{ organizationId: scope.organization.id, plantId: scope.plant.id, assetTypes: types.map(type => ({ id: type.id, code: type.code, name: type.nameTh || type.nameEn || type.code, discipline: type.discipline })), zones: zones.map(zone => ({ id: zone.id, name: zone.name })) }} siteCode={scope.plant.code} systems={treeSystems} review={reviewItems}/></div> : <section className="mt-3 overflow-hidden rounded-2xl border border-[var(--line)] bg-[var(--surface)] shadow-sm">
       <div className="hidden grid-cols-[minmax(300px,2fr)_1fr_1fr_1fr_1fr] gap-3 border-b border-[var(--line)] bg-[var(--soft)] px-4 py-3 text-xs font-bold uppercase tracking-wide text-[var(--muted)] md:grid"><span>Asset</span><span>Zone</span><span>Type</span><span>Status</span><span>CM / PM ล่าสุด</span></div>
       {shown.map(asset => <AssetRow key={asset.id} asset={asset} listUrl={listUrl}/>)}
       {!shown.length ? <div className="px-5 py-16 text-center"><Boxes className="mx-auto text-[var(--muted)]"/><h2 className="mt-3 font-bold">ยังไม่พบ Asset</h2><p className="mt-1 text-sm text-[var(--muted)]">ลองเปลี่ยนตัวกรองหรือสร้าง Asset รายการแรก</p></div> : null}

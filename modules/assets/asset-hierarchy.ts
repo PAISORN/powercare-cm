@@ -25,7 +25,6 @@ export function validateAssetHierarchy(input: AssetHierarchyNode, nodes: readonl
   if (input.assetTypeName && isSystemAssetType(input.assetTypeName)) errors.add("INVALID_ASSET_TYPE");
   function checkEdge(node: AssetHierarchyNode) {
     if (node.assetLevel === AssetLevel.MAIN_ASSET) { if (node.parentId) errors.add("INVALID_PARENT_LEVEL"); }
-    else if (node.assetLevel === AssetLevel.SUB_ASSET && !node.parentId) errors.add("PARENT_REQUIRED");
     if (!node.parentId) return;
     const parent = graph.get(node.parentId);
     if (!parent) { errors.add("PARENT_NOT_FOUND"); return; }

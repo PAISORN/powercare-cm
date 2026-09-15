@@ -149,7 +149,7 @@ export function canViewAssets(input: string | PermissionUserContext) {
 }
 
 export function canManageAssets(input: string | PermissionUserContext) {
-  return canUse(input, PermissionKey.MANAGE_ASSETS, [RoleName.ADMIN, RoleName.ORGANIZATION_ADMIN, RoleName.SITE_ADMIN]);
+  return canUse(input, PermissionKey.MANAGE_ASSETS, [RoleName.ADMIN, RoleName.ORGANIZATION_ADMIN, RoleName.SITE_ADMIN, RoleName.ENGINEER]);
 }
 
 export function canRecodeAssets(input: string | PermissionUserContext) {

@@ -68,6 +68,8 @@ describe("Site Admin permissions", () => {
     expect(permissionDefaultForRole(RoleName.ORGANIZATION_ADMIN, PermissionKey.MANAGE_USERS_ALL_PLANTS)).toBe(true);
     expect(permissionDefaultForRole(RoleName.ORGANIZATION_ADMIN, PermissionKey.MANAGE_SITE_ADMIN_PERMISSION)).toBe(false);
     expect(permissionDefaultForRole(RoleName.ENGINEER, PermissionKey.VIEW_REPORTS)).toBe(true);
+    expect(permissionDefaultForRole(RoleName.ENGINEER, PermissionKey.MANAGE_ASSETS)).toBe(true);
+    expect(permissionDefaultForRole(RoleName.TECHNICIAN, PermissionKey.MANAGE_ASSETS)).toBe(false);
     expect(permissionDefaultForRole(RoleName.TECHNICIAN, PermissionKey.CLOSE_WORK)).toBe(false);
     expect(permissionDefaultForRole(RoleName.VISITOR, PermissionKey.VIEW_DASHBOARD)).toBe(true);
     expect(permissionDefaultForRole("PUBLIC_REQUESTER", PermissionKey.CREATE_PUBLIC_REQUEST)).toBe(true);
@@ -86,6 +88,14 @@ describe("Site Admin permissions", () => {
     expect(permissionDefaultForRole(RoleName.VISITOR, PermissionKey.VIEW_MY_ACTIVITIES_STORE)).toBe(false);
     expect(permissionDefaultForRole(RoleName.ENGINEER, PermissionKey.EDIT_WORK_REQUEST)).toBe(true);
     expect(permissionDefaultForRole(RoleName.TECHNICIAN, PermissionKey.EDIT_WORK_REQUEST)).toBe(false);
+  });
+
+  it("requires an explicit user grant before a Technician can manage Assets", () => {
+    const technician = { id: "tech-assets", role: RoleName.TECHNICIAN, organizationId: "org-1", plantId: "site-1" };
+    expect(canUsePermission(technician, PermissionKey.MANAGE_ASSETS)).toBe(false);
+    expect(canUsePermission(technician, PermissionKey.MANAGE_ASSETS, [], [], [
+      { userId: technician.id, permissionKey: PermissionKey.MANAGE_ASSETS, decision: "ALLOW" },
+    ])).toBe(true);
   });
 
   it("allows Organization Admin to view Store data without receiving stock", () => {

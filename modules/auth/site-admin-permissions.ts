@@ -479,6 +479,7 @@ const alwaysAllowedByRole: Record<PermissionRole, ReadonlySet<PermissionKey>> = 
     PermissionKey.APPROVE_STORE_ISSUE,
     PermissionKey.VIEW_STORE_TRACKING,
     PermissionKey.VIEW_ASSETS,
+    PermissionKey.MANAGE_ASSETS,
   ]),
   [RoleName.TECHNICIAN]: new Set([
     PermissionKey.VIEW_PM,
