@@ -77,6 +77,7 @@ export default async function AssetsPage({ searchParams }: { searchParams: Promi
       code: text(asset.code) || "ยังไม่ระบุรหัส",
       name: text(asset.nameEn) || text(asset.nameTh) || "ยังไม่ระบุชื่อ",
       levelLabel: r8Level,
+      areaZone: text(asset.zone?.name),
       statusLabel: assetStatusLabel(asset.operatingStatus),
       criticalityLabel: criticalityLabel(asset.criticality),
       contextOnly: branch.contextOnly,
