@@ -22,8 +22,8 @@ describe("Spare parts page", () => {
     expect(source).toContain("ใช้เฉพาะตอนเบิกอะไหล่");
     expect(source).not.toContain("zoneAssignments:");
     expect(source).toContain("Spare Parts Master Data");
-    expect(source).toContain("<details");
-    expect(source).toContain("group-open:hidden");
+    expect(source).not.toContain("<details");
+    expect(source).not.toContain("group-open:hidden");
     expect(source).toContain("ข้อมูลพื้นฐานและรหัสอ้างอิง");
     expect(source).toContain("หมวดอะไหล่");
     expect(source).toContain("เพิ่มอะไหล่");
@@ -61,5 +61,20 @@ describe("Spare parts page", () => {
     expect(source).toContain("pageErrorUrl(scope");
     expect(source).toContain('role="alert"');
     expect(source).toContain('pattern="[A-Za-z0-9][A-Za-z0-9._/-]*"');
+  });
+  it("opens master data and add-spare-part forms in organized modal dialogs", () => {
+    const source = readFileSync("app/dashboardstore/spare-parts/page.tsx", "utf8");
+    const modal = readFileSync("components/store/spare-parts-master-modal.tsx", "utf8");
+
+    expect(source).toContain('import { SparePartsMasterModal }');
+    expect(source.match(/<MasterPanel /g)).toHaveLength(5);
+    expect(source).toContain('title="Applicable Zones"');
+    expect(source).toContain('title="เพิ่มอะไหล่"');
+    expect(source).toContain("data-spare-parts-modal-close");
+    expect(source).toContain('xl:grid-cols-3');
+    expect(modal).toContain('role="dialog"');
+    expect(modal).toContain('aria-modal="true"');
+    expect(modal).toContain("backdrop-blur-md");
+    expect(modal).toContain('event.key === "Escape"');
   });
 });

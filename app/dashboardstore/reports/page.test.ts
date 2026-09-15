@@ -17,6 +17,10 @@ describe("Store reports page", () => {
     expect(source).toContain('action="/dashboardstore/reports/export"');
     expect(source).toContain('name="reportType"');
     expect(source).toContain('name="itemKind"');
+    expect(source).toContain('value="ISSUE_BY_DATE"');
+    expect(source).toContain('StoreReportItemPicker');
+    expect(source).toContain('items={reportItems}');
+
     expect(source).toContain('name="movementType"');
     expect(source).toContain('name="issueStatus"');
     expect(source).toContain('value="xlsx"');

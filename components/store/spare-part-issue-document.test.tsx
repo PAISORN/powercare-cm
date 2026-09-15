@@ -42,7 +42,7 @@ describe("SparePartIssueDocument", () => {
   it("renders formal issue details, line code, totals, and three signers", () => {
     const markup = renderToStaticMarkup(<SparePartIssueDocument {...props} />);
 
-    expect(markup).toContain("ใบเบิกและจ่ายอะไหล่");
+    expect(markup).toContain("ใบเบิก");
     expect(markup).toContain("SPARE PART ISSUE DOCUMENT");
     expect(markup).toContain("SP01-RTB-630101-EI-02-FUSE001");
     expect(markup).toContain("ผู้ขอเบิก (Requester)");

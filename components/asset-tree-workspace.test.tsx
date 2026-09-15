@@ -14,6 +14,7 @@ function item(id: string, code: string, name: string, children: AssetTreeItem[] 
     name,
     levelLabel: levelLabel || (id === "main" ? "Main Asset" : "Part-Asset"),
     areaZone: "Turbine",
+    assetType: "Pump",
     cmStatus: "CLOSED",
     cmStatusDetail: "1 ม.ค. 2569",
     pmStatus: "PLANNED",
@@ -22,7 +23,8 @@ function item(id: string, code: string, name: string, children: AssetTreeItem[] 
     contextOnly: false,
     imageUrl: null,
     detailHref: "/assets/" + id,
-    details: [],
+    details: [{ label: "CODE ASSET", value: code }, { label: "ASSET LEVEL", value: levelLabel || (id === "main" ? "Main Asset" : "Part-Asset") }],
+    editData: { assetTypeId: "pump", zoneId: "zone", discipline: "Mechanical", criticality: "CRITICAL", manufacturer: "Maker", model: "Model", serialNumber: "SN-1", operatingStatus: "IN_SERVICE", keySpecification: "Spec" },
     children,
   };
 }
@@ -32,7 +34,7 @@ describe("AssetTreeWorkspace", () => {
   const main = item("main", "MA-GVC-001", "Gland Vent Condenser", [part]);
   const systems = [{ id: "turbine", code: "TUR", name: "Turbine", branches: [main] }];
 
-  it("renders the hierarchy as six aligned columns with links to Asset details", () => {
+  it("renders the hierarchy as eight aligned columns with Asset Type after PM / CM status", () => {
     render(<AssetTreeWorkspace siteCode="RTB" systems={systems} review={[]}/>);
 
     expect(screen.getByRole("region", { name: "Tree Assets" })).toBeInTheDocument();
@@ -40,7 +42,13 @@ describe("AssetTreeWorkspace", () => {
     expect(screen.getByRole("columnheader", { name: "CODE ASSET" })).toBeInTheDocument();
     expect(screen.getByRole("columnheader", { name: "ASSET LEVEL" })).toBeInTheDocument();
     expect(screen.getByRole("columnheader", { name: "AREA / ZONE" })).toBeInTheDocument();
-    expect(screen.getByRole("columnheader", { name: "สถานะ PM / CM" })).toBeInTheDocument();
+    const statusHeader = screen.getByRole("columnheader", { name: "สถานะ PM / CM" });
+    const assetTypeHeader = screen.getByRole("columnheader", { name: "ASSET TYPE" });
+    expect(statusHeader).toBeInTheDocument();
+    expect(assetTypeHeader).toBeInTheDocument();
+    expect(statusHeader.compareDocumentPosition(assetTypeHeader) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(assetTypeHeader.parentElement).toHaveClass("text-xs", "font-black", "text-slate-700");
+    expect(screen.getByRole("columnheader", { name: "รายละเอียด Asset" })).toBeInTheDocument();
     expect(screen.getByRole("columnheader", { name: "เมนูเพิ่มเติม" })).toBeInTheDocument();
     expect(screen.getByText("System")).toHaveClass("bg-violet-100");
     expect(screen.queryByRole("link", { name: "Gland Vent Condenser" })).not.toBeInTheDocument();
@@ -51,6 +59,7 @@ describe("AssetTreeWorkspace", () => {
     expect(screen.getByRole("link", { name: "PA-GVC-001-02" })).toHaveAttribute("href", "/assets/part");
     expect(screen.getAllByText("CM: ปิดงานแล้ว · 1 ม.ค. 2569")).toHaveLength(2);
     expect(screen.getAllByText("PM: วางแผนแล้ว")).toHaveLength(2);
+    expect(screen.getAllByText("Pump")).toHaveLength(2);
     expect(screen.getAllByRole("button", { name: /เมนูเพิ่มเติม/ })).toHaveLength(3);
     expect(screen.getAllByRole("button", { name: /เมนูเพิ่มเติม/ })[0]).toBeEnabled();
     expect(screen.getAllByText("Turbine").length).toBeGreaterThan(1);
@@ -94,6 +103,55 @@ describe("AssetTreeWorkspace", () => {
     fireEvent.click(screen.getByRole("menuitem", { name: "เพิ่มรายการ" }));
     const levels = Array.from(screen.getByLabelText("ASSET LEVEL").querySelectorAll("option")).map(option => option.getAttribute("value"));
     expect(levels).toEqual(["SUB_ASSET", "PART"]);
+  });
+
+  it("opens Asset details in a large blurred dialog from the book column", () => {
+    render(<AssetTreeWorkspace siteCode="RTB" systems={systems} review={[]}/>);
+
+    fireEvent.click(screen.getByRole("button", { name: "ขยาย Turbine" }));
+    fireEvent.click(screen.getByRole("button", { name: "ดูรายละเอียด MA-GVC-001" }));
+    expect(screen.getByRole("dialog", { name: "Gland Vent Condenser" })).toHaveClass("max-w-5xl");
+    expect(screen.getByRole("button", { name: "ปิดรายละเอียด Asset" })).toHaveClass("backdrop-blur-sm");
+    expect(screen.getAllByText("CODE ASSET")).toHaveLength(2);
+    expect(screen.getByRole("link", { name: "เปิดหน้ารายละเอียดเต็ม" })).toHaveAttribute("href", "/assets/main");
+  });
+
+  it("offers edit and password-confirmed delete only for users who can manage Assets", () => {
+    const createAction = async () => ({ status: "success" as const });
+    const editAction = async () => ({ status: "success" as const });
+    const deleteAction = async () => ({ status: "success" as const });
+    const createOptions = {
+      organizationId: "org",
+      plantId: "plant",
+      assetTypes: [{ id: "pump", code: "PMP", name: "Pump", discipline: "Mechanical" }],
+      zones: [{ id: "zone", name: "Turbine" }],
+    };
+    render(<AssetTreeWorkspace canCreateAssets createAction={createAction} editAction={editAction} deleteAction={deleteAction} createOptions={createOptions} siteCode="RTB" systems={systems} review={[]}/>);
+
+    fireEvent.click(screen.getByRole("button", { name: "ขยาย Turbine" }));
+    fireEvent.click(screen.getByRole("button", { name: "เมนูเพิ่มเติม MA-GVC-001" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "แก้ไข" }));
+    expect(screen.getByRole("dialog", { name: "แก้ไข Asset ใน Tree" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "ปิดแถบแก้ไข Asset" })).toHaveClass("backdrop-blur-sm");
+    expect(screen.getByLabelText("MAIN ASSET")).toHaveValue("Gland Vent Condenser");
+    fireEvent.click(screen.getByRole("button", { name: /^ปิด$/ }));
+
+    fireEvent.click(screen.getByRole("button", { name: "เมนูเพิ่มเติม MA-GVC-001" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "ลบ" }));
+    expect(screen.getByRole("alertdialog", { name: "แน่ใจว่าต้องการลบ Asset นี้หรือไม่?" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "ปิดหน้าต่างยืนยันลบ" })).toHaveClass("backdrop-blur-sm");
+    expect(screen.getByLabelText("รหัสผ่านของคุณ")).toHaveAttribute("type", "password");
+    expect(screen.getByRole("button", { name: "ยืนยันลบ Asset" })).toBeInTheDocument();
+  });
+
+  it("does not expose edit or delete commands without manage_assets permission", () => {
+    render(<AssetTreeWorkspace siteCode="RTB" systems={systems} review={[]}/>);
+    fireEvent.click(screen.getByRole("button", { name: "ขยาย Turbine" }));
+    fireEvent.click(screen.getByRole("button", { name: "เมนูเพิ่มเติม MA-GVC-001" }));
+
+    expect(screen.queryByRole("menuitem", { name: "แก้ไข" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("menuitem", { name: "ลบ" })).not.toBeInTheDocument();
+    expect(screen.getByText("ไม่มีสิทธิ์จัดการ Asset")).toBeInTheDocument();
   });
 
   it("can collapse and expand the whole tree", () => {

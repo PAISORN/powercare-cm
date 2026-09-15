@@ -11,6 +11,30 @@ describe("Assets registry tree view", () => {
     expect(source).not.toContain('aria-label="Asset pagination"');
   });
 
+  it("renders the List and Tree views as a two-state expanding capsule toggle", () => {
+    const source = readFileSync("app/assets/page.tsx", "utf8");
+    expect(source).toContain('aria-label="เลือกรูปแบบการแสดง Assets"');
+    expect(source).toContain('role="group"');
+    expect(source).toContain('active ? "w-36 bg-white text-[#4c437e] shadow-sm" : "w-12 text-white hover:bg-white/10"');
+    expect(source).toContain('className={active ? "whitespace-nowrap" : "sr-only"}');
+    expect(source).toContain('aria-current={active ? "page" : undefined}');
+  });
+  it("keeps the current scroll position when filters or the List/Tree view change", () => {
+    const source = readFileSync("app/assets/page.tsx", "utf8");
+    expect(source).toContain("<PreserveListPositionForm");
+    expect(source).toContain('storageKey="assets" targetId="asset-filters"');
+    expect(source).toContain('id="asset-view-toggle"');
+    expect(source).toContain("scroll={false}");
+  });
+
+  it("keeps List View as a list while matching the Tree View data-column headings", () => {
+    const source = readFileSync("app/assets/page.tsx", "utf8");
+    expect(source).toContain('role="columnheader">Assets</span><span role="columnheader">CODE ASSET</span><span role="columnheader">ASSET LEVEL</span><span role="columnheader">AREA / ZONE</span><span role="columnheader">สถานะ PM / CM</span><span role="columnheader">ASSET TYPE</span>');
+    expect(source).toContain("const listGrid =");
+    expect(source).toContain("<ListMaintenanceStatus");
+    expect(source).toContain("asset.assetType?.nameTh || asset.assetType?.nameEn");
+  });
+
   it("builds the new hierarchy from every Asset level and all filtered matches", () => {
     const source = readFileSync("app/assets/page.tsx", "utf8");
     expect(source).toContain('const hierarchy = query.view !== "list"');
@@ -28,6 +52,26 @@ describe("Assets registry tree view", () => {
     expect(source).toContain('parent.assetLevel === "SUB_ASSET" ? ["PART"]');
     expect(source).toContain("createAction={createTreeAsset}");
     expect(source).toContain("createOptions={{ organizationId: scope.organization.id");
+  });
+
+  it("updates Tree Assets through the same validation service from the right-side edit drawer", () => {
+    const source = readFileSync("app/assets/page.tsx", "utf8");
+    expect(source).toContain("async function editTreeAsset");
+    expect(source).toContain("updateRegisteredAsset(asset.id");
+    expect(source).toContain("canRecodeAssets(user)");
+    expect(source).toContain('source: "TREE_DRAWER"');
+    expect(source).toContain("editAction={editTreeAsset}");
+  });
+
+  it("protects Tree Asset deletion with permission, current-user password, child checks, soft-delete, and audit", () => {
+    const source = readFileSync("app/assets/page.tsx", "utf8");
+    expect(source).toContain("async function deleteTreeAsset");
+    expect(source).toContain("if (!canManageAssets(user))");
+    expect(source).toContain("verifyPassword(password, currentUser.passwordHash)");
+    expect(source).toContain("activeChildren");
+    expect(source).toContain('registrationStatus: "CANCELED"');
+    expect(source).toContain('action: "DELETE_ASSET"');
+    expect(source).toContain("deleteAction={deleteTreeAsset}");
   });
 
   it("loads the latest CM and PM status for each Tree Asset", () => {

@@ -113,6 +113,7 @@ export function DesktopSidebar({
       >
         <AppNavLinks
           collapsed={collapsed}
+          treeStyle
           role={role}
           permissionContext={{
             id: userId,

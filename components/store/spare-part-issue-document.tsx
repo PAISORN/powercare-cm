@@ -110,7 +110,7 @@ export function SparePartIssueDocument({ branding, issue, items, printedAt, prin
           </div>
         </div>
         <div className="text-center">
-          <h1 className="text-[23px] font-extrabold leading-tight text-cyan-950">ใบเบิกและจ่ายอะไหล่</h1>
+          <h1 className="text-[23px] font-extrabold leading-tight text-cyan-950">ใบเบิก</h1>
           <p className="mt-1 text-[11px] font-bold tracking-wide text-slate-600">SPARE PART ISSUE DOCUMENT</p>
         </div>
         <dl className="rounded-md border border-cyan-950/35 px-3 py-2">

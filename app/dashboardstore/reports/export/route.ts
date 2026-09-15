@@ -4,17 +4,26 @@ import { getCurrentUser } from "../../../../lib/session";
 import { canUseUserPermission, PermissionKey } from "../../../../modules/auth/site-admin-permissions";
 import { resolveStorePageScope } from "../../../../modules/store/store-page-scope";
 import { db } from "../../../../lib/db";
+import { buildDailyIssueReportRows, dailyIssueReportColumns } from "../../../../modules/store/store-daily-issue-report";
 
 export const preferredRegion = "home";
 
 export async function GET(request: Request) {
   const user = await getCurrentUser();
   if (!user) return new NextResponse("Unauthorized", { status: 401 });
-  if (!canUseUserPermission(user, PermissionKey.VIEW_STORE_REPORTS)) return new NextResponse("Forbidden", { status: 403 });
 
   const params = new URL(request.url).searchParams;
+  const source = params.get("source");
+  const canExportStock =
+    canUseUserPermission(user, PermissionKey.VIEW_STORE_STOCK) ||
+    canUseUserPermission(user, PermissionKey.ADJUST_STOCK);
+  const canExportReports = canUseUserPermission(user, PermissionKey.VIEW_STORE_REPORTS);
+  if (source === "stock" ? !canExportStock : !canExportReports) {
+    return new NextResponse("Forbidden", { status: 403 });
+  }
+
   const scope = await resolveStorePageScope(user, Object.fromEntries(params));
-  const reportType = normalizeReportType(params.get("reportType"));
+  const reportType = source === "stock" ? "STOCK_BALANCE" : normalizeReportType(params.get("reportType"));
   const itemKind = normalizeItemKind(params.get("itemKind"));
   const range = dateRange(params.get("startDate"), params.get("endDate"));
   const rows = await exportRows({
@@ -23,6 +32,14 @@ export async function GET(request: Request) {
     itemKind,
     movementType: params.get("movementType") || "ALL",
     issueStatus: params.get("issueStatus") || "ALL",
+    itemIds: params.getAll("itemIds").filter(Boolean),
+    search: params.get("search")?.trim() || "",
+    storeId: params.get("storeId") || "",
+    typeId: params.get("typeId") || "",
+    categoryId: params.get("categoryId") || "",
+    materialGroupId: params.get("materialGroupId") || "",
+    unit: params.get("unit") || "",
+    stockStatus: params.get("stockStatus") || "all",
     range,
   });
   const fileBase = `store-${reportType.toLowerCase()}-${scope.plant.code}`;
@@ -34,7 +51,10 @@ export async function GET(request: Request) {
   }
 
   const workbook = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(rows), "Store Report");
+  const headers = reportType === "ISSUE_BY_DATE" ? dailyIssueReportColumns(range) : undefined;
+  const worksheet = XLSX.utils.json_to_sheet(rows, headers ? { header: headers } : undefined);
+  worksheet["!cols"] = (headers ?? Object.keys(rows[0] ?? {})).map((column) => ({ wch: column.startsWith("วันที่ ") ? 16 : Math.max(12, Math.min(32, column.length + 4)) }));
+  XLSX.utils.book_append_sheet(workbook, worksheet, reportType === "ISSUE_BY_DATE" ? "Issue by Date" : "Store Report");
   const bytes = XLSX.write(workbook, { type: "buffer", bookType: "xlsx" }) as Buffer;
   return new NextResponse(new Uint8Array(bytes), {
     headers: {
@@ -46,21 +66,58 @@ export async function GET(request: Request) {
 
 async function exportRows(input: {
   plantId: string;
-  reportType: "STOCK_BALANCE" | "LOW_STOCK" | "MOVEMENTS" | "ISSUES";
-  itemKind: "ALL" | "SPARE_PART" | "CHEMICAL" | "OIL";
+  reportType: "STOCK_BALANCE" | "LOW_STOCK" | "MOVEMENTS" | "ISSUES" | "ISSUE_BY_DATE";
+  itemKind: "ALL" | "SPARE_PART" | "CHEMICAL" | "OIL" | "FUEL";
   movementType: string;
   issueStatus: string;
+  itemIds: string[];
+  search: string;
+  storeId: string;
+  typeId: string;
+  categoryId: string;
+  materialGroupId: string;
+  unit: string;
+  stockStatus: string;
   range: { start: Date; end: Date };
 }) {
   const kindWhere = input.itemKind === "ALL" ? {} : { itemKind: input.itemKind };
   if (input.reportType === "STOCK_BALANCE" || input.reportType === "LOW_STOCK") {
     const stocks = await db.storeStock.findMany({
-      where: { plantId: input.plantId, sparePart: kindWhere },
-      include: { store: true, sparePart: { include: { category: true } } },
+      where: {
+        plantId: input.plantId,
+        ...(input.storeId ? { storeId: input.storeId } : {}),
+        store: { active: true },
+        sparePart: {
+          ...kindWhere,
+          active: true,
+          ...(input.typeId ? { typeId: input.typeId } : {}),
+          ...(input.categoryId ? { categoryId: input.categoryId } : {}),
+          ...(input.materialGroupId ? { materialGroupId: input.materialGroupId } : {}),
+          ...(input.unit ? { unit: input.unit } : {}),
+          ...(input.search
+            ? {
+                OR: [
+                  { code: { contains: input.search } },
+                  { itemCode: { contains: input.search } },
+                  { name: { contains: input.search } },
+                ],
+              }
+            : {}),
+        },
+      },
+      include: { store: true, sparePart: { include: { category: true, materialGroup: true } } },
       orderBy: [{ store: { code: "asc" } }, { sparePart: { code: "asc" } }],
     });
     return stocks
-      .filter((stock) => input.reportType !== "LOW_STOCK" || Number(stock.quantity) <= Number(stock.sparePart.minStock))
+      .filter((stock) => {
+        const quantity = Number(stock.quantity);
+        const minimum = Number(stock.sparePart.minStock);
+        if (input.reportType === "LOW_STOCK" && quantity > minimum) return false;
+        if (input.stockStatus === "available") return quantity > minimum;
+        if (input.stockStatus === "nearMin") return quantity > 0 && quantity <= minimum;
+        if (input.stockStatus === "outOfStock") return quantity <= 0;
+        return true;
+      })
       .map((stock) => ({
         "Store Code": stock.store.code,
         "Store Name": stock.store.name,
@@ -68,11 +125,60 @@ async function exportRows(input: {
         "Item Code": stock.sparePart.code,
         "Item Name": stock.sparePart.name,
         Category: stock.sparePart.category?.name ?? "-",
+        "Material Group": stock.sparePart.materialGroup?.name ?? "-",
         Quantity: Number(stock.quantity),
         Minimum: Number(stock.sparePart.minStock),
         Unit: stock.sparePart.unit,
         "Unit Price": stock.sparePart.latestUnitPrice == null ? "" : Number(stock.sparePart.latestUnitPrice),
+        "Total Value": Number(stock.quantity) * Number(stock.sparePart.latestUnitPrice ?? 0),
       }));
+  }
+  if (input.reportType === "ISSUE_BY_DATE") {
+    const selectedItemWhere = input.itemIds.length ? { id: { in: input.itemIds } } : kindWhere;
+    const movements = await db.stockMovement.findMany({
+      where: {
+        plantId: input.plantId,
+        movementType: "ISSUE",
+        occurredAt: { gte: input.range.start, lte: input.range.end },
+        sparePart: selectedItemWhere,
+      },
+      include: {
+        store: { select: { id: true, code: true, name: true } },
+        sparePart: {
+          select: {
+            id: true,
+            itemKind: true,
+            code: true,
+            itemCode: true,
+            name: true,
+            unit: true,
+            minStock: true,
+            latestUnitPrice: true,
+            category: { select: { name: true } },
+            materialGroup: { select: { name: true } },
+          },
+        },
+      },
+      orderBy: [{ occurredAt: "asc" }, { store: { code: "asc" } }, { sparePart: { code: "asc" } }],
+    });
+    return buildDailyIssueReportRows(movements.map((movement) => ({
+      occurredAt: movement.occurredAt,
+      quantityChange: Number(movement.quantityChange),
+      unitPrice: movement.unitPrice == null ? null : Number(movement.unitPrice),
+      store: movement.store,
+      sparePart: {
+        id: movement.sparePart.id,
+        itemKind: movement.sparePart.itemKind,
+        code: movement.sparePart.code,
+        itemCode: movement.sparePart.itemCode,
+        name: movement.sparePart.name,
+        unit: movement.sparePart.unit,
+        minStock: Number(movement.sparePart.minStock),
+        latestUnitPrice: movement.sparePart.latestUnitPrice == null ? null : Number(movement.sparePart.latestUnitPrice),
+        categoryName: movement.sparePart.category?.name ?? null,
+        materialGroupName: movement.sparePart.materialGroup?.name ?? null,
+      },
+    })), input.range);
   }
   if (input.reportType === "MOVEMENTS") {
     const movements = await db.stockMovement.findMany({
@@ -125,11 +231,11 @@ async function exportRows(input: {
 }
 
 function normalizeReportType(value: string | null) {
-  return (["STOCK_BALANCE", "LOW_STOCK", "MOVEMENTS", "ISSUES"].includes(String(value)) ? value : "STOCK_BALANCE") as "STOCK_BALANCE" | "LOW_STOCK" | "MOVEMENTS" | "ISSUES";
+  return (["STOCK_BALANCE", "LOW_STOCK", "MOVEMENTS", "ISSUES", "ISSUE_BY_DATE"].includes(String(value)) ? value : "STOCK_BALANCE") as "STOCK_BALANCE" | "LOW_STOCK" | "MOVEMENTS" | "ISSUES" | "ISSUE_BY_DATE";
 }
 
 function normalizeItemKind(value: string | null) {
-  return (["SPARE_PART", "CHEMICAL", "OIL"].includes(String(value)) ? value : "ALL") as "ALL" | "SPARE_PART" | "CHEMICAL" | "OIL";
+  return (["SPARE_PART", "CHEMICAL", "OIL", "FUEL"].includes(String(value)) ? value : "ALL") as "ALL" | "SPARE_PART" | "CHEMICAL" | "OIL" | "FUEL";
 }
 
 function dateRange(start: string | null, end: string | null) {

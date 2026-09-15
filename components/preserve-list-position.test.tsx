@@ -1,6 +1,6 @@
 import { fireEvent, render } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { PreserveListPositionLink, RestoreListPosition } from "./preserve-list-position";
+import { PreserveListPositionForm, PreserveListPositionLink, RestoreListPosition } from "./preserve-list-position";
 
 describe("preserve list position", () => {
   beforeEach(() => {
@@ -24,6 +24,21 @@ describe("preserve list position", () => {
     expect(JSON.parse(window.sessionStorage.getItem("powercare:list-position:work:/work?page=4") ?? "null")).toMatchObject({
       scrollY: 1375,
       targetId: "work-row-w75",
+    });
+  });
+
+  it("stores the current position before a filter form submits", () => {
+    const { getByRole } = render(
+      <PreserveListPositionForm storageKey="assets" targetId="asset-filters">
+        <button type="submit">Apply filters</button>
+      </PreserveListPositionForm>,
+    );
+
+    fireEvent.submit(getByRole("button", { name: "Apply filters" }).closest("form")!);
+
+    expect(JSON.parse(window.sessionStorage.getItem("powercare:list-position:assets") ?? "null")).toMatchObject({
+      scrollY: 1375,
+      targetId: "asset-filters",
     });
   });
 

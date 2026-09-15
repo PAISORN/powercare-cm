@@ -9,9 +9,9 @@ import {
   Download,
   Edit3,
   FileSpreadsheet,
+  FileText,
   MoreVertical,
   PackagePlus,
-  Printer,
   Search,
   SlidersHorizontal,
   Warehouse,
@@ -305,7 +305,7 @@ export default async function StockPage({ searchParams }: { searchParams: Promis
   const canManageParts = canUseUserPermission(user, PermissionKey.MANAGE_SPARE_PARTS);
   const canReceive = canUseUserPermission(user, PermissionKey.RECEIVE_STOCK);
   const canIssue = canUseUserPermission(user, PermissionKey.CREATE_STORE_ISSUE);
-  const canViewValue = canUseUserPermission(user, PermissionKey.VIEW_STOCK_VALUE);
+  const canEditValue = canUseUserPermission(user, PermissionKey.VIEW_STOCK_VALUE);
   const search = query.search?.trim() ?? "";
   const stockStatus = query.stockStatus ?? "all";
 
@@ -458,6 +458,24 @@ export default async function StockPage({ searchParams }: { searchParams: Promis
     if (page > 1) params.set("page", String(page));
     return `/dashboardstore/stock?${params.toString()}`;
   };
+  const stockExportHref = (format: "pdf" | "xlsx") => {
+    const params = new URLSearchParams({
+      organizationId: scope.organization.id,
+      plantId: scope.plant.id,
+      source: "stock",
+      reportType: "STOCK_BALANCE",
+      format,
+    });
+    if (search) params.set("search", search);
+    if (query.storeId) params.set("storeId", query.storeId);
+    if (query.typeId) params.set("typeId", query.typeId);
+    if (query.categoryId) params.set("categoryId", query.categoryId);
+    if (query.materialGroupId) params.set("materialGroupId", query.materialGroupId);
+    if (query.itemKind) params.set("itemKind", query.itemKind);
+    if (query.unit) params.set("unit", query.unit);
+    if (stockStatus !== "all") params.set("stockStatus", stockStatus);
+    return `/dashboardstore/reports/export?${params.toString()}`;
+  };
   const sparePartEditHref = (sparePartId: string) =>
     `${stockPageHref(currentPage)}&editPartId=${encodeURIComponent(sparePartId)}#edit-spare-part`;
   const editPart = query.editPartId
@@ -495,9 +513,13 @@ export default async function StockPage({ searchParams }: { searchParams: Promis
                 นำเข้า Excel
               </Link>
             ) : null}
-            <Link className={`${secondaryButtonClass} stock-hero-secondary`} href="/dashboardstore/reports">
-              <Printer size={17} />
-              พิมพ์รายงาน
+            <Link className={`${secondaryButtonClass} stock-hero-secondary`} href={stockExportHref("pdf")} target="_blank">
+              <FileText size={17} />
+              PDF ตาม Filter
+            </Link>
+            <Link className={`${secondaryButtonClass} stock-hero-secondary`} href={stockExportHref("xlsx")}>
+              <FileSpreadsheet size={17} />
+              Excel ตาม Filter
             </Link>
           </div>
           </div>
@@ -527,15 +549,13 @@ export default async function StockPage({ searchParams }: { searchParams: Promis
         ) : null}
 
         <section className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
-          {canViewValue ? (
-            <SummaryCard
-              color="blue"
-              icon={<Boxes size={28} />}
-              label="มูลค่าอะไหล่คงเหลือรวม"
-              sublabel="บาท"
-              value={formatMoney(totalValue)}
-            />
-          ) : null}
+          <SummaryCard
+            color="blue"
+            icon={<Boxes size={28} />}
+            label="มูลค่าอะไหล่คงเหลือรวม"
+            sublabel="บาท"
+            value={formatMoney(totalValue)}
+          />
           <SummaryCard
             color="green"
             icon={<Warehouse size={28} />}
@@ -757,7 +777,7 @@ export default async function StockPage({ searchParams }: { searchParams: Promis
                       <td className="px-4 py-3">
                         <StockStatusPill minStock={Number(stock.sparePart.minStock)} quantity={quantity} />
                       </td>
-                      <td className="px-4 py-3 text-left font-semibold">{canViewValue ? formatMoney(quantity * unitPrice) : "—"}</td>
+                      <td className="px-4 py-3 text-left font-semibold">{formatMoney(quantity * unitPrice)}</td>
                       <td className="px-2 py-3 text-right">
                         <div className="flex items-center justify-end gap-1">
                           <div className="grid gap-1">
@@ -981,12 +1001,18 @@ export default async function StockPage({ searchParams }: { searchParams: Promis
                   <input className={inputClass} defaultValue={Number(editPart.reorderPoint)} min="0" name="reorderPoint" step="0.01" type="number" required />
                 </label>
               </div>
-              {canViewValue ? (
-                <label className={labelClass}>
-                  ราคาล่าสุด
-                  <input className={inputClass} defaultValue={editPart.latestUnitPrice == null ? "" : Number(editPart.latestUnitPrice)} min="0" name="latestUnitPrice" step="0.01" type="number" />
-                </label>
-              ) : null}
+              <label className={labelClass}>
+                ราคาล่าสุด
+                <input
+                  className={`${inputClass} ${canEditValue ? "" : "cursor-not-allowed bg-[var(--soft)] text-[var(--muted)]"}`}
+                  defaultValue={editPart.latestUnitPrice == null ? "" : Number(editPart.latestUnitPrice)}
+                  disabled={!canEditValue}
+                  min="0"
+                  name="latestUnitPrice"
+                  step="0.01"
+                  type="number"
+                />
+              </label>
               <label className={labelClass}>
                 รายละเอียด
                 <textarea className={`${inputClass} min-h-24 py-3`} defaultValue={editPart.description ?? ""} name="description" />

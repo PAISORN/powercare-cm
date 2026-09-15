@@ -23,6 +23,7 @@ describe("AppShell mobile header", () => {
     expect(desktopSidebarSource).toContain("flex-col");
     expect(desktopSidebarSource).toContain("md:flex");
     expect(desktopSidebarSource).toContain('data-testid="desktop-sidebar-nav"');
+    expect(desktopSidebarSource).toContain("treeStyle");
     expect(desktopSidebarSource).toContain("min-h-0 flex-1");
     expect(desktopSidebarSource).toContain("overflow-y-auto");
   });

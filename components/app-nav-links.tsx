@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import {
   Archive,
   Activity,
@@ -315,11 +315,13 @@ export function AppNavLinks({
   permissionContext,
   onNavigate,
   collapsed = false,
+  treeStyle = false,
 }: {
   role: RoleValue;
   permissionContext?: AppPermissionContext;
   onNavigate?: () => void;
   collapsed?: boolean;
+  treeStyle?: boolean;
 }) {
   const pathname = usePathname() ?? "";
   const searchParams = useSearchParams();
@@ -352,7 +354,7 @@ export function AppNavLinks({
 
   return (
     <>
-      {links.map((item) => {
+      {links.map((item, itemIndex) => {
         if (item.kind === "section") {
           if (item.nested && !(openSections[item.parentSectionId ?? ""] ?? false)) return null;
           if (collapsed && item.nested) return null;
@@ -361,11 +363,15 @@ export function AppNavLinks({
           const sectionOpen = openSections[sectionId] ?? false;
           const sectionActive = links.some((link) => link.href && !link.disabled && isActivePath(pathname, link.href, searchParams) && isChildOfSection(link.parentSectionId, sectionId));
           const isSubmenuSection = Boolean(item.nested);
-          const sectionIndent = collapsed ? "" : item.depth === 2 ? "ml-10" : item.nested ? "ml-6" : "";
+          const sectionIndent = collapsed || treeStyle ? "" : item.depth === 2 ? "ml-10" : item.nested ? "ml-6" : "";
           const sectionWeight = isSubmenuSection ? "font-medium" : "font-bold";
           return (
-            <button
+            <NavTreeBranch
+              enabled={treeStyle && !collapsed && Boolean(item.nested)}
+              isLast={isLastDirectChild(links, item, itemIndex)}
               key={navItemKey(item)}
+            >
+            <button
               aria-expanded={sectionOpen}
               aria-label={item.label}
               className={`mt-2 flex w-full items-center rounded-xl text-sm ${sectionWeight} transition hover:bg-[var(--soft)] ${
@@ -407,6 +413,7 @@ export function AppNavLinks({
                 />
               ) : null}
             </button>
+            </NavTreeBranch>
           );
         }
 
@@ -416,7 +423,7 @@ export function AppNavLinks({
         const active = item.href && !item.disabled ? isActivePath(pathname, item.href, searchParams) : false;
         const isDanger = item.accent === "danger";
         const isSubmenu = Boolean(item.nested);
-        const indent = collapsed ? "" : item.depth === 2 ? "ml-10" : item.nested ? "ml-6" : "";
+        const indent = collapsed || treeStyle ? "" : item.depth === 2 ? "ml-10" : item.nested ? "ml-6" : "";
         const textWeight = isSubmenu ? "font-medium" : "font-bold";
         const className = isDanger
           ? `mt-4 flex items-center rounded-xl text-sm font-bold text-red-600 hover:bg-red-50 ${collapsed ? "justify-center px-2 py-3" : "gap-3 px-3 py-3"}`
@@ -432,8 +439,12 @@ export function AppNavLinks({
 
         if (item.disabled) {
           return (
-            <span
+            <NavTreeBranch
+              enabled={treeStyle && !collapsed && Boolean(item.nested)}
+              isLast={isLastDirectChild(links, item, itemIndex)}
               key={navItemKey(item)}
+            >
+            <span
               aria-disabled="true"
               className={className}
               title={collapsed ? `${item.label} - Coming soon` : "Coming soon"}
@@ -453,12 +464,17 @@ export function AppNavLinks({
                 </>
               ) : null}
             </span>
+            </NavTreeBranch>
           );
         }
 
         return (
-          <Link
+          <NavTreeBranch
+            enabled={treeStyle && !collapsed && Boolean(item.nested)}
+            isLast={isLastDirectChild(links, item, itemIndex)}
             key={navItemKey(item)}
+          >
+          <Link
             aria-label={item.label}
             aria-current={active ? "page" : undefined}
             className={className}
@@ -476,10 +492,40 @@ export function AppNavLinks({
             ) : null}
             {!collapsed ? <span className="truncate">{item.label}</span> : null}
           </Link>
+          </NavTreeBranch>
         );
       })}
     </>
   );
+}
+
+function NavTreeBranch({
+  children,
+  enabled,
+  isLast,
+}: {
+  children: ReactNode;
+  enabled: boolean;
+  isLast: boolean;
+}) {
+  if (!enabled) return <>{children}</>;
+
+  return (
+    <div
+      className={`relative ml-5 pl-6 before:pointer-events-none before:absolute before:left-0 before:-top-2 before:border-l before:border-[var(--line)] after:pointer-events-none after:absolute after:left-0 after:top-1/2 after:w-6 after:border-t after:border-[var(--line)] ${
+        isLast ? "before:h-[calc(50%+0.5rem)]" : "before:-bottom-2"
+      }`}
+      data-nav-tree-branch="true"
+      data-nav-tree-last={isLast ? "true" : "false"}
+    >
+      {children}
+    </div>
+  );
+}
+
+function isLastDirectChild(links: AppLink[], item: AppLink, itemIndex: number) {
+  if (!item.nested || !item.parentSectionId) return false;
+  return !links.slice(itemIndex + 1).some((candidate) => candidate.parentSectionId === item.parentSectionId);
 }
 
 export function isActivePath(pathname: string, href: string, searchParams?: Pick<URLSearchParams, "get"> | null) {

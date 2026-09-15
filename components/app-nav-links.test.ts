@@ -253,6 +253,22 @@ describe("getAppLinks", () => {
     expect(screen.getAllByText("Soon").length).toBeGreaterThanOrEqual(3);
   });
 
+  it("renders expanded desktop navigation with Asset-style tree branches", () => {
+    render(React.createElement(AppNavLinks, { role: RoleName.ADMIN, treeStyle: true }));
+
+    fireEvent.click(screen.getByRole("button", { name: /^CM$/i }));
+
+    const allWorkLink = screen.getByRole("link", { name: /All Work/i });
+    const reportLink = screen.getByRole("link", { name: /^Report$/i });
+    const firstBranch = allWorkLink.closest("[data-nav-tree-branch='true']");
+    const lastBranch = reportLink.closest("[data-nav-tree-branch='true']");
+
+    expect(firstBranch).toBeTruthy();
+    expect(firstBranch?.getAttribute("data-nav-tree-last")).toBe("false");
+    expect(lastBranch?.getAttribute("data-nav-tree-last")).toBe("true");
+    expect(allWorkLink.className).not.toContain("ml-6");
+  });
+
   it("can render the sidebar as icon-only collapsed navigation", () => {
     render(React.createElement(AppNavLinks, { role: RoleName.ADMIN, collapsed: true }));
 

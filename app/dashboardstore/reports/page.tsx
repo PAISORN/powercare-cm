@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
 import { AdminScopeHiddenFields, AdminSiteScopeSelector } from "../../../components/admin-site-scope-selector";
 import { AppShell } from "../../../components/app-shell";
+import { StoreReportItemPicker } from "../../../components/store/store-report-item-picker";
 import { formatThaiMediumDateTime } from "../../../lib/date-time/bangkok-time";
 import { db } from "../../../lib/db";
 import { requireUser } from "../../../lib/session";
@@ -29,7 +30,7 @@ export default async function StoreReportsPage({ searchParams }: { searchParams:
   const scope = await resolveStorePageScope(user, query);
   const range = resolveDateRange(query);
 
-  const [stocks, movements, issues] = await Promise.all([
+  const [stocks, movements, issues, reportItems] = await Promise.all([
     db.storeStock.findMany({
       where: { plantId: scope.plant.id },
       include: {
@@ -72,6 +73,11 @@ export default async function StoreReportsPage({ searchParams }: { searchParams:
         },
       },
       orderBy: { requestedAt: "desc" },
+    }),
+    db.sparePart.findMany({
+      where: { plantId: scope.plant.id, active: true },
+      select: { id: true, code: true, itemCode: true, itemKind: true, name: true },
+      orderBy: [{ itemKind: "asc" }, { code: "asc" }],
     }),
   ]);
 
@@ -162,6 +168,7 @@ export default async function StoreReportsPage({ searchParams }: { searchParams:
                 <option value="LOW_STOCK">Low Stock</option>
                 <option value="MOVEMENTS">Stock Movement</option>
                 <option value="ISSUES">ใบเบิก Stock</option>
+                <option value="ISSUE_BY_DATE">รายการเบิกแยกตามวันที่</option>
               </select>
             </label>
             <label className={labelClass}>
@@ -171,8 +178,10 @@ export default async function StoreReportsPage({ searchParams }: { searchParams:
                 <option value="SPARE_PART">อะไหล่</option>
                 <option value="CHEMICAL">สารเคมี</option>
                 <option value="OIL">น้ำมัน</option>
+                <option value="FUEL">เชื้อเพลิง</option>
               </select>
             </label>
+                        <StoreReportItemPicker items={reportItems} />
             <label className={labelClass}>
               วันที่เริ่มต้น
               <input className={inputClass} defaultValue={range.startInput} name="startDate" type="date" />
@@ -376,6 +385,7 @@ function toDateInput(date: Date) {
   const day = String(date.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
 }
+
 
 function formatQuantity(value: number) {
   return new Intl.NumberFormat("th-TH", { maximumFractionDigits: 2 }).format(value);

@@ -66,7 +66,7 @@ export default async function PrintSparePartIssuePage({ params }: { params: Prom
     <div className="min-h-screen bg-slate-100 py-5 print:bg-white print:py-0">
       <div className="mx-auto mb-4 flex max-w-[297mm] items-center justify-between gap-4 px-4 print:hidden">
         <div>
-          <p className="font-bold text-slate-900">เอกสารใบเบิกและจ่ายอะไหล่</p>
+          <p className="font-bold text-slate-900">เอกสารใบเบิก</p>
           <p className="text-sm text-slate-600">{issue.number}</p>
         </div>
         <IssueDocumentPrintButton missingSignatures={missingSignatures} />

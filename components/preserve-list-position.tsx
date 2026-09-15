@@ -45,6 +45,19 @@ export function PreserveListPositionLink({
   );
 }
 
+export function PreserveListPositionForm({
+  storageKey,
+  targetId,
+  onSubmit,
+  ...props
+}: ComponentProps<"form"> & { storageKey: string; targetId: string }) {
+  function handleSubmit(event: Parameters<NonNullable<ComponentProps<"form">["onSubmit"]>>[0]) {
+    saveListPosition(storageKey, targetId);
+    onSubmit?.(event);
+  }
+
+  return <form {...props} onSubmit={handleSubmit} />;
+}
 export function RestoreListPosition({ storageKey, enabled }: { storageKey: string; enabled: boolean }) {
   useEffect(() => {
     if (!enabled) return;

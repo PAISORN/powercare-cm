@@ -54,6 +54,21 @@ describe("Store stock page", () => {
     expect(controller).toContain('setProperty("--stock-replacement-header-height"');
     expect(controller).toContain('removeProperty("--stock-replacement-header-height"');
   });
+  it("shows stock values to every role and exports the active filters", () => {
+    const source = readFileSync("app/dashboardstore/stock/page.tsx", "utf8");
+
+    expect(source).toContain('const stockExportHref = (format: "pdf" | "xlsx")');
+    expect(source).toContain('source: "stock"');
+    expect(source).toContain('params.set("materialGroupId", query.materialGroupId)');
+    expect(source).toContain('params.set("stockStatus", stockStatus)');
+    expect(source).toContain('href={stockExportHref("pdf")}');
+    expect(source).toContain('href={stockExportHref("xlsx")}');
+    expect(source).toContain("PDF ตาม Filter");
+    expect(source).toContain("Excel ตาม Filter");
+    expect(source).toContain("{formatMoney(quantity * unitPrice)}");
+    expect(source).not.toContain('canViewValue ? formatMoney(quantity * unitPrice) : "—"');
+    expect(source).toContain("disabled={!canEditValue}");
+  });
   it("renders an enterprise stock dashboard with filters, inventory table, and row actions", () => {
     expect(existsSync("app/dashboardstore/stock/page.tsx")).toBe(true);
     const source = readFileSync("app/dashboardstore/stock/page.tsx", "utf8");

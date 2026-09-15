@@ -1,9 +1,12 @@
 "use client";
 
-import Link from "next/link";
 import { useCallback, useMemo, useState } from "react";
-import { ChevronDown, ChevronRight, CircleDot, CirclePlus, Globe2, MoreVertical, PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import { BookOpen, ChevronDown, ChevronRight, CircleDot, CirclePlus, Globe2, MoreVertical, PanelLeftClose, PanelLeftOpen, Pencil, Trash2 } from "lucide-react";
 import { AssetTreeCreateDrawer, type TreeAssetCreateAction, type TreeAssetCreateContext, type TreeAssetCreateOptions, type TreeAssetLevel } from "./asset-tree-create-drawer";
+import { AssetTreeDeleteDialog, type TreeAssetDeleteAction } from "./asset-tree-delete-dialog";
+import { AssetTreeDetailDialog } from "./asset-tree-detail-dialog";
+import { AssetTreeEditDrawer, type TreeAssetEditAction, type TreeAssetEditData } from "./asset-tree-edit-drawer";
+import { PreserveListPositionLink } from "./preserve-list-position";
 
 export type AssetTreeItem = {
   id: string;
@@ -14,6 +17,7 @@ export type AssetTreeItem = {
   name: string;
   levelLabel: string;
   areaZone: string;
+  assetType: string;
   cmStatus: string | null;
   cmStatusDetail: string | null;
   pmStatus: string | null;
@@ -23,6 +27,7 @@ export type AssetTreeItem = {
   imageUrl: string | null;
   detailHref: string;
   details: { label: string; value: string }[];
+  editData: TreeAssetEditData;
   children: AssetTreeItem[];
 };
 
@@ -33,23 +38,26 @@ export type AssetTreeSystem = {
   branches: AssetTreeItem[];
 };
 
-const tableGrid = "grid min-w-[1040px] grid-cols-[minmax(370px,2.3fr)_minmax(140px,0.85fr)_minmax(120px,0.72fr)_minmax(140px,0.8fr)_minmax(180px,1fr)_44px]";
+const tableGrid = "grid min-w-[1260px] grid-cols-[minmax(370px,2.3fr)_minmax(140px,0.85fr)_minmax(120px,0.72fr)_minmax(140px,0.8fr)_minmax(180px,1fr)_minmax(150px,0.9fr)_48px_44px]";
 const treeLine = "border-slate-300";
 
-export function AssetTreeWorkspace({ siteCode, systems, review, canCreateAssets = false, createAction, createOptions }: { siteCode: string; systems: AssetTreeSystem[]; review: AssetTreeItem[]; canCreateAssets?: boolean; createAction?: TreeAssetCreateAction; createOptions?: TreeAssetCreateOptions }) {
+export function AssetTreeWorkspace({ siteCode, systems, review, canCreateAssets = false, canRecodeAssets = false, createAction, editAction, deleteAction, createOptions }: { siteCode: string; systems: AssetTreeSystem[]; review: AssetTreeItem[]; canCreateAssets?: boolean; canRecodeAssets?: boolean; createAction?: TreeAssetCreateAction; editAction?: TreeAssetEditAction; deleteAction?: TreeAssetDeleteAction; createOptions?: TreeAssetCreateOptions }) {
   const allItems = useMemo(() => [...systems.flatMap(system => flatten(system.branches)), ...review], [systems, review]);
   const expandableIds = useMemo(() => new Set([
     ...systems.map(system => systemKey(system.id)),
     ...allItems.filter(item => item.children.length).map(item => assetKey(item.id)),
   ]), [systems, allItems]);
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
-  const [menu, setMenu] = useState<{ context: TreeAssetCreateContext; top: number; left: number } | null>(null);
+  const [menu, setMenu] = useState<{ context: TreeAssetCreateContext; asset: AssetTreeItem | null; top: number; left: number } | null>(null);
   const [drawer, setDrawer] = useState<TreeAssetCreateContext | null>(null);
+  const [detail, setDetail] = useState<AssetTreeItem | null>(null);
+  const [editing, setEditing] = useState<AssetTreeItem | null>(null);
+  const [deleting, setDeleting] = useState<AssetTreeItem | null>(null);
   const closeDrawer = useCallback(() => setDrawer(null), []);
 
-  function openMenu(button: HTMLButtonElement, context: TreeAssetCreateContext) {
+  function openMenu(button: HTMLButtonElement, context: TreeAssetCreateContext, asset: AssetTreeItem | null = null) {
     const rect = button.getBoundingClientRect();
-    setMenu({ context, top: Math.min(rect.bottom + 6, window.innerHeight - 92), left: Math.max(12, rect.right - 220) });
+    setMenu({ context, asset, top: Math.min(rect.bottom + 6, window.innerHeight - 178), left: Math.max(12, rect.right - 220) });
   }
 
   function toggle(key: string) {
@@ -70,12 +78,14 @@ export function AssetTreeWorkspace({ siteCode, systems, review, canCreateAssets 
     </div>
 
     <div className="overflow-x-auto">
-      <div className={`${tableGrid} sticky top-0 z-20 border-b border-slate-200 bg-slate-50 px-5 py-3 text-[10px] font-black uppercase tracking-[.14em] text-slate-500`} role="row">
+      <div className={`${tableGrid} sticky top-0 z-20 border-b border-slate-300 bg-slate-100 px-5 py-3.5 text-xs font-black uppercase tracking-[.08em] text-slate-700`} role="row">
         <span role="columnheader">Tree Assets</span>
         <span role="columnheader">CODE ASSET</span>
         <span role="columnheader">ASSET LEVEL</span>
         <span role="columnheader">AREA / ZONE</span>
         <span role="columnheader">สถานะ PM / CM</span>
+        <span role="columnheader">ASSET TYPE</span>
+        <span className="text-center" role="columnheader"><span className="sr-only">รายละเอียด Asset</span><BookOpen aria-hidden="true" className="mx-auto" size={16}/></span>
         <span className="text-center" role="columnheader"><span className="sr-only">เมนูเพิ่มเติม</span><MoreVertical aria-hidden="true" className="mx-auto" size={16}/></span>
       </div>
 
@@ -96,9 +106,11 @@ export function AssetTreeWorkspace({ siteCode, systems, review, canCreateAssets 
               <span className="w-fit rounded-full bg-violet-100 px-2.5 py-1 text-xs font-bold uppercase tracking-wide text-violet-700">System</span>
               <span className="text-sm text-slate-500">—</span>
               <span className="text-sm text-slate-500">—</span>
+              <span className="text-sm text-slate-500">—</span>
+              <span aria-hidden="true"/>
               <AssetActionButton label={system.name} onClick={button => openMenu(button, { sourceKind: "system", sourceId: system.id, systemName: system.name, parentCode: null, parentName: null, allowedLevels: ["MAIN_ASSET", "SUB_ASSET", "PART"] })}/>
             </div>
-            {open ? <TreeRows branches={system.branches} depth={1} expanded={expanded} onToggle={toggle} onOpenMenu={openMenu} ancestorContinues={[]}/> : null}
+            {open ? <TreeRows branches={system.branches} depth={1} expanded={expanded} onToggle={toggle} onOpenMenu={openMenu} onOpenDetail={setDetail} ancestorContinues={[]}/> : null}
           </section>;
         })}
 
@@ -109,21 +121,29 @@ export function AssetTreeWorkspace({ siteCode, systems, review, canCreateAssets 
               <CircleDot aria-hidden="true" className="shrink-0 text-amber-500" size={17}/>
               <span className="ml-3 font-black text-amber-800">รอตรวจสอบโครงสร้าง</span>
             </div>
-            <span className="text-sm text-slate-500">—</span><span className="text-sm text-slate-500">—</span><span className="text-sm text-slate-500">—</span><span className="text-sm text-slate-500">—</span><span aria-hidden="true"/>
+            <span className="text-sm text-slate-500">—</span><span className="text-sm text-slate-500">—</span><span className="text-sm text-slate-500">—</span><span className="text-sm text-slate-500">—</span><span className="text-sm text-slate-500">—</span><span aria-hidden="true"/><span aria-hidden="true"/>
           </div>
-          <TreeRows branches={review} depth={1} expanded={expanded} onToggle={toggle} onOpenMenu={openMenu} ancestorContinues={[]}/>
+          <TreeRows branches={review} depth={1} expanded={expanded} onToggle={toggle} onOpenMenu={openMenu} onOpenDetail={setDetail} ancestorContinues={[]}/>
         </section> : null}
 
-        {!systems.length && !review.length ? <div className="min-w-[1040px] px-6 py-16 text-center text-slate-500"><CircleDot className="mx-auto" size={30}/><h2 className="mt-3 font-black text-slate-900">ยังไม่พบ Asset</h2><p className="mt-1 text-sm">ลองเปลี่ยนตัวกรองเพื่อแสดงโครงสร้าง</p></div> : null}
+        {!systems.length && !review.length ? <div className="min-w-[1260px] px-6 py-16 text-center text-slate-500"><CircleDot className="mx-auto" size={30}/><h2 className="mt-3 font-black text-slate-900">ยังไม่พบ Asset</h2><p className="mt-1 text-sm">ลองเปลี่ยนตัวกรองเพื่อแสดงโครงสร้าง</p></div> : null}
       </div>
     </div>
     {menu ? <>
       <button aria-label="ปิดเมนูเพิ่มเติม" className="fixed inset-0 z-[50] cursor-default" onClick={() => setMenu(null)} type="button"/>
       <div className="fixed z-[60] w-52 rounded-xl border border-slate-200 bg-white p-1.5 shadow-xl" role="menu" style={{ left: menu.left, top: menu.top }}>
-        {canCreateAssets && menu.context.allowedLevels.length && createAction && createOptions ? <button className="flex min-h-10 w-full items-center gap-2 rounded-lg px-3 text-left text-sm font-bold text-slate-700 hover:bg-emerald-50 hover:text-emerald-700" onClick={() => { setDrawer(menu.context); setMenu(null); }} role="menuitem" type="button"><CirclePlus size={17}/>เพิ่มรายการ</button> : <span className="block px-3 py-2 text-xs font-semibold text-slate-500">{menu.context.allowedLevels.length ? "ไม่มีสิทธิ์เพิ่มรายการ" : "ยังไม่มีคำสั่งสำหรับระดับนี้"}</span>}
+        {canCreateAssets && menu.context.allowedLevels.length && createAction && createOptions ? <button className="flex min-h-11 w-full items-center gap-2 rounded-lg px-3 text-left text-sm font-bold text-slate-700 hover:bg-emerald-50 hover:text-emerald-700" onClick={() => { setDrawer(menu.context); setMenu(null); }} role="menuitem" type="button"><CirclePlus size={17}/>เพิ่มรายการ</button> : null}
+        {menu.asset && canCreateAssets ? <>
+          <button className="flex min-h-11 w-full items-center gap-2 rounded-lg px-3 text-left text-sm font-bold text-slate-700 hover:bg-blue-50 hover:text-blue-700" onClick={() => { setEditing(menu.asset); setMenu(null); }} role="menuitem" type="button"><Pencil size={17}/>แก้ไข</button>
+          <button className="flex min-h-11 w-full items-center gap-2 rounded-lg px-3 text-left text-sm font-bold text-rose-700 hover:bg-rose-50" onClick={() => { setDeleting(menu.asset); setMenu(null); }} role="menuitem" type="button"><Trash2 size={17}/>ลบ</button>
+        </> : null}
+        {!canCreateAssets ? <span className="block px-3 py-2 text-xs font-semibold text-slate-500">ไม่มีสิทธิ์จัดการ Asset</span> : null}
       </div>
     </> : null}
     {drawer && createAction && createOptions ? <AssetTreeCreateDrawer action={createAction} context={drawer} onClose={closeDrawer} options={createOptions}/> : null}
+    {detail ? <AssetTreeDetailDialog asset={detail} onClose={() => setDetail(null)}/> : null}
+    {editing && editAction && createOptions ? <AssetTreeEditDrawer action={editAction} asset={editing} canRecode={canRecodeAssets} onClose={() => setEditing(null)} options={createOptions}/> : null}
+    {deleting && deleteAction && createOptions ? <AssetTreeDeleteDialog action={deleteAction} asset={deleting} onClose={() => setDeleting(null)} organizationId={createOptions.organizationId} plantId={createOptions.plantId}/> : null}
   </section>;
 }
 
@@ -133,13 +153,15 @@ function TreeRows({
   expanded,
   onToggle,
   onOpenMenu,
+  onOpenDetail,
   ancestorContinues,
 }: {
   branches: AssetTreeItem[];
   depth: number;
   expanded: Set<string>;
   onToggle: (key: string) => void;
-  onOpenMenu: (button: HTMLButtonElement, context: TreeAssetCreateContext) => void;
+  onOpenMenu: (button: HTMLButtonElement, context: TreeAssetCreateContext, asset?: AssetTreeItem | null) => void;
+  onOpenDetail: (asset: AssetTreeItem) => void;
   ancestorContinues: boolean[];
 }) {
   return <>{branches.map((branch, index) => {
@@ -151,7 +173,7 @@ function TreeRows({
     const parentAnchor = 14 + (depth - 1) * step;
     const tone = assetLevelTone(branch.levelLabel);
 
-    return <div className="relative border-t border-slate-200" key={branch.id} role="treeitem" aria-expanded={branch.children.length ? open : undefined} aria-level={depth + 1}>
+    return <div className="relative border-t border-slate-200" id={`asset-tree-row-${branch.id}`} key={branch.id} role="treeitem" aria-expanded={branch.children.length ? open : undefined} aria-level={depth + 1}>
       <div className={`${tableGrid} min-h-[76px] items-center px-5 transition-colors hover:bg-slate-50 focus-within:bg-slate-50`} role="row">
         <div className="relative flex min-w-0 items-center pr-5" style={{ paddingLeft: `${indent}px` }}>
           {ancestorContinues.map((continues, ancestorIndex) => continues ? <span aria-hidden="true" className={`absolute bottom-[-38px] top-[-38px] border-l ${treeLine}`} key={ancestorIndex} style={{ left: `${14 + ancestorIndex * step}px` }}/> : null)}
@@ -167,25 +189,31 @@ function TreeRows({
           <span className="relative z-10 ml-3 w-7 shrink-0 bg-white font-mono text-xs font-black text-slate-500">{assetOrdinal(depth, index)}</span>
           <span className="relative z-10 min-w-0 bg-white">
             <span className="flex min-w-0 items-center gap-2">
-              <Link className={`block min-w-0 truncate text-sm decoration-emerald-500 decoration-2 underline-offset-4 hover:text-emerald-700 hover:underline focus-visible:rounded focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-600 font-semibold ${tone.name}`} href={branch.detailHref}>{branch.name}</Link>
+              <PreserveListPositionLink className={`block min-w-0 truncate text-sm decoration-emerald-500 decoration-2 underline-offset-4 hover:text-emerald-700 hover:underline focus-visible:rounded focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-600 font-semibold ${tone.name}`} href={branch.detailHref} storageKey="assets" targetId={`asset-tree-row-${branch.id}`}>{branch.name}</PreserveListPositionLink>
               {branch.levelLabel === "Main Asset" ? <ChildCount items={branch.children} levels={["Sub-Asset", "Part-Asset"]}/> : null}
             </span>
             {branch.contextOnly ? <span className="mt-0.5 block text-[10px] font-semibold text-amber-700">ลำดับแม่ · ไม่ตรงตัวกรอง</span> : null}
           </span>
         </div>
-        <Link className="w-fit max-w-full truncate rounded font-mono text-sm font-bold text-slate-800 hover:text-emerald-700 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-600" href={branch.detailHref}>{branch.code}</Link>
+        <PreserveListPositionLink className="w-fit max-w-full truncate rounded font-mono text-sm font-bold text-slate-800 hover:text-emerald-700 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-600" href={branch.detailHref} storageKey="assets" targetId={`asset-tree-row-${branch.id}`}>{branch.code}</PreserveListPositionLink>
         <span className={`w-fit rounded-full px-2.5 py-1 text-xs font-bold ${tone.badge}`}>{branch.levelLabel}</span>
         <span className="truncate pr-3 text-sm font-semibold text-slate-700" title={branch.areaZone || "ยังไม่ระบุ"}>{branch.areaZone || "ยังไม่ระบุ"}</span>
         <MaintenanceStatus item={branch}/>
-        <AssetActionButton label={branch.code} onClick={button => onOpenMenu(button, { sourceKind: "asset", sourceId: branch.id, systemName: branch.systemName, parentCode: branch.code, parentName: branch.name, allowedLevels: allowedChildLevels(branch.assetLevel) })}/>
+        <span className="truncate pr-3 text-sm font-semibold text-slate-700" title={branch.assetType || "ยังไม่ระบุ"}>{branch.assetType || "ยังไม่ระบุ"}</span>
+        <AssetDetailButton asset={branch} onClick={() => onOpenDetail(branch)}/>
+        <AssetActionButton label={branch.code} onClick={button => onOpenMenu(button, { sourceKind: "asset", sourceId: branch.id, systemName: branch.systemName, parentCode: branch.code, parentName: branch.name, allowedLevels: allowedChildLevels(branch.assetLevel) }, branch)}/>
       </div>
-      {branch.children.length && open ? <TreeRows branches={branch.children} depth={depth + 1} expanded={expanded} onToggle={onToggle} onOpenMenu={onOpenMenu} ancestorContinues={[...ancestorContinues, !isLast]}/> : null}
+      {branch.children.length && open ? <TreeRows branches={branch.children} depth={depth + 1} expanded={expanded} onToggle={onToggle} onOpenMenu={onOpenMenu} onOpenDetail={onOpenDetail} ancestorContinues={[...ancestorContinues, !isLast]}/> : null}
     </div>;
   })}</>;
 }
 
+function AssetDetailButton({ asset, onClick }: { asset: AssetTreeItem; onClick: () => void }) {
+  return <button aria-label={`ดูรายละเอียด ${asset.code}`} className="mx-auto grid h-11 w-11 place-items-center rounded-xl text-emerald-700 transition hover:bg-emerald-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-600" onClick={onClick} title="ดูรายละเอียด Asset" type="button"><BookOpen aria-hidden="true" size={18}/></button>;
+}
+
 function AssetActionButton({ label, onClick }: { label: string; onClick: (button: HTMLButtonElement) => void }) {
-  return <button aria-label={`เมนูเพิ่มเติม ${label}`} className="mx-auto grid h-9 w-9 place-items-center rounded-lg text-slate-500 transition hover:bg-slate-100 hover:text-slate-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-600" onClick={event => onClick(event.currentTarget)} title="เมนูเพิ่มเติม" type="button"><MoreVertical aria-hidden="true" size={18}/></button>;
+  return <button aria-label={`เมนูเพิ่มเติม ${label}`} className="mx-auto grid h-11 w-11 place-items-center rounded-lg text-slate-500 transition hover:bg-slate-100 hover:text-slate-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-600" onClick={event => onClick(event.currentTarget)} title="เมนูเพิ่มเติม" type="button"><MoreVertical aria-hidden="true" size={18}/></button>;
 }
 
 function allowedChildLevels(level: TreeAssetLevel): TreeAssetLevel[] {

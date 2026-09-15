@@ -7,11 +7,21 @@ describe("Store report export route", () => {
     const source = readFileSync("app/dashboardstore/reports/export/route.ts", "utf8");
 
     expect(source).toContain("VIEW_STORE_REPORTS");
+    expect(source).toContain("VIEW_STORE_STOCK");
+    expect(source).toContain('source === "stock"');
+    expect(source).toContain('params.get("materialGroupId")');
+    expect(source).toContain('input.stockStatus === "nearMin"');
+    expect(source).toContain('"Total Value"');
     expect(source).toContain("resolveStorePageScope");
     expect(source).toContain("STOCK_BALANCE");
     expect(source).toContain("LOW_STOCK");
     expect(source).toContain("MOVEMENTS");
     expect(source).toContain("ISSUES");
+    expect(source).toContain("ISSUE_BY_DATE");
+    expect(source).toContain('params.getAll("itemIds")');
+    expect(source).toContain('movementType: "ISSUE"');
+    expect(source).toContain("buildDailyIssueReportRows");
+    expect(source).toContain("dailyIssueReportColumns");
     expect(source).toContain("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
     expect(source).toContain("พิมพ์ / บันทึกเป็น PDF");
   });
