@@ -5,7 +5,11 @@ import { getCurrentUser } from "../../../../lib/session";
 import { canUseUserPermission, PermissionKey } from "../../../../modules/auth/site-admin-permissions";
 import { resolveStorePageScope } from "../../../../modules/store/store-page-scope";
 import { db } from "../../../../lib/db";
-import { buildDailyIssueReportRows, dailyIssueReportColumns } from "../../../../modules/store/store-daily-issue-report";
+import {
+  buildDailyIssueReportRows,
+  dailyIssueReportColumns,
+  summarizePeriodMovementQuantities,
+} from "../../../../modules/store/store-daily-issue-report";
 import { buildDailyIssueWorkbook } from "../../../../modules/store/store-daily-issue-workbook";
 
 export const preferredRegion = "home";
@@ -117,16 +121,40 @@ async function exportRows(input: {
       : {}),
   };
   if (input.reportType === "STOCK_BALANCE" || input.reportType === "LOW_STOCK") {
-    const stocks = await db.storeStock.findMany({
-      where: {
-        plantId: input.plantId,
-        ...(input.storeId ? { storeId: input.storeId } : {}),
-        store: { active: true },
-        sparePart: sparePartWhere,
-      },
-      include: { store: true, sparePart: { include: { category: true, materialGroup: true } } },
-      orderBy: [{ store: { code: "asc" } }, { sparePart: { code: "asc" } }],
-    });
+    const [stocks, periodMovements] = await Promise.all([
+      db.storeStock.findMany({
+        where: {
+          plantId: input.plantId,
+          ...(input.storeId ? { storeId: input.storeId } : {}),
+          store: { active: true },
+          sparePart: sparePartWhere,
+        },
+        include: { store: true, sparePart: { include: { category: true, materialGroup: true } } },
+        orderBy: [{ store: { code: "asc" } }, { sparePart: { code: "asc" } }],
+      }),
+      db.stockMovement.findMany({
+        where: {
+          plantId: input.plantId,
+          occurredAt: { gte: input.range.start, lte: input.range.end },
+          movementType: { in: ["RECEIVE", "ISSUE"] },
+          ...(input.storeId ? { storeId: input.storeId } : {}),
+          store: { active: true },
+          sparePart: sparePartWhere,
+        },
+        select: {
+          movementType: true,
+          quantityChange: true,
+          store: { select: { id: true } },
+          sparePart: { select: { id: true } },
+        },
+      }),
+    ]);
+    const periodTotals = summarizePeriodMovementQuantities(periodMovements.map((movement) => ({
+      movementType: movement.movementType,
+      quantityChange: Number(movement.quantityChange),
+      store: movement.store,
+      sparePart: movement.sparePart,
+    })));
     return stocks
       .filter((stock) => {
         const quantity = Number(stock.quantity);
@@ -137,20 +165,28 @@ async function exportRows(input: {
         if (input.stockStatus === "outOfStock") return quantity <= 0;
         return true;
       })
-      .map((stock) => ({
-        "Store Code": stock.store.code,
-        "Store Name": stock.store.name,
-        "Item Type": stock.sparePart.itemKind,
-        "Item Code": stock.sparePart.code,
-        "Item Name": stock.sparePart.name,
-        Category: stock.sparePart.category?.name ?? "-",
-        "Material Group": stock.sparePart.materialGroup?.name ?? "-",
-        Quantity: Number(stock.quantity),
-        Minimum: Number(stock.sparePart.minStock),
-        Unit: stock.sparePart.unit,
-        "Unit Price": stock.sparePart.latestUnitPrice == null ? "" : Number(stock.sparePart.latestUnitPrice),
-        "Total Value": Number(stock.quantity) * Number(stock.sparePart.latestUnitPrice ?? 0),
-      }));
+      .map((stock) => {
+        const totals = periodTotals.get(stockKey(stock.storeId, stock.sparePartId)) ?? {
+          receivedQuantity: 0,
+          issuedQuantity: 0,
+        };
+        return {
+          "Store Code": stock.store.code,
+          "Store Name": stock.store.name,
+          "Item Type": stock.sparePart.itemKind,
+          "Item Code": stock.sparePart.code,
+          "Item Name": stock.sparePart.name,
+          Category: stock.sparePart.category?.name ?? "-",
+          "Material Group": stock.sparePart.materialGroup?.name ?? "-",
+          "Received Quantity": totals.receivedQuantity,
+          "Issued Quantity": totals.issuedQuantity,
+          Quantity: Number(stock.quantity),
+          Minimum: Number(stock.sparePart.minStock),
+          Unit: stock.sparePart.unit,
+          "Unit Price": stock.sparePart.latestUnitPrice == null ? "" : Number(stock.sparePart.latestUnitPrice),
+          "Total Value": Number(stock.quantity) * Number(stock.sparePart.latestUnitPrice ?? 0),
+        };
+      });
   }
   if (input.reportType === "ISSUE_BY_DATE") {
     const selectedItemWhere: Prisma.SparePartWhereInput = {
@@ -160,7 +196,7 @@ async function exportRows(input: {
     const movements = await db.stockMovement.findMany({
       where: {
         plantId: input.plantId,
-        movementType: "ISSUE",
+        movementType: { in: ["RECEIVE", "ISSUE"] },
         occurredAt: { gte: input.range.start, lte: input.range.end },
         ...(input.storeId ? { storeId: input.storeId } : {}),
         store: { active: true },
@@ -185,13 +221,29 @@ async function exportRows(input: {
       },
       orderBy: [{ occurredAt: "asc" }, { store: { code: "asc" } }, { sparePart: { code: "asc" } }],
     });
-    const stockKeys = await matchingStockKeys(input, selectedItemWhere);
+    const [stockKeys, stockBalances] = await Promise.all([
+      matchingStockKeys(input, selectedItemWhere),
+      db.storeStock.findMany({
+        where: {
+          plantId: input.plantId,
+          ...(input.storeId ? { storeId: input.storeId } : {}),
+          store: { active: true },
+          sparePart: selectedItemWhere,
+        },
+        select: { storeId: true, sparePartId: true, quantity: true },
+      }),
+    ]);
+    const stockQuantities = new Map(
+      stockBalances.map((stock) => [stockKey(stock.storeId, stock.sparePartId), Number(stock.quantity)]),
+    );
     const visibleMovements = stockKeys
       ? movements.filter((movement) => stockKeys.has(stockKey(movement.storeId, movement.sparePartId)))
       : movements;
     return buildDailyIssueReportRows(visibleMovements.map((movement) => ({
       occurredAt: movement.occurredAt,
+      movementType: movement.movementType,
       quantityChange: Number(movement.quantityChange),
+      stockQuantity: stockQuantities.get(stockKey(movement.storeId, movement.sparePartId)) ?? 0,
       unitPrice: movement.unitPrice == null ? null : Number(movement.unitPrice),
       store: movement.store,
       sparePart: {

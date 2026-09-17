@@ -53,6 +53,11 @@ export async function buildDailyIssueWorkbook(input: DailyIssueWorkbookInput) {
   });
 
   const firstDateColumn = input.columns.findIndex((column) => column.startsWith("วันที่ ")) + 1;
+  const receivedQuantityColumn = input.columns.indexOf("Received Quantity") + 1;
+  const issuedQuantityColumn = input.columns.indexOf("Issued Quantity") + 1;
+  const quantityColumn = input.columns.indexOf("Quantity") + 1;
+  const unitPriceColumn = input.columns.indexOf("Unit Price") + 1;
+  const totalValueColumn = input.columns.indexOf("Total Value") + 1;
   const firstDataRow = 6;
   input.rows.forEach((reportRow, rowIndex) => {
     const excelRowNumber = firstDataRow + rowIndex;
@@ -66,12 +71,18 @@ export async function buildDailyIssueWorkbook(input: DailyIssueWorkbookInput) {
       cell.border = { bottom: { style: "thin", color: { argb: lineColor } } };
       if (rowIndex % 2 === 1) cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: stripeFill } };
     });
-    const quantityResult = Number(reportRow.Quantity ?? 0);
+    const issuedQuantityResult = Number(reportRow["Issued Quantity"] ?? 0);
     const totalValueResult = Number(reportRow["Total Value"] ?? 0);
     if (firstDateColumn > 0) {
-      excelRow.getCell(8).value = { formula: `SUM(${worksheet.getColumn(firstDateColumn).letter}${excelRowNumber}:${lastColumnLetter}${excelRowNumber})`, result: quantityResult };
+      excelRow.getCell(issuedQuantityColumn).value = {
+        formula: `SUM(${worksheet.getColumn(firstDateColumn).letter}${excelRowNumber}:${lastColumnLetter}${excelRowNumber})`,
+        result: issuedQuantityResult,
+      };
     }
-    excelRow.getCell(12).value = { formula: `H${excelRowNumber}*K${excelRowNumber}`, result: totalValueResult };
+    excelRow.getCell(totalValueColumn).value = {
+      formula: `${worksheet.getColumn(quantityColumn).letter}${excelRowNumber}*${worksheet.getColumn(unitPriceColumn).letter}${excelRowNumber}`,
+      result: totalValueResult,
+    };
     excelRow.getCell(4).font = { name: "Arial", size: 10, bold: true, color: { argb: accentColor } };
   });
 
@@ -80,16 +91,20 @@ export async function buildDailyIssueWorkbook(input: DailyIssueWorkbookInput) {
   totalRow.height = 24;
   totalRow.getCell(1).value = "รวม";
   worksheet.mergeCells(totalRowNumber, 1, totalRowNumber, 7);
-  const totalQuantity = input.rows.reduce((sum, row) => sum + Number(row.Quantity ?? 0), 0);
-  const totalValue = input.rows.reduce((sum, row) => sum + Number(row["Total Value"] ?? 0), 0);
-  if (input.rows.length) {
-    totalRow.getCell(8).value = { formula: `SUM(H${firstDataRow}:H${totalRowNumber - 1})`, result: totalQuantity };
-    totalRow.getCell(12).value = { formula: `SUM(L${firstDataRow}:L${totalRowNumber - 1})`, result: totalValue };
-  } else {
-    totalRow.getCell(8).value = 0;
-    totalRow.getCell(12).value = 0;
+  const totalColumns = [
+    { column: receivedQuantityColumn, key: "Received Quantity" },
+    { column: issuedQuantityColumn, key: "Issued Quantity" },
+    { column: quantityColumn, key: "Quantity" },
+    { column: totalValueColumn, key: "Total Value" },
+  ] as const;
+  for (const totalColumn of totalColumns) {
+    const result = input.rows.reduce((sum, row) => sum + Number(row[totalColumn.key] ?? 0), 0);
+    const columnLetter = worksheet.getColumn(totalColumn.column).letter;
+    totalRow.getCell(totalColumn.column).value = input.rows.length
+      ? { formula: `SUM(${columnLetter}${firstDataRow}:${columnLetter}${totalRowNumber - 1})`, result }
+      : 0;
   }
-  for (let column = Math.max(firstDateColumn, 13); column <= lastColumn; column += 1) {
+  for (let column = Math.max(firstDateColumn, totalValueColumn + 1); column <= lastColumn; column += 1) {
     const result = input.rows.reduce((sum, row) => sum + Number(row[input.columns[column - 1]] ?? 0), 0);
     totalRow.getCell(column).value = input.rows.length
       ? { formula: `SUM(${worksheet.getColumn(column).letter}${firstDataRow}:${worksheet.getColumn(column).letter}${totalRowNumber - 1})`, result }
@@ -106,7 +121,7 @@ export async function buildDailyIssueWorkbook(input: DailyIssueWorkbookInput) {
   });
   totalRow.getCell(1).alignment = { vertical: "middle", horizontal: "left" };
 
-  const fixedWidths = [13, 18, 14, 20, 28, 18, 24, 12, 12, 10, 13, 15];
+  const fixedWidths = [13, 18, 14, 20, 28, 18, 24, 16, 16, 12, 12, 10, 13, 15];
   input.columns.forEach((column, index) => {
     worksheet.getColumn(index + 1).width = index < fixedWidths.length ? fixedWidths[index] : 15;
     if (index >= 7) worksheet.getColumn(index + 1).numFmt = "#,##0.00";

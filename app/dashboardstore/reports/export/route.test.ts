@@ -17,6 +17,8 @@ describe("Store report export route", () => {
     expect(source).toContain("sparePartWhere");
     expect(source).toContain("matchingStockKeys");
     expect(source).toContain('input.stockStatus === "nearMin"');
+    expect(source).toContain('"Received Quantity"');
+    expect(source).toContain('"Issued Quantity"');
     expect(source).toContain('"Total Value"');
     expect(source).toContain("resolveStorePageScope");
     expect(source).toContain("STOCK_BALANCE");
@@ -25,7 +27,9 @@ describe("Store report export route", () => {
     expect(source).toContain("ISSUES");
     expect(source).toContain("ISSUE_BY_DATE");
     expect(source).toContain('params.getAll("itemIds")');
-    expect(source).toContain('movementType: "ISSUE"');
+    expect(source).toContain('movementType: { in: ["RECEIVE", "ISSUE"] }');
+    expect(source).toContain("summarizePeriodMovementQuantities");
+    expect(source).toContain("stockQuantities");
     expect(source).toContain("buildDailyIssueReportRows");
     expect(source).toContain("dailyIssueReportColumns");
     expect(source).toContain("buildDailyIssueWorkbook");

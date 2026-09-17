@@ -16,11 +16,13 @@ const row: DailyIssueReportRow = {
   "Item Name": "Biocide",
   Category: "Lab",
   "Material Group": "สารเคมี",
-  Quantity: 3,
+  "Received Quantity": 8,
+  "Issued Quantity": 3,
+  Quantity: 20,
   Minimum: 10,
   Unit: "kg",
   "Unit Price": 58,
-  "Total Value": 174,
+  "Total Value": 1160,
   "วันที่ 01/09/2026": 1,
   "วันที่ 02/09/2026": 2,
 };
@@ -44,13 +46,16 @@ describe("daily issue workbook", () => {
     expect(sheet?.getRow(5).values).toEqual([
       undefined,
       "Store Code", "Store Name", "Item Type", "Item Code", "Item Name", "Category", "Material Group",
-      "Quantity", "Minimum", "Unit", "Unit Price", "Total Value", "วันที่ 01/09/2026", "วันที่ 02/09/2026",
+      "Received Quantity", "Issued Quantity", "Quantity", "Minimum", "Unit", "Unit Price", "Total Value",
+      "วันที่ 01/09/2026", "วันที่ 02/09/2026",
     ]);
-    expect(sheet?.getCell("H6").value).toMatchObject({ formula: "SUM(M6:N6)", result: 3 });
-    expect(sheet?.getCell("L6").value).toMatchObject({ formula: "H6*K6", result: 174 });
+    expect(sheet?.getCell("I6").value).toMatchObject({ formula: "SUM(O6:P6)", result: 3 });
+    expect(sheet?.getCell("N6").value).toMatchObject({ formula: "J6*M6", result: 1160 });
     expect(sheet?.getCell("A7").value).toBe("รวม");
-    expect(sheet?.getCell("H7").value).toMatchObject({ formula: "SUM(H6:H6)", result: 3 });
-    expect(sheet?.getCell("N7").value).toMatchObject({ formula: "SUM(N6:N6)", result: 2 });
+    expect(sheet?.getCell("H7").value).toMatchObject({ formula: "SUM(H6:H6)", result: 8 });
+    expect(sheet?.getCell("I7").value).toMatchObject({ formula: "SUM(I6:I6)", result: 3 });
+    expect(sheet?.getCell("J7").value).toMatchObject({ formula: "SUM(J6:J6)", result: 20 });
+    expect(sheet?.getCell("P7").value).toMatchObject({ formula: "SUM(P6:P6)", result: 2 });
     expect(sheet?.getCell("A5").fill).toMatchObject({ type: "pattern", fgColor: { argb: "164E63" } });
     expect(sheet?.getCell("A5").font).toMatchObject({ name: "Arial", bold: true, color: { argb: "FFFFFF" } });
     expect(sheet?.views[0]).toMatchObject({ state: "frozen", xSplit: 4, ySplit: 5 });

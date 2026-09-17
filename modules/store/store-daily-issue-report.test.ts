@@ -25,9 +25,11 @@ describe("daily issue report", () => {
 
   it("aggregates actual issued quantities by item, store, and day", () => {
     const rows = buildDailyIssueReportRows([
-      { occurredAt: new Date("2026-09-15T02:00:00.000Z"), quantityChange: -2, unitPrice: 90, store, sparePart: basePart },
-      { occurredAt: new Date("2026-09-15T10:00:00.000Z"), quantityChange: -1, unitPrice: 100, store, sparePart: basePart },
-      { occurredAt: new Date("2026-09-16T03:00:00.000Z"), quantityChange: -4, unitPrice: null, store, sparePart: basePart },
+      { occurredAt: new Date("2026-09-14T01:00:00.000Z"), movementType: "RECEIVE", quantityChange: 99, stockQuantity: 42, unitPrice: 80, store, sparePart: basePart },
+      { occurredAt: new Date("2026-09-15T01:00:00.000Z"), movementType: "RECEIVE", quantityChange: 10, stockQuantity: 42, unitPrice: 80, store, sparePart: basePart },
+      { occurredAt: new Date("2026-09-15T02:00:00.000Z"), movementType: "ISSUE", quantityChange: -2, stockQuantity: 42, unitPrice: 90, store, sparePart: basePart },
+      { occurredAt: new Date("2026-09-15T10:00:00.000Z"), movementType: "ISSUE", quantityChange: -1, stockQuantity: 42, unitPrice: 100, store, sparePart: basePart },
+      { occurredAt: new Date("2026-09-16T03:00:00.000Z"), movementType: "ISSUE", quantityChange: -4, stockQuantity: 42, unitPrice: null, store, sparePart: basePart },
     ], {
       start: new Date("2026-09-14T17:00:00.000Z"),
       end: new Date("2026-09-16T16:59:59.999Z"),
@@ -42,11 +44,13 @@ describe("daily issue report", () => {
       "Item Name": "Bearing",
       Category: "Mechanical",
       "Material Group": "Bearing Group",
-      Quantity: 7,
+      "Received Quantity": 10,
+      "Issued Quantity": 7,
+      Quantity: 42,
       Minimum: 2,
       Unit: "ชิ้น",
       "Unit Price": 100,
-      "Total Value": 680,
+      "Total Value": 4200,
       "วันที่ 15/09/2026": 3,
       "วันที่ 16/09/2026": 4,
     });

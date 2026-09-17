@@ -1,6 +1,8 @@
 export type DailyIssueMovement = {
   occurredAt: Date;
+  movementType: string;
   quantityChange: number;
+  stockQuantity: number;
   unitPrice: number | null;
   store: { id: string; code: string; name: string };
   sparePart: {
@@ -21,7 +23,7 @@ export type DailyIssueReportRow = Record<string, string | number>;
 
 const fixedColumns = [
   "Store Code", "Store Name", "Item Type", "Item Code", "Item Name", "Category",
-  "Material Group", "Quantity", "Minimum", "Unit", "Unit Price", "Total Value",
+  "Material Group", "Received Quantity", "Issued Quantity", "Quantity", "Minimum", "Unit", "Unit Price", "Total Value",
 ];
 
 export function dailyIssueReportColumns(range: { start: Date; end: Date }) {
@@ -34,7 +36,10 @@ export function buildDailyIssueReportRows(
 ): DailyIssueReportRow[] {
   const dateKeys = enumerateBangkokDateKeys(range.start, range.end);
   const dateKeySet = new Set(dateKeys);
+  const periodMovements = movements.filter((movement) => dateKeySet.has(bangkokDateKey(movement.occurredAt)));
+  const periodTotals = summarizePeriodMovementQuantities(periodMovements);
   const groups = new Map<string, {
+    key: string;
     storeCode: string;
     storeName: string;
     itemKind: string;
@@ -46,17 +51,17 @@ export function buildDailyIssueReportRows(
     unit: string;
     unitPrice: number;
     quantity: number;
-    totalValue: number;
     daily: Map<string, number>;
   }>();
 
-  for (const movement of movements) {
+  for (const movement of periodMovements) {
     const dateKey = bangkokDateKey(movement.occurredAt);
-    if (!dateKeySet.has(dateKey)) continue;
+    if (movement.movementType !== "ISSUE") continue;
     const key = `${movement.store.id}:${movement.sparePart.id}`;
     const quantity = Math.abs(Number(movement.quantityChange));
     const movementPrice = movement.unitPrice ?? movement.sparePart.latestUnitPrice ?? 0;
     const current = groups.get(key) ?? {
+      key,
       storeCode: movement.store.code,
       storeName: movement.store.name,
       itemKind: movement.sparePart.itemKind,
@@ -66,14 +71,10 @@ export function buildDailyIssueReportRows(
       materialGroup: movement.sparePart.materialGroupName ?? "-",
       minimum: Number(movement.sparePart.minStock),
       unit: movement.sparePart.unit,
-      unitPrice: Number(movementPrice),
-      quantity: 0,
-      totalValue: 0,
+      unitPrice: Number(movement.sparePart.latestUnitPrice ?? movementPrice),
+      quantity: Number(movement.stockQuantity),
       daily: new Map<string, number>(),
     };
-    current.quantity += quantity;
-    current.totalValue += quantity * Number(movementPrice);
-    if (movement.unitPrice != null) current.unitPrice = Number(movement.unitPrice);
     current.daily.set(dateKey, (current.daily.get(dateKey) ?? 0) + quantity);
     groups.set(key, current);
   }
@@ -81,6 +82,7 @@ export function buildDailyIssueReportRows(
   return [...groups.values()]
     .sort((left, right) => left.storeCode.localeCompare(right.storeCode) || left.itemCode.localeCompare(right.itemCode))
     .map((group) => {
+      const totals = periodTotals.get(group.key) ?? { receivedQuantity: 0, issuedQuantity: 0 };
       const row: DailyIssueReportRow = {
         "Store Code": group.storeCode,
         "Store Name": group.storeName,
@@ -89,15 +91,32 @@ export function buildDailyIssueReportRows(
         "Item Name": group.itemName,
         Category: group.category,
         "Material Group": group.materialGroup,
+        "Received Quantity": roundReportNumber(totals.receivedQuantity),
+        "Issued Quantity": roundReportNumber(totals.issuedQuantity),
         Quantity: roundReportNumber(group.quantity),
         Minimum: roundReportNumber(group.minimum),
         Unit: group.unit,
         "Unit Price": roundReportNumber(group.unitPrice),
-        "Total Value": roundReportNumber(group.totalValue),
+        "Total Value": roundReportNumber(group.quantity * group.unitPrice),
       };
       for (const dateKey of dateKeys) row[dateColumnLabel(dateKey)] = roundReportNumber(group.daily.get(dateKey) ?? 0);
       return row;
     });
+}
+
+export function summarizePeriodMovementQuantities(
+  movements: Array<{ movementType: string; quantityChange: number; store: { id: string }; sparePart: { id: string } }>,
+) {
+  const totals = new Map<string, { receivedQuantity: number; issuedQuantity: number }>();
+  for (const movement of movements) {
+    const key = movement.store.id + ":" + movement.sparePart.id;
+    const current = totals.get(key) ?? { receivedQuantity: 0, issuedQuantity: 0 };
+    const quantity = Math.abs(Number(movement.quantityChange));
+    if (movement.movementType === "RECEIVE") current.receivedQuantity += quantity;
+    if (movement.movementType === "ISSUE") current.issuedQuantity += quantity;
+    totals.set(key, current);
+  }
+  return totals;
 }
 
 export function enumerateBangkokDateKeys(start: Date, end: Date) {
