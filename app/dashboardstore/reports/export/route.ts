@@ -1,3 +1,4 @@
+import type { Prisma } from "@prisma/client";
 import * as XLSX from "xlsx";
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "../../../../lib/session";
@@ -5,6 +6,7 @@ import { canUseUserPermission, PermissionKey } from "../../../../modules/auth/si
 import { resolveStorePageScope } from "../../../../modules/store/store-page-scope";
 import { db } from "../../../../lib/db";
 import { buildDailyIssueReportRows, dailyIssueReportColumns } from "../../../../modules/store/store-daily-issue-report";
+import { buildDailyIssueWorkbook } from "../../../../modules/store/store-daily-issue-workbook";
 
 export const preferredRegion = "home";
 
@@ -25,6 +27,7 @@ export async function GET(request: Request) {
   const scope = await resolveStorePageScope(user, Object.fromEntries(params));
   const reportType = source === "stock" ? "STOCK_BALANCE" : normalizeReportType(params.get("reportType"));
   const itemKind = normalizeItemKind(params.get("itemKind"));
+  const itemIds = params.getAll("itemIds").filter(Boolean);
   const range = dateRange(params.get("startDate"), params.get("endDate"));
   const rows = await exportRows({
     plantId: scope.plant.id,
@@ -32,7 +35,7 @@ export async function GET(request: Request) {
     itemKind,
     movementType: params.get("movementType") || "ALL",
     issueStatus: params.get("issueStatus") || "ALL",
-    itemIds: params.getAll("itemIds").filter(Boolean),
+    itemIds,
     search: params.get("search")?.trim() || "",
     storeId: params.get("storeId") || "",
     typeId: params.get("typeId") || "",
@@ -50,12 +53,27 @@ export async function GET(request: Request) {
     });
   }
 
+  if (reportType === "ISSUE_BY_DATE") {
+    const columns = dailyIssueReportColumns(range);
+    const bytes = await buildDailyIssueWorkbook({
+      rows,
+      columns,
+      title: dailyIssueReportTitle(itemKind, itemIds.length),
+      dateRangeLabel: dailyIssueDateRangeLabel(range),
+      sheetName: itemKind === "CHEMICAL" && itemIds.length === 0 ? "Chemical Issue" : "Issue by Date",
+    });
+    return excelResponse(bytes, fileBase);
+  }
+
   const workbook = XLSX.utils.book_new();
-  const headers = reportType === "ISSUE_BY_DATE" ? dailyIssueReportColumns(range) : undefined;
-  const worksheet = XLSX.utils.json_to_sheet(rows, headers ? { header: headers } : undefined);
-  worksheet["!cols"] = (headers ?? Object.keys(rows[0] ?? {})).map((column) => ({ wch: column.startsWith("วันที่ ") ? 16 : Math.max(12, Math.min(32, column.length + 4)) }));
-  XLSX.utils.book_append_sheet(workbook, worksheet, reportType === "ISSUE_BY_DATE" ? "Issue by Date" : "Store Report");
+  const worksheet = XLSX.utils.json_to_sheet(rows);
+  worksheet["!cols"] = Object.keys(rows[0] ?? {}).map((column) => ({ wch: Math.max(12, Math.min(32, column.length + 4)) }));
+  XLSX.utils.book_append_sheet(workbook, worksheet, "Store Report");
   const bytes = XLSX.write(workbook, { type: "buffer", bookType: "xlsx" }) as Buffer;
+  return excelResponse(bytes, fileBase);
+}
+
+function excelResponse(bytes: Uint8Array | Buffer, fileBase: string) {
   return new NextResponse(new Uint8Array(bytes), {
     headers: {
       "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -80,30 +98,31 @@ async function exportRows(input: {
   stockStatus: string;
   range: { start: Date; end: Date };
 }) {
-  const kindWhere = input.itemKind === "ALL" ? {} : { itemKind: input.itemKind };
+  const kindWhere: Prisma.SparePartWhereInput = input.itemKind === "ALL" ? {} : { itemKind: input.itemKind };
+  const sparePartWhere: Prisma.SparePartWhereInput = {
+    ...kindWhere,
+    active: true,
+    ...(input.typeId ? { typeId: input.typeId } : {}),
+    ...(input.categoryId ? { categoryId: input.categoryId } : {}),
+    ...(input.materialGroupId ? { materialGroupId: input.materialGroupId } : {}),
+    ...(input.unit ? { unit: input.unit } : {}),
+    ...(input.search
+      ? {
+          OR: [
+            { code: { contains: input.search } },
+            { itemCode: { contains: input.search } },
+            { name: { contains: input.search } },
+          ],
+        }
+      : {}),
+  };
   if (input.reportType === "STOCK_BALANCE" || input.reportType === "LOW_STOCK") {
     const stocks = await db.storeStock.findMany({
       where: {
         plantId: input.plantId,
         ...(input.storeId ? { storeId: input.storeId } : {}),
         store: { active: true },
-        sparePart: {
-          ...kindWhere,
-          active: true,
-          ...(input.typeId ? { typeId: input.typeId } : {}),
-          ...(input.categoryId ? { categoryId: input.categoryId } : {}),
-          ...(input.materialGroupId ? { materialGroupId: input.materialGroupId } : {}),
-          ...(input.unit ? { unit: input.unit } : {}),
-          ...(input.search
-            ? {
-                OR: [
-                  { code: { contains: input.search } },
-                  { itemCode: { contains: input.search } },
-                  { name: { contains: input.search } },
-                ],
-              }
-            : {}),
-        },
+        sparePart: sparePartWhere,
       },
       include: { store: true, sparePart: { include: { category: true, materialGroup: true } } },
       orderBy: [{ store: { code: "asc" } }, { sparePart: { code: "asc" } }],
@@ -134,12 +153,17 @@ async function exportRows(input: {
       }));
   }
   if (input.reportType === "ISSUE_BY_DATE") {
-    const selectedItemWhere = input.itemIds.length ? { id: { in: input.itemIds } } : kindWhere;
+    const selectedItemWhere: Prisma.SparePartWhereInput = {
+      ...sparePartWhere,
+      ...(input.itemIds.length ? { id: { in: input.itemIds } } : {}),
+    };
     const movements = await db.stockMovement.findMany({
       where: {
         plantId: input.plantId,
         movementType: "ISSUE",
         occurredAt: { gte: input.range.start, lte: input.range.end },
+        ...(input.storeId ? { storeId: input.storeId } : {}),
+        store: { active: true },
         sparePart: selectedItemWhere,
       },
       include: {
@@ -161,7 +185,11 @@ async function exportRows(input: {
       },
       orderBy: [{ occurredAt: "asc" }, { store: { code: "asc" } }, { sparePart: { code: "asc" } }],
     });
-    return buildDailyIssueReportRows(movements.map((movement) => ({
+    const stockKeys = await matchingStockKeys(input, selectedItemWhere);
+    const visibleMovements = stockKeys
+      ? movements.filter((movement) => stockKeys.has(stockKey(movement.storeId, movement.sparePartId)))
+      : movements;
+    return buildDailyIssueReportRows(visibleMovements.map((movement) => ({
       occurredAt: movement.occurredAt,
       quantityChange: Number(movement.quantityChange),
       unitPrice: movement.unitPrice == null ? null : Number(movement.unitPrice),
@@ -185,13 +213,19 @@ async function exportRows(input: {
       where: {
         plantId: input.plantId,
         occurredAt: { gte: input.range.start, lte: input.range.end },
+        ...(input.storeId ? { storeId: input.storeId } : {}),
         ...(input.movementType === "ALL" ? {} : { movementType: input.movementType as never }),
-        sparePart: kindWhere,
+        store: { active: true },
+        sparePart: sparePartWhere,
       },
       include: { store: true, sparePart: true, actor: true },
       orderBy: { occurredAt: "desc" },
     });
-    return movements.map((movement) => ({
+    const stockKeys = await matchingStockKeys(input, sparePartWhere);
+    const visibleMovements = stockKeys
+      ? movements.filter((movement) => stockKeys.has(stockKey(movement.storeId, movement.sparePartId)))
+      : movements;
+    return visibleMovements.map((movement) => ({
       Date: movement.occurredAt.toISOString(),
       Type: movement.movementType,
       "Item Type": movement.sparePart.itemKind,
@@ -204,32 +238,94 @@ async function exportRows(input: {
       Note: movement.note ?? "",
     }));
   }
+  const issueItemWhere = {
+    ...(input.storeId ? { storeId: input.storeId } : {}),
+    sparePart: sparePartWhere,
+  };
   const issues = await db.sparePartIssue.findMany({
     where: {
       plantId: input.plantId,
       requestedAt: { gte: input.range.start, lte: input.range.end },
       ...(input.issueStatus === "ALL" ? {} : { status: input.issueStatus as never }),
-      ...(input.itemKind === "ALL" ? {} : { itemKind: input.itemKind }),
+      items: { some: issueItemWhere },
     },
-    include: { requesterUser: true, items: { include: { sparePart: true, store: true } } },
+    include: {
+      requesterUser: true,
+      items: { where: issueItemWhere, include: { sparePart: true, store: true } },
+    },
     orderBy: { requestedAt: "desc" },
   });
-  return issues.flatMap((issue) => issue.items.map((item) => ({
-    "Issue Number": issue.number,
-    Date: issue.requestedAt.toISOString(),
-    Status: issue.status,
-    Requester: issue.requesterUser?.fullName ?? issue.requesterName,
-    "Item Type": item.sparePart.itemKind,
-    "Item Code": item.sparePart.code,
-    "Item Name": item.sparePart.name,
-    Store: item.store?.code ?? "-",
-    Requested: Number(item.requestedQty),
-    Approved: item.approvedQty == null ? "" : Number(item.approvedQty),
-    Issued: item.issuedQty == null ? "" : Number(item.issuedQty),
-    Unit: item.sparePart.unit,
-  })));
+  const stockKeys = await matchingStockKeys(input, sparePartWhere);
+  return issues.flatMap((issue) => issue.items
+    .filter((item) => !stockKeys || stockKeys.has(stockKey(item.storeId ?? "", item.sparePartId)))
+    .map((item) => ({
+      "Issue Number": issue.number,
+      Date: issue.requestedAt.toISOString(),
+      Status: issue.status,
+      Requester: issue.requesterUser?.fullName ?? issue.requesterName,
+      "Item Type": item.sparePart.itemKind,
+      "Item Code": item.sparePart.code,
+      "Item Name": item.sparePart.name,
+      Store: item.store?.code ?? "-",
+      Requested: Number(item.requestedQty),
+      Approved: item.approvedQty == null ? "" : Number(item.approvedQty),
+      Issued: item.issuedQty == null ? "" : Number(item.issuedQty),
+      Unit: item.sparePart.unit,
+    })));
+
 }
 
+async function matchingStockKeys(
+  input: { plantId: string; storeId: string; stockStatus: string },
+  sparePartWhere: Prisma.SparePartWhereInput,
+) {
+  if (input.stockStatus === "all") return null;
+  const stocks = await db.storeStock.findMany({
+    where: {
+      plantId: input.plantId,
+      ...(input.storeId ? { storeId: input.storeId } : {}),
+      store: { active: true },
+      sparePart: sparePartWhere,
+    },
+    select: {
+      storeId: true,
+      sparePartId: true,
+      quantity: true,
+      sparePart: { select: { minStock: true } },
+    },
+  });
+  return new Set(stocks.filter((stock) => {
+    const quantity = Number(stock.quantity);
+    const minimum = Number(stock.sparePart.minStock);
+    if (input.stockStatus === "available") return quantity > minimum;
+    if (input.stockStatus === "nearMin") return quantity > 0 && quantity <= minimum;
+    if (input.stockStatus === "outOfStock") return quantity <= 0;
+    return true;
+  }).map((stock) => stockKey(stock.storeId, stock.sparePartId)));
+}
+
+function stockKey(storeId: string, sparePartId: string) {
+  return `${storeId}:${sparePartId}`;
+}
+
+function dailyIssueReportTitle(itemKind: "ALL" | "SPARE_PART" | "CHEMICAL" | "OIL" | "FUEL", selectedItemCount: number) {
+  if (selectedItemCount > 0) return "รายงานรายการเบิกที่เลือก";
+  if (itemKind === "CHEMICAL") return "รายงานรายการเบิกสารเคมี";
+  if (itemKind === "OIL") return "รายงานรายการเบิกน้ำมัน";
+  if (itemKind === "FUEL") return "รายงานรายการเบิกเชื้อเพลิง";
+  if (itemKind === "SPARE_PART") return "รายงานรายการเบิกอะไหล่";
+  return "รายงานรายการเบิกทั้งหมด";
+}
+
+function dailyIssueDateRangeLabel(range: { start: Date; end: Date }) {
+  const fullDate = new Intl.DateTimeFormat("th-TH-u-ca-gregory", {
+    timeZone: "Asia/Bangkok",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+  return `ช่วงวันที่ ${fullDate.format(range.start)} – ${fullDate.format(range.end)} · ข้อมูลจากรายการเบิกที่จ่ายออกแล้ว`;
+}
 function normalizeReportType(value: string | null) {
   return (["STOCK_BALANCE", "LOW_STOCK", "MOVEMENTS", "ISSUES", "ISSUE_BY_DATE"].includes(String(value)) ? value : "STOCK_BALANCE") as "STOCK_BALANCE" | "LOW_STOCK" | "MOVEMENTS" | "ISSUES" | "ISSUE_BY_DATE";
 }

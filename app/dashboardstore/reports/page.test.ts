@@ -15,11 +15,15 @@ describe("Store reports page", () => {
     expect(source).toContain("VIEW_STORE_REPORTS");
     expect(source).toContain("resolveStorePageScope");
     expect(source).toContain('action="/dashboardstore/reports/export"');
-    expect(source).toContain('name="reportType"');
-    expect(source).toContain('name="itemKind"');
-    expect(source).toContain('value="ISSUE_BY_DATE"');
-    expect(source).toContain('StoreReportItemPicker');
-    expect(source).toContain('items={reportItems}');
+    expect(source).toContain("StoreReportItemPicker");
+    expect(source).toContain("items={exportItems}");
+    expect(source).toContain("stores={stores}");
+    expect(source).toContain("types={sparePartTypes}");
+    expect(source).toContain("categories={categories}");
+    expect(source).toContain("materialGroups={materialGroups}");
+    expect(source).toContain("units={units.map");
+    expect(source).toContain("minStock: Number(item.minStock)");
+    expect(source).toContain("db.sparePartType.findMany");
 
     expect(source).toContain('name="movementType"');
     expect(source).toContain('name="issueStatus"');

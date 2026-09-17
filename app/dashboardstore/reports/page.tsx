@@ -30,7 +30,7 @@ export default async function StoreReportsPage({ searchParams }: { searchParams:
   const scope = await resolveStorePageScope(user, query);
   const range = resolveDateRange(query);
 
-  const [stocks, movements, issues, reportItems] = await Promise.all([
+  const [stocks, movements, issues, reportItems, stores, categories, materialGroups, sparePartTypes, units] = await Promise.all([
     db.storeStock.findMany({
       where: { plantId: scope.plant.id },
       include: {
@@ -76,10 +76,57 @@ export default async function StoreReportsPage({ searchParams }: { searchParams:
     }),
     db.sparePart.findMany({
       where: { plantId: scope.plant.id, active: true },
-      select: { id: true, code: true, itemCode: true, itemKind: true, name: true },
+      select: {
+        id: true,
+        code: true,
+        itemCode: true,
+        itemKind: true,
+        name: true,
+        typeId: true,
+        categoryId: true,
+        materialGroupId: true,
+        unit: true,
+        minStock: true,
+        stocks: {
+          where: { store: { active: true } },
+          select: { storeId: true, quantity: true },
+        },
+      },
       orderBy: [{ itemKind: "asc" }, { code: "asc" }],
     }),
+    db.store.findMany({
+      where: { plantId: scope.plant.id, active: true },
+      orderBy: { name: "asc" },
+      select: { id: true, code: true, name: true },
+    }),
+    db.sparePartCategory.findMany({
+      where: { plantId: scope.plant.id, active: true },
+      orderBy: { name: "asc" },
+      select: { id: true, code: true, name: true },
+    }),
+    db.sparePartMaterialGroup.findMany({
+      where: { plantId: scope.plant.id, active: true },
+      orderBy: { name: "asc" },
+      select: { id: true, categoryId: true, code: true, name: true },
+    }),
+    db.sparePartType.findMany({
+      where: { plantId: scope.plant.id, active: true },
+      orderBy: { name: "asc" },
+      select: { id: true, code: true, name: true },
+    }),
+    db.sparePart.findMany({
+      where: { plantId: scope.plant.id, active: true },
+      orderBy: { unit: "asc" },
+      select: { unit: true },
+      distinct: ["unit"],
+    }),
   ]);
+
+  const exportItems = reportItems.map((item) => ({
+    ...item,
+    minStock: Number(item.minStock),
+    stocks: item.stocks.map((stock) => ({ storeId: stock.storeId, quantity: Number(stock.quantity) })),
+  }));
 
   const stockSummary = summarizeStockBalances(
     stocks.map((stock) => ({
@@ -161,27 +208,14 @@ export default async function StoreReportsPage({ searchParams }: { searchParams:
           </div>
           <form action="/dashboardstore/reports/export" className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4" method="get" target="_blank">
             <AdminScopeHiddenFields scope={scope} />
-            <label className={labelClass}>
-              ประเภทรายงาน
-              <select className={inputClass} defaultValue="STOCK_BALANCE" name="reportType">
-                <option value="STOCK_BALANCE">Stock Balance</option>
-                <option value="LOW_STOCK">Low Stock</option>
-                <option value="MOVEMENTS">Stock Movement</option>
-                <option value="ISSUES">ใบเบิก Stock</option>
-                <option value="ISSUE_BY_DATE">รายการเบิกแยกตามวันที่</option>
-              </select>
-            </label>
-            <label className={labelClass}>
-              ประเภทรายการ
-              <select className={inputClass} defaultValue="ALL" name="itemKind">
-                <option value="ALL">ทั้งหมด</option>
-                <option value="SPARE_PART">อะไหล่</option>
-                <option value="CHEMICAL">สารเคมี</option>
-                <option value="OIL">น้ำมัน</option>
-                <option value="FUEL">เชื้อเพลิง</option>
-              </select>
-            </label>
-                        <StoreReportItemPicker items={reportItems} />
+            <StoreReportItemPicker
+              categories={categories}
+              items={exportItems}
+              materialGroups={materialGroups}
+              stores={stores}
+              types={sparePartTypes}
+              units={units.map((item) => item.unit)}
+            />
             <label className={labelClass}>
               วันที่เริ่มต้น
               <input className={inputClass} defaultValue={range.startInput} name="startDate" type="date" />

@@ -10,6 +10,12 @@ describe("Store report export route", () => {
     expect(source).toContain("VIEW_STORE_STOCK");
     expect(source).toContain('source === "stock"');
     expect(source).toContain('params.get("materialGroupId")');
+    expect(source).toContain('params.get("storeId")');
+    expect(source).toContain('params.get("typeId")');
+    expect(source).toContain('params.get("unit")');
+    expect(source).toContain('params.get("stockStatus")');
+    expect(source).toContain("sparePartWhere");
+    expect(source).toContain("matchingStockKeys");
     expect(source).toContain('input.stockStatus === "nearMin"');
     expect(source).toContain('"Total Value"');
     expect(source).toContain("resolveStorePageScope");
@@ -22,6 +28,9 @@ describe("Store report export route", () => {
     expect(source).toContain('movementType: "ISSUE"');
     expect(source).toContain("buildDailyIssueReportRows");
     expect(source).toContain("dailyIssueReportColumns");
+    expect(source).toContain("buildDailyIssueWorkbook");
+    expect(source).toContain("dailyIssueReportTitle");
+    expect(source).toContain("dailyIssueDateRangeLabel");
     expect(source).toContain("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
     expect(source).toContain("พิมพ์ / บันทึกเป็น PDF");
   });
