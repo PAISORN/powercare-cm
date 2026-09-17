@@ -571,7 +571,12 @@ export default async function WorkDetailPage({
               </form>
             ) : null}
             {work.status === WorkStatus.CLOSED ? (
-              <Link className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-[var(--line)] px-4 text-sm font-bold transition hover:-translate-y-0.5 hover:border-[var(--primary)] hover:text-[var(--primary)]" href={`/work/${work.id}/print`}>
+              <Link
+                className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-[var(--line)] px-4 text-sm font-bold transition hover:-translate-y-0.5 hover:border-[var(--primary)] hover:text-[var(--primary)]"
+                href={`/work/${work.id}/print`}
+                rel="noreferrer"
+                target="_blank"
+              >
                 <FileText size={17} />
                 พิมพ์เอกสาร
               </Link>

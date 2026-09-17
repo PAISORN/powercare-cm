@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { CompletionDocument } from "../../../../components/completion-document";
+import { PrintButton } from "../../../../components/print-button";
 import { formatThaiDateTime } from "../../../../lib/date-time/bangkok-time";
 import { db } from "../../../../lib/db";
 import { requireUser } from "../../../../lib/session";
@@ -53,58 +54,67 @@ export default async function PrintCompletionPage({ params }: { params: Promise<
       : null;
 
   return (
-    <CompletionDocument
-      organization={{
-        companyName,
-        logoUrl,
-      }}
-      work={{
-        number: work.number,
-        status: "ปิดงานแล้ว",
-        createdAt: formatThaiDateTime(work.createdAt),
-        claimedAt: work.claimedAt ? formatThaiDateTime(work.claimedAt) : "-",
-        closedAt: work.closedAt ? formatThaiDateTime(work.closedAt) : "-",
-        requesterName: work.requesterName,
-        requesterDepartment: work.requesterDepartment,
-        categoryName: work.category.name,
-        zoneName: work.zone.name,
-        machineName: work.machineName,
-        problemTitle: work.problemTitle,
-        problemDetail: work.problemDetail,
-        rootCause: work.rootCause ?? "-",
-        correctiveAction: work.correctiveAction ?? "-",
-        engineerNote: work.engineerNote ?? "-",
-        inventoryUsage: work.sparePartIssues.flatMap((issue) =>
-          issue.items.map((item) => ({
-            issueNumber: issue.number,
-            itemKind: item.sparePart.itemKind,
-            code: item.sparePart.code,
-            name: item.sparePart.name,
-            quantity: String(Number(item.issuedQty)),
-            unit: item.sparePart.unit,
-            store: item.store ? `${item.store.code} · ${item.store.name}` : "-",
-            issuedAt: issue.issuedAt ? formatThaiDateTime(issue.issuedAt) : "-",
-            note: item.note?.trim() || issue.note?.trim() || "-",
-          })),
-        ),
-        claimant: work.claimant
-          ? {
-              fullName: work.claimant.fullName,
-              signatureUrl: work.claimant.signature
-                ? `/signatures/${work.claimant.id}?v=${work.claimant.signature.uploadedAt.getTime()}`
-                : null,
-            }
-          : null,
-        reviewer: work.reviewer
-          ? {
-              fullName: work.reviewer.fullName,
-              signatureUrl: work.reviewer.signature
-                ? `/signatures/${work.reviewer.id}?v=${work.reviewer.signature.uploadedAt.getTime()}`
-                : null,
-            }
-          : null,
-      }}
-    />
+    <div className="min-h-screen bg-slate-100 py-5 print:bg-white print:py-0">
+      <div className="mx-auto mb-4 flex max-w-[210mm] items-center justify-between gap-4 px-4 print:hidden">
+        <div>
+          <p className="font-bold text-slate-900">เอกสารปิดงาน CM</p>
+          <p className="text-sm text-slate-600">{work.number}</p>
+        </div>
+        <PrintButton label="พิมพ์ / บันทึก PDF" />
+      </div>
+      <CompletionDocument
+        organization={{
+          companyName,
+          logoUrl,
+        }}
+        work={{
+          number: work.number,
+          status: "ปิดงานแล้ว",
+          createdAt: formatThaiDateTime(work.createdAt),
+          claimedAt: work.claimedAt ? formatThaiDateTime(work.claimedAt) : "-",
+          closedAt: work.closedAt ? formatThaiDateTime(work.closedAt) : "-",
+          requesterName: work.requesterName,
+          requesterDepartment: work.requesterDepartment,
+          categoryName: work.category.name,
+          zoneName: work.zone.name,
+          machineName: work.machineName,
+          problemTitle: work.problemTitle,
+          problemDetail: work.problemDetail,
+          rootCause: work.rootCause ?? "-",
+          correctiveAction: work.correctiveAction ?? "-",
+          engineerNote: work.engineerNote ?? "-",
+          inventoryUsage: work.sparePartIssues.flatMap((issue) =>
+            issue.items.map((item) => ({
+              issueNumber: issue.number,
+              itemKind: item.sparePart.itemKind,
+              code: item.sparePart.code,
+              name: item.sparePart.name,
+              quantity: String(Number(item.issuedQty)),
+              unit: item.sparePart.unit,
+              store: item.store ? `${item.store.code} · ${item.store.name}` : "-",
+              issuedAt: issue.issuedAt ? formatThaiDateTime(issue.issuedAt) : "-",
+              note: item.note?.trim() || issue.note?.trim() || "-",
+            })),
+          ),
+          claimant: work.claimant
+            ? {
+                fullName: work.claimant.fullName,
+                signatureUrl: work.claimant.signature
+                  ? `/signatures/${work.claimant.id}?v=${work.claimant.signature.uploadedAt.getTime()}`
+                  : null,
+              }
+            : null,
+          reviewer: work.reviewer
+            ? {
+                fullName: work.reviewer.fullName,
+                signatureUrl: work.reviewer.signature
+                  ? `/signatures/${work.reviewer.id}?v=${work.reviewer.signature.uploadedAt.getTime()}`
+                  : null,
+              }
+            : null,
+        }}
+      />
+    </div>
   );
 }
 
