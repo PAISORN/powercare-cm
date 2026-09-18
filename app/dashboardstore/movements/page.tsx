@@ -3,6 +3,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { AdminSiteScopeSelector } from "../../../components/admin-site-scope-selector";
 import { AppShell } from "../../../components/app-shell";
+import { PreserveListPositionLink, RestoreListPosition } from "../../../components/preserve-list-position";
 import { StockHeaderReplacementController } from "../../../components/stock-header-replacement-controller";
 import { formatThaiMediumDateTime } from "../../../lib/date-time/bangkok-time";
 import { db } from "../../../lib/db";
@@ -10,6 +11,7 @@ import { paginationWindow } from "../../../lib/pagination-window";
 import { requireUser } from "../../../lib/session";
 import { canUseUserPermission, PermissionKey } from "../../../modules/auth/site-admin-permissions";
 import { resolveStorePageScope } from "../../../modules/store/store-page-scope";
+import { StockMovementType } from "../../../modules/store/store-types";
 
 type PageQuery = {
   organizationId?: string;
@@ -56,6 +58,20 @@ export default async function StockMovementsPage({ searchParams }: { searchParam
       skip: (currentPage - 1) * pageSize,
       take: pageSize,
     });
+  const issueReferenceIds = [...new Set(
+    movements
+      .filter((movement) => movement.movementType === StockMovementType.ISSUE && movement.refType === "SparePartIssue" && movement.refId)
+      .map((movement) => movement.refId as string),
+  )];
+  const referencedIssues = issueReferenceIds.length
+    ? await db.sparePartIssue.findMany({
+        where: { id: { in: issueReferenceIds }, organizationId: scope.organization.id, plantId: scope.plant.id },
+        select: { id: true, number: true },
+      })
+    : [];
+  const issueNumberById = new Map(referencedIssues.map((issue) => [issue.id, issue.number]));
+  const canTrackIssues = canUseUserPermission(user, PermissionKey.VIEW_STORE_TRACKING);
+  const movementListPositionKey = `store-movements:${scope.organization.id}:${scope.plant.id}:${currentPage}`;
   const firstItem = totalItems ? (currentPage - 1) * pageSize + 1 : 0;
   const lastItem = Math.min(currentPage * pageSize, totalItems);
   const movementPageHref = (page: number) => {
@@ -69,6 +85,7 @@ export default async function StockMovementsPage({ searchParams }: { searchParam
 
   return (
     <AppShell>
+      <RestoreListPosition enabled key={currentPage} storageKey={movementListPositionKey} />
       <div className="space-y-5">
         <header className="menu-heading-plain rounded-3xl border border-[var(--line)] bg-[var(--surface)] p-5 shadow-[var(--shadow)] sm:p-7">
           <p className="text-sm font-semibold text-[var(--muted)]">Home &gt; Inventory &gt; Stock Movement</p>
@@ -96,7 +113,7 @@ export default async function StockMovementsPage({ searchParams }: { searchParam
           id="stock-movement-table-region"
         >
           <div aria-hidden="true" className="stock-replacement-header" data-stock-replacement-header>
-            <table className="w-full min-w-[920px] table-fixed text-left text-sm">
+            <table className="w-full min-w-[1080px] table-fixed text-left text-sm">
               <MovementTableColGroup />
               <thead className="bg-[var(--soft)] text-xs font-extrabold text-[var(--muted)]">
                 <MovementTableHeaderRow />
@@ -104,7 +121,7 @@ export default async function StockMovementsPage({ searchParams }: { searchParam
             </table>
           </div>
           <div className="relative overflow-x-auto rounded-t-3xl bg-[var(--surface)]" data-stock-table-scroll>
-            <table className="w-full min-w-[920px] table-fixed text-left text-sm">
+            <table className="w-full min-w-[1080px] table-fixed text-left text-sm">
               <MovementTableColGroup />
               <thead
                 className="sticky top-0 z-40 bg-[var(--soft)] text-xs font-extrabold text-[var(--muted)] shadow-[0_1px_0_var(--line)]"
@@ -114,7 +131,7 @@ export default async function StockMovementsPage({ searchParams }: { searchParam
               </thead>
               <tbody>
                 {movements.map((movement) => (
-                  <tr className="border-t border-[var(--line)] transition hover:bg-[var(--soft)]/60" key={movement.id}>
+                  <tr className="border-t border-[var(--line)] transition hover:bg-[var(--soft)]/60" id={`stock-movement-${movement.id}`} key={movement.id}>
                     <td className="whitespace-nowrap px-4 py-3">{formatThaiMediumDateTime(movement.occurredAt)}</td>
                     <td className="px-4 py-3">
                       <p className="font-mono font-bold">{movement.sparePart.type?.code ?? "-"}</p>
@@ -134,6 +151,20 @@ export default async function StockMovementsPage({ searchParams }: { searchParam
                       {formatQuantity(Number(movement.quantityChange))} {movement.sparePart.unit}
                     </td>
                     <td className="px-4 py-3 text-right">{formatQuantity(Number(movement.balanceAfter))}</td>
+                    <td className="px-4 py-3">
+                      {movement.movementType === StockMovementType.ISSUE && movement.refType === "SparePartIssue" && movement.refId && issueNumberById.has(movement.refId) ? (
+                        canTrackIssues ? (
+                          <PreserveListPositionLink
+                            className="inline-flex min-h-9 items-center rounded-xl border border-[var(--primary)]/30 bg-[var(--primary)]/10 px-3 text-xs font-extrabold text-[var(--primary)] transition hover:bg-[var(--primary)] hover:text-white"
+                            href={storeTrackingHref(scope.organization.id, scope.plant.id, issueNumberById.get(movement.refId)!)}
+                            storageKey={movementListPositionKey}
+                            targetId={`stock-movement-${movement.id}`}
+                          >
+                            Tracking
+                          </PreserveListPositionLink>
+                        ) : issueNumberById.get(movement.refId)
+                      ) : "-"}
+                    </td>
                     <td className="px-4 py-3 text-sm text-[var(--muted)]">
                       <span className="font-bold text-[var(--text)]">{movement.movementType}</span>
                       {" · "}{movement.actor?.fullName ?? "-"} {movement.note ? `· ${movement.note}` : ""}
@@ -155,6 +186,7 @@ export default async function StockMovementsPage({ searchParams }: { searchParam
                   aria-label="หน้าก่อนหน้า"
                   className={paginationArrowClass(currentPage === 1)}
                   href={movementPageHref(Math.max(1, currentPage - 1))}
+                  scroll={false}
                 >
                   <ChevronLeft size={16} />
                 </Link>
@@ -163,6 +195,7 @@ export default async function StockMovementsPage({ searchParams }: { searchParam
                     aria-current={pageNumber === currentPage ? "page" : undefined}
                     className={paginationPageClass(pageNumber === currentPage)}
                     href={movementPageHref(pageNumber)}
+                  scroll={false}
                     key={pageNumber}
                   >
                     {pageNumber}
@@ -173,6 +206,7 @@ export default async function StockMovementsPage({ searchParams }: { searchParam
                   aria-label="หน้าถัดไป"
                   className={paginationArrowClass(currentPage === totalPages)}
                   href={movementPageHref(Math.min(totalPages, currentPage + 1))}
+                  scroll={false}
                 >
                   <ChevronRight size={16} />
                 </Link>
@@ -195,6 +229,7 @@ function MovementTableColGroup() {
       <col style={{ width: "155px" }} />
       <col style={{ width: "115px" }} />
       <col style={{ width: "95px" }} />
+      <col style={{ width: "125px" }} />
       <col style={{ width: "235px" }} />
     </colgroup>
   );
@@ -210,9 +245,15 @@ function MovementTableHeaderRow() {
       <th className="px-4 py-4">Store</th>
       <th className="px-4 py-4 text-right">เปลี่ยนแปลง</th>
       <th className="px-4 py-4 text-right">คงเหลือ</th>
+      <th className="px-4 py-4">Tracking</th>
       <th className="px-4 py-4">ดำเนินการ / หมายเหตุ</th>
     </tr>
   );
+}
+
+function storeTrackingHref(organizationId: string, plantId: string, number: string) {
+  const params = new URLSearchParams({ organizationId, plantId, number });
+  return `/dashboardstore/tracking?${params.toString()}`;
 }
 
 function paginationPageClass(isActive: boolean) {

@@ -17,10 +17,12 @@ import {
   Droplets,
   XCircle,
 } from "lucide-react";
+import type { Prisma } from "@prisma/client";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { AdminScopeHiddenFields } from "../../../components/admin-site-scope-selector";
 import { AppShell } from "../../../components/app-shell";
+import { PreserveListPositionForm, RestoreListPosition } from "../../../components/preserve-list-position";
 import { IssueRequestForm } from "../../../components/store/issue-request-form";
 import { formatThaiMediumDateTime } from "../../../lib/date-time/bangkok-time";
 import { db } from "../../../lib/db";
@@ -180,25 +182,42 @@ export default async function IssuePage({ searchParams }: { searchParams: Promis
   if (!trackingOnly && !canCreate) redirect("/dashboardstore/issue?view=tracking");
   const scope = await resolveStorePageScope(user, query);
 
-  const [stocks, issueZones, cmWorks, issues] = await Promise.all([
+  const selectedTrackingStatus = normalizeTrackingStatus(query.status);
+  const selectedTrackingKind = resolveItemKind(query.itemKind);
+  const trackingSearch = String(query.q ?? "").trim();
+  const trackingPageSize = 5;
+  const issueVisibilityWhere: Prisma.SparePartIssueWhereInput = {
+    organizationId: scope.organization.id,
+    plantId: scope.plant.id,
+    ...(!canApprove && !canIssue ? { requesterUserId: user.id } : {}),
+  };
+  const issueKindWhere: Prisma.SparePartIssueWhereInput = { ...issueVisibilityWhere, itemKind: selectedTrackingKind };
+  const selectedStatuses = trackingStatusValues(selectedTrackingStatus);
+  const filteredIssueWhere: Prisma.SparePartIssueWhereInput = {
+    ...issueKindWhere,
+    ...(selectedStatuses ? { status: { in: selectedStatuses } } : {}),
+    ...(trackingSearch ? { OR: [
+      { number: { contains: trackingSearch } },
+      { requesterName: { contains: trackingSearch } },
+      { cmWork: { is: { number: { contains: trackingSearch } } } },
+      { requesterUser: { is: { fullName: { contains: trackingSearch } } } },
+      { items: { some: { OR: [
+        { lineNumber: { contains: trackingSearch } },
+        { sparePart: { code: { contains: trackingSearch } } },
+        { sparePart: { name: { contains: trackingSearch } } },
+      ] } } },
+    ] } : {}),
+  };
+
+  const [stocks, issueZones, cmWorks, issueStatusRows, filteredIssueCount] = await Promise.all([
     db.storeStock.findMany({
       where: { plantId: scope.plant.id, quantity: { gt: 0 }, store: { active: true }, sparePart: { active: true } },
       include: {
         store: { select: { id: true, code: true, name: true, category: { select: { name: true } } } },
-        sparePart: {
-          select: {
-            id: true,
-            code: true,
-            itemCode: true,
-            itemKind: true,
-            name: true,
-            unit: true,
-            minStock: true,
-            type: { select: { name: true } },
-            category: { select: { name: true } },
-            materialGroup: { select: { name: true } },
-          },
-        },
+        sparePart: { select: {
+          id: true, code: true, itemCode: true, itemKind: true, name: true, unit: true, minStock: true,
+          type: { select: { name: true } }, category: { select: { name: true } }, materialGroup: { select: { name: true } },
+        } },
       },
       orderBy: [{ store: { name: "asc" } }, { sparePart: { name: "asc" } }],
     }),
@@ -213,65 +232,39 @@ export default async function IssuePage({ searchParams }: { searchParams: Promis
       take: 100,
       select: { id: true, number: true, problemTitle: true, machineName: true },
     }),
-    db.sparePartIssue.findMany({
-      where: {
-        plantId: scope.plant.id,
-        ...(!canApprove && !canIssue ? { requesterUserId: user.id } : {}),
-      },
-      include: {
-        cmWork: { select: { number: true } },
-        requesterUser: { select: { fullName: true } },
-        engineer: { select: { fullName: true, signature: { select: { id: true } } } },
-        storeOfficer: { select: { fullName: true, signature: { select: { id: true } } } },
-        items: {
-          include: {
-            store: { select: { code: true, name: true } },
-            sparePart: { select: { code: true, name: true, unit: true, itemKind: true } },
-          },
-          orderBy: { id: "asc" },
-        },
-      },
-      orderBy: { requestedAt: "desc" },
-      take: 50,
-    }),
+    db.sparePartIssue.findMany({ where: issueKindWhere, select: { status: true } }),
+    db.sparePartIssue.count({ where: filteredIssueWhere }),
   ]);
 
-  const selectedTrackingStatus = normalizeTrackingStatus(query.status);
-  const selectedTrackingKind = resolveItemKind(query.itemKind);
-  const trackingSearch = String(query.q ?? "").trim().toLocaleLowerCase("th-TH");
-  const kindIssues = issues.filter((issue) => issue.itemKind === selectedTrackingKind);
   const statusCounts = {
-    all: kindIssues.length,
-    waiting: kindIssues.filter((issue) => issueStatusGroup(issue.status) === "WAITING").length,
-    inProgress: kindIssues.filter((issue) => issueStatusGroup(issue.status) === "IN_PROGRESS").length,
-    completed: kindIssues.filter((issue) => issueStatusGroup(issue.status) === "COMPLETED").length,
-    canceled: kindIssues.filter((issue) => issueStatusGroup(issue.status) === "CANCELED").length,
+    all: issueStatusRows.length,
+    waiting: issueStatusRows.filter((issue) => issueStatusGroup(issue.status) === "WAITING").length,
+    inProgress: issueStatusRows.filter((issue) => issueStatusGroup(issue.status) === "IN_PROGRESS").length,
+    completed: issueStatusRows.filter((issue) => issueStatusGroup(issue.status) === "COMPLETED").length,
+    canceled: issueStatusRows.filter((issue) => issueStatusGroup(issue.status) === "CANCELED").length,
   };
-  const filteredIssues = kindIssues.filter((issue) => {
-    if (selectedTrackingStatus !== "ALL" && issueStatusGroup(issue.status) !== selectedTrackingStatus) return false;
-    if (!trackingSearch) return true;
-    const haystack = [
-      issue.number,
-      issue.cmWork?.number,
-      issue.requesterUser?.fullName,
-      issue.requesterName,
-      ...issue.items.flatMap((item) => [item.sparePart.code, item.sparePart.name, item.lineNumber]),
-    ]
-      .filter(Boolean)
-      .join(" ")
-      .toLocaleLowerCase("th-TH");
-    return haystack.includes(trackingSearch);
-  });
-  const trackingPageSize = 5;
-  const totalTrackingPages = Math.max(1, Math.ceil(filteredIssues.length / trackingPageSize));
+  const totalTrackingPages = Math.max(1, Math.ceil(filteredIssueCount / trackingPageSize));
   const requestedTrackingPage = Number.parseInt(query.trackingPage ?? "1", 10);
   const currentTrackingPage = Number.isFinite(requestedTrackingPage) && requestedTrackingPage > 0
     ? Math.min(requestedTrackingPage, totalTrackingPages)
     : 1;
-  const pagedFilteredIssues = filteredIssues.slice(
-    (currentTrackingPage - 1) * trackingPageSize,
-    currentTrackingPage * trackingPageSize,
-  );
+  const pagedFilteredIssues = await db.sparePartIssue.findMany({
+    where: filteredIssueWhere,
+    include: {
+      cmWork: { select: { number: true } },
+      requesterUser: { select: { fullName: true } },
+      engineer: { select: { fullName: true, signature: { select: { id: true } } } },
+      storeOfficer: { select: { fullName: true, signature: { select: { id: true } } } },
+      items: { include: {
+        store: { select: { code: true, name: true } },
+        sparePart: { select: { code: true, name: true, unit: true, itemKind: true } },
+      }, orderBy: { id: "asc" } },
+    },
+    orderBy: { requestedAt: "desc" },
+    skip: (currentTrackingPage - 1) * trackingPageSize,
+    take: trackingPageSize,
+  });
+  const trackingListPositionKey = `store-issues:${scope.organization.id}:${scope.plant.id}`;
   const trackingPageHref = (page: number) => {
     const params = new URLSearchParams({
       organizationId: scope.organization.id,
@@ -296,7 +289,7 @@ export default async function IssuePage({ searchParams }: { searchParams: Promis
     return `/dashboardstore/issue?${params.toString()}#issue-tracking`;
   };
 
-  function CompactIssueRow({ issue }: { issue: (typeof issues)[number] }) {
+  function CompactIssueRow({ issue }: { issue: (typeof pagedFilteredIssues)[number] }) {
     const itemSummary = issue.items
       .map((item) => `${item.sparePart.code} ${item.sparePart.name}`)
       .join(", ");
@@ -419,6 +412,11 @@ export default async function IssuePage({ searchParams }: { searchParams: Promis
 
   return (
     <AppShell immersiveMobile>
+      <RestoreListPosition
+        enabled={trackingOnly}
+        key={`${query.itemKind ?? ""}:${query.status ?? ""}:${query.q ?? ""}:${query.trackingPage ?? ""}`}
+        storageKey={trackingListPositionKey}
+      />
       <div className="issue-request-page-gradient -mb-28 min-h-screen pb-28">
         <div
           className={`mx-auto grid w-full items-start gap-5 ${
@@ -510,7 +508,7 @@ export default async function IssuePage({ searchParams }: { searchParams: Promis
                     {scope.plant.name}
                   </span>
                   <span className="whitespace-nowrap rounded-full bg-white/10 px-2 py-1.5 text-white/80 sm:px-2.5">
-                    ใบเบิก · {filteredIssues.length} รายการ
+                    ใบเบิก · {filteredIssueCount} รายการ
                   </span>
                   <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-emerald-400/15 px-2 py-1.5 text-emerald-300 sm:gap-1.5 sm:px-2.5">
                     <span className="size-2 rounded-full bg-emerald-400" /> เปิดให้บริการ
@@ -525,7 +523,7 @@ export default async function IssuePage({ searchParams }: { searchParams: Promis
               <ClipboardList className="text-[var(--primary)]" size={21} />
               <h2 className="text-xl font-extrabold">ติดตามสถานะใบเบิก</h2>
             </div>
-            <span className="rounded-full bg-[var(--soft)] px-3 py-1 text-sm font-bold">{filteredIssues.length} รายการ</span>
+            <span className="rounded-full bg-[var(--soft)] px-3 py-1 text-sm font-bold">{filteredIssueCount} รายการ</span>
           </div>
           <p className="hidden">ติดตามความคืบหน้าและดำเนินการใบเบิกอะไหล่ภายใน Site</p>
 
@@ -545,7 +543,7 @@ export default async function IssuePage({ searchParams }: { searchParams: Promis
             <TrackingStat active={selectedTrackingStatus === "CANCELED"} href={trackingStatusHref("CANCELED")} icon={<XCircle size={28} />} label="ยกเลิก" tone="red" value={statusCounts.canceled} />
           </div>
 
-          <form action="/dashboardstore/issue" className="mt-4 grid gap-2 rounded-2xl border border-[var(--line)] bg-[var(--soft)] p-3 sm:grid-cols-[minmax(0,1fr)_170px_auto]">
+          <PreserveListPositionForm action="/dashboardstore/issue" className="mt-4 grid gap-2 rounded-2xl border border-[var(--line)] bg-[var(--soft)] p-3 sm:grid-cols-[minmax(0,1fr)_170px_auto]" storageKey={trackingListPositionKey} targetId="issue-tracking-scroll-position">
             <AdminScopeHiddenFields scope={scope} />
             <input name="view" type="hidden" value="tracking" />
             <input name="itemKind" type="hidden" value={selectedTrackingKind} />
@@ -567,7 +565,7 @@ export default async function IssuePage({ searchParams }: { searchParams: Promis
             <button className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-[var(--primary)] px-4 text-sm font-extrabold text-white transition hover:bg-[var(--primary-strong)]">
               <Search size={17} /> ค้นหา
             </button>
-          </form>
+          </PreserveListPositionForm>
           <div className="mt-4 grid gap-2">
             {pagedFilteredIssues.map((issue) => (
               <div key={issue.id}>
@@ -650,7 +648,7 @@ export default async function IssuePage({ searchParams }: { searchParams: Promis
                 </article>
               </div>
             ))}
-            {!filteredIssues.length ? <p className="rounded-2xl border border-dashed border-[var(--line)] p-8 text-center text-sm text-[var(--muted)]">ไม่พบใบเบิกตามเงื่อนไขที่เลือก</p> : null}
+            {!filteredIssueCount ? <p className="rounded-2xl border border-dashed border-[var(--line)] p-8 text-center text-sm text-[var(--muted)]">ไม่พบใบเบิกตามเงื่อนไขที่เลือก</p> : null}
           </div>
           {totalTrackingPages > 1 ? (
             <nav aria-label="Issue tracking pagination" className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-[var(--line)] pt-4">
@@ -663,6 +661,7 @@ export default async function IssuePage({ searchParams }: { searchParams: Promis
                   aria-label="หน้าก่อนหน้า"
                   className={trackingPaginationArrowClass(currentTrackingPage === 1)}
                   href={trackingPageHref(Math.max(1, currentTrackingPage - 1))}
+                  scroll={false}
                 >
                   <ChevronLeft size={16} />
                 </Link>
@@ -671,6 +670,7 @@ export default async function IssuePage({ searchParams }: { searchParams: Promis
                     aria-current={pageNumber === currentTrackingPage ? "page" : undefined}
                     className={trackingPaginationPageClass(pageNumber === currentTrackingPage)}
                     href={trackingPageHref(pageNumber)}
+                  scroll={false}
                     key={pageNumber}
                   >
                     {pageNumber}
@@ -681,6 +681,7 @@ export default async function IssuePage({ searchParams }: { searchParams: Promis
                   aria-label="หน้าถัดไป"
                   className={trackingPaginationArrowClass(currentTrackingPage === totalTrackingPages)}
                   href={trackingPageHref(Math.min(totalTrackingPages, currentTrackingPage + 1))}
+                  scroll={false}
                 >
                   <ChevronRight size={16} />
                 </Link>
@@ -876,10 +877,20 @@ function progressLabel(state: string) {
   return "ยังไม่ถึงขั้นตอนนี้";
 }
 
-function normalizeTrackingStatus(status?: string) {
+type TrackingStatus = "ALL" | "WAITING" | "IN_PROGRESS" | "COMPLETED" | "CANCELED";
+
+function normalizeTrackingStatus(status?: string): TrackingStatus {
   return ["WAITING", "IN_PROGRESS", "COMPLETED", "CANCELED"].includes(String(status))
-    ? String(status)
+    ? String(status) as TrackingStatus
     : "ALL";
+}
+
+function trackingStatusValues(status: TrackingStatus): string[] | null {
+  if (status === "WAITING") return [StoreIssueStatus.WAITING_ENGINEER_APPROVAL];
+  if (status === "IN_PROGRESS") return [StoreIssueStatus.WAITING_STORE_ISSUE, StoreIssueStatus.PARTIALLY_ISSUED, StoreIssueStatus.RETURNED_FOR_EDIT];
+  if (status === "COMPLETED") return [StoreIssueStatus.ISSUED];
+  if (status === "CANCELED") return [StoreIssueStatus.ENGINEER_REJECTED, StoreIssueStatus.NOT_ENOUGH_STOCK, StoreIssueStatus.STORE_REJECTED, StoreIssueStatus.CANCELED];
+  return null;
 }
 
 function issueStatusGroup(status: string) {

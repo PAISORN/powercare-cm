@@ -67,5 +67,8 @@ describe("PM route authorization", () => {
     expect(source).toContain("<PmCalendarViewSwitcher view={view}");
     expect(source).toContain('view === "month" ? <PmCalendar');
     expect(source).toContain("<PmDayColumn");
+    expect(source).toContain("today={today}");
+    expect(source).toContain("max-w-[1680px]");
+    expect(source).toContain("min-[1900px]:grid-cols");
   });
 });

@@ -1,3 +1,4 @@
+import { CalendarDays, ClipboardList, Layers3 } from "lucide-react";
 import Link from "next/link";
 import type { AdminSiteScope } from "../../modules/admin/admin-site-scope";
 import { AdminSiteScopeSelector } from "../admin-site-scope-selector";
@@ -14,9 +15,9 @@ type PmRouteShellProps = {
 };
 
 const pages = [
-  { id: "calendar", label: "Calendar", href: "/dashboardpm" },
-  { id: "groups", label: "Groups", href: "/dashboardpm/groups" },
-  { id: "work", label: "Work", href: "/dashboardpm/work" },
+  { id: "calendar", label: "Calendar", href: "/dashboardpm", icon: CalendarDays },
+  { id: "groups", label: "Groups", href: "/dashboardpm/groups", icon: Layers3 },
+  { id: "work", label: "Work", href: "/dashboardpm/work", icon: ClipboardList },
 ] as const;
 
 export function PmRouteShell({
@@ -31,8 +32,9 @@ export function PmRouteShell({
     organizationId: scope.organization.id,
     plantId: scope.plant.id,
   }).toString();
+  const widthClass = currentPage === "calendar" ? "max-w-[1680px]" : "max-w-6xl";
 
-  return <div className="mx-auto grid max-w-6xl gap-5">
+  return <div className={"mx-auto grid w-full gap-5 " + widthClass}>
     {(scope.canSelectOrganization || scope.canSelectPlant) ? (
       <AdminSiteScopeSelector
         action={scopeAction}
@@ -42,29 +44,34 @@ export function PmRouteShell({
       />
     ) : null}
 
-    <section className="rounded-3xl border border-[var(--line)] bg-[var(--surface)] p-6 shadow-[var(--shadow)]">
-      <p className="text-sm font-bold text-[var(--primary)]">Preventive Maintenance</p>
-      <h1 className="mt-2 text-3xl font-extrabold">{title}</h1>
-      <p className="mt-2 text-sm text-[var(--muted)]">Site: {scope.plant.name}</p>
+    <section className="overflow-hidden rounded-2xl border border-[var(--line)] bg-[var(--surface)] shadow-sm">
+      <div className="px-5 pb-5 pt-6 sm:px-7">
+        <div className="flex items-start gap-3">
+          <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-emerald-500/12 text-emerald-600"><CalendarDays aria-hidden="true" size={20} /></span>
+          <div className="min-w-0">
+            <p className="text-xs font-bold uppercase tracking-[0.16em] text-[var(--muted)]">Preventive Maintenance</p>
+            <h1 className="mt-1 text-2xl font-extrabold sm:text-3xl">{title}</h1>
+            <p className="mt-1 text-sm text-[var(--muted)]">Site: {scope.plant.name}</p>
+          </div>
+        </div>
+        <p className="mt-4 max-w-4xl text-sm text-[var(--muted)]">{description}</p>
+      </div>
 
-      <nav aria-label="PM sections" className="mt-5 flex flex-wrap gap-2">
+      <nav aria-label="PM sections" className="flex min-w-0 gap-1 overflow-x-auto border-t border-[var(--line)] px-3 sm:px-5">
         {pages.filter((page) => page.id !== "groups" || canManageGroups).map((page) => {
           const active = page.id === currentPage;
+          const Icon = page.icon;
           return <Link
             aria-current={active ? "page" : undefined}
-            className={active
-              ? "rounded-xl bg-[var(--primary)] px-4 py-2 text-sm font-bold text-white"
-              : "rounded-xl bg-[var(--soft)] px-4 py-2 text-sm font-bold text-[var(--ink)] hover:text-[var(--primary)]"
-            }
-            href={`${page.href}?${scopeQuery}`}
+            className={"relative inline-flex min-h-12 shrink-0 items-center gap-2 px-3 text-sm font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--primary)] sm:px-4 " + (active ? "text-[var(--ink)] after:absolute after:inset-x-3 after:bottom-0 after:h-0.5 after:rounded-full after:bg-[var(--primary)]" : "text-[var(--muted)] hover:text-[var(--ink)]")}
+            href={page.href + "?" + scopeQuery}
             key={page.id}
           >
+            <Icon aria-hidden="true" size={17} />
             {page.label}
           </Link>;
         })}
       </nav>
-
-      <p className="mt-6 rounded-2xl bg-[var(--soft)] p-4 text-sm text-[var(--muted)]">{description}</p>
     </section>
   </div>;
 }

@@ -16,5 +16,10 @@ describe("Inventory movements page", () => {
     expect(source).toContain("const pageSize = 50");
     expect(source).toContain("Stock movement pagination");
     expect(source).toContain("skip: (currentPage - 1) * pageSize");
+    expect(source).toContain('<th className="px-4 py-4">Tracking</th>');
+    expect(source).toContain('movement.movementType === StockMovementType.ISSUE');
+    expect(source).toContain('movement.refType === "SparePartIssue"');
+    expect(source).toContain("storeTrackingHref");
+    expect(source).toContain("PreserveListPositionLink");
   });
 });

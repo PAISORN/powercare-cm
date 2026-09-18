@@ -20,11 +20,17 @@ describe("Inventory issue page", () => {
     expect(source).toContain('href={trackingStatusHref("WAITING")}');
     expect(source).toContain('aria-current={active ? "page" : undefined}');
     expect(source).toContain("IssueProgress");
-    expect(source).toContain("filteredIssues");
     expect(source).toContain("const trackingPageSize = 5");
     expect(source).toContain("pagedFilteredIssues.map");
     expect(source).toContain("Issue tracking pagination");
     expect(source).toContain('params.set("trackingPage", String(page))');
+    expect(source).toContain("filteredIssueWhere");
+    expect(source).toContain("db.sparePartIssue.count({ where: filteredIssueWhere })");
+    expect(source).toContain("skip: (currentTrackingPage - 1) * trackingPageSize");
+    expect(source).toContain("take: trackingPageSize");
+    expect(source).not.toContain("take: 50");
+    expect(source).toContain("RestoreListPosition");
+    expect(source).toContain("PreserveListPositionForm");
   });
 
   it("renders the latest issue list as compact two-line rows", () => {
@@ -46,7 +52,8 @@ describe("Inventory issue page", () => {
     expect(source).toContain('{ key: "SPARE_PART" as const, label: "อะไหล่", icon: Package }');
     expect(source).toContain('{ key: "CHEMICAL" as const, label: "สารเคมี", icon: Beaker }');
     expect(source).toContain('{ key: "OIL" as const, label: "น้ำมัน", icon: Droplets }');
-    expect(source).toContain("const kindIssues = issues.filter");
+    expect(source).toContain("const issueKindWhere");
+    expect(source).toContain("itemKind: selectedTrackingKind");
     expect(source).toContain('name="itemKind" type="hidden" value={selectedTrackingKind}');
   });
 
