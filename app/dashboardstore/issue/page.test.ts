@@ -8,14 +8,17 @@ describe("Inventory issue page", () => {
     expect(source).toContain('const trackingOnly = query.view === "tracking"');
     expect(source).toContain("{!trackingOnly ? (");
     expect(source).toContain("{trackingOnly ? (");
-    expect(source).toContain('trackingOnly ? "max-w-[96rem]" : "max-w-3xl"');
-    expect(source).toContain('className="issue-request-page-gradient -mb-28 min-h-screen pb-28"');
+    expect(source).toContain('className="menu-heading-plain cm-hero');
+    expect(source).toContain('aria-label="Stock Issue views"');
     expect(source).toContain("issue-create-workspace");
     expect(source).toContain('id="issue-tracking"');
     expect(source).toContain("TrackingStat");
-    expect(source).toContain("grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5");
-    expect(source).toContain("stock-summary-card relative min-h-36");
-    expect(source).toContain("stock-summary-icon grid size-11");
+    expect(source).toContain('aria-label="Issue status KPI strip"');
+    expect(source).toContain("status-kpi-card relative block");
+    expect(source).toContain("Issue Filters");
+    expect(source).toContain("Issue Results");
+    expect(source).toContain("hideHeader");
+    expect(source).not.toContain("issue-request-page-gradient");
     expect(source).toContain("const trackingStatusHref");
     expect(source).toContain('href={trackingStatusHref("WAITING")}');
     expect(source).toContain('aria-current={active ? "page" : undefined}');
@@ -38,8 +41,14 @@ describe("Inventory issue page", () => {
 
     expect(source).toContain("CompactIssueRow");
     expect(source).toContain("issue-row-two-line");
+    expect(source).toContain("last:border-b-0 hover:bg-[var(--soft)]");
     expect(source).toContain("truncate");
-    expect(source).toContain("details");
+    expect(source).toContain("trackingInspectHref");
+    expect(source).toContain("inspectIssueId");
+    expect(source).toContain("PreserveListPositionLink");
+    expect(source).toContain("fixed inset-y-0 right-0 z-50");
+    expect(source).toContain("backdrop-blur-sm");
+    expect(source).not.toContain("<details");
   });
 
   it("filters tracked issues through underlined inventory kind tabs", () => {

@@ -100,6 +100,7 @@ export function IssueRequestForm({
   lockedCmWork,
   directOnly = false,
   singleCard = false,
+  hideHeader = false,
   initialItemKind = "SPARE_PART",
   requesterSummary,
   siteSummary,
@@ -115,6 +116,7 @@ export function IssueRequestForm({
   lockedCmWork?: CmOption;
   directOnly?: boolean;
   singleCard?: boolean;
+  hideHeader?: boolean;
   initialItemKind?: "SPARE_PART" | "CHEMICAL" | "OIL";
   requesterSummary?: { name: string; department?: string | null };
   siteSummary?: { organizationName: string; plantName: string; inventoryCode?: string };
@@ -251,7 +253,7 @@ export function IssueRequestForm({
         </>
       ) : directOnly ? <input name="issueType" type="hidden" value="DIRECT" /> : null}
 
-      <header className={`px-1 py-2 ${singleCard ? "text-white" : "text-[var(--ink)]"}`}>
+      {!hideHeader ? <header className={`px-1 py-2 ${singleCard ? "text-white" : "text-[var(--ink)]"}`}>
         <div className="flex items-start gap-4">
           <span className={`mt-1 grid size-20 shrink-0 place-items-center rounded-2xl border ${singleCard ? "border-white/25 bg-white/10 text-white" : "border-[var(--line)] bg-[var(--soft)] text-[var(--primary)]"}`}>
             <KindIcon aria-hidden="true" size={38} strokeWidth={1.7} />
@@ -274,7 +276,7 @@ export function IssueRequestForm({
             </div>
           </div>
         </div>
-      </header>
+      </header> : null}
 
       <section className="overflow-visible rounded-[2rem] border border-[var(--line)] bg-[var(--surface)] shadow-[var(--shadow)]">
         <SectionHeading icon={<UserRound size={19} />} title="ผู้เบิก" />

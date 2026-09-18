@@ -1,9 +1,6 @@
 import {
   Beaker,
   CheckCircle2,
-  ChevronDown,
-  ChevronLeft,
-  ChevronRight,
   ClipboardList,
   Clock3,
   Package,
@@ -22,7 +19,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { AdminScopeHiddenFields } from "../../../components/admin-site-scope-selector";
 import { AppShell } from "../../../components/app-shell";
-import { PreserveListPositionForm, RestoreListPosition } from "../../../components/preserve-list-position";
+import { PreserveListPositionForm, PreserveListPositionLink, RestoreListPosition } from "../../../components/preserve-list-position";
 import { IssueRequestForm } from "../../../components/store/issue-request-form";
 import { formatThaiMediumDateTime } from "../../../lib/date-time/bangkok-time";
 import { db } from "../../../lib/db";
@@ -52,6 +49,7 @@ type PageQuery = {
   status?: string;
   trackingPage?: string;
   itemKind?: string;
+  inspectIssueId?: string;
   view?: string;
 };
 
@@ -288,15 +286,28 @@ export default async function IssuePage({ searchParams }: { searchParams: Promis
     if (status !== "ALL") params.set("status", status);
     return `/dashboardstore/issue?${params.toString()}#issue-tracking`;
   };
+  const trackingInspectHref = (inspectIssueId?: string) => {
+    const params = new URLSearchParams({
+      organizationId: scope.organization.id,
+      plantId: scope.plant.id,
+      view: "tracking",
+      itemKind: selectedTrackingKind,
+    });
+    if (query.q) params.set("q", query.q);
+    if (selectedTrackingStatus !== "ALL") params.set("status", selectedTrackingStatus);
+    if (currentTrackingPage > 1) params.set("trackingPage", String(currentTrackingPage));
+    if (inspectIssueId) params.set("inspectIssueId", inspectIssueId);
+    return `/dashboardstore/issue?${params.toString()}`;
+  };
 
   function CompactIssueRow({ issue }: { issue: (typeof pagedFilteredIssues)[number] }) {
     const itemSummary = issue.items
       .map((item) => `${item.sparePart.code} ${item.sparePart.name}`)
       .join(", ");
     return (
-      <article className="issue-row-two-line overflow-hidden rounded-3xl border border-[var(--line)] bg-[var(--card)] shadow-[var(--shadow)] transition duration-300 hover:-translate-y-0.5 hover:border-[var(--primary)]">
+      <article className="issue-row-two-line border-b border-[var(--line)] bg-[var(--surface)] transition duration-300 ease-out last:border-b-0 hover:bg-[var(--soft)]">
         <div className="hidden h-1 bg-[var(--primary)]" />
-        <div className="p-4 sm:p-5">
+        <div className="p-4">
         <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
           <div className="min-w-0">
             <div className="flex min-w-0 flex-wrap items-center gap-2">
@@ -309,23 +320,53 @@ export default async function IssuePage({ searchParams }: { searchParams: Promis
             <p className="mt-2 line-clamp-2 text-sm font-semibold sm:text-base">{issue.note ?? itemSummary ?? "-"}</p>
             <p className="mt-2 truncate text-xs font-bold text-[var(--muted)]">{issueKindLabel(issue.itemKind)} {issue.items.length} รายการ</p>
           </div>
-          {canPrintSparePartIssueDocument(user, issue) ? (
-            <Link
-              className="inline-flex min-h-10 shrink-0 items-center justify-center gap-2 rounded-xl border border-[var(--primary)]/30 bg-[var(--primary)]/10 px-3 text-sm font-extrabold text-[var(--primary)] transition hover:-translate-y-0.5 hover:bg-[var(--primary)] hover:text-white"
-              href={`/dashboardstore/issue/${issue.id}/print`}
-              rel="noreferrer"
-              target="_blank"
+          <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+            {canPrintSparePartIssueDocument(user, issue) ? (
+              <Link
+                className="inline-flex min-h-10 shrink-0 items-center justify-center gap-2 rounded-full border border-[var(--line)] px-4 text-xs font-bold text-[var(--ink)] transition hover:border-[var(--primary)] hover:text-[var(--primary)]"
+                href={`/dashboardstore/issue/${issue.id}/print`}
+                rel="noreferrer"
+                target="_blank"
+              >
+                <Printer size={15} />
+                พิมพ์เอกสาร
+              </Link>
+            ) : null}
+            <PreserveListPositionLink
+              className="inline-flex min-h-10 items-center justify-center rounded-full bg-[var(--primary)] px-4 text-xs font-bold text-white shadow-sm transition hover:bg-[var(--primary-strong)]"
+              href={trackingInspectHref(issue.id)}
+              storageKey={trackingListPositionKey}
+              targetId={`issue-row-${issue.id}`}
             >
-              <Printer size={16} />
-              พิมพ์เอกสาร
-            </Link>
-          ) : null}
-          <details className="group rounded-2xl border border-[var(--line)] bg-[var(--soft)] sm:col-span-2">
-            <summary className="flex min-h-12 cursor-pointer list-none items-center justify-center gap-2 rounded-2xl bg-[var(--primary)] px-4 py-2 text-sm font-extrabold text-white transition hover:bg-[var(--primary-strong)]">
               ตรวจสอบใบเบิก
-              <ChevronDown className="transition group-open:rotate-180" size={16} />
-            </summary>
-            <div className="grid gap-3 border-t border-[var(--line)] p-3 sm:col-span-2">
+            </PreserveListPositionLink>
+          </div>
+          {query.inspectIssueId === issue.id ? (
+            <>
+              <PreserveListPositionLink
+                aria-label="ปิดรายละเอียดใบเบิก"
+                className="fixed inset-0 z-40 bg-black/35 backdrop-blur-sm"
+                href={trackingInspectHref()}
+                storageKey={trackingListPositionKey}
+                targetId={`issue-row-${issue.id}`}
+              />
+              <aside aria-labelledby={`issue-drawer-title-${issue.id}`} className="fixed inset-y-0 right-0 z-50 w-full max-w-2xl overflow-y-auto border-l border-[var(--line)] bg-[var(--surface)] p-5 shadow-2xl sm:p-7">
+                <div className="flex items-start justify-between gap-4 border-b border-[var(--line)] pb-4">
+                  <div className="min-w-0">
+                    <p className="text-sm font-bold text-[var(--primary)]">ตรวจสอบใบเบิก</p>
+                    <h2 className="mt-1 truncate font-mono text-2xl font-extrabold" id={`issue-drawer-title-${issue.id}`}>{issue.number}</h2>
+                    <div className="mt-2"><StoreIssueStatusBadge status={issue.status} /></div>
+                  </div>
+                  <PreserveListPositionLink
+                    className="rounded-full bg-[var(--soft)] px-4 py-2 text-sm font-bold"
+                    href={trackingInspectHref()}
+                    storageKey={trackingListPositionKey}
+                    targetId={`issue-row-${issue.id}`}
+                  >
+                    ปิด
+                  </PreserveListPositionLink>
+                </div>
+                <div className="mt-5 grid gap-3">
               <IssueProgress issue={issue} />
               {issue.items.map((item) => {
                 const approved = Number(item.approvedQty ?? item.requestedQty);
@@ -343,7 +384,7 @@ export default async function IssuePage({ searchParams }: { searchParams: Promis
               })}
 
               {canApprove && approvalKinds.has(issue.itemKind) && issue.requesterUserId !== user.id && issue.status === StoreIssueStatus.WAITING_ENGINEER_APPROVAL ? (
-                <form action={engineerDecisionAction} className="grid gap-2 rounded-xl bg-[var(--surface)] p-3 sm:grid-cols-[1fr_repeat(3,auto)] sm:items-end">
+                <PreserveListPositionForm action={engineerDecisionAction} className="grid gap-2 rounded-xl bg-[var(--surface)] p-3 sm:grid-cols-[1fr_repeat(3,auto)] sm:items-end" storageKey={trackingListPositionKey} targetId={`issue-row-${issue.id}`}>
                   <AdminScopeHiddenFields scope={scope} />
                   <input name="issueId" type="hidden" value={issue.id} />
                   <label className="grid gap-1 text-sm font-bold">
@@ -353,12 +394,12 @@ export default async function IssuePage({ searchParams }: { searchParams: Promis
                   <DecisionButton decision="APPROVE" icon={<CheckCircle2 size={16} />} label="Approve" />
                   <DecisionButton decision="RETURN" icon={<RotateCcw size={16} />} label="Return" />
                   <DecisionButton decision="REJECT" icon={<XCircle size={16} />} label="Reject" />
-                </form>
+                </PreserveListPositionForm>
               ) : null}
 
               {canIssue && responsibilityKinds.has(issue.itemKind) && issue.requesterUserId !== user.id && issue.engineerId !== user.id && [StoreIssueStatus.WAITING_STORE_ISSUE, StoreIssueStatus.PARTIALLY_ISSUED].includes(issue.status as never) ? (
                 <div className="grid gap-3 lg:grid-cols-[1fr_240px]">
-                  <form action={issueStockAction} className="grid gap-2 rounded-xl bg-[var(--surface)] p-3">
+                  <PreserveListPositionForm action={issueStockAction} className="grid gap-2 rounded-xl bg-[var(--surface)] p-3" storageKey={trackingListPositionKey} targetId={`issue-row-${issue.id}`}>
                     <AdminScopeHiddenFields scope={scope} />
                     <input name="issueId" type="hidden" value={issue.id} />
                     <p className="text-sm font-bold">จ่ายอะไหล่ครบทั้งใบเบิก {issue.items.length} รายการ</p>
@@ -366,8 +407,8 @@ export default async function IssuePage({ searchParams }: { searchParams: Promis
                     <button className="min-h-11 rounded-xl bg-[var(--primary)] px-4 text-sm font-bold text-white transition hover:bg-[var(--primary-strong)]">
                       จ่ายอะไหล่ทั้งใบ
                     </button>
-                  </form>
-                  <form action={notEnoughStockAction} className="grid content-end gap-2 rounded-xl bg-[var(--surface)] p-3">
+                  </PreserveListPositionForm>
+                  <PreserveListPositionForm action={notEnoughStockAction} className="grid content-end gap-2 rounded-xl bg-[var(--surface)] p-3" storageKey={trackingListPositionKey} targetId={`issue-row-${issue.id}`}>
                     <AdminScopeHiddenFields scope={scope} />
                     <input name="issueId" type="hidden" value={issue.id} />
                     <label className="grid gap-1 text-sm font-bold">
@@ -378,12 +419,12 @@ export default async function IssuePage({ searchParams }: { searchParams: Promis
                       <PackageX size={17} />
                       Not enough stock
                     </button>
-                  </form>
+                  </PreserveListPositionForm>
                 </div>
               ) : null}
 
               {canCancelIssue(user.role, issue.status, issue.items) ? (
-                <form action={cancelIssueAction} className="grid gap-2 rounded-xl border border-red-500/25 bg-red-500/5 p-3 sm:grid-cols-[1fr_auto] sm:items-end">
+                <PreserveListPositionForm action={cancelIssueAction} className="grid gap-2 rounded-xl border border-red-500/25 bg-red-500/5 p-3 sm:grid-cols-[1fr_auto] sm:items-end" storageKey={trackingListPositionKey} targetId={`issue-row-${issue.id}`}>
                   <AdminScopeHiddenFields scope={scope} />
                   <input name="issueId" type="hidden" value={issue.id} />
                   <label className="grid gap-1 text-sm font-bold">
@@ -393,7 +434,7 @@ export default async function IssuePage({ searchParams }: { searchParams: Promis
                   <button className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-red-500/35 px-4 font-bold text-red-600 transition hover:bg-red-500/10">
                     <XCircle size={17} /> ยกเลิกใบเบิก
                   </button>
-                </form>
+                </PreserveListPositionForm>
               ) : null}
 
               {issue.rejectReason ? <p className="rounded-xl bg-red-500/10 px-3 py-2 text-sm text-red-700 dark:text-red-300">Reason: {issue.rejectReason}</p> : null}
@@ -402,8 +443,10 @@ export default async function IssuePage({ searchParams }: { searchParams: Promis
                   Engineer: {issue.engineer?.fullName ?? "-"} · Store Officer: {issue.storeOfficer?.fullName ?? "-"}
                 </p>
               ) : null}
-            </div>
-          </details>
+                </div>
+              </aside>
+            </>
+          ) : null}
         </div>
         </div>
       </article>
@@ -411,46 +454,78 @@ export default async function IssuePage({ searchParams }: { searchParams: Promis
   }
 
   return (
-    <AppShell immersiveMobile>
+    <AppShell>
       <RestoreListPosition
         enabled={trackingOnly}
-        key={`${query.itemKind ?? ""}:${query.status ?? ""}:${query.q ?? ""}:${query.trackingPage ?? ""}`}
+        key={`${query.itemKind ?? ""}:${query.status ?? ""}:${query.q ?? ""}:${query.trackingPage ?? ""}:${query.inspectIssueId ?? ""}`}
         storageKey={trackingListPositionKey}
       />
-      <div className="issue-request-page-gradient -mb-28 min-h-screen pb-28">
-        <div
-          className={`mx-auto grid w-full items-start gap-5 ${
-            trackingOnly ? "max-w-[96rem]" : "max-w-3xl"
-          }`}
-        >
-        {!trackingOnly ? (
-        <section
-          className="space-y-5"
-          data-testid="issue-create-workspace"
-        >
-        {query.created ? (
-          <p className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 font-bold text-emerald-700 dark:text-emerald-300">
-            ส่งคำขอเบิกสำเร็จ เลขที่ใบเบิก: <span className="font-mono">{query.created}</span>
-          </p>
-        ) : null}
-        {query.saved ? (
-          <p className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 font-bold text-emerald-700 dark:text-emerald-300">
-            บันทึกการดำเนินการเรียบร้อยแล้ว
-          </p>
-        ) : null}
-        {query.error ? (
-          <p className="rounded-2xl border border-red-500/30 bg-red-500/10 px-4 py-3 font-bold text-red-700 dark:text-red-300" role="alert">
-            ดำเนินการไม่สำเร็จ: {query.error}
-          </p>
-        ) : null}
-        {canCreate && !issueZones.length ? (
-          <div className="rounded-2xl border border-amber-500/35 bg-amber-500/10 px-4 py-3 text-sm font-bold text-amber-800 dark:text-amber-200">
-            Site นี้ยังไม่มี Applicable Zone ที่เปิดใช้งาน จึงยังสร้างใบเบิกไม่ได้ กรุณากำหนดรหัส Zone ในหน้า Spare Parts ก่อน
-          </div>
-        ) : null}
 
-        {canCreate ? (
-          <section>
+      <section className="menu-heading-plain cm-hero relative overflow-hidden rounded-3xl px-6 py-7 text-white shadow-[var(--shadow)]">
+        <div className="plant-skyline" aria-hidden="true">
+          <span />
+          <span />
+          <span />
+          <span />
+          <span />
+        </div>
+        <div className="relative z-10">
+          <p className="inline-flex rounded-full bg-white/15 px-4 py-2 text-sm font-semibold">Store Issue</p>
+          <h1 className="mt-5 text-4xl font-extrabold">{trackingOnly ? "ติดตามสถานะใบเบิก" : "สร้างใบเบิก"}</h1>
+          <p className="mt-2 text-white/80">
+            {trackingOnly
+              ? "ค้นหา กรอง ตรวจสอบสถานะ และพิมพ์เอกสารใบเบิกย้อนหลัง"
+              : "สร้างใบเบิกอะไหล่ สารเคมี หรือน้ำมันสำหรับงาน CM และการเบิกโดยตรง"}
+          </p>
+          <nav aria-label="Stock Issue views" className="mt-5 flex flex-wrap gap-2">
+            {canCreate ? (
+              <Link
+                aria-current={!trackingOnly ? "page" : undefined}
+                className={issueViewLinkClass(!trackingOnly)}
+                href={`/dashboardstore/issue?organizationId=${scope.organization.id}&plantId=${scope.plant.id}`}
+                scroll={false}
+              >
+                <ShoppingCart size={17} /> สร้างใบเบิก
+              </Link>
+            ) : null}
+            {(canTrack || canApprove || canIssue) ? (
+              <Link
+                aria-current={trackingOnly ? "page" : undefined}
+                className={issueViewLinkClass(trackingOnly)}
+                href={`/dashboardstore/issue?organizationId=${scope.organization.id}&plantId=${scope.plant.id}&view=tracking&itemKind=${selectedTrackingKind}`}
+                scroll={false}
+              >
+                <ClipboardList size={17} /> ติดตามใบเบิก
+              </Link>
+            ) : null}
+          </nav>
+        </div>
+      </section>
+
+      {query.created ? (
+        <p className="mt-4 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 font-bold text-emerald-700 dark:text-emerald-300">
+          ส่งคำขอเบิกสำเร็จ เลขที่ใบเบิก: <span className="font-mono">{query.created}</span>
+        </p>
+      ) : null}
+      {query.saved ? (
+        <p className="mt-4 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 font-bold text-emerald-700 dark:text-emerald-300">
+          บันทึกการดำเนินการเรียบร้อยแล้ว
+        </p>
+      ) : null}
+      {query.error ? (
+        <p className="mt-4 rounded-2xl border border-red-500/30 bg-red-500/10 px-4 py-3 font-bold text-red-700 dark:text-red-300" role="alert">
+          ดำเนินการไม่สำเร็จ: {query.error}
+        </p>
+      ) : null}
+
+      {!trackingOnly ? (
+        <section className="mt-6" data-testid="issue-create-workspace">
+          {canCreate && !issueZones.length ? (
+            <div className="mb-4 rounded-2xl border border-amber-500/35 bg-amber-500/10 px-4 py-3 text-sm font-bold text-amber-800 dark:text-amber-200">
+              Site นี้ยังไม่มี Applicable Zone ที่เปิดใช้งาน จึงยังสร้างใบเบิกไม่ได้ กรุณากำหนดรหัส Zone ในหน้า Spare Parts ก่อน
+            </div>
+          ) : null}
+          {canCreate ? (
             <IssueRequestForm
               action={createIssueAction}
               cmWorks={cmWorks.map((work) => ({
@@ -458,6 +533,7 @@ export default async function IssuePage({ searchParams }: { searchParams: Promis
                 number: work.number,
                 label: `${work.machineName} · ${work.problemTitle}`,
               }))}
+              hideHeader
               organizationId={scope.organization.id}
               plantId={scope.plant.id}
               initialItemKind={resolveItemKind(query.itemKind)}
@@ -468,7 +544,6 @@ export default async function IssuePage({ searchParams }: { searchParams: Promis
                 inventoryCode: scope.plant.code,
               }}
               issueZones={issueZones.map((item) => ({ ...item.zone, code: item.code }))}
-              singleCard
               stocks={stocks.map((stock) => ({
                 storeId: stock.storeId,
                 sparePartId: stock.sparePartId,
@@ -488,211 +563,122 @@ export default async function IssuePage({ searchParams }: { searchParams: Promis
                 stockStatus: buildStoreStockStatus(Number(stock.quantity), Number(stock.sparePart.minStock)),
               }))}
             />
-          </section>
-        ) : null}
+          ) : null}
         </section>
-        ) : null}
+      ) : null}
 
-        {trackingOnly ? (
+      {trackingOnly ? (
         <>
-          <header className="px-1 py-2 text-white">
-            <div className="flex items-start gap-4">
-              <span className="mt-1 grid size-20 shrink-0 place-items-center rounded-2xl border border-white/25 bg-white/10 text-white">
-                <Package aria-hidden="true" size={38} strokeWidth={1.7} />
-              </span>
-              <div className="min-w-0 flex-1">
-                <h2 className="text-2xl font-black leading-tight sm:text-3xl">ติดตามสถานะใบเบิก</h2>
-                <p className="mt-1 text-sm font-bold text-white/80">PowerCare Store · {issueKindLabel(selectedTrackingKind)}</p>
-                <div className="mt-3 flex flex-wrap items-center gap-1 text-[11px] font-bold sm:gap-2 sm:text-xs">
-                  <span className="whitespace-nowrap rounded-full bg-white/10 px-2 py-1.5 text-white/90 sm:px-2.5">
-                    {scope.plant.name}
-                  </span>
-                  <span className="whitespace-nowrap rounded-full bg-white/10 px-2 py-1.5 text-white/80 sm:px-2.5">
-                    ใบเบิก · {filteredIssueCount} รายการ
-                  </span>
-                  <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-emerald-400/15 px-2 py-1.5 text-emerald-300 sm:gap-1.5 sm:px-2.5">
-                    <span className="size-2 rounded-full bg-emerald-400" /> เปิดให้บริการ
-                  </span>
-                </div>
+          <section className="relative z-20 mt-4 rounded-3xl border border-[var(--line)] bg-[var(--surface)] p-4 shadow-[var(--shadow)]" id="issue-tracking">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p className="text-sm font-bold text-[var(--primary)]">Issue Filters</p>
+                <h2 className="mt-1 text-xl font-semibold">ค้นหาและกรองใบเบิก</h2>
               </div>
-            </div>
-          </header>
-          <section className="mt-3 h-full rounded-3xl border border-[var(--line)] bg-[var(--surface)] p-4 shadow-[var(--shadow)] sm:p-5" id="issue-tracking">
-          <div className="hidden flex-wrap items-center justify-between gap-3">
-            <div className="flex items-center gap-2">
-              <ClipboardList className="text-[var(--primary)]" size={21} />
-              <h2 className="text-xl font-extrabold">ติดตามสถานะใบเบิก</h2>
-            </div>
-            <span className="rounded-full bg-[var(--soft)] px-3 py-1 text-sm font-bold">{filteredIssueCount} รายการ</span>
-          </div>
-          <p className="hidden">ติดตามความคืบหน้าและดำเนินการใบเบิกอะไหล่ภายใน Site</p>
-
-          <IssueTrackingTabs
-            itemKind={selectedTrackingKind}
-            organizationId={scope.organization.id}
-            plantId={scope.plant.id}
-            query={query.q}
-            status={selectedTrackingStatus}
-          />
-
-          <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
-            <TrackingStat active={selectedTrackingStatus === "ALL"} href={trackingStatusHref("ALL")} icon={<ClipboardList size={28} />} label="ทั้งหมด" value={statusCounts.all} />
-            <TrackingStat active={selectedTrackingStatus === "WAITING"} href={trackingStatusHref("WAITING")} icon={<Clock3 size={28} />} label="รออนุมัติ" tone="amber" value={statusCounts.waiting} />
-            <TrackingStat active={selectedTrackingStatus === "IN_PROGRESS"} href={trackingStatusHref("IN_PROGRESS")} icon={<Settings2 size={28} />} label="ดำเนินการ" tone="blue" value={statusCounts.inProgress} />
-            <TrackingStat active={selectedTrackingStatus === "COMPLETED"} href={trackingStatusHref("COMPLETED")} icon={<PackageCheck size={28} />} label="เสร็จสิ้น" tone="green" value={statusCounts.completed} />
-            <TrackingStat active={selectedTrackingStatus === "CANCELED"} href={trackingStatusHref("CANCELED")} icon={<XCircle size={28} />} label="ยกเลิก" tone="red" value={statusCounts.canceled} />
-          </div>
-
-          <PreserveListPositionForm action="/dashboardstore/issue" className="mt-4 grid gap-2 rounded-2xl border border-[var(--line)] bg-[var(--soft)] p-3 sm:grid-cols-[minmax(0,1fr)_170px_auto]" storageKey={trackingListPositionKey} targetId="issue-tracking-scroll-position">
-            <AdminScopeHiddenFields scope={scope} />
-            <input name="view" type="hidden" value="tracking" />
-            <input name="itemKind" type="hidden" value={selectedTrackingKind} />
-            <label className="relative">
-              <span className="sr-only">ค้นหาใบเบิก</span>
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--muted)]" size={17} />
-              <input className={`${inputClass} pl-10`} defaultValue={query.q ?? ""} name="q" placeholder="ค้นหาเลขใบเบิก, เลข CM, ผู้ขอ หรืออะไหล่" />
-            </label>
-            <label>
-              <span className="sr-only">สถานะใบเบิก</span>
-              <select className={inputClass} defaultValue={selectedTrackingStatus} name="status">
-                <option value="ALL">สถานะทั้งหมด</option>
-                <option value="WAITING">รออนุมัติ</option>
-                <option value="IN_PROGRESS">กำลังดำเนินการ</option>
-                <option value="COMPLETED">เสร็จสิ้น</option>
-                <option value="CANCELED">ยกเลิก / ปฏิเสธ</option>
-              </select>
-            </label>
-            <button className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-[var(--primary)] px-4 text-sm font-extrabold text-white transition hover:bg-[var(--primary-strong)]">
-              <Search size={17} /> ค้นหา
-            </button>
-          </PreserveListPositionForm>
-          <div className="mt-4 grid gap-2">
-            {pagedFilteredIssues.map((issue) => (
-              <div key={issue.id}>
-                <CompactIssueRow issue={issue} />
-                <article className="hidden rounded-2xl border border-[var(--line)] bg-[var(--card)] p-4">
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div>
-                    <p className="font-mono text-base font-extrabold text-[var(--primary)]">{issue.number}</p>
-                    <p className="mt-1 text-sm text-[var(--muted)]">
-                      {issue.cmWork?.number ? `CM: ${issue.cmWork.number}` : "เบิกโดยตรง"} · {formatThaiMediumDateTime(issue.requestedAt)}
-                    </p>
-                    <p className="mt-1 text-sm">ผู้ขอ: {issue.requesterUser?.fullName ?? issue.requesterName}</p>
-                  </div>
-                  <StoreIssueStatusBadge status={issue.status} />
-                </div>
-
-                <div className="mt-3 grid gap-2">
-                  {issue.items.map((item) => {
-                    const approved = Number(item.approvedQty ?? item.requestedQty);
-                    const issued = Number(item.issuedQty ?? 0);
-                    return (
-                      <div className="grid gap-1 rounded-xl bg-[var(--soft)] p-3 text-sm sm:grid-cols-[1fr_auto] sm:items-center" key={item.id}>
-                        <div>
-                          <p className="font-bold">{item.sparePart.code} · {item.sparePart.name}</p>
-                          {item.lineNumber ? <p className="font-mono text-[11px] text-[var(--primary)]">{item.lineNumber}</p> : null}
-                          <p className="text-xs text-[var(--muted)]">{item.store?.code ?? "-"} · ขอ {formatQty(Number(item.requestedQty))} {item.sparePart.unit}</p>
-                        </div>
-                        <p className="font-bold">จ่ายแล้ว {formatQty(issued)} / {formatQty(approved)}</p>
-                      </div>
-                    );
-                  })}
-                </div>
-
-                {canApprove && approvalKinds.has(issue.itemKind) && issue.requesterUserId !== user.id && issue.status === StoreIssueStatus.WAITING_ENGINEER_APPROVAL ? (
-                  <form action={engineerDecisionAction} className="mt-4 grid gap-2 sm:grid-cols-[1fr_repeat(3,auto)] sm:items-end">
-                    <AdminScopeHiddenFields scope={scope} />
-                    <input name="issueId" type="hidden" value={issue.id} />
-                    <label className="grid gap-1 text-sm font-bold">
-                      หมายเหตุสำหรับ Reject / ส่งกลับ
-                      <input className={inputClass} name="reason" />
-                    </label>
-                    <DecisionButton decision="APPROVE" icon={<CheckCircle2 size={16} />} label="อนุมัติ" />
-                    <DecisionButton decision="RETURN" icon={<RotateCcw size={16} />} label="ส่งกลับแก้ไข" />
-                    <DecisionButton decision="REJECT" icon={<XCircle size={16} />} label="Reject" />
-                  </form>
-                ) : null}
-
-                {canIssue && responsibilityKinds.has(issue.itemKind) && issue.requesterUserId !== user.id && issue.engineerId !== user.id && [StoreIssueStatus.WAITING_STORE_ISSUE, StoreIssueStatus.PARTIALLY_ISSUED].includes(issue.status as never) ? (
-                  <div className="mt-4 grid gap-3 lg:grid-cols-[1fr_auto]">
-                    <form action={issueStockAction} className="grid gap-2">
-                      <AdminScopeHiddenFields scope={scope} />
-                      <input name="issueId" type="hidden" value={issue.id} />
-                      <p className="text-sm font-bold">จ่ายอะไหล่ครบทั้งใบเบิก {issue.items.length} รายการ</p>
-                      <p className="text-xs text-[var(--muted)]">ตรวจสต็อกครบทุกบรรทัดและบันทึกการจ่ายด้วยการกดเพียงครั้งเดียว</p>
-                      <button className="mt-1 min-h-12 rounded-xl bg-[var(--primary)] px-5 font-bold text-white transition hover:bg-[var(--primary-strong)]">
-                        จ่ายอะไหล่ทั้งใบ
-                      </button>
-                    </form>
-                    <form action={notEnoughStockAction} className="grid gap-2 lg:w-64">
-                      <AdminScopeHiddenFields scope={scope} />
-                      <input name="issueId" type="hidden" value={issue.id} />
-                      <label className="grid gap-1 text-sm font-bold">
-                        เหตุผลของไม่พอ
-                        <input className={inputClass} name="reason" required />
-                      </label>
-                      <button className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-red-500/30 px-4 font-bold text-red-600 transition hover:bg-red-500/10">
-                        <PackageX size={17} />
-                        Not enough stock
-                      </button>
-                    </form>
-                  </div>
-                ) : null}
-
-                {issue.rejectReason ? <p className="mt-3 rounded-xl bg-red-500/10 px-3 py-2 text-sm text-red-700 dark:text-red-300">เหตุผล: {issue.rejectReason}</p> : null}
-                {(issue.engineer || issue.storeOfficer) ? (
-                  <p className="mt-3 text-xs text-[var(--muted)]">
-                    Engineer: {issue.engineer?.fullName ?? "-"} · Store Officer: {issue.storeOfficer?.fullName ?? "-"}
-                  </p>
-                ) : null}
-                </article>
-              </div>
-            ))}
-            {!filteredIssueCount ? <p className="rounded-2xl border border-dashed border-[var(--line)] p-8 text-center text-sm text-[var(--muted)]">ไม่พบใบเบิกตามเงื่อนไขที่เลือก</p> : null}
-          </div>
-          {totalTrackingPages > 1 ? (
-            <nav aria-label="Issue tracking pagination" className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-[var(--line)] pt-4">
-              <span className="text-sm font-semibold text-[var(--muted)]">
-                หน้า {currentTrackingPage} จาก {totalTrackingPages}
+              <span className="rounded-full bg-[var(--soft)] px-3 py-1 text-sm text-[var(--muted)]">
+                Site: {scope.plant.name}
               </span>
-              <div className="flex flex-wrap items-center gap-1">
+            </div>
+
+            <IssueTrackingTabs
+              itemKind={selectedTrackingKind}
+              organizationId={scope.organization.id}
+              plantId={scope.plant.id}
+              query={query.q}
+              status={selectedTrackingStatus}
+            />
+
+            <PreserveListPositionForm action="/dashboardstore/issue" className="mt-4 grid gap-3 lg:grid-cols-[minmax(0,1fr)_220px_auto_auto] lg:items-end" storageKey={trackingListPositionKey} targetId="issue-tracking-scroll-position">
+              <AdminScopeHiddenFields scope={scope} />
+              <input name="view" type="hidden" value="tracking" />
+              <input name="itemKind" type="hidden" value={selectedTrackingKind} />
+              <label className="grid gap-1 text-sm">
+                <span className="text-[var(--muted)]">Search</span>
+                <span className="flex min-h-12 items-center gap-2 rounded-2xl border border-[var(--line)] bg-[var(--soft)] px-3">
+                  <Search className="text-[var(--muted)]" size={16} />
+                  <input className="min-w-0 flex-1 bg-transparent py-3 outline-none" defaultValue={query.q ?? ""} name="q" placeholder="เลขใบเบิก, CM, ผู้ขอ หรือรายการ" />
+                </span>
+              </label>
+              <label className="grid gap-1 text-sm">
+                <span className="text-[var(--muted)]">Status</span>
+                <select className="min-h-12 rounded-2xl border border-[var(--line)] bg-[var(--soft)] px-3 outline-none" defaultValue={selectedTrackingStatus} name="status">
+                  <option value="ALL">สถานะทั้งหมด</option>
+                  <option value="WAITING">รออนุมัติ</option>
+                  <option value="IN_PROGRESS">กำลังดำเนินการ</option>
+                  <option value="COMPLETED">เสร็จสิ้น</option>
+                  <option value="CANCELED">ยกเลิก / ปฏิเสธ</option>
+                </select>
+              </label>
+              <button className="min-h-12 rounded-2xl bg-[var(--primary)] px-5 font-bold text-white" type="submit">
+                Filter
+              </button>
+              <Link
+                className="inline-flex min-h-12 items-center justify-center rounded-2xl border border-[var(--line)] px-5 text-center font-semibold"
+                href={`/dashboardstore/issue?organizationId=${scope.organization.id}&plantId=${scope.plant.id}&view=tracking&itemKind=${selectedTrackingKind}`}
+                scroll={false}
+              >
+                Clear filters
+              </Link>
+            </PreserveListPositionForm>
+          </section>
+
+          <section aria-label="Issue status KPI strip" className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+            <TrackingStat active={selectedTrackingStatus === "ALL"} href={trackingStatusHref("ALL")} icon={<ClipboardList size={20} />} label="ทั้งหมด" value={statusCounts.all} />
+            <TrackingStat active={selectedTrackingStatus === "WAITING"} href={trackingStatusHref("WAITING")} icon={<Clock3 size={20} />} label="รออนุมัติ" tone="amber" value={statusCounts.waiting} />
+            <TrackingStat active={selectedTrackingStatus === "IN_PROGRESS"} href={trackingStatusHref("IN_PROGRESS")} icon={<Settings2 size={20} />} label="ดำเนินการ" tone="blue" value={statusCounts.inProgress} />
+            <TrackingStat active={selectedTrackingStatus === "COMPLETED"} href={trackingStatusHref("COMPLETED")} icon={<PackageCheck size={20} />} label="เสร็จสิ้น" tone="green" value={statusCounts.completed} />
+            <TrackingStat active={selectedTrackingStatus === "CANCELED"} href={trackingStatusHref("CANCELED")} icon={<XCircle size={20} />} label="ยกเลิก" tone="red" value={statusCounts.canceled} />
+          </section>
+
+          <section className="mt-6 rounded-3xl border border-[var(--line)] bg-[var(--surface)] p-5 shadow-[var(--shadow)]">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <h2 className="text-xl font-semibold">Issue Results</h2>
+              <span className="rounded-full bg-[var(--soft)] px-3 py-1 text-sm text-[var(--muted)]">
+                {filteredIssueCount} items · Page {currentTrackingPage}/{totalTrackingPages}
+              </span>
+            </div>
+            <div className="mt-4 overflow-hidden rounded-2xl border border-[var(--line)]">
+              {pagedFilteredIssues.length ? (
+                pagedFilteredIssues.map((issue) => <CompactIssueRow issue={issue} key={issue.id} />)
+              ) : (
+                <p className="p-6 text-center text-[var(--muted)]">ไม่พบใบเบิกตามเงื่อนไขที่เลือก</p>
+              )}
+            </div>
+
+            {totalTrackingPages > 1 ? (
+              <nav aria-label="Issue tracking pagination" className="mt-5 flex flex-wrap items-center justify-end gap-2">
                 <Link
                   aria-disabled={currentTrackingPage === 1}
-                  aria-label="หน้าก่อนหน้า"
                   className={trackingPaginationArrowClass(currentTrackingPage === 1)}
                   href={trackingPageHref(Math.max(1, currentTrackingPage - 1))}
                   scroll={false}
                 >
-                  <ChevronLeft size={16} />
+                  ก่อนหน้า
                 </Link>
                 {paginationWindow(currentTrackingPage, totalTrackingPages).map((pageNumber) => (
                   <Link
                     aria-current={pageNumber === currentTrackingPage ? "page" : undefined}
                     className={trackingPaginationPageClass(pageNumber === currentTrackingPage)}
                     href={trackingPageHref(pageNumber)}
-                  scroll={false}
                     key={pageNumber}
+                    scroll={false}
                   >
                     {pageNumber}
                   </Link>
                 ))}
                 <Link
                   aria-disabled={currentTrackingPage === totalTrackingPages}
-                  aria-label="หน้าถัดไป"
                   className={trackingPaginationArrowClass(currentTrackingPage === totalTrackingPages)}
                   href={trackingPageHref(Math.min(totalTrackingPages, currentTrackingPage + 1))}
                   scroll={false}
                 >
-                  <ChevronRight size={16} />
+                  ถัดไป
                 </Link>
-              </div>
-            </nav>
-          ) : null}
+              </nav>
+            ) : null}
           </section>
         </>
-        ) : null}
-        </div>
-      </div>
+      ) : null}
     </AppShell>
   );
 }
@@ -759,21 +745,22 @@ function issueKindLabel(value: string) {
 }
 
 function trackingPaginationPageClass(isActive: boolean) {
-  return [
-    "inline-flex size-9 items-center justify-center rounded-xl text-sm font-extrabold transition",
-    isActive
-      ? "bg-[var(--primary)] text-white shadow-sm"
-      : "border border-[var(--line)] bg-[var(--surface)] text-[var(--ink)] hover:bg-[var(--soft)]",
-  ].join(" ");
+  return isActive
+    ? "rounded-full bg-[var(--primary)] px-4 py-2 text-sm font-bold text-white shadow-sm"
+    : "rounded-full border border-[var(--line)] px-4 py-2 text-sm font-semibold hover:bg-[var(--soft)]";
 }
 
 function trackingPaginationArrowClass(isDisabled: boolean) {
-  return [
-    "inline-flex size-9 items-center justify-center rounded-xl border border-[var(--line)] bg-[var(--surface)] text-[var(--ink)] transition hover:bg-[var(--soft)]",
-    isDisabled ? "pointer-events-none opacity-45" : "",
-  ].join(" ");
+  return isDisabled
+    ? "pointer-events-none rounded-full border border-[var(--line)] px-4 py-2 text-sm font-semibold text-[var(--muted)] opacity-50"
+    : "rounded-full border border-[var(--line)] px-4 py-2 text-sm font-semibold hover:bg-[var(--soft)]";
 }
 
+function issueViewLinkClass(active: boolean) {
+  return active
+    ? "inline-flex min-h-11 items-center gap-2 rounded-full bg-white px-4 py-2 text-sm font-bold text-[var(--primary)] shadow-sm"
+    : "inline-flex min-h-11 items-center gap-2 rounded-full border border-white/30 bg-white/10 px-4 py-2 text-sm font-bold text-white transition hover:bg-white/20";
+}
 function TrackingStat({
   active,
   href,
@@ -790,26 +777,25 @@ function TrackingStat({
   value: number;
 }) {
   const surfaces = {
-    neutral: "stock-summary-violet",
-    amber: "stock-summary-orange",
-    blue: "stock-summary-blue",
-    green: "stock-summary-green",
-    red: "stock-summary-red",
+    neutral: "status-kpi-violet",
+    amber: "status-kpi-amber",
+    blue: "status-kpi-cyan",
+    green: "status-kpi-green",
+    red: "status-kpi-red",
   };
   return (
     <Link
       aria-current={active ? "page" : undefined}
-      className={`stock-summary-card relative min-h-36 overflow-hidden rounded-2xl border p-4 transition duration-300 hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 sm:p-5 ${surfaces[tone]} ${active ? "ring-2 ring-[var(--primary)]/45" : ""}`}
+      className={`status-kpi-card relative block overflow-hidden rounded-2xl border p-4 text-left transition duration-300 ease-out hover:-translate-y-1 hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 ${surfaces[tone]} ${active ? "status-kpi-active ring-2 ring-[var(--primary)] ring-offset-2 ring-offset-[var(--bg)]" : ""}`}
       href={href}
       scroll={false}
     >
-      <div className="relative z-10 flex h-full items-start justify-between gap-3">
+      <div className="relative z-10 flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-sm font-extrabold leading-5">{label}</p>
-          <p className="mt-3 break-words text-2xl font-black tracking-tight sm:text-3xl">{value}</p>
-          <p className="mt-2 text-xs font-bold text-[var(--muted)]">รายการ</p>
+          <p className="min-w-0 text-sm font-semibold leading-5">{label}</p>
+          <strong className="mt-3 block text-3xl leading-none tracking-tight">{value}</strong>
         </div>
-        <span className="stock-summary-icon grid size-11 shrink-0 place-items-center rounded-xl">{icon}</span>
+        <span className="status-kpi-icon shrink-0">{icon}</span>
       </div>
     </Link>
   );
