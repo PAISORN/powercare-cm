@@ -2,19 +2,32 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 describe("Admin users plant scope", () => {
+  const source = [
+    "app/admin/users/page.tsx",
+    "app/admin/users/actions.ts",
+    "modules/users/admin-user-page-model.ts",
+    "modules/users/admin-users-page-data.ts",
+    "modules/users/managed-user-mutation.ts",
+    "components/inventory-user-scope-fields.tsx",
+    "components/admin-users-page/admin-users-workspace.tsx",
+  ].map((file) => readFileSync(file, "utf8")).join("\n");
   it("loads active plants for the create and edit user forms", () => {
-    const source = readFileSync("app/admin/users/page.tsx", "utf8");
+
     expect(source).toContain("getActivePlantsForScope(formOrganizationId)");
-    expect(source).toContain("const [users, categories, plants, scope, formOrganization, createFormPlants, createFormCategories]");
+    expect(source).toMatch(
+      /const \[[\s\S]*users,[\s\S]*categories,[\s\S]*plants,[\s\S]*scope,[\s\S]*formOrganization,[\s\S]*createFormPlants,[\s\S]*createFormCategories/,
+    );
     expect(source).toContain("formOrganization?.name");
-    expect(source).toContain("include: { category: true, categories: { include: { category: true } }, plant: true");
+    expect(source).toMatch(
+      /include:\s*\{[\s\S]*category: true,[\s\S]*categories:\s*\{ include:\s*\{ category: true \} \},[\s\S]*plant: true/,
+    );
     expect(source).toContain('name="categoryIds"');
     expect(source).toContain('name="plantId"');
     expect(source).toContain("filteredUserWhere");
   });
 
   it("saves plantId when creating and updating users", () => {
-    const source = readFileSync("app/admin/users/page.tsx", "utf8");
+
     expect(source).toContain("resolveManagedUserPlantId(current");
     expect(source).toContain("plantId: created.plantId");
     expect(source).toContain("plantId: before.plantId");
@@ -22,7 +35,7 @@ describe("Admin users plant scope", () => {
   });
 
   it("renders plant selectors and current plant information", () => {
-    const source = readFileSync("app/admin/users/page.tsx", "utf8");
+
     expect(source).toContain('select name="plantId"');
     expect(source).toContain("visiblePlants.map((plant)");
     expect(source).toContain("item.plant?.name");
@@ -36,16 +49,16 @@ describe("Admin users plant scope", () => {
   });
 
   it("allows Site Admin to manage only scoped non-admin users", () => {
-    const source = readFileSync("app/admin/users/page.tsx", "utf8");
+
     expect(source).toContain("canManageUsers");
     expect(source).toContain("getManageableUserWhere(user)");
-    expect(source).toContain("assertManagedUserRole(current");
+    expect(source).toContain("assertManagedUserRole(");
     expect(source).toContain("assertCanManageTargetUser(current, before)");
     expect(source).toContain("getPlantsForUserManager(user, plants)");
   });
 
   it("uses granular user management permissions for forms and server actions", () => {
-    const source = readFileSync("app/admin/users/page.tsx", "utf8");
+
     for (const helper of [
       "canCreateManagedUser",
       "canUpdateManagedUser",
@@ -58,7 +71,7 @@ describe("Admin users plant scope", () => {
     ]) {
       expect(source).toContain(helper);
     }
-    expect(source).toContain("const userPermissions =");
+    expect(source).toContain("userPermissions: {");
     expect(source).toContain("userPermissions.canCreate");
     expect(source).toContain("userPermissions.canDelete");
     expect(source).toContain("userPermissions.canAssignCategories");
@@ -66,7 +79,7 @@ describe("Admin users plant scope", () => {
   });
 
   it("uses compact cards with modal edit details for admin users", () => {
-    const source = readFileSync("app/admin/users/page.tsx", "utf8");
+
 
     expect(source).toContain('id={`user-${item.id}`}');
     expect(source).toContain("reveal-on-scroll");
@@ -76,7 +89,7 @@ describe("Admin users plant scope", () => {
   });
 
   it("renders category assignment as checkbox permissions instead of an overflowing multi-select", () => {
-    const source = readFileSync("app/admin/users/page.tsx", "utf8");
+
 
     expect(source).toContain("CategoryCheckboxList");
     expect(source).toContain("user-edit-single-column-grid");
@@ -88,14 +101,14 @@ describe("Admin users plant scope", () => {
   });
 
   it("does not expose the fixed Owner Admin role in user create or edit dropdowns", () => {
-    const source = readFileSync("app/admin/users/page.tsx", "utf8");
+
 
     expect(source).not.toContain('{ value: RoleName.ADMIN, label: "Admin" }');
     expect(source).toContain('{ value: RoleName.ORGANIZATION_ADMIN, label: "Organization Admin" }');
   });
 
   it("exposes Store Officer as a site-scoped manageable user role", () => {
-    const source = readFileSync("app/admin/users/page.tsx", "utf8");
+
     const labelsSource = readFileSync("modules/users/role-labels.ts", "utf8");
 
     expect(source).toContain('{ value: RoleName.STORE_OFFICER, label: "Store Officer" }');
@@ -103,7 +116,7 @@ describe("Admin users plant scope", () => {
   });
 
   it("adds role and site filters while keeping Organization Admin above site scope", () => {
-    const source = readFileSync("app/admin/users/page.tsx", "utf8");
+
 
     expect(source).toContain("role?: string");
     expect(source).toContain("organizationId?: string");
@@ -119,29 +132,30 @@ describe("Admin users plant scope", () => {
   });
 
   it("creates Organization Admin only under an existing organization without site or category", () => {
-    const source = readFileSync("app/admin/users/page.tsx", "utf8");
+
 
     expect(source).toContain("AdminUserRoleScopeController");
     expect(source).toContain("db.organization.findUnique");
     expect(source).toContain('name="organizationId"');
     expect(source).not.toContain("db.organization.create");
     expect(source).not.toContain("organizationNameInput");
-    expect(source).toContain("normalizeManagedUserDepartment(nextRole, formData, organizationName)");
+    expect(source).toContain("input.categoryIds");
+    expect(source).toContain("const department =");
     expect(source).toContain("nextRole === RoleName.ORGANIZATION_ADMIN");
-    expect(source).toContain("plantId = nextRole === RoleName.ORGANIZATION_ADMIN");
-    expect(source).toContain("selectedCategoryIds = nextRole === RoleName.ORGANIZATION_ADMIN");
+    expect(source).toContain("const plantId =");
+    expect(source).toContain("const selectedCategoryIds =");
     expect(source).toContain("ถ้าเลือก Organization Admin ระบบจะใช้หน่วยงานเป็นชื่อองค์กร");
   });
 
   it("defaults new users to Technician so normal site user fields stay editable", () => {
-    const source = readFileSync("app/admin/users/page.tsx", "utf8");
 
-    expect(source).toContain("const defaultCreateUserRole = RoleName.TECHNICIAN");
+
+    expect(source).toContain("defaultCreateUserRole: RoleName.TECHNICIAN");
     expect(source).toContain("defaultValue={defaultCreateUserRole}");
   });
 
   it("reloads create-user site choices when Owner Admin selects a different organization", () => {
-    const pageSource = readFileSync("app/admin/users/page.tsx", "utf8");
+    const pageSource = source;
     const controllerSource = readFileSync("components/admin-user-role-scope-controller.tsx", "utf8");
 
     expect(pageSource).toContain("createFormPlants");
@@ -150,7 +164,7 @@ describe("Admin users plant scope", () => {
     expect(pageSource).toContain("data-organization-id={plant.organizationId}");
     expect(pageSource).toContain("data-category-organization-id");
     expect(pageSource).toContain("getActivePlantsForScope(formOrganizationId)");
-    expect(pageSource).toContain("assertCategoriesInsidePlant(selectedCategoryIds, plantId)");
+    expect(pageSource).toContain("assertManagedUserScope(");
     expect(controllerSource).toContain("reloadsSiteOptions");
     expect(controllerSource).toContain("filtersScopeOptions");
     expect(controllerSource).toContain("filterScopeOptions");
@@ -159,7 +173,7 @@ describe("Admin users plant scope", () => {
   });
 
   it("lets Owner Admin change organization directly inside edit user cards", () => {
-    const source = readFileSync("app/admin/users/page.tsx", "utf8");
+
 
     expect(source).toContain("editFormPlants");
     expect(source).toContain("editFormCategories");

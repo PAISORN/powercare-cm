@@ -2,7 +2,6 @@ import { ChevronLeft, ChevronRight, History } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { AdminSiteScopeSelector } from "../../../components/admin-site-scope-selector";
-import { AppShell } from "../../../components/app-shell";
 import { PreserveListPositionLink, RestoreListPosition } from "../../../components/preserve-list-position";
 import { StockHeaderReplacementController } from "../../../components/stock-header-replacement-controller";
 import { formatThaiMediumDateTime } from "../../../lib/date-time/bangkok-time";
@@ -84,7 +83,7 @@ export default async function StockMovementsPage({ searchParams }: { searchParam
   };
 
   return (
-    <AppShell>
+    <>
       <RestoreListPosition enabled key={currentPage} storageKey={movementListPositionKey} />
       <div className="space-y-5">
         <header className="menu-heading-plain rounded-3xl border border-[var(--line)] bg-[var(--surface)] p-5 shadow-[var(--shadow)] sm:p-7">
@@ -215,7 +214,7 @@ export default async function StockMovementsPage({ searchParams }: { searchParam
           </footer>
         </section>
       </div>
-    </AppShell>
+    </>
   );
 }
 

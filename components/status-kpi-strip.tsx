@@ -1,4 +1,5 @@
 import { Activity, AlertTriangle, Archive, CheckCircle2, ClipboardList, Gauge, History, RotateCcw, Wrench } from "lucide-react";
+import type { CSSProperties } from "react";
 import { WorkStatus, statusLabels } from "../modules/cm-work/cm-work-types";
 import { UnreadBadge } from "./unread-badge";
 import { StatusKpiNavigation } from "./status-kpi-navigation";
@@ -36,7 +37,7 @@ export function StatusKpiStrip({ statusCountByKey, activeStatus, getHref, unread
   };
 
   return (
-    <section className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5 2xl:grid-cols-9" aria-label="Status KPI strip">
+    <section className="dashboard-kpi-carousel mt-6 sm:grid-cols-3 lg:grid-cols-5 2xl:grid-cols-9" aria-label="Status KPI strip">
       {Object.values(WorkStatus).map((status) => (
         <MetricCard
           key={status}
@@ -79,21 +80,21 @@ function MetricCard({
   icon: React.ReactNode;
   tone: "blue" | "amber" | "cyan" | "violet" | "red" | "green" | "slate";
 }) {
-  const tones = {
-    blue: "status-kpi-blue",
-    amber: "status-kpi-amber",
-    cyan: "status-kpi-cyan",
-    violet: "status-kpi-violet",
-    red: "status-kpi-red",
-    green: "status-kpi-green",
-    slate: "status-kpi-slate",
+  const toneColors = {
+    blue: "#3b82f6",
+    amber: "#f59e0b",
+    cyan: "#06b6d4",
+    violet: "#8b5cf6",
+    red: "#ef4444",
+    green: "#22c55e",
+    slate: "#64748b",
   };
-  const className = `status-kpi-card relative block overflow-hidden rounded-2xl border p-4 text-left transition duration-300 ease-out ${tones[tone]} ${active ? "status-kpi-active ring-2 ring-[var(--primary)] ring-offset-2 ring-offset-[var(--bg)]" : ""}`;
+  const className = `dashboard-kpi dashboard-kpi-glow relative block min-h-[148px] overflow-hidden rounded-2xl border p-4 text-left transition duration-300 ease-out ${active ? "ring-2 ring-[var(--primary)] ring-offset-2 ring-offset-[var(--bg)]" : ""}`;
   const content = (
     <>
       <div className="relative z-10 flex items-start justify-between gap-3">
         <p className="min-w-0 text-sm font-semibold leading-5">{label}</p>
-        <span className="status-kpi-icon shrink-0" aria-hidden="true">{icon}</span>
+        <span className="dashboard-kpi-icon shrink-0" aria-hidden="true">{icon}</span>
       </div>
       <strong className="relative z-10 mt-3 block text-3xl leading-none tracking-tight">{value}</strong>
     </>
@@ -101,7 +102,10 @@ function MetricCard({
 
   if (href) {
     return (
-      <div className="relative min-w-0 overflow-visible">
+      <div
+        className="dashboard-kpi-slide relative min-w-0 overflow-visible"
+        style={{ "--kpi-color": toneColors[tone] } as CSSProperties}
+      >
         <StatusKpiNavigation
           ariaLabel={ariaLabel}
           className={`${className} h-full hover:-translate-y-1 hover:shadow-lg active:translate-y-0`}
@@ -118,7 +122,10 @@ function MetricCard({
   }
 
   return (
-    <div className="relative min-w-0 overflow-visible">
+    <div
+      className="dashboard-kpi-slide relative min-w-0 overflow-visible"
+      style={{ "--kpi-color": toneColors[tone] } as CSSProperties}
+    >
       <div className={className} aria-label={ariaLabel}>
         {content}
       </div>

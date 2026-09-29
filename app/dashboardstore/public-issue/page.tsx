@@ -4,7 +4,6 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import QRCode from "qrcode";
 import { AdminSiteScopeSelector } from "../../../components/admin-site-scope-selector";
-import { AppShell } from "../../../components/app-shell";
 import { PublicIssueLinkActions } from "../../../components/store/public-issue-link-actions";
 import { db } from "../../../lib/db";
 import { getPlantStoreIssueUrl } from "../../../lib/public-url";
@@ -52,7 +51,7 @@ export default async function PublicIssueManagementPage({ searchParams }: { sear
   const ready = Boolean(plant.inventoryCode && plant.publicStoreIssueEnabled);
 
   return (
-    <AppShell>
+    <>
       <div className="space-y-5">
         <header className="flex flex-wrap items-start justify-between gap-4 print:hidden">
           <div>
@@ -111,7 +110,7 @@ export default async function PublicIssueManagementPage({ searchParams }: { sear
           </div>
         </section>
       </div>
-    </AppShell>
+    </>
   );
 }
 

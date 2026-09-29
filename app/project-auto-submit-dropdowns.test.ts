@@ -8,9 +8,8 @@ const filterDropdownFiles = [
   "components/report-filter-form.tsx",
   "app/members/page.tsx",
   "app/reports/report-page-parts.tsx",
-  "app/admin/users/page.tsx",
+  "components/admin-users-page/admin-users-workspace.tsx",
   "app/admin/sites/page.tsx",
-  "app/admin/site-admin-permissions/page.tsx",
 ];
 
 describe("project-wide filter dropdown behavior", () => {

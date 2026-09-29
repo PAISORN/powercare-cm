@@ -2,11 +2,19 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 describe("All Work repair-request editing", () => {
-  const pageSource = readFileSync("app/work/page.tsx", "utf8");
+  const pageSource = [
+    "app/work/page.tsx",
+    "app/work/actions.ts",
+    "modules/cm-work/work-list-page-data.ts",
+    "modules/cm-work/work-list-query.ts",
+    "components/work-list-page/work-list-workspace.tsx",
+    "components/work-list-page/work-results.tsx",
+    "components/work-list-page/work-edit-drawer.tsx",
+  ].map((file) => readFileSync(file, "utf8")).join("\n");
   const serviceSource = readFileSync("modules/cm-work/cm-work-service.ts", "utf8");
 
   it("opens a right sidebar through the dedicated permission", () => {
-    expect(pageSource).toContain("canUseUserPermission(user, PermissionKey.EDIT_WORK_REQUEST)");
+    expect(pageSource).toMatch(/canUseUserPermission\(\s*user,\s*PermissionKey\.EDIT_WORK_REQUEST/);
     expect(pageSource).toContain('id="edit-work-drawer"');
     expect(pageSource).toContain("fixed inset-y-0 right-0");
     for (const name of ["requesterName", "requesterDepartment", "categoryId", "zoneId", "assetId", "machineName", "problemTitle", "problemDetail", "urgency"]) {

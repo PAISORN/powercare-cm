@@ -1,52 +1,455 @@
-import { randomUUID } from "node:crypto";
+import {
+  ArrowRight,
+  CalendarRange,
+  CalendarDays,
+  CalendarX2,
+  CheckCircle2,
+  CircleAlert,
+  ClipboardList,
+  MessageSquareText,
+  Settings2,
+  UserRound,
+} from "lucide-react";
+import Link from "next/link";
 import { redirect } from "next/navigation";
-import { AdminScopeHiddenFields } from "../../components/admin-site-scope-selector";
-import { AppShell } from "../../components/app-shell";
-import { PmCalendar } from "../../components/pm/pm-calendar";
-import { PmCalendarViewSwitcher, type PmCalendarView } from "../../components/pm/pm-calendar-view-switcher";
-import { PmConfirmedPlanEditor } from "../../components/pm/pm-confirmed-plan-editor";
-import { PmDayColumn } from "../../components/pm/pm-day-column";
-import { PmPlanEditor } from "../../components/pm/pm-plan-editor";
-import { PmRouteShell } from "../../components/pm/pm-route-shell";
-import { db } from "../../lib/db";
+import { AdminSiteScopeSelector } from "../../components/admin-site-scope-selector";
+import { PmDashboardMonthlyTrend } from "../../components/pm/pm-dashboard-monthly-trend";
+import { PmMetricCarousel } from "../../components/pm/pm-metric-carousel";
 import { getBangkokDateString } from "../../lib/date-time/bangkok-time";
 import { requireUser } from "../../lib/session";
-import { canManagePmGroups, canManagePmPlans, canViewPm } from "../../modules/auth/permission";
-import { isIsoDateKey, isPmMonthKey, listPmCalendarPlans } from "../../modules/pm/pm-calendar-query";
+import { canViewPm } from "../../modules/auth/permission";
+import {
+  formatPmDashboardMonth as formatMonth,
+  formatPmDashboardShortDate as formatShortDate,
+  formatPmDashboardWeekday as weekday,
+  getPmDashboardSummary,
+} from "../../modules/pm/pm-dashboard-query";
 import { resolvePmPageScope } from "../../modules/pm/pm-page-scope";
-import { addDraftPmGroup, confirmPmPlan, createOrGetDraftPmPlan, deleteDraftPmPlan, getPmPlanEditor, previewDraftPmPlan, removeDraftPmGroup, rescheduleDraftPmPlan } from "../../modules/pm/pm-plan-service";
-import { addAssetToConfirmedPmPlan, cancelConfirmedPmPlan, rescheduleConfirmedPmPlan } from "../../modules/pm/pm-work-service";
 
-type Query = { organizationId?: string; plantId?: string; month?: string; date?: string; planId?: string; view?: string; saved?: string; error?: string };
-function validDate(value: string | undefined, fallback: string) { return value && isIsoDateKey(value) ? value : fallback; }
-function validMonth(value: string | undefined, fallback: string) { return value && isPmMonthKey(value) ? `${value}-01` : fallback; }
-function validView(value: string | undefined): PmCalendarView { return value === "day" ? "day" : "month"; }
-function errorMessage(error: unknown) { return error instanceof Error ? error.message : "Unable to save PM plan"; }
-function url(scope: { organization: { id: string }; plant: { id: string }; calendarView?: PmCalendarView }, values: Record<string, string | undefined>) { const params = new URLSearchParams({ organizationId: scope.organization.id, plantId: scope.plant.id }); if (scope.calendarView) params.set("view", scope.calendarView); Object.entries(values).forEach(([key, value]) => { if (value) params.set(key, value); }); return `/dashboardpm?${params}`; }
+type DashboardQuery = {
+  organizationId?: string;
+  plantId?: string;
+};
 
-async function actionContext(formData: FormData) { const user = await requireUser(); if (!canManagePmPlans(user)) redirect("/dashboardpm"); const resolvedScope = await resolvePmPageScope(user, { organizationId: String(formData.get("organizationId") ?? ""), plantId: String(formData.get("plantId") ?? "") }); const scope = { ...resolvedScope, calendarView: validView(String(formData.get("calendarView") ?? "")) }; return { user, scope, serviceScope: { organizationId: scope.organization.id, plantId: scope.plant.id }, planId: String(formData.get("planId") ?? "") }; }
-async function createPlan(data: FormData) { "use server"; const { user, scope, serviceScope } = await actionContext(data); const date = String(data.get("plannedDateKey") ?? ""); let plan; try { plan = await createOrGetDraftPmPlan(user, { ...serviceScope, plannedDateKey: date, submissionKey: String(data.get("submissionKey") ?? "") }); } catch (error) { redirect(url(scope, { month: date.slice(0, 7), date, error: errorMessage(error) })); } redirect(url(scope, { month: date.slice(0, 7), date, planId: plan.id, saved: "created" })); }
-async function addGroup(data: FormData) { "use server"; const { user, scope, serviceScope, planId } = await actionContext(data); const date = String(data.get("currentDate") ?? ""); try { await addDraftPmGroup(user, { ...serviceScope, planId, groupId: String(data.get("groupId") ?? "") }); } catch (error) { redirect(url(scope, { month: date.slice(0, 7), date, planId, error: errorMessage(error) })); } redirect(url(scope, { month: date.slice(0, 7), date, planId, saved: "group-added" })); }
-async function removeGroup(data: FormData) { "use server"; const { user, scope, serviceScope, planId } = await actionContext(data); const date = String(data.get("currentDate") ?? ""); try { await removeDraftPmGroup(user, { ...serviceScope, planId, groupId: String(data.get("groupId") ?? "") }); } catch (error) { redirect(url(scope, { month: date.slice(0, 7), date, planId, error: errorMessage(error) })); } redirect(url(scope, { month: date.slice(0, 7), date, planId, saved: "group-removed" })); }
-async function reschedule(data: FormData) { "use server"; const { user, scope, serviceScope, planId } = await actionContext(data); const currentDate = String(data.get("currentDate") ?? ""); const date = String(data.get("plannedDateKey") ?? ""); try { await rescheduleDraftPmPlan(user, { ...serviceScope, planId, plannedDateKey: date }); } catch (error) { redirect(url(scope, { month: currentDate.slice(0, 7), date: currentDate, planId, error: errorMessage(error) })); } redirect(url(scope, { month: date.slice(0, 7), date, planId, saved: "rescheduled" })); }
-async function deletePlan(data: FormData) { "use server"; const { user, scope, serviceScope, planId } = await actionContext(data); const currentDate = String(data.get("currentDate") ?? ""); try { await deleteDraftPmPlan(user, { ...serviceScope, planId }); } catch (error) { redirect(url(scope, { month: currentDate.slice(0, 7), date: currentDate, planId, error: errorMessage(error) })); } redirect(url(scope, { month: currentDate.slice(0, 7), date: currentDate, saved: "deleted" })); }
-async function confirmPlan(data: FormData) { "use server"; const { user, scope, serviceScope, planId } = await actionContext(data); const currentDate = String(data.get("currentDate") ?? ""); try { await confirmPmPlan(user, { ...serviceScope, planId, submissionKey: String(data.get("submissionKey") ?? "") }); } catch (error) { redirect(url(scope, { month: currentDate.slice(0, 7), date: currentDate, planId, error: errorMessage(error) })); } redirect(url(scope, { month: currentDate.slice(0, 7), date: currentDate, planId, saved: "confirmed" })); }
-async function addConfirmedAsset(data: FormData) { "use server"; const { user, scope, serviceScope, planId } = await actionContext(data); const currentDate = String(data.get("currentDate") ?? ""); try { await addAssetToConfirmedPmPlan(user, { ...serviceScope, planId, assetId: String(data.get("assetId") ?? ""), reason: String(data.get("reason") ?? "") }); } catch (error) { redirect(url(scope, { month: currentDate.slice(0, 7), date: currentDate, planId, error: errorMessage(error) })); } redirect(url(scope, { month: currentDate.slice(0, 7), date: currentDate, planId, saved: "asset-added" })); }
-async function rescheduleConfirmed(data: FormData) { "use server"; const { user, scope, serviceScope, planId } = await actionContext(data); const currentDate = String(data.get("currentDate") ?? ""); const date = String(data.get("plannedDateKey") ?? ""); try { await rescheduleConfirmedPmPlan(user, { ...serviceScope, planId, plannedDateKey: date, reason: String(data.get("reason") ?? "") }); } catch (error) { redirect(url(scope, { month: currentDate.slice(0, 7), date: currentDate, planId, error: errorMessage(error) })); } redirect(url(scope, { month: date.slice(0, 7), date, planId, saved: "confirmed-rescheduled" })); }
-async function cancelConfirmed(data: FormData) { "use server"; const { user, scope, serviceScope, planId } = await actionContext(data); const currentDate = String(data.get("currentDate") ?? ""); try { await cancelConfirmedPmPlan(user, { ...serviceScope, planId, reason: String(data.get("reason") ?? "") }); } catch (error) { redirect(url(scope, { month: currentDate.slice(0, 7), date: currentDate, planId, error: errorMessage(error) })); } redirect(url(scope, { month: currentDate.slice(0, 7), date: currentDate, saved: "confirmed-canceled" })); }
+export default async function PmDashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<DashboardQuery>;
+}) {
+  const user = await requireUser();
+  if (!canViewPm(user)) redirect("/dashboardcm");
+  const query = await searchParams;
+  const scope = await resolvePmPageScope(user, query);
+  const today = getBangkokDateString();
+  const serviceScope = {
+    organizationId: scope.organization.id,
+    plantId: scope.plant.id,
+  };
+  const dashboard = await getPmDashboardSummary(serviceScope, today);
+  const scopeQuery = new URLSearchParams(serviceScope).toString();
+  const calendarHref = `/dashboardpm/calendar?${scopeQuery}&view=month&month=${dashboard.monthKey}&date=${today}`;
+  const workHref = (values: Record<string, string | undefined> = {}) => {
+    const params = new URLSearchParams(serviceScope);
+    for (const [key, value] of Object.entries(values)) {
+      if (value) params.set(key, value);
+    }
+    return `/dashboardpm/work?${params}`;
+  };
 
-export default async function PmCalendarPage({ searchParams }: { searchParams: Promise<Query> }) {
-  const user = await requireUser(); if (!canViewPm(user)) redirect("/dashboardcm");
-  const query = await searchParams; const scope = await resolvePmPageScope(user, query); const serviceScope = { organizationId: scope.organization.id, plantId: scope.plant.id };
-  const today = getBangkokDateString(); const selectedDate = validDate(query.date, today); const view = validView(query.view); const month = view === "day" ? `${selectedDate.slice(0, 7)}-01` : validMonth(query.month, `${today.slice(0, 7)}-01`); const canManage = canManagePmPlans(user);
-  const [plans, groups] = await Promise.all([listPmCalendarPlans(user, serviceScope, month), canManage ? db.pmGroup.findMany({ where: { ...serviceScope, active: true }, select: { id: true, code: true, name: true }, orderBy: { code: "asc" } }) : Promise.resolve([])]);
-  const selectedPlanId = plans.find(item => item.id === query.planId)?.id ?? plans.find(plan => plan.plannedDateKey === selectedDate)?.id; const plan = selectedPlanId ? await getPmPlanEditor(user, { ...serviceScope, planId: selectedPlanId }) : null; const preview = plan?.status === "DRAFT" ? await previewDraftPmPlan(user, { ...serviceScope, planId: plan.id }) : null;
-  const confirmedAssets = canManage && plan?.status === "CONFIRMED" ? await db.asset.findMany({ where: { plantId: serviceScope.plantId, registrationStatus: "ACTIVE", pmWorks: { none: { pmPlanId: plan.id } } }, select: { id: true, code: true, nameTh: true }, orderBy: [{ code: "asc" }, { nameTh: "asc" }] }) : [];
-  const scopeQuery = new URLSearchParams({ organizationId: scope.organization.id, plantId: scope.plant.id }).toString();
-  return <AppShell><PmRouteShell title="PM Calendar" description={canManage ? "เลือกวันที่ แล้วเพิ่ม PM Group ได้มากกว่าหนึ่งกลุ่มใน Draft เดียว" : "ดูแผน PM ตาม Site ที่ได้รับสิทธิ์"} scope={scope} currentPage="calendar" canManageGroups={canManagePmGroups(user)} scopeAction="/dashboardpm" /><main className="mx-auto mt-5 grid w-full max-w-[1680px] gap-5">
-    {query.saved ? <p className="rounded-2xl bg-emerald-500/10 p-4 text-sm font-bold text-emerald-700" role="status">บันทึกแผน PM แล้ว</p> : null}{query.error ? <p className="rounded-2xl bg-red-500/10 p-4 text-sm font-bold text-red-700" role="alert">{query.error}</p> : null}
-    <PmCalendarViewSwitcher view={view} monthHref={`/dashboardpm?${scopeQuery}&view=month&month=${month.slice(0, 7)}&date=${selectedDate}`} dayHref={`/dashboardpm?${scopeQuery}&view=day&month=${selectedDate.slice(0, 7)}&date=${selectedDate}${selectedPlanId ? `&planId=${selectedPlanId}` : ""}`} />
-    <div className="grid min-w-0 gap-5 min-[1900px]:grid-cols-[minmax(0,1fr)_380px]"><div className="min-w-0">{view === "month" ? <PmCalendar canManage={canManage} month={month} plans={plans} scopeQuery={scopeQuery} today={today} /> : <PmDayColumn canManage={canManage} date={selectedDate} plan={plans.find(item => item.plannedDateKey === selectedDate)} scopeQuery={scopeQuery} today={today} />}</div>
-      {plan && preview ? <PmPlanEditor actions={{ add: addGroup, remove: removeGroup, reschedule, deletePlan, confirm: confirmPlan }} calendarView={view} canManage={canManage} groups={groups} plan={plan} preview={preview} scope={serviceScope} /> : plan?.status === "CONFIRMED" && canManage ? <PmConfirmedPlanEditor actions={{ addAsset: addConfirmedAsset, reschedule: rescheduleConfirmed, cancel: cancelConfirmed }} assets={confirmedAssets} calendarView={view} plan={plan} scope={serviceScope} /> : plan ? <section className="rounded-3xl border border-[var(--line)] bg-[var(--surface)] p-5 shadow-[var(--shadow)]"><p className="text-sm font-bold text-[var(--primary)]">แผน PM</p><h2 className="mt-1 text-2xl font-extrabold">{plan.number ?? plan.plannedDateKey}</h2><p className="mt-3 text-sm text-[var(--muted)]">สถานะ {plan.status}</p></section> : canManage ? <section className="rounded-3xl border border-[var(--line)] bg-[var(--surface)] p-5 shadow-[var(--shadow)]"><p className="text-sm font-bold text-[var(--primary)]">วันที่เลือก</p><h2 className="mt-1 text-2xl font-extrabold">{selectedDate}</h2><p className="mt-3 text-sm text-[var(--muted)]">วันนี้ยังไม่มีแผน PM</p><form action={createPlan} className="mt-5"><AdminScopeHiddenFields scope={scope} /><input name="calendarView" type="hidden" value={view} /><input name="plannedDateKey" type="hidden" value={selectedDate} /><input name="submissionKey" type="hidden" value={randomUUID()} /><button className="min-h-12 w-full rounded-2xl bg-[var(--primary)] px-4 font-bold text-white">สร้าง Draft สำหรับวันนี้</button></form></section> : null}
-    </div></main></AppShell>;
+  return (
+    <div className="mx-auto grid w-full min-w-0 max-w-[1680px] gap-5">
+      {scope.canSelectOrganization || scope.canSelectPlant ? (
+        <AdminSiteScopeSelector
+          action="/dashboardpm"
+          description="เลือก Organization และ Site สำหรับดูภาพรวมงานบำรุงรักษาเชิงป้องกัน"
+          scope={scope}
+          title="PM scope"
+        />
+      ) : null}
+
+      <header className="flex min-w-0 flex-col gap-5 border-b border-[var(--line)] pb-5 lg:flex-row lg:items-end lg:justify-between">
+        <div className="min-w-0">
+          <h1 className="text-3xl font-black tracking-[-0.035em] text-[var(--ink)] sm:text-4xl">
+            Dashboard PM
+          </h1>
+          <p className="mt-2 break-words text-sm font-semibold text-[var(--muted)]">
+            {scope.plant.name} · {formatMonth(dashboard.monthKey)}
+          </p>
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          <Link
+            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 text-sm font-extrabold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-emerald-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 motion-reduce:transform-none"
+            href={`/dashboardpm/calendar?${scopeQuery}&view=month&month=${dashboard.monthKey}&date=${today}`}
+          >
+            <CalendarDays aria-hidden="true" size={18} />
+            เปิด PM Calendar
+          </Link>
+          <Link
+            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-[var(--line)] bg-[var(--surface)] px-4 text-sm font-extrabold text-[var(--ink)] transition hover:-translate-y-0.5 hover:border-emerald-500 hover:text-emerald-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 motion-reduce:transform-none"
+            href={`/dashboardpm/setup?${scopeQuery}&year=${today.slice(0, 4)}`}
+          >
+            <Settings2 aria-hidden="true" size={18} />
+            PM Setup
+          </Link>
+        </div>
+      </header>
+
+      <PmMetricCarousel>
+        <MetricLink
+          href={workHref({
+            startDate: dashboard.yearStart,
+            endDate: dashboard.yearEnd,
+          })}
+          icon={CalendarRange}
+          label="งานทั้งปี"
+          tone="blue"
+          value={dashboard.metrics.annualTotal}
+          note={`ฐานงานตามแผนปีนี้ · ${dashboard.metrics.annualTotal ? 100 : 0}%`}
+          percent={dashboard.metrics.annualTotal ? 100 : 0}
+        />
+        <MetricLink
+          href={workHref({
+            lifecycle: "COMPLETED",
+            startDate: dashboard.yearStart,
+            endDate: dashboard.yearEnd,
+          })}
+          icon={CheckCircle2}
+          label="ดำเนินการแล้วตลอดปี"
+          tone="green"
+          value={dashboard.metrics.annualCompleted}
+          note={`${dashboard.metrics.annualCompletionPercent}% ของงานทั้งปี`}
+          percent={dashboard.metrics.annualCompletionPercent}
+        />
+        <MetricLink
+          href={workHref({
+            startDate: dashboard.monthStart,
+            endDate: dashboard.monthEnd,
+          })}
+          icon={ClipboardList}
+          label="งานในเดือนนี้"
+          tone="violet"
+          value={dashboard.metrics.monthTotal}
+          note={`ดำเนินการแล้ว ${dashboard.metrics.monthCompleted} งาน · ${dashboard.metrics.monthCompletionPercent}%`}
+          percent={dashboard.metrics.monthCompletionPercent}
+          initialOnMobile
+        />
+        <MetricLink
+          href={workHref({ startDate: today, endDate: today })}
+          icon={CalendarDays}
+          label="งานวันนี้"
+          tone="amber"
+          value={dashboard.metrics.todayTotal}
+          note={`ดำเนินการแล้ว ${dashboard.metrics.todayCompleted} งาน · ${dashboard.metrics.todayCompletionPercent}%`}
+          percent={dashboard.metrics.todayCompletionPercent}
+        />
+        <MetricLink
+          href={workHref({
+            lifecycle: "CANCELED",
+            startDate: dashboard.yearStart,
+            endDate: dashboard.yearEnd,
+          })}
+          icon={CalendarX2}
+          label="วันที่ยกเลิก PM"
+          tone="red"
+          value={dashboard.metrics.canceledDays}
+          note={`${dashboard.metrics.canceledWorks} งาน · ${dashboard.metrics.cancellationPercent}% ของงานทั้งปี`}
+          percent={dashboard.metrics.cancellationPercent}
+        />
+      </PmMetricCarousel>
+
+      <div className="grid min-w-0 gap-5 xl:grid-cols-[minmax(22rem,0.72fr)_minmax(0,1.28fr)] xl:items-stretch">
+        <section className="dashboard-content-surface pm-pastel-surface min-w-0 rounded-[2rem] border p-4 text-[#17213b] sm:p-5">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <span className="grid size-10 shrink-0 place-items-center rounded-full bg-white/70 text-emerald-700 shadow-sm">
+                <CalendarDays aria-hidden="true" size={20} />
+              </span>
+              <h2 className="text-lg font-black text-[var(--ink)]">แผน PM 7 วันข้างหน้า</h2>
+            </div>
+            <Link
+              aria-label="ดูแผนทั้งหมดใน PM Calendar"
+                className="grid size-11 shrink-0 place-items-center rounded-xl text-emerald-700 transition hover:bg-white/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+              href={calendarHref}
+            >
+              <ArrowRight aria-hidden="true" size={18} />
+            </Link>
+          </div>
+          <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4 xl:grid-cols-2">
+            {dashboard.upcomingDays.map((day, index) => (
+              <Link
+                className={`min-h-28 rounded-[1.5rem] border p-3 shadow-sm transition hover:-translate-y-1 hover:scale-[1.01] hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 motion-reduce:transform-none ${
+                  index === 0
+                    ? "border-[#9fd6bd] bg-gradient-to-br from-[#effbf5] to-[#d9f1e5]"
+                    : "border-white/80 bg-white/55 backdrop-blur-sm"
+                }`}
+                href={`/dashboardpm/calendar?${scopeQuery}&view=day&month=${day.dateKey.slice(0, 7)}&date=${day.dateKey}`}
+                key={day.dateKey}
+              >
+                <span className="block text-xs font-bold text-[var(--muted)]">
+                  {index === 0 ? "วันนี้" : weekday(day.dateKey)}
+                </span>
+                <strong className="mt-1 grid size-10 place-items-center rounded-full border border-white/80 bg-white/80 text-xl font-black text-[#17213b] shadow-sm">
+                  {Number(day.dateKey.slice(-2))}
+                </strong>
+                <span className="mt-2 block text-xs font-bold text-emerald-700">
+                  {day.total} งาน
+                </span>
+              </Link>
+            ))}
+          </div>
+        </section>
+
+        <PmDashboardMonthlyTrend
+          calendarHref={calendarHref}
+          rows={dashboard.monthlyTrend}
+        />
+      </div>
+
+      <div className="grid min-w-0 gap-5 xl:grid-cols-[minmax(0,1.2fr)_minmax(22rem,0.8fr)]">
+        <section className="dashboard-content-surface pm-pastel-surface min-w-0 overflow-hidden rounded-[2rem] border text-[#17213b]">
+          <SectionHeader
+            href={workHref({ overdue: "1" })}
+            icon={CircleAlert}
+            title="งานที่ต้องติดตาม"
+          />
+          {dashboard.attentionWorks.length ? (
+            <div className="grid gap-2 p-3 pt-0 sm:p-4 sm:pt-0">
+              {dashboard.attentionWorks.map((work, index) => (
+                <Link
+                  className={`min-h-20 min-w-0 gap-3 rounded-[1.35rem] border border-white/75 bg-white/55 px-4 py-3 shadow-sm backdrop-blur-sm transition hover:-translate-y-0.5 hover:bg-white/80 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 motion-reduce:transform-none sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:items-center ${
+                    index >= 3 ? "hidden sm:grid" : "grid"
+                  }`}
+                  href={`/dashboardpm/work/${work.id}?${scopeQuery}`}
+                  key={work.id}
+                >
+                  <span
+                    className={`inline-flex w-fit items-center rounded-full px-3 py-1 text-xs font-black ${
+                      work.overdue
+                        ? "bg-red-100 text-red-700"
+                        : "bg-amber-100 text-amber-800"
+                    }`}
+                  >
+                    {work.overdue ? "เกินกำหนด" : "กำลังดำเนินการ"}
+                  </span>
+                  <span className="min-w-0">
+                    <strong className="block truncate text-sm text-[var(--ink)]">
+                      {work.number} · {work.assetCodeSnapshot ?? "—"}
+                    </strong>
+                    <span className="mt-1 block truncate text-sm text-[var(--muted)]">
+                      {work.assetNameSnapshot}
+                      {work.assignees[0]?.user.fullName
+                        ? ` · ${work.assignees[0].user.fullName}`
+                        : " · ยังไม่มอบหมาย"}
+                    </span>
+                  </span>
+                  <span className="flex items-center justify-between gap-3 text-sm font-bold text-[var(--muted)] sm:justify-end">
+                    {formatShortDate(work.pmPlan.plannedDateKey)}
+                    <ArrowRight aria-hidden="true" size={17} />
+                  </span>
+                </Link>
+              ))}
+            </div>
+          ) : (
+            <EmptyState text="ไม่มีงานเกินกำหนดหรืองานที่กำลังดำเนินการ" />
+          )}
+        </section>
+
+        <section className="dashboard-content-surface pm-pastel-surface min-w-0 overflow-hidden rounded-[2rem] border text-[#17213b]">
+          <SectionHeader
+            href={workHref({ lifecycle: "COMPLETED" })}
+            icon={MessageSquareText}
+            title="Comments PM"
+          />
+          {dashboard.pmComments.length ? (
+            <div className="grid gap-2 p-3 pt-0 sm:p-4 sm:pt-0">
+              {dashboard.pmComments.map((comment, index) => (
+              <Link
+                  className={`min-w-0 rounded-[1.35rem] border border-white/75 bg-white/55 px-4 py-3 shadow-sm backdrop-blur-sm transition hover:-translate-y-0.5 hover:bg-white/80 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 motion-reduce:transform-none ${index >= 3 ? "hidden sm:block" : "block"}`}
+                  href={`/dashboardpm/work/${comment.id}?${scopeQuery}`}
+                  key={comment.id}
+              >
+                  <span className="flex items-center justify-between gap-3">
+                    <span className={`rounded-full px-2.5 py-1 text-[10px] font-black ${comment.result === "ABNORMAL" ? "bg-red-100 text-red-700" : "bg-emerald-100 text-emerald-700"}`}>
+                      {comment.result === "ABNORMAL" ? "ผิดปกติ" : "ปกติ"}
+                    </span>
+                    <span className="text-xs font-bold text-[var(--muted)]">
+                      {comment.completedAt ? formatShortDate(comment.completedAt.toISOString().slice(0, 10)) : "ล่าสุด"}
+                    </span>
+                  </span>
+                  <strong className="mt-2 block truncate text-sm text-[var(--ink)]">
+                    {comment.number} · {comment.assetCodeSnapshot ?? "—"}
+                  </strong>
+                  <span className="mt-1 block line-clamp-2 text-sm font-semibold text-slate-600">
+                    “{comment.resultNote}”
+                  </span>
+                  <span className="mt-2 flex items-center justify-between gap-2 text-xs font-bold text-[var(--muted)]">
+                    <span className="truncate">{comment.completedBy?.fullName ?? "ผู้บันทึก PM"}</span>
+                    <ArrowRight aria-hidden="true" className="shrink-0" size={15} />
+                  </span>
+              </Link>
+            ))}
+          </div>
+          ) : (
+            <EmptyState text="ยังไม่มี Comments จากผลการตรวจ PM" />
+          )}
+        </section>
+      </div>
+
+      <section className="dashboard-content-surface pm-pastel-surface min-w-0 overflow-hidden rounded-[2rem] border text-[#17213b]">
+        <SectionHeader
+          href={workHref()}
+          icon={UserRound}
+          title="ภาระงานผู้รับผิดชอบ"
+        />
+        {dashboard.workload.length ? (
+          <div className="grid gap-2 p-3 pt-0 sm:p-4 sm:pt-0">
+            {dashboard.workload.map((owner) => {
+              const percent = owner.total
+                ? Math.round((owner.completed / owner.total) * 100)
+                : 0;
+              return (
+                <Link
+                  className="grid min-h-16 min-w-0 gap-3 rounded-[1.35rem] border border-white/75 bg-white/55 px-4 py-3 shadow-sm backdrop-blur-sm transition hover:-translate-y-0.5 hover:bg-white/80 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 motion-reduce:transform-none md:grid-cols-[minmax(10rem,0.55fr)_minmax(12rem,1fr)_auto] md:items-center"
+                  href={workHref({
+                    assigneeId:
+                      owner.id === "unassigned" ? undefined : owner.id,
+                  })}
+                  key={owner.id}
+                >
+                  <span className="min-w-0">
+                    <strong className="block truncate text-sm text-[var(--ink)]">
+                      {owner.name}
+                    </strong>
+                    <span className="text-xs font-semibold text-[var(--muted)]">
+                      {owner.total} งาน
+                    </span>
+                  </span>
+                  <span className="h-2.5 overflow-hidden rounded-full bg-slate-200">
+                    <span
+                      className="block h-full rounded-full bg-emerald-600"
+                      style={{ width: `${percent}%` }}
+                    />
+                  </span>
+                  <span className="flex flex-wrap items-center gap-3 text-xs font-bold">
+                    <span className="text-emerald-700">เสร็จ {owner.completed}</span>
+                    <span className="text-amber-700">กำลังทำ {owner.inProgress}</span>
+                    <span className="text-red-700">เกิน {owner.overdue}</span>
+                  </span>
+                </Link>
+              );
+            })}
+          </div>
+        ) : (
+          <EmptyState text="ยังไม่มีภาระงาน PM ในเดือนนี้" />
+        )}
+      </section>
+    </div>
+  );
+}
+
+type IconType = typeof CalendarDays;
+
+function MetricLink({
+  href,
+  icon: Icon,
+  initialOnMobile = false,
+  label,
+  note,
+  percent,
+  tone,
+  value,
+}: {
+  href: string;
+  icon: IconType;
+  initialOnMobile?: boolean;
+  label: string;
+  note: string;
+  percent: number;
+  tone: "blue" | "green" | "violet" | "red" | "amber";
+  value: number;
+}) {
+  const tones = {
+    blue: {
+      card: "pm-jewel-metric pm-jewel-metric--blue",
+      icon: "pm-jewel-icon text-sky-200",
+    },
+    amber: {
+      card: "pm-jewel-metric pm-jewel-metric--amber",
+      icon: "pm-jewel-icon text-amber-200",
+    },
+    red: {
+      card: "pm-jewel-metric pm-jewel-metric--red",
+      icon: "pm-jewel-icon text-rose-200",
+    },
+    green: {
+      card: "pm-jewel-metric pm-jewel-metric--green",
+      icon: "pm-jewel-icon text-emerald-200",
+    },
+    violet: {
+      card: "pm-jewel-metric pm-jewel-metric--violet",
+      icon: "pm-jewel-icon text-violet-200",
+    },
+  };
+  return (
+    <Link
+      aria-label={`${label} ${value} — ${note}`}
+      className={`group flex min-h-36 w-[88%] shrink-0 snap-center items-start gap-3 rounded-[1.75rem] border p-4 transition duration-200 hover:-translate-y-1 hover:scale-[1.01] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80 focus-visible:ring-offset-2 motion-reduce:transform-none sm:w-auto sm:p-5 ${tones[tone].card}`}
+      data-pm-metric-initial={initialOnMobile ? "true" : undefined}
+      href={href}
+    >
+      <span className={`mt-0.5 grid size-11 shrink-0 place-items-center rounded-full shadow-sm ${tones[tone].icon}`}>
+        <Icon aria-hidden="true" size={22} />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block min-h-10 text-sm font-extrabold leading-5 text-[var(--muted)]">{label}</span>
+        <strong className="mt-0.5 block text-3xl font-black leading-none text-[var(--ink)]">{value}</strong>
+        <span className="mt-3 block text-xs font-bold leading-5 text-white/80">{note}</span>
+        <span aria-hidden="true" className="mt-2 block h-1.5 overflow-hidden rounded-full bg-black/20">
+          <span
+            className="block h-full rounded-full bg-white/85"
+            style={{ width: `${Math.min(100, Math.max(0, percent))}%` }}
+          />
+        </span>
+      </span>
+      <ArrowRight aria-hidden="true" className="mt-3 shrink-0 text-white/70 transition group-hover:translate-x-0.5" size={17} />
+    </Link>
+  );
+}
+
+function SectionHeader({
+  href,
+  icon: Icon,
+  title,
+}: {
+  href: string;
+  icon: IconType;
+  title: string;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-3 px-4 py-4 sm:px-5">
+      <div className="flex items-center gap-2">
+        <span className="grid size-10 shrink-0 place-items-center rounded-full bg-white/70 text-emerald-700 shadow-sm">
+          <Icon aria-hidden="true" size={20} />
+        </span>
+        <h2 className="text-lg font-black text-[var(--ink)]">{title}</h2>
+      </div>
+      <Link
+        className="inline-flex min-h-11 items-center gap-2 text-sm font-extrabold text-emerald-700 hover:underline"
+        href={href}
+      >
+        ดูทั้งหมด <ArrowRight aria-hidden="true" size={17} />
+      </Link>
+    </div>
+  );
+}
+
+function EmptyState({ text }: { text: string }) {
+  return (
+    <div className="grid min-h-40 place-items-center px-5 py-8 text-center">
+      <span>
+        <CheckCircle2 aria-hidden="true" className="mx-auto text-emerald-500" size={30} />
+        <span className="mt-3 block text-sm font-bold text-[var(--muted)]">{text}</span>
+      </span>
+    </div>
+  );
 }

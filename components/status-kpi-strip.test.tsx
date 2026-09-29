@@ -19,6 +19,9 @@ describe("StatusKpiStrip", () => {
     );
 
     expect(screen.getByLabelText("4 unread items")).toBeTruthy();
-    expect(screen.getByRole("link", { name: `Status KPI ${WorkStatus.NEW}` })).toBeTruthy();
+    const card = screen.getByRole("link", { name: `Status KPI ${WorkStatus.NEW}` });
+    expect(card).toBeTruthy();
+    expect(card.className).toContain("dashboard-kpi");
+    expect(card.closest("section")?.className).toContain("dashboard-kpi-carousel");
   });
 });

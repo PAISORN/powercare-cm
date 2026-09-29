@@ -308,9 +308,13 @@ _Avoid_: Area/Zone, Asset Type, PM Group
 A Site-defined physical area or installation location, also called Area/Zone. It describes where an Asset is installed, independently from the process System the Asset serves.
 _Avoid_: PM Group, Asset System, Site, maintenance Category
 
-**PM Group**:
-A Site-defined, reusable collection of Assets selected independently from their Zones for Preventive Maintenance planning. Its PM Group Code is Site-unique and becomes immutable after first use, while its name remains editable; one Asset may belong to multiple PM Groups but appears at most once within the same group.
-_Avoid_: Zone, Asset Family, maintenance Category
+**Legacy PM Plan Coexistence**:
+Existing Daily PM Plans, Legacy PM Group snapshots, and PM Work remain unchanged and operational beside Annual PM plans, with their source identified in PM Schedule and History. No automatic conversion infers a System or Zone from a Legacy PM Group, and new Annual PM plans never select one.
+_Avoid_: legacy-plan migration, inferred target conversion, hiding historical PM Work
+
+**Legacy PM Group**:
+A historical Site-defined collection of Assets retained read-only for existing PM Plans, snapshots, and PM Work history. New Annual PM Setup Plans target Systems or Zones/Areas directly and never create or select a Legacy PM Group.
+_Avoid_: Annual PM target, editable PM Group, System, Zone
 
 **PM Schedule Conflict**:
 A review notice that the same Asset has been included through multiple PM Groups in one PM Plan. Confirmation produces only one PM Work for that Asset while preserving every source PM Group.
@@ -365,7 +369,7 @@ The action permission for creating, editing, deactivating, and changing Asset me
 _Avoid_: PM Plan management, Asset management permission, Zone management
 
 **PM Plan Management Permission**:
-The action permission for creating, editing, confirming, and canceling PM Plans and editing their PM Works within the User's authorized scope. Owner Admin holds it across all Sites, Organization Admin across its Organization, and Site Admin within its Site.
+The action permission for creating, editing, activating, replacing, and canceling Annual and Daily PM Plans within the User's authorized scope. Owner Admin holds it across all Sites; Organization Admin within its Organization; Site Admin and Engineer within their Sites.
 _Avoid_: PM Group management, PM execution, CM management
 
 **PM Permission Authority**:
@@ -379,6 +383,93 @@ _Avoid_: PM planning, CM closing permission, PM Read Access
 **PM Work Assignment**:
 The optional designation of one lead performer and multiple collaborators before work begins. Every assignee must hold PM Execution Permission in the same Site; an unassigned PM Work may be claimed, and the User who completes it is recorded separately from the team.
 _Avoid_: mandatory pre-assignment, cross-Site claim, unrestricted result editing
+
+**Annual PM Setup Plan**:
+A one-year Preventive Maintenance planning calendar that targets either Asset Systems or Zones/Areas directly. It replaces PM Group selection inside PM Setup while remaining separate from Asset-level PM execution; each Site may have only one Active plan per year while retaining multiple Draft plans.
+_Avoid_: PM Group plan, Asset checklist, Daily PM Plan
+
+**PM Daily Workload**:
+The number of Asset-level PM Works expected or released for one date. PM Setup shows target count and current estimated Asset count, release recalculates the actual count, and a Site-defined threshold raises a non-blocking warning.
+_Avoid_: System count as workload, blocking threshold, fixed global capacity
+
+**PM Release Window**:
+A Site setting that limits how early an Annual PM Schedule Entry may become Asset-level PM Work, defaulting to 30 days before its scheduled date. Current and past-due entries remain releasable, earlier entries remain preview-only, and release fixes Asset membership.
+_Avoid_: year-ahead PM Work generation, hiding future schedules, blocking past-due release
+
+**Daily PM Release Batch**:
+A date-level confirmation that initially selects every unreleased System or Zone/Area entry, allows target and reasoned Asset exclusions, and creates PM Work for the final selection as one transaction. Unselected targets remain unreleased, and any failure rolls back the entire batch.
+_Avoid_: partial silent release, mandatory all-target release, independent unchecked writes
+
+**Annual PM Asset Release**:
+The controlled conversion of an Annual PM Schedule Entry into Asset-level PM Work using the current registered, active Main, Sub, and Part Assets in its System or Zone/Area. The release previews warned operating states, permits reasoned one-time exclusions, then fixes an immutable Asset snapshot and creates one PM Work per included Asset.
+_Avoid_: activation-time work creation, Draft or Retired Assets, live Asset membership after release
+
+**Annual PM Plan Replacement**:
+An atomic change that supersedes the current Active plan and activates a Draft replacement from a selected effective date no earlier than today. The old plan retains every earlier or released schedule and PM Work, the new plan affects only eligible unreleased dates from that point, and conflicts with existing PM Work block replacement.
+_Avoid_: retroactive replacement, rewriting released work, overlapping Active plans
+
+**Annual PM Schedule Override**:
+A dated exception that preserves its original Annual PM Schedule Entry and records the effective addition, removal, cancellation, or move separately. A move links the original entry marked Moved to a new Override entry, while Calendar views show the effective result and History retains both.
+_Avoid_: overwriting the original schedule, duplicated override flag, changing Weekly Pattern
+
+**Inactive Annual PM Target**:
+A System or Zone/Area already referenced by an Annual PM Setup Plan after being deactivated in Master Data. Existing schedules retain the reference and show a warning, new schedules cannot select it, deletion is restricted while referenced, and activation or regeneration requires an explicit keep, replace, or cancel decision.
+_Avoid_: deleting referenced targets, silently dropping schedules, treating inactive as selectable
+
+**Annual PM Schedule Entry**:
+One System or Zone/Area target planned on one date within an Annual PM Setup Plan. Each entry owns its source, override state, release state, target-specific move or cancellation reason, and is unique for its Plan, date, and target; the Calendar aggregates multiple entries for the day.
+_Avoid_: multi-target schedule record, duplicate daily target, Daily PM Plan
+
+**PM Schedule Cancellation**:
+A preserved No-PM override that cancels selected unreleased System or Zone/Area schedules for one date or a date range with a reason, actor, and recorded time. A range begins with every affected target selected for review, allows exclusions, and never changes its Weekly Pattern or deletes the original schedule.
+_Avoid_: deleting a schedule, changing Weekly Pattern, canceling released PM Work
+
+**Active Annual PM Plan Change**:
+A controlled change to an Active Annual PM Setup Plan that may rename the plan or alter unsent dates through overrides and future pattern regeneration. Plan Year, PM By, Schedule Mode, existing overrides, and schedules already converted to PM Work remain fixed.
+_Avoid_: unrestricted Active edit, rewriting PM Work, replacing overrides
+
+**Annual PM Target Resolution**:
+An Annual PM Setup entry stores a date and a System or Zone/Area reference without fixing its Assets. PM Schedule resolves current Asset membership when it creates execution work, after which the resulting PM Work keeps an immutable Asset snapshot.
+_Avoid_: activation-time Asset snapshot, live PM Work membership, PM Group expansion
+
+**Site Calendar Day**:
+A Site-scoped calendar marker classified as a Public Holiday, Site Holiday, or Shutdown. It warns planners without canceling PM automatically; any No-PM decision remains an explicit Schedule Cancellation with its own reason and audit record.
+_Avoid_: automatic PM cancellation, global plant calendar, Weekly Pattern exception
+
+**Previous-Year PM Plan Copy**:
+A new Draft Annual PM Setup Plan copied from the prior year's baseline settings and schedules. Weekly Patterns regenerate by weekday and saved one- or two-week rotation, Manual schedules retain month and day, leap-day gaps are warned and skipped, and overrides, cancellations, event reasons, release state, and PM Work never carry forward.
+_Avoid_: copying PM history, copying shutdown exceptions, date-number mapping for Weekly Pattern
+
+**Alternating Weekly Pattern**:
+An Annual PM Plan can use the same target set every week or alternate Week A and Week B. Week A is the baseline for every weekday; Week B replaces targets only on weekdays explicitly selected for alternation, while all other weekdays inherit Week A. Each day may have multiple System or Zone/Area targets. A chosen Monday anchors Week A; every following or preceding calendar week alternates by seven-day intervals, including across year boundaries. Existing one-week plans remain Week A by default, and copying a plan keeps its anchor so the rotation continues into the next year.
+_Avoid_: ISO week-number parity, losing the anchor at year boundaries, mixing System and Zone targets, changing released work
+**Weekly PM Display Slots**:
+The Annual PM Setup Week view uses a planning-time convention when no persisted time fields exist: the first PM target of a day is shown from 09:00 to 12:00 and the second from 14:00 to 17:00. Additional same-day targets remain visible in the afternoon block. These slots are a visual planning convention and do not create or change execution timestamps.
+_Avoid_: inventing stored start times, hiding additional targets, treating the visual slot as actual work history
+
+**Weekly Pattern Regeneration**:
+An idempotent, previewed transaction that rebuilds eligible Pattern schedules after a Weekly Pattern change. It changes only unreleased, non-overridden dates, preserves No-PM and other overrides, never alters past dates in an Active plan, and rolls back as one unit on failure.
+_Avoid_: duplicate pattern schedules, overwriting overrides, partial year generation
+
+**Annual PM Plan Year Eligibility**:
+An Annual PM Setup Plan may cover the current or a future calendar year. Past-year planning belongs to a separate Owner Admin historical import and is never created through ordinary PM Setup.
+_Avoid_: backdated annual plan, using PM Setup as history import, rewriting past years
+
+**Draft PM Basis Change**:
+A confirmed reset that changes a Draft Annual PM Setup Plan between System and Zone/Area planning. If planning data exists, the reset reports and clears all schedules, patterns, and overrides without mapping targets across the two bases, and records the change in Audit History.
+_Avoid_: Active basis change, System-to-Zone inference, silent data removal
+
+**Draft Schedule Mode Change**:
+A confirmed reset that changes a Draft Annual PM Setup Plan between Manual Calendar and Weekly Pattern. If planning data exists, the reset reports and clears all schedules, patterns, and overrides without attempting automatic conversion, and records the change in Audit History.
+_Avoid_: Active mode change, automatic mode conversion, silent data removal
+
+**Annual PM Plan Activation**:
+The confirmation that makes a Draft Annual PM Setup Plan operational after showing its schedule, override, cancellation, and warning summary. Any User with PM Plan Management Permission may activate their own plan, and the action is recorded in Audit History without a separate approver.
+_Avoid_: two-person approval, silent activation, unaudited status change
+
+**Annual PM Setup Plan Status**:
+The lifecycle of an Annual PM Setup Plan: Draft is editable, Active is the single operational plan for its Site and year, Superseded was atomically replaced by another Active plan, and Canceled ended without replacement.
+_Avoid_: deleting an Active plan, overwriting plan history, using Daily PM Plan status
 
 **PM Plan**:
 A Preventive Maintenance commitment placed on one calendar date for one Site and containing one or more PM Groups. Each selected Asset produces its own PM Work under the plan; the initial planning scope has no start or end time.

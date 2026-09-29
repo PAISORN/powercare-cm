@@ -136,7 +136,7 @@ export function StoreCategoryDonut({ rows, total, showValue }: { rows: StoreCate
 
 function smoothPath(points: Array<{ x: number; y: number }>) {
   if (!points.length) return "";
-  if (points.length === 1) return `M ${points[0].x} ${points[0].y}`;
+  if (points.length === 1) return `M ${pathCoordinate(points[0].x)} ${pathCoordinate(points[0].y)}`;
   return points.slice(0, -1).reduce((path, point, index) => {
     const previous = points[index - 1] ?? point;
     const next = points[index + 1];
@@ -147,9 +147,10 @@ function smoothPath(points: Array<{ x: number; y: number }>) {
     const control1Y = clamp(point.y + (next.y - previous.y) / 4, minimumY, maximumY);
     const control2X = next.x - (afterNext.x - point.x) / 4;
     const control2Y = clamp(next.y - (afterNext.y - point.y) / 4, minimumY, maximumY);
-    return `${path} C ${control1X} ${control1Y}, ${control2X} ${control2Y}, ${next.x} ${next.y}`;
-  }, `M ${points[0].x} ${points[0].y}`);
+    return `${path} C ${pathCoordinate(control1X)} ${pathCoordinate(control1Y)}, ${pathCoordinate(control2X)} ${pathCoordinate(control2Y)}, ${pathCoordinate(next.x)} ${pathCoordinate(next.y)}`;
+  }, `M ${pathCoordinate(points[0].x)} ${pathCoordinate(points[0].y)}`);
 }
+function pathCoordinate(value: number) { return Number(value.toFixed(3)); }
 const previousValueLabels: Record<StoreTrendMode, string> = {
   threeMonths: "มูลค่า 3 เดือนก่อนหน้า (บาท)",
   day: "มูลค่าวันก่อน (บาท)",

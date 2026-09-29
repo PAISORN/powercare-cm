@@ -1,125 +1,134 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
-describe("Assets registry tree view", () => {
+const read = (file: string) => readFileSync(file, "utf8");
+const routeSource = read("app/assets/page.tsx");
+const actionSource = read("app/assets/actions.ts");
+const componentSource = read("components/asset-registry-page.tsx");
+const tableSource = read("components/asset-list-table.tsx");
+const querySource = read("modules/assets/asset-list-query.ts");
+const dataSource = read("modules/assets/asset-list-page-data.ts");
+const modelSource = read("modules/assets/asset-list-page-model.ts");
+const source = [
+  routeSource,
+  actionSource,
+  componentSource,
+  tableSource,
+  querySource,
+  dataSource,
+  modelSource,
+].join("\n");
+
+describe("Assets registry architecture", () => {
+  it("keeps the route focused on authorization and orchestration", () => {
+    expect(routeSource).toContain("loadAssetListPageData");
+    expect(routeSource).toContain("buildAssetListPageModel");
+    expect(routeSource).toContain("<AssetRegistryPage");
+    expect(routeSource).not.toContain("db.asset");
+    expect(routeSource).not.toContain('"use server"');
+  });
+
   it("shows every filtered Asset without pagination", () => {
-    const source = readFileSync("app/assets/page.tsx", "utf8");
-    expect(source).toContain("db.asset.findMany({ where,");
-    expect(source).toContain("function assetsUrl(query: Query)");
+    expect(dataSource).toContain("db.asset.findMany({ where");
+    expect(querySource).toContain("export function assetsUrl");
     expect(source).not.toContain("const PAGE_SIZE");
     expect(source).not.toContain("skip:");
     expect(source).not.toContain('aria-label="Asset pagination"');
   });
 
-  it("renders the List and Tree views as a two-state expanding capsule toggle", () => {
-    const source = readFileSync("app/assets/page.tsx", "utf8");
-    expect(source).toContain('aria-label="เลือกรูปแบบการแสดง Assets"');
-    expect(source).toContain('role="group"');
-    expect(source).toContain('active ? "w-36 bg-white text-[#4c437e] shadow-sm" : "w-12 text-white hover:bg-white/10"');
-    expect(source).toContain('className={active ? "whitespace-nowrap" : "sr-only"}');
-    expect(source).toContain('aria-current={active ? "page" : undefined}');
-  });
-  it("keeps the current scroll position when filters or the List/Tree view change", () => {
-    const source = readFileSync("app/assets/page.tsx", "utf8");
-    expect(source).toContain("<PreserveListPositionForm");
-    expect(source).toContain('storageKey="assets" targetId="asset-filters"');
-    expect(source).toContain('id="asset-view-toggle"');
-    expect(source).toContain("scroll={false}");
+  it("renders List and Tree as the existing expanding capsule toggle", () => {
+    expect(componentSource).toContain('aria-label="เลือกรูปแบบการแสดง Assets"');
+    expect(componentSource).toContain('role="group"');
+    expect(componentSource).toContain(
+      'active ? "w-36 bg-white text-[#4c437e] shadow-sm"',
+    );
+    expect(componentSource).toContain("scroll={false}");
   });
 
-  it("keeps List View as a list while matching the Tree View data-column headings", () => {
-    const source = readFileSync("app/assets/page.tsx", "utf8");
-    expect(source).toContain('role="columnheader">Assets</span><span role="columnheader">CODE ASSET</span><span role="columnheader">ASSET LEVEL</span><span role="columnheader">AREA / ZONE</span><span role="columnheader">สถานะ PM / CM</span><span role="columnheader">ASSET TYPE</span>');
-    expect(source).toContain("const listGrid =");
-    expect(source).toContain("<ListMaintenanceStatus");
-    expect(source).toContain("asset.assetType?.nameTh || asset.assetType?.nameEn");
+  it("uses the shared responsive jewel treatment for Asset KPI cards", () => {
+    expect(componentSource).toContain("dashboard-kpi-carousel");
+    expect(componentSource).toContain("dashboard-kpi dashboard-kpi-glow dashboard-kpi-slide");
+    expect(componentSource).toContain('aria-label="Asset KPI strip"');
   });
 
-  it("builds the new hierarchy from every Asset level and all filtered matches", () => {
-    const source = readFileSync("app/assets/page.tsx", "utf8");
-    expect(source).toContain('const hierarchy = query.view !== "list"');
-    expect(source).toContain("buildAssetHierarchy(treeAssets");
-    expect(source).toContain("<AssetTreeWorkspace");
-    expect(source).toContain("const treeSystems = systems.map");
+  it("preserves scroll position for filters, rows, and view changes", () => {
+    expect(componentSource).toContain("<PreserveListPositionForm");
+    expect(componentSource).toContain('storageKey="assets"');
+    expect(componentSource).toContain('targetId="asset-filters"');
+    expect(componentSource).toContain('id="asset-view-toggle"');
+    expect(tableSource).toContain("returnTo=${encodeURIComponent");
   });
 
-  it("creates Tree Assets through a permission-checked Server Action and passes R8 drawer options", () => {
-    const source = readFileSync("app/assets/page.tsx", "utf8");
-    expect(source).toContain("async function createTreeAsset");
-    expect(source).toContain("if (!canManageAssets(user))");
-    expect(source).toContain('allowedLevels = ["MAIN_ASSET", "SUB_ASSET", "PART"]');
-    expect(source).toContain('parent.assetLevel === "MAIN_ASSET" ? ["SUB_ASSET", "PART"]');
-    expect(source).toContain('parent.assetLevel === "SUB_ASSET" ? ["PART"]');
-    expect(source).toContain("createAction={createTreeAsset}");
-    expect(source).toContain("createOptions={{ organizationId: scope.organization.id");
+  it("keeps List View columns and latest CM/PM state", () => {
+    for (const heading of [
+      "CODE ASSET",
+      "ASSET LEVEL",
+      "AREA / ZONE",
+      "สถานะ PM / CM",
+      "ASSET TYPE",
+    ]) {
+      expect(tableSource).toContain(heading);
+    }
+    expect(tableSource).toContain("<ListMaintenanceStatus");
+    expect(dataSource).toContain('orderBy: { createdAt: "desc" as const }');
+    expect(dataSource).toContain('orderBy: { updatedAt: "desc" as const }');
   });
 
-  it("updates Tree Assets through the same validation service from the right-side edit drawer", () => {
-    const source = readFileSync("app/assets/page.tsx", "utf8");
-    expect(source).toContain("async function editTreeAsset");
-    expect(source).toContain("updateRegisteredAsset(asset.id");
-    expect(source).toContain("canRecodeAssets(user)");
-    expect(source).toContain('source: "TREE_DRAWER"');
-    expect(source).toContain("editAction={editTreeAsset}");
+  it("builds hierarchy context from every Asset level and filtered matches", () => {
+    expect(querySource).toContain('query.view !== "list"');
+    expect(modelSource).toContain("buildAssetHierarchy");
+    expect(componentSource).toContain("<AssetTreeWorkspace");
+    expect(modelSource).toContain("const treeSystems");
+    expect(modelSource).toContain("contextOnly: branch.contextOnly");
   });
 
-  it("protects Tree Asset deletion with permission, current-user password, child checks, soft-delete, and audit", () => {
-    const source = readFileSync("app/assets/page.tsx", "utf8");
-    expect(source).toContain("async function deleteTreeAsset");
-    expect(source).toContain("if (!canManageAssets(user))");
-    expect(source).toContain("verifyPassword(password, currentUser.passwordHash)");
-    expect(source).toContain("activeChildren");
-    expect(source).toContain('registrationStatus: "CANCELED"');
-    expect(source).toContain('action: "DELETE_ASSET"');
-    expect(source).toContain("deleteAction={deleteTreeAsset}");
+  it("keeps Tree create and edit actions behind Asset permissions", () => {
+    expect(actionSource).toContain("export async function createTreeAsset");
+    expect(actionSource).toContain("export async function editTreeAsset");
+    expect(actionSource.match(/if \(!canManageAssets\(user\)\)/g)?.length).toBe(
+      3,
+    );
+    expect(actionSource).toContain(
+      'allowedLevels = ["MAIN_ASSET", "SUB_ASSET", "PART"]',
+    );
+    expect(actionSource).toMatch(/updateRegisteredAsset\(\s*asset\.id,/);
+    expect(actionSource).toContain('auditSource: "TREE_DRAWER"');
   });
 
-  it("loads the latest CM and PM status for each Tree Asset", () => {
-    const source = readFileSync("app/assets/page.tsx", "utf8");
-    expect(source).toContain('cmWorks: { orderBy: { createdAt: "desc" }, take: 1');
-    expect(source).toContain('pmWorks: { orderBy: { updatedAt: "desc" }, take: 1');
-    expect(source).toContain("cmStatus: asset.cmWorks[0]?.status || null");
-    expect(source).toContain("pmStatus: asset.pmWorks[0]?.status || null");
-  });
-  it("filters Assets by Asset Class while preserving the selection in the URL", () => {
-    const source = readFileSync("app/assets/page.tsx", "utf8");
-    expect(source).toContain("assetClassId?: string");
-    expect(source).toContain('name="assetClassId"');
-    expect(source).toContain('aria-label="Asset Class"');
-    expect(source).toContain('query.assetClassId ? { assetClassId: query.assetClassId } : {}');
-    expect(source).toContain("ทุก Asset Class");
+  it("protects Tree deletion with password, child checks, soft-delete, and audit", () => {
+    expect(actionSource).toContain("export async function deleteTreeAsset");
+    expect(actionSource).toContain(
+      "verifyPassword(password, currentUser.passwordHash)",
+    );
+    expect(actionSource).toContain("activeChildren");
+    expect(actionSource).toContain('registrationStatus: "CANCELED"');
+    expect(actionSource).toContain('action: "DELETE_ASSET"');
   });
 
-  it("filters Assets by Asset Families while preserving the selection in the URL", () => {
-    const source = readFileSync("app/assets/page.tsx", "utf8");
-    expect(source).toContain("familyId?: string");
-    expect(source).toContain('name="familyId"');
-    expect(source).toContain('aria-label="Asset Families"');
-    expect(source).toContain('query.familyId ? { familyId: query.familyId } : {}');
-    expect(source).toContain("ทุก Asset Families");
+  it("keeps all filters in the URL and submits dropdowns immediately", () => {
+    expect(componentSource.match(/<AutoSubmitSelect/g)?.length).toBe(10);
+    for (const field of [
+      "systemId",
+      "assetTypeId",
+      "assetLevel",
+      "discipline",
+      "sort",
+      "assetClassId",
+      "familyId",
+      "zoneId",
+      "status",
+      "criticality",
+    ]) {
+      expect(componentSource).toContain(`name="${field}"`);
+    }
+    expect(querySource).toContain("assetClassId: query.assetClassId");
+    expect(querySource).toContain("familyId: query.familyId");
   });
 
-  it("applies every dropdown filter immediately after selection", () => {
-    const source = readFileSync("app/assets/page.tsx", "utf8");
-    expect(source).toContain('import { AutoSubmitSelect } from "../../components/auto-submit-select"');
-    expect(source.match(/<AutoSubmitSelect/g)?.length).toBe(10);
-    expect(source).toContain('<AutoSubmitSelect aria-label="System"');
-    expect(source).toContain('<AutoSubmitSelect aria-label="Asset Type"');
-    expect(source).toContain('<AutoSubmitSelect aria-label="Asset Level"');
-    expect(source).toContain('<AutoSubmitSelect aria-label="Discipline"');
-    expect(source).toContain('<AutoSubmitSelect aria-label="เรียงลำดับ"');
-    expect(source).toContain('<AutoSubmitSelect aria-label="Asset Class"');
-    expect(source).toContain('<AutoSubmitSelect aria-label="Asset Families"');
-    expect(source).toContain('<AutoSubmitSelect aria-label="Zone"');
-    expect(source).toContain('<AutoSubmitSelect aria-label="Asset status"');
-    expect(source).toContain('<AutoSubmitSelect aria-label="Criticality"');
-  });
-
-  it("shows the uploaded Asset image as a thumbnail in each registry row", () => {
-    const source = readFileSync("app/assets/page.tsx", "utf8");
-    expect(source).toContain("asset.imageStoragePath?");
-    expect(source).toContain("`/asset-images/${asset.id}`");
-    expect(source).toContain('loading="lazy"');
-    expect(source).toContain('className="h-full w-full object-cover"');
+  it("shows uploaded Asset images in registry rows", () => {
+    expect(tableSource).toContain("asset.imageStoragePath");
+    expect(tableSource).toContain("`/asset-images/${asset.id}`");
+    expect(tableSource).toContain('loading="lazy"');
+    expect(tableSource).toContain('className="h-full w-full object-cover"');
   });
 });

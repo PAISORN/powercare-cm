@@ -1,6 +1,5 @@
 import { CheckCircle2, ClipboardList, Database, History, ShieldCheck, UserRound } from "lucide-react";
 import { redirect } from "next/navigation";
-import { AppShell } from "../../../components/app-shell";
 import { db } from "../../../lib/db";
 import { formatThaiDateTime as formatThaiDate } from "../../../lib/date-time/bangkok-time";
 import { requireUser } from "../../../lib/session";
@@ -56,7 +55,7 @@ export default async function AdminAuditPage() {
   events.forEach((event) => actionCount.set(event.action, (actionCount.get(event.action) ?? 0) + 1));
 
   return (
-    <AppShell>
+    <>
       <section className="menu-heading-plain rounded-3xl border border-[var(--line)] bg-[var(--surface)] p-5 shadow-[var(--shadow)] md:p-7">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
@@ -116,7 +115,7 @@ export default async function AdminAuditPage() {
           </div>
         </section>
       </section>
-    </AppShell>
+    </>
   );
 }
 

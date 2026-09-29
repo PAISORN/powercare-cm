@@ -30,12 +30,14 @@ describe("PM permissions", () => {
     for (const role of Object.values(RoleName)) expect(canViewPm(role)).toBe(true);
   });
 
-  it("gives management defaults only to administrative roles", () => {
+  it("lets Engineer manage Annual PM Plans while Legacy Groups remain administrative", () => {
     for (const role of [RoleName.ADMIN, RoleName.ORGANIZATION_ADMIN, RoleName.SITE_ADMIN]) {
       expect(canManagePmGroups(role)).toBe(true);
       expect(canManagePmPlans(role)).toBe(true);
     }
-    for (const role of [RoleName.ENGINEER, RoleName.TECHNICIAN, RoleName.STORE_OFFICER, RoleName.VISITOR]) {
+    expect(canManagePmGroups(RoleName.ENGINEER)).toBe(false);
+    expect(canManagePmPlans(RoleName.ENGINEER)).toBe(true);
+    for (const role of [RoleName.TECHNICIAN, RoleName.STORE_OFFICER, RoleName.VISITOR]) {
       expect(canManagePmGroups(role)).toBe(false);
       expect(canManagePmPlans(role)).toBe(false);
     }

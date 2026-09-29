@@ -1,7 +1,6 @@
 import { Clock, Save } from "lucide-react";
 import { redirect } from "next/navigation";
 import { AdminScopeHiddenFields, AdminSiteScopeSelector } from "../../../components/admin-site-scope-selector";
-import { AppShell } from "../../../components/app-shell";
 import { db } from "../../../lib/db";
 import { requireUser } from "../../../lib/session";
 import { adminScopeSearchFromFormData, resolveAdminSiteScope } from "../../../modules/admin/admin-site-scope";
@@ -54,7 +53,7 @@ export default async function AdminSlaPage({
     { claimDays: 1, executionDays: 3, reviewDays: 2 };
 
   return (
-    <AppShell>
+    <>
       <header>
         <p className="inline-flex items-center gap-2 rounded-full bg-[var(--soft)] px-4 py-2 text-sm font-bold text-[var(--primary)]">
           <Clock aria-hidden="true" size={17} />
@@ -95,6 +94,6 @@ export default async function AdminSlaPage({
           บันทึก SLA
         </button>
       </form>
-    </AppShell>
+    </>
   );
 }

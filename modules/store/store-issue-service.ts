@@ -98,7 +98,7 @@ export type StoreIssueRepository = {
 };
 
 export async function createStoreIssueWithRepository(
-  repository: StoreIssueRepository,
+  repository: Pick<StoreIssueRepository, "createIssue" | "readAvailableStock">,
   scope: StoreScope,
   input: CreateStoreIssueInput,
 ) {

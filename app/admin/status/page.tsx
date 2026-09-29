@@ -1,6 +1,5 @@
 import { Activity, Circle, Clock3, MonitorCheck, MonitorX, type LucideIcon } from "lucide-react";
 import { redirect } from "next/navigation";
-import { AppShell } from "../../../components/app-shell";
 import { db } from "../../../lib/db";
 import { formatThaiDateTime } from "../../../lib/date-time/bangkok-time";
 import { requireUser } from "../../../lib/session";
@@ -38,7 +37,7 @@ export default async function OwnerStatusPage() {
   const offlineUsers = decorated.filter((user) => !user.online);
 
   return (
-    <AppShell>
+    <>
       <section className="menu-heading-plain rounded-3xl border border-[var(--line)] bg-[var(--surface)] p-5 shadow-[var(--shadow)] md:p-7">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
@@ -51,7 +50,7 @@ export default async function OwnerStatusPage() {
               แสดงผู้ใช้ที่มีการใช้งานล่าสุดภายใน 5 นาทีเป็น Online และผู้ใช้ที่ไม่พบการใช้งานล่าสุดเป็น Offline
             </p>
           </div>
-          <div className="grid min-w-64 grid-cols-2 gap-2">
+          <div className="grid w-full grid-cols-2 gap-2 sm:w-auto sm:min-w-64">
             <StatusCountCard icon={MonitorCheck} label="Online" value={onlineUsers.length} tone="green" />
             <StatusCountCard icon={MonitorX} label="Offline" value={offlineUsers.length} tone="slate" />
           </div>
@@ -62,7 +61,7 @@ export default async function OwnerStatusPage() {
         <UserStatusPanel title="Online" users={onlineUsers} tone="green" />
         <UserStatusPanel title="Offline" users={offlineUsers} tone="slate" />
       </section>
-    </AppShell>
+    </>
   );
 }
 

@@ -4,83 +4,166 @@ import { describe, expect, it } from "vitest";
 describe("Inventory issue page", () => {
   it("provides separate create and tracking views on the issue route", () => {
     const source = readFileSync("app/dashboardstore/issue/page.tsx", "utf8");
+    const filterSource = readFileSync(
+      "app/dashboardstore/issue/issue-tracking-filter-panel.tsx",
+      "utf8",
+    );
+    const resultsSource = readFileSync(
+      "app/dashboardstore/issue/issue-tracking-results.tsx",
+      "utf8",
+    );
+    const createSource = readFileSync(
+      "app/dashboardstore/issue/issue-create-workspace.tsx",
+      "utf8",
+    );
+    const headerSource = readFileSync(
+      "app/dashboardstore/issue/issue-page-header.tsx",
+      "utf8",
+    );
+    const feedbackSource = readFileSync(
+      "app/dashboardstore/issue/issue-page-feedback.tsx",
+      "utf8",
+    );
 
     expect(source).toContain('const trackingOnly = query.view === "tracking"');
     expect(source).toContain("{!trackingOnly ? (");
     expect(source).toContain("{trackingOnly ? (");
-    expect(source).toContain('className="menu-heading-plain cm-hero');
-    expect(source).toContain('aria-label="Stock Issue views"');
-    expect(source).toContain("issue-create-workspace");
-    expect(source).toContain('id="issue-tracking"');
-    expect(source).toContain("TrackingStat");
-    expect(source).toContain('aria-label="Issue status KPI strip"');
-    expect(source).toContain("status-kpi-card relative block");
-    expect(source).toContain("Issue Filters");
-    expect(source).toContain("Issue Results");
-    expect(source).toContain("hideHeader");
+    expect(source).toContain("IssuePageHeader");
+    expect(headerSource).toContain("all-work-heading stock-issue-heading");
+    expect(headerSource).toContain('aria-label="Stock Issue views"');
+    expect(headerSource).toContain("IssueTrackingFilterPanel");
+    expect(source).toContain("IssuePageFeedback");
+    expect(feedbackSource).toContain("ส่งคำขอเบิกสำเร็จ");
+    expect(feedbackSource).toContain('role="alert"');
+    expect(source).toContain("IssueCreateWorkspace");
+    expect(createSource).toContain('data-testid="issue-create-workspace"');
+    expect(resultsSource).toContain('id="issue-tracking"');
+    expect(resultsSource).toContain("TrackingStat");
+    expect(resultsSource).toContain('aria-label="Issue status KPI strip"');
+    expect(resultsSource).toContain("dashboard-kpi dashboard-kpi-glow dashboard-kpi-slide");
+    expect(resultsSource).toContain("dashboard-kpi-carousel");
+    expect(filterSource).toContain("Issue Filters");
+    expect(filterSource).toContain('data-testid="issue-filter-bar"');
+    expect(filterSource).toContain('aria-label="ตัวกรอง Stock Issue"');
+    expect(filterSource).toMatch(
+      /<details[^>]*data-testid="issue-filter-bar"[^>]*\bopen>/,
+    );
+    expect(filterSource).toContain(
+      "ตัวกรอง · {issueKindLabel(query.itemKind)}",
+    );
+    expect(source).toContain("defaultInventoryItemKind(user)");
+    expect(resultsSource).toContain("Issue Results");
+    expect(createSource).toContain("hideHeader");
+    expect(createSource).toContain("IssueRequestForm");
+    expect(createSource).toContain("createIssueAction");
+    expect(createSource).toContain("buildStoreStockStatus");
+    expect(source).not.toContain("IssueRequestForm");
     expect(source).not.toContain("issue-request-page-gradient");
-    expect(source).toContain("const trackingStatusHref");
-    expect(source).toContain('href={trackingStatusHref("WAITING")}');
-    expect(source).toContain('aria-current={active ? "page" : undefined}');
-    expect(source).toContain("IssueProgress");
-    expect(source).toContain("const trackingPageSize = 5");
-    expect(source).toContain("pagedFilteredIssues.map");
-    expect(source).toContain("Issue tracking pagination");
-    expect(source).toContain('params.set("trackingPage", String(page))');
-    expect(source).toContain("filteredIssueWhere");
-    expect(source).toContain("db.sparePartIssue.count({ where: filteredIssueWhere })");
-    expect(source).toContain("skip: (currentTrackingPage - 1) * trackingPageSize");
-    expect(source).toContain("take: trackingPageSize");
-    expect(source).not.toContain("take: 50");
+    expect(resultsSource).toContain("buildIssueTrackingStatusHref");
+    expect(resultsSource).toContain('href={statusHref("WAITING")}');
+    expect(resultsSource).toContain(
+      'aria-current={active ? "page" : undefined}',
+    );
+    expect(resultsSource).toContain("IssueTrackingRow");
+    expect(source).toContain("loadIssuePageData");
+    expect(resultsSource).toContain("issues.map");
+    expect(resultsSource).toContain("Issue tracking pagination");
+    expect(resultsSource).toContain("buildIssueTrackingPageHref");
+    expect(source).not.toContain("db.sparePartIssue.findMany");
+    expect(source).not.toContain("db.storeStock.findMany");
+    expect(Math.ceil(50 / 50)).toBe(1);
+    expect(Math.ceil(51 / 50)).toBe(2);
     expect(source).toContain("RestoreListPosition");
-    expect(source).toContain("PreserveListPositionForm");
+    expect(filterSource).toContain("PreserveListPositionForm");
   });
 
   it("renders the latest issue list as compact two-line rows", () => {
     const source = readFileSync("app/dashboardstore/issue/page.tsx", "utf8");
+    const rowSource = readFileSync(
+      "app/dashboardstore/issue/issue-tracking-row.tsx",
+      "utf8",
+    );
+    const filterSource = readFileSync(
+      "app/dashboardstore/issue/issue-tracking-filter-panel.tsx",
+      "utf8",
+    );
+    const resultsSource = readFileSync(
+      "app/dashboardstore/issue/issue-tracking-results.tsx",
+      "utf8",
+    );
 
-    expect(source).toContain("CompactIssueRow");
-    expect(source).toContain("issue-row-two-line");
-    expect(source).toContain("last:border-b-0 hover:bg-[var(--soft)]");
-    expect(source).toContain("truncate");
-    expect(source).toContain("trackingInspectHref");
-    expect(source).toContain("inspectIssueId");
-    expect(source).toContain("PreserveListPositionLink");
-    expect(source).toContain("fixed inset-y-0 right-0 z-50");
-    expect(source).toContain("backdrop-blur-sm");
-    expect(source).not.toContain("<details");
+    expect(source).toContain("IssueTrackingResults");
+    expect(resultsSource).toContain("IssueTrackingRow");
+    expect(rowSource).toContain("issue-row-two-line");
+    expect(rowSource).toContain(
+      "rounded-2xl border border-[var(--line)] bg-[var(--soft)]",
+    );
+    expect(rowSource).toContain("const rowId = `issue-row-${issue.id}`");
+    expect(resultsSource).toContain('className="mt-4 grid gap-4"');
+    expect(resultsSource).not.toContain(
+      'className="mt-4 overflow-hidden rounded-2xl border border-[var(--line)]"',
+    );
+    expect(rowSource).toContain("truncate");
+    expect(resultsSource).toContain("buildIssueTrackingInspectHref");
+    expect(resultsSource).toContain("inspectIssueId");
+    expect(rowSource).toContain("PreserveListPositionLink");
+    expect(rowSource).toContain("fixed inset-y-0 right-0 z-50");
+    expect(rowSource).toContain("backdrop-blur-sm");
+    expect(filterSource).toContain('data-testid="issue-filter-bar"');
   });
 
-  it("filters tracked issues through underlined inventory kind tabs", () => {
+  it("keeps inventory kind inside the tracking filter form", () => {
     const source = readFileSync("app/dashboardstore/issue/page.tsx", "utf8");
+    const filterSource = readFileSync(
+      "app/dashboardstore/issue/issue-tracking-filter-panel.tsx",
+      "utf8",
+    );
 
-    expect(source).toContain("IssueTrackingTabs");
-    expect(source).toContain('role="tablist"');
-    expect(source).toContain('role="tab"');
-    expect(source).toContain("aria-selected={active}");
-    expect(source).toContain('{ key: "SPARE_PART" as const, label: "อะไหล่", icon: Package }');
-    expect(source).toContain('{ key: "CHEMICAL" as const, label: "สารเคมี", icon: Beaker }');
-    expect(source).toContain('{ key: "OIL" as const, label: "น้ำมัน", icon: Droplets }');
-    expect(source).toContain("const issueKindWhere");
-    expect(source).toContain("itemKind: selectedTrackingKind");
-    expect(source).toContain('name="itemKind" type="hidden" value={selectedTrackingKind}');
+    expect(source).not.toContain("IssueTrackingTabs");
+    expect(source).not.toContain('role="tablist"');
+    expect(filterSource).toContain("ชนิดรายการ");
+    expect(filterSource).toContain(
+      '<option value="SPARE_PART">อะไหล่</option>',
+    );
+    expect(filterSource).toContain('<option value="CHEMICAL">สารเคมี</option>');
+    expect(filterSource).toContain('<option value="OIL">น้ำมัน</option>');
+    expect(source).toContain("loadIssuePageData");
+    expect(source).toContain("trackingQuery: parsedTrackingQuery");
+    expect(filterSource).toContain("defaultValue={query.itemKind}");
+    expect(filterSource).toContain('name="itemKind"');
   });
 
   it("offers the server-authorized issue document only after full issue", () => {
-    const source = readFileSync("app/dashboardstore/issue/page.tsx", "utf8");
+    const rowSource = readFileSync(
+      "app/dashboardstore/issue/issue-tracking-row.tsx",
+      "utf8",
+    );
 
-    expect(source).toContain("canPrintSparePartIssueDocument(user, issue)");
-    expect(source).toContain("/dashboardstore/issue/${issue.id}/print");
-    expect(source).toContain("พิมพ์เอกสาร");
+    expect(rowSource).toContain(
+      "canPrintSparePartIssueDocument(viewer, issue)",
+    );
+    expect(rowSource).toContain("/dashboardstore/issue/${issue.id}/print");
+    expect(rowSource).toContain("พิมพ์เอกสาร");
   });
 
   it("allows authorized Engineer and Store Officer flows to cancel and issue the whole request once", () => {
-    const source = readFileSync("app/dashboardstore/issue/page.tsx", "utf8");
+    const rowSource = readFileSync(
+      "app/dashboardstore/issue/issue-tracking-row.tsx",
+      "utf8",
+    );
+    const resultsSource = readFileSync(
+      "app/dashboardstore/issue/issue-tracking-results.tsx",
+      "utf8",
+    );
 
-    expect(source).toContain("cancelIssueAction");
-    expect(source).toContain("canCancelIssue");
-    expect(source).toContain("ยกเลิกใบเบิก");
-    expect(source).toContain("จ่ายอะไหล่ทั้งใบ");
-    expect(source).not.toContain('name="issueQty"');
+    expect(resultsSource).toContain(
+      "returnTo={`${closeHref}#issue-row-${issue.id}`}",
+    );
+    expect(rowSource).toContain("cancelIssueAction");
+    expect(rowSource).toContain("IssueActionHiddenFields");
+    expect(rowSource).toContain("canCancelIssue");
+    expect(rowSource).toContain("ยกเลิกใบเบิก");
+    expect(rowSource).toContain("จ่ายอะไหล่ทั้งใบ");
+    expect(rowSource).not.toContain('name="issueQty"');
   });
 });

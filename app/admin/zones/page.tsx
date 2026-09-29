@@ -1,6 +1,5 @@
 import { redirect } from "next/navigation";
 import { AdminScopeHiddenFields, AdminSiteScopeSelector } from "../../../components/admin-site-scope-selector";
-import { AppShell } from "../../../components/app-shell";
 import { db } from "../../../lib/db";
 import { cacheTags, revalidateCmData } from "../../../lib/query-cache";
 import { requireUser } from "../../../lib/session";
@@ -92,7 +91,7 @@ export default async function AdminZonesPage({ searchParams }: { searchParams: P
   });
 
   return (
-    <AppShell>
+    <>
       <h1 className="text-3xl font-bold">Zones</h1>
       <div className="mt-6">
         <AdminSiteScopeSelector
@@ -141,7 +140,7 @@ export default async function AdminZonesPage({ searchParams }: { searchParams: P
           );
         })}
       </div>
-    </AppShell>
+    </>
   );
 }
 

@@ -69,6 +69,7 @@ describe("Site Admin permissions", () => {
     expect(permissionDefaultForRole(RoleName.ORGANIZATION_ADMIN, PermissionKey.MANAGE_SITE_ADMIN_PERMISSION)).toBe(false);
     expect(permissionDefaultForRole(RoleName.ENGINEER, PermissionKey.VIEW_REPORTS)).toBe(true);
     expect(permissionDefaultForRole(RoleName.ENGINEER, PermissionKey.MANAGE_ASSETS)).toBe(true);
+    expect(permissionDefaultForRole(RoleName.ENGINEER, PermissionKey.MANAGE_PM_PLANS)).toBe(true);
     expect(permissionDefaultForRole(RoleName.TECHNICIAN, PermissionKey.MANAGE_ASSETS)).toBe(false);
     expect(permissionDefaultForRole(RoleName.TECHNICIAN, PermissionKey.CLOSE_WORK)).toBe(false);
     expect(permissionDefaultForRole(RoleName.VISITOR, PermissionKey.VIEW_DASHBOARD)).toBe(true);

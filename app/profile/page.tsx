@@ -1,6 +1,5 @@
 import { BadgeCheck, Camera, ClipboardList, IdCard, LockKeyhole, PenLine, ShieldCheck } from "lucide-react";
 import { redirect } from "next/navigation";
-import { AppShell } from "../../components/app-shell";
 import { ProfilePasswordForm } from "../../components/profile-password-form";
 import { ProfilePhotoPreview } from "../../components/profile-photo-preview";
 import { SignaturePreview } from "../../components/signature-preview";
@@ -115,7 +114,7 @@ export default async function ProfilePage({
   const { photoUploaded, photoError, signatureUploaded, signatureError, passwordChanged, passwordError } = await searchParams;
 
   return (
-    <AppShell>
+    <>
       <section className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
         <main className="min-w-0 overflow-hidden rounded-3xl border border-[var(--line)] bg-[var(--surface)] shadow-[var(--shadow)]">
           <div className="profile-cover relative h-40 overflow-hidden bg-gradient-to-r from-sky-400 via-cyan-300 to-teal-300 sm:h-48">
@@ -265,7 +264,7 @@ export default async function ProfilePage({
           </section>
         </aside>
       </section>
-    </AppShell>
+    </>
   );
 }
 

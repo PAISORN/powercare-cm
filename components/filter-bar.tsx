@@ -1,7 +1,7 @@
  "use client";
 
 import Link from "next/link";
-import { Search } from "lucide-react";
+import { ChevronDown, Search, SlidersHorizontal } from "lucide-react";
 import { statusLabels, urgencyLabels, Urgency, WorkStatus } from "../modules/cm-work/cm-work-types";
 import { AutoSubmitSelect } from "./auto-submit-select";
 import { CmDateFilterBar } from "./cm-date-filter-bar";
@@ -32,15 +32,44 @@ export function FilterBar({
   zones,
   claimants,
   initiallyUnset = false,
+  placement = "default",
 }: {
   values: FilterValues;
   categories: Option[];
   zones: Option[];
   claimants: Option[];
   initiallyUnset?: boolean;
+  placement?: "default" | "hero";
 }) {
+  const activeFilterCount =
+    [values.search, values.status, values.categoryId, values.zoneId, values.urgency, values.claimantId].filter(Boolean).length +
+    Number(!initiallyUnset);
+
   return (
-    <form className="rounded-3xl border border-[var(--line)] bg-[var(--surface)] p-4 shadow-[var(--shadow)]" method="get">
+    <details className={`group ${placement === "hero" ? "xl:static" : ""}`} data-testid="work-filter-bar">
+      <summary className="ml-auto flex min-h-11 w-fit cursor-pointer list-none items-center gap-2 rounded-full bg-[var(--primary)] px-4 text-sm font-bold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-[var(--primary-strong)] hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 [&::-webkit-details-marker]:hidden">
+        <SlidersHorizontal aria-hidden="true" size={17} />
+        ตัวกรอง
+        {activeFilterCount ? (
+          <span className="grid size-6 place-items-center rounded-full bg-white/20 text-[11px]">
+            {activeFilterCount}
+          </span>
+        ) : null}
+        <ChevronDown
+          aria-hidden="true"
+          className="transition-transform duration-200 group-open:rotate-180"
+          size={16}
+        />
+      </summary>
+
+      <form
+        className={
+          placement === "hero"
+            ? "mt-4 w-[calc(100vw-2rem)] pt-4 sm:w-[min(900px,calc(100vw-2rem))] xl:absolute xl:right-0 xl:top-full xl:z-50 xl:w-[min(1500px,calc(100vw-2rem))]"
+            : "mt-4 pt-4"
+        }
+        method="get"
+      >
       <div className="grid gap-3 lg:grid-cols-[1.4fr_repeat(3,1fr)]">
         <label className="grid gap-1 text-sm">
           <span className="text-[var(--muted)]">Search</span>
@@ -71,13 +100,14 @@ export function FilterBar({
           initiallyUnset={initiallyUnset}
         />
         <button className="self-end rounded-2xl bg-[var(--primary)] px-5 py-3 font-bold text-white" type="submit">
-          Filter
+          ใช้ตัวกรอง
         </button>
         <Link className="self-end rounded-2xl border border-[var(--line)] px-5 py-3 text-center font-semibold" href="/work">
-          Clear filters
+          ล้างตัวกรอง
         </Link>
       </div>
-    </form>
+      </form>
+    </details>
   );
 }
 

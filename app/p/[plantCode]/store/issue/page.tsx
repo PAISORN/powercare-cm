@@ -3,6 +3,8 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { IssueRequestForm } from "../../../../../components/store/issue-request-form";
 import { db } from "../../../../../lib/db";
+import { storeIssueActionError } from "../../../../../modules/store/store-issue-action-error";
+import { parseStoreIssueFormData } from "../../../../../modules/store/store-issue-form-data";
 import { createPublicStoreIssue } from "../../../../../modules/store/store-issue-prisma";
 
 type PageQuery = { created?: string; error?: string; itemKind?: string };
@@ -10,33 +12,24 @@ type PageQuery = { created?: string; error?: string; itemKind?: string };
 async function createPublicIssueAction(formData: FormData) {
   "use server";
   const inventoryCode = String(formData.get("inventoryCode") ?? "").trim().toUpperCase();
-  const stockKeys = formData.getAll("stockKey").map(String);
-  const zoneIds = formData.getAll("zoneId").map(String);
-  const quantities = formData.getAll("requestedQty").map(Number);
+  const issueInput = parseStoreIssueFormData(formData);
   let created: string | null = null;
   let errorMessage: string | null = null;
   try {
     const result = await createPublicStoreIssue(inventoryCode, {
+      ...issueInput,
       issueType: "DIRECT",
       cmWorkNumber: null,
       requesterName: String(formData.get("requesterName") ?? ""),
       requesterDepartment: String(formData.get("requesterDepartment") ?? ""),
-      vehicle: optionalText(formData.get("vehicle")),
-      odometerBefore: optionalNumber(formData.get("odometerBefore")),
-      odometerAfter: optionalNumber(formData.get("odometerAfter")),
-      dispenserMeterBefore: optionalNumber(formData.get("dispenserMeterBefore")),
-      dispenserMeterAfter: optionalNumber(formData.get("dispenserMeterAfter")),
-      note: optionalText(formData.get("note")),
       requestedAt: new Date(),
-      submissionKey: optionalText(formData.get("submissionKey")),
-      items: stockKeys.map((key, index) => {
-        const [storeId, sparePartId] = key.split(":");
-        return { storeId, sparePartId, zoneId: zoneIds[index], requestedQty: quantities[index] };
-      }),
     });
     created = result.number;
   } catch (error) {
-    errorMessage = publicIssueError(error);
+    errorMessage = storeIssueActionError(
+      error,
+      "ไม่สามารถส่งคำขอได้ โปรดตรวจสอบข้อมูล",
+    );
   }
   const params = new URLSearchParams(created ? { created } : { error: errorMessage ?? "Unknown error" });
   redirect(`/p/${inventoryCode.toLowerCase()}/store/issue?${params}`);
@@ -161,24 +154,4 @@ function buildStoreStockStatus(quantity: number, minStock: number) {
   if (quantity <= 0) return "OUT";
   if (quantity <= minStock) return "LOW";
   return "ENOUGH";
-}
-
-function optionalText(value: FormDataEntryValue | null) {
-  const normalized = String(value ?? "").trim();
-  return normalized || null;
-}
-
-function optionalNumber(value: FormDataEntryValue | null) {
-  const text = String(value ?? "").trim();
-  if (!text) return null;
-  const parsed = Number(text);
-  return Number.isFinite(parsed) ? parsed : null;
-}
-
-function publicIssueError(error: unknown) {
-  if (!(error instanceof Error)) return "โปรดลองใหม่อีกครั้ง";
-  const expected = ["required", "not available", "not found", "exceeds", "greater than zero", "outside"];
-  return expected.some((text) => error.message.includes(text))
-    ? error.message
-    : "ไม่สามารถส่งคำขอได้ โปรดตรวจสอบข้อมูล";
 }

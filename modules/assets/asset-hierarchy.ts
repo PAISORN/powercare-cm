@@ -4,12 +4,13 @@ export const ASSET_LEVELS = Object.values(AssetLevel);
 const aliases: Record<string, string> = { "AC MOTOR": "Motor", PUMP: "Pump", GEAR: "Gearbox", "GEAR BOX": "Gearbox", GEARBOX: "Gearbox", "BELT CONVEYOR": "Conveyor", "FUEL BELT CONVEYOR": "Conveyor", "ROTARY AIR LOCK": "Rotary Air Lock", TANK: "Tank", MOTOR: "Motor" };
 const systemNames = new Set(["Boiler & Combustion", "Water Treatment", "Fire Protection", "Fuel Preparation", "Ash Handling", "Cooling Water", "General Water", "Electrical Power", "Compressed Air", "Condensate & Feedwater"].map(s => s.toLowerCase()));
 const instruments = new Set(["Pressure Transmitter", "Differential Pressure Transmitter", "Level Transmitter", "Temperature Transmitter", "Flow Transmitter", "Pressure Switch", "Level Switch", "Temperature Switch", "Flow Switch", "Vibration Sensor", "Speed Sensor", "Instrument"].map(s => s.toLowerCase()));
+const subAssetInstruments = new Set(["Level Transmitter", "Flow Transmitter", "Temperature Transmitter", "Pressure Switch", "Vibration Sensor"].map(s => s.toLowerCase()));
 const parts = new Set(["Bearing", "Coupling", "Mechanical Seal", "Seal", "Filter", "Impeller", "Pulley", "Shaft", "Chain", "Belt", "Actuator"].map(s => s.toLowerCase()));
 export function normalizeAssetTypeName(value: string): string { const name = value.trim().replace(/\s+/g, " "); return aliases[name.toUpperCase()] ?? name; }
 export function isSystemAssetType(value: string): boolean { return systemNames.has(normalizeAssetTypeName(value).toLowerCase()) || /\bsystem$/i.test(value.trim()); }
 export function isInstrumentType(value: string): boolean { return instruments.has(normalizeAssetTypeName(value).toLowerCase()); }
 export function isValveType(value: string): boolean { return /\bvalve$/i.test(value.trim()); }
-export function defaultAssetLevelForType(value: string): AssetLevel { const name = normalizeAssetTypeName(value); return isInstrumentType(name) || isValveType(name) || parts.has(name.toLowerCase()) ? AssetLevel.PART : ["motor", "gearbox"].includes(name.toLowerCase()) ? AssetLevel.SUB_ASSET : AssetLevel.MAIN_ASSET; }
+export function defaultAssetLevelForType(value: string): AssetLevel { const name = normalizeAssetTypeName(value); const normalizedName = name.toLowerCase(); return subAssetInstruments.has(normalizedName) ? AssetLevel.SUB_ASSET : isInstrumentType(name) || isValveType(name) || parts.has(normalizedName) ? AssetLevel.PART : ["motor", "gearbox"].includes(normalizedName) ? AssetLevel.SUB_ASSET : AssetLevel.MAIN_ASSET; }
 export function cleanAssetName(value: string): string { return value.trim(); }
 export function isValidAssetSystemName(value: string): boolean { return !!value.trim(); }
 export interface AssetHierarchyNode {

@@ -1,12 +1,18 @@
 import { randomUUID } from "node:crypto";
-import { db } from "../../lib/db";
-import { PermissionKey, type PermissionUserContext } from "../auth/site-admin-permissions";
+import {
+  PermissionKey,
+  type PermissionUserContext,
+} from "../auth/site-admin-permissions";
 import { formatSparePartCode } from "./store-numbering";
 import {
   parseSparePartImportWorkbook,
   validateSparePartImportRows,
 } from "./spare-part-excel-import";
-import { assertActorStoreScope, requireStorePermission } from "./store-prisma-service";
+import {
+  assertActorStoreScope,
+  requireStorePermission,
+} from "./store-authorization";
+import { runStoreMutation } from "./store-mutation-prisma";
 import { StockMovementType, type StoreScope } from "./store-types";
 
 const maxFileSizeBytes = 5 * 1024 * 1024;
@@ -21,41 +27,45 @@ export async function importSparePartsFromExcel(
   validateFile(file);
 
   const parsedRows = parseSparePartImportWorkbook(await file.arrayBuffer());
-  const [stores, types, categories, materialGroups, existingItemCodes] = await Promise.all([
-    db.store.findMany({
-      where: { plantId: scope.plantId, active: true },
-      select: { id: true, code: true },
-    }),
-    db.sparePartType.findMany({
-      where: { plantId: scope.plantId, active: true },
-      select: { id: true, code: true },
-    }),
-    db.sparePartCategory.findMany({
-      where: { plantId: scope.plantId, active: true },
-      select: { id: true, code: true },
-    }),
-    db.sparePartMaterialGroup.findMany({
-      where: { plantId: scope.plantId, active: true },
-      select: { id: true, code: true, categoryId: true },
-    }),
-    db.sparePart.findMany({
-      where: { organizationId: scope.organizationId, itemCode: { not: null } },
-      select: { itemCode: true },
-    }),
-  ]);
-  const rows = validateSparePartImportRows(parsedRows, {
-    stores,
-    types,
-    categories,
-    materialGroups,
-    existingItemCodes: existingItemCodes.flatMap((row) => (row.itemCode ? [row.itemCode] : [])),
-  });
   const batchId = randomUUID();
 
-  await db.$transaction(async (tx) => {
-    await tx.plant.findFirstOrThrow({
-      where: { id: scope.plantId, organizationId: scope.organizationId, active: true },
+  return runStoreMutation(actor.id, scope, async (tx) => {
+    const [stores, types, categories, materialGroups, existingItemCodes] =
+      await Promise.all([
+        tx.store.findMany({
+          where: { plantId: scope.plantId, active: true },
+          select: { id: true, code: true },
+        }),
+        tx.sparePartType.findMany({
+          where: { plantId: scope.plantId, active: true },
+          select: { id: true, code: true },
+        }),
+        tx.sparePartCategory.findMany({
+          where: { plantId: scope.plantId, active: true },
+          select: { id: true, code: true },
+        }),
+        tx.sparePartMaterialGroup.findMany({
+          where: { plantId: scope.plantId, active: true },
+          select: { id: true, code: true, categoryId: true },
+        }),
+        tx.sparePart.findMany({
+          where: {
+            organizationId: scope.organizationId,
+            itemCode: { not: null },
+          },
+          select: { itemCode: true },
+        }),
+      ]);
+    const rows = validateSparePartImportRows(parsedRows, {
+      stores,
+      types,
+      categories,
+      materialGroups,
+      existingItemCodes: existingItemCodes.flatMap((row) =>
+        row.itemCode ? [row.itemCode] : [],
+      ),
     });
+
     const sequence = await tx.sparePartSequence.upsert({
       where: { plantId: scope.plantId },
       update: { lastNumber: { increment: rows.length } },
@@ -115,24 +125,22 @@ export async function importSparePartsFromExcel(
       }
     }
 
-    await tx.auditEvent.create({
-      data: {
-        actorId: actor.id,
-        organizationId: scope.organizationId,
-        plantId: scope.plantId,
+    return {
+      value: { importedCount: rows.length, batchId },
+      audit: {
         entityType: "SparePartImport",
         entityId: batchId,
         action: "IMPORT_SPARE_PARTS_EXCEL",
-        afterJson: JSON.stringify({ fileName: file.name, itemCount: rows.length }),
+        after: { fileName: file.name, itemCount: rows.length },
       },
-    });
+    };
   });
-
-  return { importedCount: rows.length, batchId };
 }
 
 function validateFile(file: File) {
   if (!file || file.size === 0) throw new Error("กรุณาเลือกไฟล์ Excel");
-  if (file.size > maxFileSizeBytes) throw new Error("ไฟล์ Excel ต้องมีขนาดไม่เกิน 5 MB");
-  if (!/\.(xlsx|xls)$/i.test(file.name)) throw new Error("รองรับเฉพาะไฟล์ .xlsx หรือ .xls");
+  if (file.size > maxFileSizeBytes)
+    throw new Error("ไฟล์ Excel ต้องมีขนาดไม่เกิน 5 MB");
+  if (!/\.(xlsx|xls)$/i.test(file.name))
+    throw new Error("รองรับเฉพาะไฟล์ .xlsx หรือ .xls");
 }

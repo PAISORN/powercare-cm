@@ -1,7 +1,6 @@
 import { AlertTriangle, Plus, Save, Trash2 } from "lucide-react";
 import { redirect } from "next/navigation";
 import { AdminScopeHiddenFields } from "../../../components/admin-site-scope-selector";
-import { AppShell } from "../../../components/app-shell";
 import { PmGroupAssetPicker, type PmGroupAssetOption } from "../../../components/pm/pm-group-asset-picker";
 import { PmRouteShell } from "../../../components/pm/pm-route-shell";
 import { requireUser } from "../../../lib/session";
@@ -87,7 +86,7 @@ export default async function PmGroupsPage({ searchParams }: { searchParams: Pro
   }));
   const eligibleAssetIds = new Set(options.map((asset) => asset.id));
 
-  return <AppShell>
+  return <>
     <PmRouteShell canManageGroups currentPage="groups" description="Create flexible Site-level groups and choose each Asset explicitly." scope={scope} scopeAction="/dashboardpm/groups" title="PM Groups" />
     <main className="mx-auto mt-5 grid max-w-6xl gap-5">
       {query.saved ? <p className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-sm font-bold text-emerald-700" role="status">PM Group saved.</p> : null}
@@ -134,7 +133,7 @@ export default async function PmGroupsPage({ searchParams }: { searchParams: Pro
         {!groups.length ? <p className="rounded-3xl border border-dashed border-[var(--line)] p-8 text-center text-sm text-[var(--muted)]">No PM Groups in this Site yet.</p> : null}
       </section>
     </main>
-  </AppShell>;
+  </>;
 }
 
 function TextField({ label, ...props }: React.InputHTMLAttributes<HTMLInputElement> & { label: string }) {

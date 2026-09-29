@@ -1,10 +1,25 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
-describe("OrganizationSiteMap", () => {
-  it("keeps the organization chart as an interactive client-side UI only component", () => {
-    const source = readFileSync("components/organization-site-map.tsx", "utf8");
+const sourceFiles = [
+  "components/organization-site-map.tsx",
+  "components/organization-site-map/organization-site-map-workspace.tsx",
+  "components/organization-site-map/organization-site-map-nodes.tsx",
+  "components/organization-site-map/organization-site-map-drawers.tsx",
+  "components/organization-site-map/organization-site-map-model.ts",
+];
+const source = sourceFiles.map((file) => readFileSync(file, "utf8")).join("\n");
 
+describe("OrganizationSiteMap", () => {
+  it("keeps a small compatibility facade over the chart modules", () => {
+    const facade = readFileSync("components/organization-site-map.tsx", "utf8");
+
+    expect(facade).toContain('export { OrganizationSiteMap }');
+    expect(facade.split(/\r?\n/).length).toBeLessThanOrEqual(4);
+    expect(facade).not.toContain("useState");
+  });
+
+  it("keeps the organization chart as an interactive client-side UI only component", () => {
     expect(source).toContain('"use client"');
     expect(source).toContain("OrganizationSiteMap");
     expect(source).toContain("org-chart-canvas");
@@ -14,8 +29,6 @@ describe("OrganizationSiteMap", () => {
   });
 
   it("supports the requested chart controls without changing server data loading", () => {
-    const source = readFileSync("components/organization-site-map.tsx", "utf8");
-
     expect(source).toContain("setViewMode");
     expect(source).toContain("Zoom In");
     expect(source).toContain("Zoom Out");
@@ -30,8 +43,6 @@ describe("OrganizationSiteMap", () => {
   });
 
   it("visually separates organization, site, and person nodes", () => {
-    const source = readFileSync("components/organization-site-map.tsx", "utf8");
-
     expect(source).toContain("org-chart-organization");
     expect(source).toContain("org-chart-site");
     expect(source).toContain("org-chart-person");
@@ -44,8 +55,6 @@ describe("OrganizationSiteMap", () => {
   });
 
   it("uses fixed hierarchy colors instead of rotating colors by item order", () => {
-    const source = readFileSync("components/organization-site-map.tsx", "utf8");
-
     expect(source).toContain("hierarchyAccent");
     expect(source).toContain('owner: "bg-violet-600"');
     expect(source).toContain('organization: "bg-blue-500"');
@@ -59,8 +68,6 @@ describe("OrganizationSiteMap", () => {
   });
 
   it("combines organization and site admin status into their parent cards", () => {
-    const source = readFileSync("components/organization-site-map.tsx", "utf8");
-
     expect(source).toContain("adminNames={organizationAdmins.map");
     expect(source).toContain('adminRoleLabel="Organization Admin"');
     expect(source).toContain("adminNames={siteAdmins.map");
@@ -72,8 +79,6 @@ describe("OrganizationSiteMap", () => {
   });
 
   it("starts the visible hierarchy at the signed-in user's role level", () => {
-    const source = readFileSync("components/organization-site-map.tsx", "utf8");
-
     expect(source).toContain("viewerRole = RoleName.ADMIN");
     expect(source).toContain("const showOwnerNode = viewerRole === RoleName.ADMIN");
     expect(source).toContain("const showOrganizationLevel = !isSiteAdminRole(viewerRole)");
@@ -82,8 +87,6 @@ describe("OrganizationSiteMap", () => {
   });
 
   it("lays out sites horizontally under each organization with connector rails", () => {
-    const source = readFileSync("components/organization-site-map.tsx", "utf8");
-
     expect(source).toContain("site-branch-row");
     expect(source).toContain("relative w-max pt-8");
     expect(source).toContain("flex w-max items-start");
@@ -99,8 +102,6 @@ describe("OrganizationSiteMap", () => {
   });
 
   it("uses minimal styling for the chart shell, panels, and nodes", () => {
-    const source = readFileSync("components/organization-site-map.tsx", "utf8");
-
     expect(source).toContain("minimal-shell");
     expect(source).toContain("minimal-panel");
     expect(source).toContain("minimal-node");
@@ -111,8 +112,6 @@ describe("OrganizationSiteMap", () => {
   });
 
   it("opens an inline user settings drawer from organization member nodes", () => {
-    const source = readFileSync("components/organization-site-map.tsx", "utf8");
-
     expect(source).toContain("OrganizationUserDrawer");
     expect(source).toContain("User Settings");
     expect(source).toContain("onSelect={canOpenUserDrawer");
@@ -125,16 +124,12 @@ describe("OrganizationSiteMap", () => {
   });
 
   it("does not let canvas dragging swallow clicks on user and admin controls", () => {
-    const source = readFileSync("components/organization-site-map.tsx", "utf8");
-
     expect(source).toContain("isInteractiveTarget(event.target)");
     expect(source).toContain("function isInteractiveTarget");
     expect(source).toContain("a,button,input,select,textarea,label,summary,[role='button']");
   });
 
   it("opens a create-user drawer from missing organization or site admin cards", () => {
-    const source = readFileSync("components/organization-site-map.tsx", "utf8");
-
     expect(source).toContain("OrganizationCreateUserDrawer");
     expect(source).toContain("selectedCreateUser");
     expect(source).toContain("onCreateAdmin");

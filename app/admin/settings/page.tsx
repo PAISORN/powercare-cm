@@ -1,7 +1,6 @@
 import { Save, ShieldCheck, SlidersHorizontal } from "lucide-react";
 import { redirect } from "next/navigation";
 import { AdminScopeHiddenFields, AdminSiteScopeSelector } from "../../../components/admin-site-scope-selector";
-import { AppShell } from "../../../components/app-shell";
 import { requireUser } from "../../../lib/session";
 import { db } from "../../../lib/db";
 import { adminScopeSearchFromFormData, resolveAdminSiteScope } from "../../../modules/admin/admin-site-scope";
@@ -88,7 +87,7 @@ export default async function AdminSystemSettingsPage({
   ]);
 
   return (
-    <AppShell>
+    <>
       <header className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <p className="inline-flex items-center gap-2 text-sm font-semibold text-[var(--primary)]">
@@ -195,7 +194,7 @@ export default async function AdminSystemSettingsPage({
           </form>
         </section>
       ) : null}
-    </AppShell>
+    </>
   );
 }
 

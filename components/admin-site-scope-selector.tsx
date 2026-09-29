@@ -23,16 +23,16 @@ export function AdminSiteScopeSelector({
 
   return (
     <section className={unframed
-      ? "border-t border-[var(--line)] px-4 py-4 sm:px-5"
-      : "rounded-3xl border border-[var(--line)] bg-[var(--surface)] p-5 shadow-[var(--shadow)]"
+      ? "min-w-0 border-t border-[var(--line)] px-4 py-4 sm:px-5"
+      : "min-w-0 rounded-3xl border border-[var(--line)] bg-[var(--surface)] p-5 shadow-[var(--shadow)]"
     }>
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
+      <div className="flex min-w-0 flex-wrap items-start justify-between gap-4">
+        <div className="min-w-0">
           <p className="inline-flex items-center gap-2 rounded-full bg-[var(--soft)] px-3 py-1.5 text-sm font-bold text-[var(--primary)]">
             <Factory aria-hidden="true" size={16} />
             {title}
           </p>
-          <p className="mt-2 text-sm text-[var(--muted)]">{description}</p>
+          <p className="mt-2 break-words text-sm text-[var(--muted)]">{description}</p>
         </div>
         {locked ? (
           <span className="rounded-full bg-[var(--soft)] px-3 py-1.5 text-xs font-bold text-[var(--muted)]">
@@ -43,16 +43,16 @@ export function AdminSiteScopeSelector({
 
       <form
         action={action}
-        className={`mt-4 grid gap-3 ${compact ? "grid-cols-1" : "md:grid-cols-[minmax(220px,1fr)_minmax(220px,1fr)_auto] md:items-end"}`}
+        className={`mt-4 grid min-w-0 gap-3 ${compact ? "grid-cols-1" : "lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] lg:items-end"}`}
         method="get"
       >
-        <label className="grid gap-1 text-sm font-semibold">
+        <label className="grid min-w-0 gap-1 text-sm font-semibold">
           <span className="flex items-center gap-2 text-[var(--muted)]">
             <Building2 aria-hidden="true" size={15} />
             Organization
           </span>
           {scope.canSelectOrganization ? (
-            <AutoSubmitSelect className="min-h-12 rounded-2xl border border-[var(--line)] bg-[var(--soft)] px-3 text-[var(--ink)]" defaultValue={scope.organization.id} name="organizationId">
+            <AutoSubmitSelect className="min-h-12 w-full min-w-0 max-w-full rounded-2xl border border-[var(--line)] bg-[var(--soft)] px-3 text-[var(--ink)]" defaultValue={scope.organization.id} name="organizationId">
               {scope.organizations.map((organization) => (
                 <option key={organization.id} value={organization.id}>
                   {organization.name}
@@ -60,19 +60,19 @@ export function AdminSiteScopeSelector({
               ))}
             </AutoSubmitSelect>
           ) : (
-            <span className="flex min-h-12 items-center rounded-2xl border border-[var(--line)] bg-[var(--soft)] px-3 text-[var(--ink)]">
+            <span className="flex min-h-12 min-w-0 items-center break-words rounded-2xl border border-[var(--line)] bg-[var(--soft)] px-3 text-[var(--ink)]">
               {scope.organization.name}
             </span>
           )}
         </label>
 
-        <label className="grid gap-1 text-sm font-semibold">
+        <label className="grid min-w-0 gap-1 text-sm font-semibold">
           <span className="flex items-center gap-2 text-[var(--muted)]">
             <Factory aria-hidden="true" size={15} />
             Site
           </span>
           {scope.canSelectPlant ? (
-            <AutoSubmitSelect className="min-h-12 rounded-2xl border border-[var(--line)] bg-[var(--soft)] px-3 text-[var(--ink)]" defaultValue={scope.plant.id} name="plantId">
+            <AutoSubmitSelect className="min-h-12 w-full min-w-0 max-w-full rounded-2xl border border-[var(--line)] bg-[var(--soft)] px-3 text-[var(--ink)]" defaultValue={scope.plant.id} name="plantId">
               {scope.plants.map((plant) => (
                 <option key={plant.id} value={plant.id}>
                   {plant.name}
@@ -80,7 +80,7 @@ export function AdminSiteScopeSelector({
               ))}
             </AutoSubmitSelect>
           ) : (
-            <span className="flex min-h-12 items-center rounded-2xl border border-[var(--line)] bg-[var(--soft)] px-3 text-[var(--ink)]">
+            <span className="flex min-h-12 min-w-0 items-center break-words rounded-2xl border border-[var(--line)] bg-[var(--soft)] px-3 text-[var(--ink)]">
               {scope.plant.name}
             </span>
           )}

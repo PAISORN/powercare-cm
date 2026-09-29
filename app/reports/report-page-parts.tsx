@@ -1,6 +1,5 @@
 ﻿import { CalendarDays, Download, FileSpreadsheet, Printer } from "lucide-react";
 import Link from "next/link";
-import { AppShell } from "../../components/app-shell";
 import { AutoSubmitSelect } from "../../components/auto-submit-select";
 import { CmDateFilterBar } from "../../components/cm-date-filter-bar";
 import { CopyDailyReportButton } from "../../components/copy-daily-report-button";
@@ -18,13 +17,11 @@ type ClaimantOption = { id: string; fullName: string };
 
 export function ReportAccessDenied() {
   return (
-    <AppShell>
-      <section className="rounded-3xl border border-[var(--line)] bg-[var(--surface)] p-8 text-center shadow-[var(--shadow)]">
-        <FileSpreadsheet className="mx-auto text-[var(--primary)]" size={42} />
-        <h1 className="mt-4 text-2xl font-extrabold">Reports</h1>
-        <p className="mt-2 text-[var(--muted)]">บัญชีนี้ไม่มีสิทธิ์ดูหรือส่งออกรายงานภาพรวม</p>
-      </section>
-    </AppShell>
+    <section className="rounded-3xl border border-[var(--line)] bg-[var(--surface)] p-8 text-center shadow-[var(--shadow)]">
+      <FileSpreadsheet className="mx-auto text-[var(--primary)]" size={42} />
+      <h1 className="mt-4 text-2xl font-extrabold">Reports</h1>
+      <p className="mt-2 text-[var(--muted)]">บัญชีนี้ไม่มีสิทธิ์ดูหรือส่งออกรายงานภาพรวม</p>
+    </section>
   );
 }
 

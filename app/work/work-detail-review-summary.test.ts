@@ -3,7 +3,10 @@ import { describe, expect, it } from "vitest";
 
 describe("work detail review summary", () => {
   it("shows technician completion details before engineer review actions", () => {
-    const source = readFileSync("app/work/[id]/page.tsx", "utf8");
+    const source = readFileSync(
+      "components/work-detail-page/work-detail-workspace.tsx",
+      "utf8",
+    );
 
     const summaryIndex = source.indexOf("Technician Work Summary");
     const reviewIndex = source.indexOf("Engineer Review");

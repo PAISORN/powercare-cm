@@ -17,6 +17,7 @@ describe("Asset hierarchy contract", () => {
  it("review status does not bypass ordinary validation", () => expect(validateAssetHierarchy({ ...part, parentId: "missing", migrationStatus: "NEED_PARENT_REVIEW" }, [])).toContain("PARENT_NOT_FOUND"));
  it.each([["AC Motor","Motor"],["PUMP","Pump"],["GEAR","Gearbox"],["Gear Box","Gearbox"],["Fuel Belt Conveyor","Conveyor"]])("normalizes %s", (old, expected) => expect(normalizeAssetTypeName(old)).toBe(expected));
  it.each(["Manual Valve","Control Valve","Safety Valve","Pressure Regulating Valve","Pressure Transmitter","Bearing"])("classifies %s as Part", type => expect(defaultAssetLevelForType(type)).toBe("PART"));
+ it.each(["Level Transmitter","Flow Transmitter","Temperature Transmitter","Pressure Switch","Vibration Sensor"])("classifies %s as Sub-Asset", type => expect(defaultAssetLevelForType(type)).toBe("SUB_ASSET"));
  it("allows actual Steam Turbine equipment while blocking System categories", () => { expect(isSystemAssetType("Steam Turbine")).toBe(false); expect(isSystemAssetType("Steam Turbine System")).toBe(true); expect(defaultAssetLevelForType("Pump Set")).toBe("MAIN_ASSET"); });
  it("permits explicit Instrument and Control Valve Systems", () => { expect(isValidAssetSystemName("Instrument")).toBe(true); expect(isValidAssetSystemName("Control Valve")).toBe(true); expect(isValidAssetSystemName(" ")).toBe(false); });
  it("preserves location text when it is part of the Asset name", () => { expect(cleanAssetName("MCC-05 @ESP Room Z08a")).toBe("MCC-05 @ESP Room Z08a"); });

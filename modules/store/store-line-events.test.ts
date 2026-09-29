@@ -3,7 +3,11 @@ import { describe, expect, it } from "vitest";
 
 describe("Store issue LINE event hooks", () => {
   it("dispatches LINE events from Store issue lifecycle actions", () => {
-    const source = readFileSync("modules/store/store-issue-prisma.ts", "utf8");
+    const source = [
+      "modules/store/store-issue-create-prisma.ts",
+      "modules/store/store-issue-prisma.ts",
+      "modules/store/store-issue-line-events.ts",
+    ].map((path) => readFileSync(path, "utf8")).join("\n");
 
     expect(source).toContain("dispatchLineStoreEvent");
     expect(source).toContain("STORE_ISSUE_CREATED");

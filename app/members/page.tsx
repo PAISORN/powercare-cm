@@ -1,7 +1,6 @@
 import { BriefcaseBusiness, CheckCircle2, UsersRound, Wrench } from "lucide-react";
 import Link from "next/link";
 import { AdminSiteScopeSelector } from "../../components/admin-site-scope-selector";
-import { AppShell } from "../../components/app-shell";
 import { AutoSubmitSelect } from "../../components/auto-submit-select";
 import { CmDateFilterBar } from "../../components/cm-date-filter-bar";
 import { UserAvatar } from "../../components/user-avatar";
@@ -55,7 +54,7 @@ export default async function MembersPage({
   const closedTotal = members.reduce((sum, member) => sum + (member.metrics?.closed ?? 0), 0);
 
   return (
-    <AppShell>
+    <>
       <section className="rounded-3xl border border-[var(--line)] bg-[var(--surface)] shadow-[var(--shadow)]">
         <div className="rounded-t-3xl bg-gradient-to-r from-blue-600 via-sky-500 to-cyan-400 px-5 py-7 text-white sm:px-7">
           <p className="inline-flex items-center gap-2 rounded-full bg-white/15 px-3 py-1.5 text-sm font-bold">
@@ -169,7 +168,7 @@ export default async function MembersPage({
       {members.length === 0 ? (
         <p className="mt-6 rounded-3xl border border-[var(--line)] bg-[var(--surface)] p-8 text-center text-[var(--muted)]">ไม่พบสมาชิกในหมวดหมู่ที่เลือก</p>
       ) : null}
-    </AppShell>
+    </>
   );
 }
 

@@ -2,7 +2,6 @@ import { QrCode } from "lucide-react";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { AdminSiteScopeSelector } from "../../../components/admin-site-scope-selector";
-import { AppShell } from "../../../components/app-shell";
 import { QrCodeActions } from "../../../components/qr-code-actions";
 import { requireUser } from "../../../lib/session";
 import { canManageQrCode } from "../../../modules/auth/permission";
@@ -40,7 +39,7 @@ export default async function AdminQrCodePage({
   const qrImageUrl = "/admin/qr-code/request.svg";
 
   return (
-    <AppShell>
+    <>
       <section className="menu-heading-plain rounded-3xl border border-[var(--line)] bg-[var(--surface)] p-6 shadow-[var(--shadow)] print:border-0 print:shadow-none">
         <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-start">
           <div>
@@ -135,6 +134,6 @@ export default async function AdminQrCodePage({
           );
         })}
       </section>
-    </AppShell>
+    </>
   );
 }

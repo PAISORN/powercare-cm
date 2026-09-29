@@ -1,8 +1,17 @@
 import type { Prisma } from "@prisma/client";
-import { db } from "../../lib/db";
-import { PermissionKey, type PermissionUserContext } from "../auth/site-admin-permissions";
-import { adjustStockWithRepository, type StoreReceiveRepository } from "./store-receive-service";
-import { assertActorStoreScope, requireStorePermission } from "./store-prisma-service";
+import {
+  PermissionKey,
+  type PermissionUserContext,
+} from "../auth/site-admin-permissions";
+import {
+  adjustStockWithRepository,
+  type StoreReceiveRepository,
+} from "./store-receive-service";
+import {
+  assertActorStoreScope,
+  requireStorePermission,
+} from "./store-authorization";
+import { runStoreMutation } from "./store-mutation-prisma";
 import type { StoreScope } from "./store-types";
 import { hasInventoryResponsibility } from "./inventory-user-scope";
 
@@ -15,22 +24,37 @@ export type AdjustStockFormInput = {
 };
 
 export async function adjustStock(
-  actor: PermissionUserContext & { id: string; inventoryScopes?: Array<{ itemKind: string; responsibilityEnabled: boolean }> },
+  actor: PermissionUserContext & {
+    id: string;
+    inventoryScopes?: Array<{
+      itemKind: string;
+      responsibilityEnabled: boolean;
+    }>;
+  },
   scope: StoreScope,
   input: AdjustStockFormInput,
 ) {
   requireStorePermission(actor, PermissionKey.ADJUST_STOCK);
   assertActorStoreScope(actor, scope);
-  const part = await db.sparePart.findFirstOrThrow({ where: { id: input.sparePartId, plantId: scope.plantId }, select: { itemKind: true } });
-  if (!hasInventoryResponsibility(actor, part.itemKind)) throw new Error("No adjustment scope for this inventory type.");
 
-  return db.$transaction(async (tx) => {
-    await tx.plant.findFirstOrThrow({
-      where: { id: scope.plantId, organizationId: scope.organizationId, active: true },
+  return runStoreMutation(actor.id, scope, async (tx) => {
+    const part = await tx.sparePart.findFirstOrThrow({
+      where: {
+        id: input.sparePartId,
+        plantId: scope.plantId,
+        active: true,
+      },
+      select: { itemKind: true },
     });
+    if (!hasInventoryResponsibility(actor, part.itemKind)) {
+      throw new Error("No adjustment scope for this inventory type.");
+    }
     await assertAdjustmentItemInScope(tx, scope, input);
 
-    const repository: Pick<StoreReceiveRepository, "getStockBalance" | "addStock" | "createMovement"> = {
+    const repository: Pick<
+      StoreReceiveRepository,
+      "getStockBalance" | "addStock" | "createMovement"
+    > = {
       async getStockBalance(stockInput) {
         const stock = await tx.storeStock.findUnique({
           where: {
@@ -54,7 +78,8 @@ export async function adjustStock(
             },
             data: { quantity: { increment: stockInput.quantity } },
           });
-          if (updated.count !== 1) throw new Error("Stock balance must not be negative.");
+          if (updated.count !== 1)
+            throw new Error("Stock balance must not be negative.");
         } else {
           await tx.storeStock.upsert({
             where: {
@@ -109,22 +134,19 @@ export async function adjustStock(
       note: input.reason,
       occurredAt: input.occurredAt,
     });
-    await tx.auditEvent.create({
-      data: {
-        actorId: actor.id,
-        organizationId: scope.organizationId,
-        plantId: scope.plantId,
+    return {
+      value: result,
+      audit: {
         entityType: "StoreStock",
         entityId: `${input.storeId}:${input.sparePartId}`,
         action: "ADJUST_SPARE_PART_STOCK",
-        afterJson: JSON.stringify({
+        after: {
           quantityChange: input.quantityChange,
           balanceAfter: result.balanceAfter,
           reason: input.reason.trim(),
-        }),
+        },
       },
-    });
-    return result;
+    };
   });
 }
 
@@ -143,5 +165,6 @@ async function assertAdjustmentItemInScope(
       select: { id: true },
     }),
   ]);
-  if (!store || !sparePart) throw new Error("Stock adjustment item is outside the selected Site.");
+  if (!store || !sparePart)
+    throw new Error("Stock adjustment item is outside the selected Site.");
 }

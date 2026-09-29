@@ -11,7 +11,6 @@ import {
 } from "lucide-react";
 import { redirect } from "next/navigation";
 import { AdminScopeHiddenFields, AdminSiteScopeSelector } from "../../../components/admin-site-scope-selector";
-import { AppShell } from "../../../components/app-shell";
 import { formatThaiMediumDateTime } from "../../../lib/date-time/bangkok-time";
 import { db } from "../../../lib/db";
 import { requireUser } from "../../../lib/session";
@@ -67,7 +66,7 @@ export default async function StoreTrackingPage({ searchParams }: { searchParams
     : [];
 
   return (
-    <AppShell>
+    <>
       <div className="space-y-6">
         <section className="menu-heading-plain rounded-3xl border border-[var(--line)] bg-[var(--surface)] p-5 shadow-[var(--shadow)] sm:p-7">
           <p className="inline-flex items-center gap-2 rounded-full bg-[var(--soft)] px-3 py-1.5 text-sm font-bold text-[var(--primary)]">
@@ -205,7 +204,7 @@ export default async function StoreTrackingPage({ searchParams }: { searchParams
           </section>
         ) : null}
       </div>
-    </AppShell>
+    </>
   );
 }
 

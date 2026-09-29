@@ -1,13 +1,14 @@
 import { CalendarPlus, ChevronLeft, ChevronRight, Clock3, Layers3, Wrench } from "lucide-react";
 import Link from "next/link";
-import { addCalendarDays, isoDateAtUtcNoon } from "../../modules/pm/pm-calendar-query";
-import { pmCalendarPlanGroups, type PmCalendarPlanItem } from "./pm-calendar";
+import { addCalendarDays, isoDateAtUtcNoon, type AnnualPmCalendarEntry } from "../../modules/pm/pm-calendar-query";
+import { pmTargetColor } from "../../modules/pm/pm-target-color";
+import { annualPmCalendarHref, pmCalendarPlanGroups, type PmCalendarPlanItem } from "./pm-calendar";
 
 const fullDate = new Intl.DateTimeFormat("th-TH-u-ca-buddhist-nu-latn", { weekday: "long", day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
 const shortDate = new Intl.DateTimeFormat("th-TH-u-ca-buddhist-nu-latn", { day: "numeric", month: "short", timeZone: "UTC" });
 
-export function PmDayColumn({ date, plan, scopeQuery, canManage, today }: { date: string; plan?: PmCalendarPlanItem; scopeQuery: string; canManage: boolean; today: string }) {
-  const href = (nextDate: string) => `/dashboardpm?${scopeQuery}&view=day&month=${nextDate.slice(0, 7)}&date=${nextDate}`;
+export function PmDayColumn({ date, plan, annualEntries = [], scopeQuery, canManage, today }: { date: string; plan?: PmCalendarPlanItem; annualEntries?: AnnualPmCalendarEntry[]; scopeQuery: string; canManage: boolean; today: string }) {
+  const href = (nextDate: string) => `/dashboardpm/calendar?${scopeQuery}&view=day&month=${nextDate.slice(0, 7)}&date=${nextDate}`;
   const groups = plan ? pmCalendarPlanGroups(plan) : [];
   return <section aria-label="ปฏิทิน PM รายวัน" className="min-w-0 overflow-hidden rounded-3xl border border-[var(--line)] bg-[var(--surface)] shadow-[var(--shadow)]">
     <header className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--line)] p-4 sm:p-5">
@@ -28,18 +29,24 @@ export function PmDayColumn({ date, plan, scopeQuery, canManage, today }: { date
       </div>
       <div className="relative min-w-0 p-4 sm:p-6">
         <div aria-hidden="true" className="pointer-events-none absolute inset-0 opacity-40 [background-image:repeating-linear-gradient(to_bottom,transparent_0,transparent_71px,var(--line)_72px)]" />
+        {annualEntries.length ? <div className="relative mb-3 grid gap-2" aria-label="Annual PM ในวันนี้">
+          {annualEntries.map(item => <Link className="flex min-w-0 items-start justify-between gap-3 rounded-xl border-l-4 p-3 text-sm font-bold hover:brightness-95" href={annualPmCalendarHref(item, scopeQuery, canManage, "day")} key={item.id} scroll={false} style={pmTargetColor(item.targetId)}>
+            <span className="min-w-0 break-words">{item.targetName}<span className="ml-2 text-xs font-normal">{item.status === "RELEASED" ? "ดู Main Assets" : ["ACTIVE", "DRAFT"].includes(item.planStatus) && canManage ? "เริ่มดำเนินการ PM" : "Draft · เปิด Setup"}</span></span>
+            <span aria-label={"Main Assets " + item.mainAssetCount} className="shrink-0 rounded-full border border-current/30 px-2 py-0.5 text-xs">{item.mainAssetCount}</span>
+          </Link>)}
+        </div> : null}
         {plan ? <Link className="relative block min-w-0 rounded-2xl border border-[var(--primary)]/30 bg-[var(--primary)]/10 p-4 shadow-sm transition-colors duration-200 hover:bg-[var(--primary)]/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]" href={`${href(date)}&planId=${plan.id}`}>
           <div className="flex flex-wrap items-start justify-between gap-3">
             <span className="min-w-0"><strong className="block break-words text-base text-[var(--primary)]">{plan.status === "DRAFT" ? "Draft PM Plan" : plan.number}</strong><span className="mt-1 block text-sm text-[var(--muted)]">{shortDate.format(isoDateAtUtcNoon(date))} · ไม่ระบุเวลา</span></span>
-            <span className="rounded-full border border-[var(--primary)]/30 bg-[var(--surface)] px-3 py-1 text-xs font-bold">{plan.status}</span>
+            <span className="flex gap-2"><span className="rounded-full border border-[var(--primary)]/30 bg-[var(--surface)] px-3 py-1 text-xs font-bold">{plan.status}</span><span className={`rounded-full px-3 py-1 text-xs font-bold ${plan.annualReleaseBatch?"bg-blue-100 text-blue-800":"bg-slate-100 text-slate-700"}`}>{plan.annualReleaseBatch?"ANNUAL":"LEGACY"}</span></span>
           </div>
           <div className="mt-4 grid gap-2 text-sm sm:grid-cols-2">
             <span className="inline-flex items-center gap-2"><Layers3 aria-hidden="true" size={17} /><strong>{groups.length}</strong> PM Groups</span>
             <span className="inline-flex items-center gap-2"><Wrench aria-hidden="true" size={17} /><strong>{plan._count.works}</strong> PM Works</span>
           </div>
           {groups.length ? <div className="mt-4 flex flex-wrap gap-2" aria-label="PM Groups ในแผน">{groups.map(group => <span className="rounded-lg bg-[var(--surface)] px-2.5 py-1 text-xs font-bold" key={group.id}>{group.code} · {group.name}</span>)}</div> : null}
-        </Link> : <div className="relative grid min-h-56 place-items-center rounded-2xl border border-dashed border-[var(--line)] bg-[var(--surface)]/80 p-6 text-center">
-          <div><CalendarPlus aria-hidden="true" className="mx-auto text-[var(--muted)]" size={28} /><h3 className="mt-3 font-extrabold">ยังไม่มีแผน PM ในวันนี้</h3><p className="mt-1 text-sm text-[var(--muted)]">{canManage ? "ใช้แผงด้านขวาเพื่อสร้าง Draft และเพิ่ม PM Group" : "ไม่มีรายการ PM ที่กำหนดไว้สำหรับวันที่เลือก"}</p></div>
+        </Link> : annualEntries.length ? null : <div className="relative grid min-h-56 place-items-center rounded-2xl border border-dashed border-[var(--line)] bg-[var(--surface)]/80 p-6 text-center">
+          <div><CalendarPlus aria-hidden="true" className="mx-auto text-[var(--muted)]" size={28} /><h3 className="mt-3 font-extrabold">ยังไม่มีแผน PM ในวันนี้</h3><p className="mt-1 text-sm text-[var(--muted)]">{canManage ? "ใช้ปุ่มด้านล่างเพื่อสร้าง Draft และเพิ่ม PM Group" : "ไม่มีรายการ PM ที่กำหนดไว้สำหรับวันที่เลือก"}</p></div>
         </div>}
       </div>
     </div>

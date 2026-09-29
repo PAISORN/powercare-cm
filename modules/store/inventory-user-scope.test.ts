@@ -1,10 +1,18 @@
 import { describe, expect, it } from "vitest";
-import { hasInventoryApproval, hasInventoryResponsibility } from "./inventory-user-scope";
+import {
+  defaultInventoryItemKind,
+  hasInventoryApproval,
+  hasInventoryResponsibility,
+} from "./inventory-user-scope";
 
 const actor = {
   role: "STORE_OFFICER",
   inventoryScopes: [
-    { itemKind: "CHEMICAL", responsibilityEnabled: true, approvalEnabled: false },
+    {
+      itemKind: "CHEMICAL",
+      responsibilityEnabled: true,
+      approvalEnabled: false,
+    },
     { itemKind: "OIL", responsibilityEnabled: false, approvalEnabled: true },
   ],
 };
@@ -21,7 +29,39 @@ describe("inventory user scope", () => {
   });
 
   it("allows Owner Admin emergency access across kinds", () => {
-    expect(hasInventoryResponsibility({ role: "ADMIN", inventoryScopes: [] }, "CHEMICAL")).toBe(true);
-    expect(hasInventoryApproval({ role: "ADMIN", inventoryScopes: [] }, "OIL")).toBe(true);
+    expect(
+      hasInventoryResponsibility(
+        { role: "ADMIN", inventoryScopes: [] },
+        "CHEMICAL",
+      ),
+    ).toBe(true);
+    expect(
+      hasInventoryApproval({ role: "ADMIN", inventoryScopes: [] }, "OIL"),
+    ).toBe(true);
+  });
+
+  it("defaults Store scope to spare parts and Lab scope to chemicals", () => {
+    expect(
+      defaultInventoryItemKind({
+        inventoryScopes: [
+          {
+            itemKind: "SPARE_PART",
+            responsibilityEnabled: true,
+            approvalEnabled: false,
+          },
+        ],
+      }),
+    ).toBe("SPARE_PART");
+    expect(
+      defaultInventoryItemKind({
+        inventoryScopes: [
+          {
+            itemKind: "CHEMICAL",
+            responsibilityEnabled: true,
+            approvalEnabled: false,
+          },
+        ],
+      }),
+    ).toBe("CHEMICAL");
   });
 });

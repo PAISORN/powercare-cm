@@ -1,7 +1,6 @@
 import { ArrowDownToLine, Clock3, PackageCheck } from "lucide-react";
 import { redirect } from "next/navigation";
 import { AdminSiteScopeSelector } from "../../../components/admin-site-scope-selector";
-import { AppShell } from "../../../components/app-shell";
 import { ReceiveStockForm } from "../../../components/store/receive-stock-form";
 import { formatThaiMediumDateTime } from "../../../lib/date-time/bangkok-time";
 import { db } from "../../../lib/db";
@@ -132,7 +131,7 @@ export default async function ReceivePage({ searchParams }: { searchParams: Prom
   }
 
   return (
-    <AppShell>
+    <>
       <div className="space-y-6">
         <section className="menu-heading-plain rounded-3xl border border-[var(--line)] bg-[var(--surface)] p-5 shadow-[var(--shadow)] sm:p-7">
           <p className="inline-flex items-center gap-2 rounded-full bg-[var(--soft)] px-3 py-1.5 text-sm font-bold text-[var(--primary)]">
@@ -235,7 +234,7 @@ export default async function ReceivePage({ searchParams }: { searchParams: Prom
           </div>
         </section>
       </div>
-    </AppShell>
+    </>
   );
 }
 

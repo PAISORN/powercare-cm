@@ -3,22 +3,15 @@
 import { Moon, Sun } from "lucide-react";
 import { useEffect, useState } from "react";
 import { getBangkokTheme } from "../lib/date-time/bangkok-time";
-
-const storageKey = "cm-theme-mode";
+import { PREFERENCE_COOKIE_MAX_AGE, THEME_PREFERENCE_COOKIE } from "../modules/settings/user-preferences";
 
 export function ThemeToggle({ compact = false }: { compact?: boolean }) {
   const [hydrated, setHydrated] = useState(false);
   const [theme, setTheme] = useState<"day" | "night">("day");
 
   useEffect(() => {
-    const savedTheme = sessionStorage.getItem(storageKey);
     const htmlTheme = document.documentElement.dataset.theme;
-    const initial =
-      savedTheme === "day" || savedTheme === "night"
-        ? savedTheme
-        : htmlTheme === "day" || htmlTheme === "night"
-          ? htmlTheme
-          : getBangkokTheme();
+    const initial = htmlTheme === "day" || htmlTheme === "night" ? htmlTheme : getBangkokTheme();
     setTheme(initial);
     document.documentElement.dataset.theme = initial;
     setHydrated(true);
@@ -27,7 +20,8 @@ export function ThemeToggle({ compact = false }: { compact?: boolean }) {
   function updateTheme(nextTheme: "day" | "night") {
     setTheme(nextTheme);
     document.documentElement.dataset.theme = nextTheme;
-    sessionStorage.setItem(storageKey, nextTheme);
+    document.documentElement.dataset.themePreference = nextTheme;
+    document.cookie = `${THEME_PREFERENCE_COOKIE}=${nextTheme}; path=/; max-age=${PREFERENCE_COOKIE_MAX_AGE}; samesite=lax`;
   }
 
   function toggleTheme() {

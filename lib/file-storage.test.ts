@@ -32,7 +32,7 @@ describe("Supabase file storage", () => {
     vi.restoreAllMocks();
   });
 
-  test("uploads profile photos to a stable Supabase Storage path with upsert enabled", async () => {
+  test("uploads profile photos to a versioned Supabase Storage path", async () => {
     const fetchMock = vi.fn(async () => new Response(JSON.stringify({ Key: "ok" }), { status: 200 }));
     vi.stubGlobal("fetch", fetchMock);
 
@@ -43,10 +43,14 @@ describe("Supabase file storage", () => {
     expect(saved.fileName).toBe("profile.jpg");
     expect(saved.mimeType).toBe("image/jpeg");
     expect(saved.fileSize).toBe(file.size);
-    expect(saved.storagePath).toBe("supabase://powercare-profile-photos/users/user-123/profile");
+    expect(saved.storagePath).toMatch(
+      /^supabase:\/\/powercare-profile-photos\/users\/user-123\/profile\/[0-9a-f-]+$/,
+    );
     expect(saved.checksum).toHaveLength(64);
     expect(fetchMock).toHaveBeenCalledWith(
-      "https://project-ref.supabase.co/storage/v1/object/powercare-profile-photos/users/user-123/profile",
+      expect.stringMatching(
+        /^https:\/\/project-ref\.supabase\.co\/storage\/v1\/object\/powercare-profile-photos\/users\/user-123\/profile\/[0-9a-f-]+$/,
+      ),
       expect.objectContaining({
         method: "POST",
         headers: expect.objectContaining({
@@ -59,7 +63,7 @@ describe("Supabase file storage", () => {
     );
   });
 
-  test("uploads signatures to a stable Supabase Storage path with upsert enabled", async () => {
+  test("uploads signatures to a versioned Supabase Storage path", async () => {
     const fetchMock = vi.fn(async () => new Response(JSON.stringify({ Key: "ok" }), { status: 200 }));
     vi.stubGlobal("fetch", fetchMock);
 
@@ -68,10 +72,14 @@ describe("Supabase file storage", () => {
     const saved = await saveSignatureFile("user-123", file);
 
     expect(saved.fileName).toBe("signature.png");
-    expect(saved.storagePath).toBe("supabase://powercare-signatures/users/user-123/signature");
+    expect(saved.storagePath).toMatch(
+      /^supabase:\/\/powercare-signatures\/users\/user-123\/signature\/[0-9a-f-]+$/,
+    );
     expect(saved.uploadedAt).toBeInstanceOf(Date);
     expect(fetchMock).toHaveBeenCalledWith(
-      "https://project-ref.supabase.co/storage/v1/object/powercare-signatures/users/user-123/signature",
+      expect.stringMatching(
+        /^https:\/\/project-ref\.supabase\.co\/storage\/v1\/object\/powercare-signatures\/users\/user-123\/signature\/[0-9a-f-]+$/,
+      ),
       expect.objectContaining({
         method: "POST",
         headers: expect.objectContaining({

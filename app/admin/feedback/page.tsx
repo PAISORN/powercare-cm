@@ -1,6 +1,5 @@
 import { MessageSquareText, UserRound } from "lucide-react";
 import { redirect } from "next/navigation";
-import { AppShell } from "../../../components/app-shell";
 import { db } from "../../../lib/db";
 import { formatThaiDateTime } from "../../../lib/date-time/bangkok-time";
 import { requireUser } from "../../../lib/session";
@@ -17,7 +16,7 @@ export default async function AdminFeedbackPage() {
   });
 
   return (
-    <AppShell>
+    <>
       <section className="menu-heading-plain rounded-3xl border border-[var(--line)] bg-[var(--surface)] p-5 shadow-[var(--shadow)] md:p-7">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
@@ -65,6 +64,6 @@ export default async function AdminFeedbackPage() {
           </div>
         )}
       </section>
-    </AppShell>
+    </>
   );
 }

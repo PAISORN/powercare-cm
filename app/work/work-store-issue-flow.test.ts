@@ -3,9 +3,10 @@ import { describe, expect, it } from "vitest";
 
 describe("work detail store issue flow", () => {
   it("lets an in-progress claimant request spare parts from the CM work detail page", () => {
-    const source = readFileSync("app/work/[id]/page.tsx", "utf8");
+    const source = workDetailSource();
 
     expect(source).toContain("createWorkStoreIssueAction");
+    expect(source).toContain("parseStoreIssueFormData(formData)");
     expect(source).toContain("IssueRequestForm");
     expect(source).toContain("lockedCmWork={{ id: work.id");
     expect(source).toContain("cmWorks={[{ id: work.id, number: work.number");
@@ -17,7 +18,7 @@ describe("work detail store issue flow", () => {
   });
 
   it("passes searchable stock metadata into the embedded store request form", () => {
-    const source = readFileSync("app/work/[id]/page.tsx", "utf8");
+    const source = workDetailSource();
 
     expect(source).toContain("storeCategoryName: stock.store.category?.name");
     expect(source).toContain("sparePartCategoryName: stock.sparePart.category?.name");
@@ -27,16 +28,18 @@ describe("work detail store issue flow", () => {
   });
 
   it("blocks submit-for-review while store issues are still pending approval or issue", () => {
-    const source = readFileSync("app/work/[id]/page.tsx", "utf8");
+    const source = workDetailSource();
 
     expect(source).toContain("pendingStoreIssueStatuses");
     expect(source).toContain("hasPendingStoreIssues");
-    expect(source).toContain("if (hasPendingStoreIssues) redirect(`/work/${id}?storeIssueBlocked=1`)");
+    expect(source).toMatch(
+      /if \(hasPendingStoreIssues\)[\s\S]*storeIssueBlocked=1/,
+    );
     expect(source).toContain("!hasPendingStoreIssues");
   });
 
   it("shows linked store issue status rows on the work detail page", () => {
-    const source = readFileSync("app/work/[id]/page.tsx", "utf8");
+    const source = workDetailSource();
 
     expect(source).toContain("storeIssues");
     expect(source).toContain("StoreIssueStatusBadge");
@@ -48,7 +51,7 @@ describe("work detail store issue flow", () => {
   });
 
   it("lets the requester remove a pending store issue before engineer approval", () => {
-    const source = readFileSync("app/work/[id]/page.tsx", "utf8");
+    const source = workDetailSource();
 
     expect(source).toContain("cancelOwnPendingStoreIssueAction");
     expect(source).toContain("status: StoreIssueStatus.WAITING_ENGINEER_APPROVAL");
@@ -57,3 +60,13 @@ describe("work detail store issue flow", () => {
     expect(source).toContain("CANCEL_PENDING_STORE_ISSUE");
   });
 });
+
+function workDetailSource() {
+  return [
+    "app/work/[id]/page.tsx",
+    "modules/cm-work/work-detail-page-data.ts",
+    "app/work/[id]/actions.ts",
+    "components/work-detail-page/work-detail-workspace.tsx",
+    "components/work-detail-page/work-detail-support.tsx",
+  ].map((file) => readFileSync(file, "utf8")).join("\n");
+}

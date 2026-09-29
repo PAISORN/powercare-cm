@@ -15,7 +15,11 @@ describe("CM backlog shutdown status", () => {
   });
 
   it("exposes the backlog shutdown action on the work detail page", () => {
-    const source = readFileSync("app/work/[id]/page.tsx", "utf8");
+    const source = [
+      "modules/cm-work/work-detail-page-data.ts",
+      "app/work/[id]/actions.ts",
+      "components/work-detail-page/work-detail-workspace.tsx",
+    ].map((file) => readFileSync(file, "utf8")).join("\n");
 
     expect(source).toContain("moveToBacklogShutdownAction");
     expect(source).toContain("moveToBacklogShutdown");

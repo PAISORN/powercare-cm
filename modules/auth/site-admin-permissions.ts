@@ -427,6 +427,7 @@ const alwaysAllowedByRole: Record<PermissionRole, ReadonlySet<PermissionKey>> = 
   ]),
   [RoleName.ENGINEER]: new Set([
     PermissionKey.VIEW_PM,
+    PermissionKey.MANAGE_PM_PLANS,
     PermissionKey.EXECUTE_PM_WORK,
     PermissionKey.LOGIN,
     PermissionKey.VIEW_DASHBOARD,

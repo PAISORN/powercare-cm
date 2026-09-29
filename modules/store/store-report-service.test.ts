@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
+  applyStoreReportColumnValueAccess,
+  applyStoreReportValueAccess,
   buildStoreIssueLineMessage,
   summarizeStockBalances,
   summarizeStockMovements,
@@ -8,6 +10,33 @@ import {
 import { StoreIssueStatus } from "./store-types";
 
 describe("store report service", () => {
+  it("removes stock value fields when the viewer lacks value access", () => {
+    const rows = [
+      {
+        "Item Code": "SP-001",
+        Quantity: 4,
+        "Unit Price": 25,
+        "Total Value": 100,
+      },
+    ];
+
+    expect(applyStoreReportValueAccess(rows, false)).toEqual([
+      { "Item Code": "SP-001", Quantity: 4 },
+    ]);
+    expect(
+      applyStoreReportColumnValueAccess(Object.keys(rows[0]), false),
+    ).toEqual(["Item Code", "Quantity"]);
+  });
+
+  it("keeps stock value fields for an authorized viewer", () => {
+    const rows = [{ Quantity: 4, "Unit Price": 25, "Total Value": 100 }];
+
+    expect(applyStoreReportValueAccess(rows, true)).toBe(rows);
+    expect(
+      applyStoreReportColumnValueAccess(Object.keys(rows[0]), true),
+    ).toEqual(["Quantity", "Unit Price", "Total Value"]);
+  });
+
   it("summarizes store issues by status and category", () => {
     const summary = summarizeStoreIssues([
       {
@@ -95,17 +124,43 @@ describe("store report service", () => {
       },
     ]);
     expect(summary.byCategory).toEqual([
-      { categoryName: "Mechanical", totalItems: 1, totalQuantity: 3, totalValue: 360 },
-      { categoryName: "ไม่ระบุหมวดหมู่", totalItems: 1, totalQuantity: 8, totalValue: 400 },
+      {
+        categoryName: "Mechanical",
+        totalItems: 1,
+        totalQuantity: 3,
+        totalValue: 360,
+      },
+      {
+        categoryName: "ไม่ระบุหมวดหมู่",
+        totalItems: 1,
+        totalQuantity: 8,
+        totalValue: 400,
+      },
     ]);
   });
 
   it("summarizes stock movements by receive, issue, and adjustment direction", () => {
     const summary = summarizeStockMovements([
-      { movementType: "RECEIVE", quantityChange: 10, occurredAt: new Date("2026-07-01T00:00:00Z") },
-      { movementType: "ISSUE", quantityChange: -4, occurredAt: new Date("2026-07-02T00:00:00Z") },
-      { movementType: "ADJUSTMENT", quantityChange: 2, occurredAt: new Date("2026-07-03T00:00:00Z") },
-      { movementType: "ADJUSTMENT", quantityChange: -1, occurredAt: new Date("2026-07-04T00:00:00Z") },
+      {
+        movementType: "RECEIVE",
+        quantityChange: 10,
+        occurredAt: new Date("2026-07-01T00:00:00Z"),
+      },
+      {
+        movementType: "ISSUE",
+        quantityChange: -4,
+        occurredAt: new Date("2026-07-02T00:00:00Z"),
+      },
+      {
+        movementType: "ADJUSTMENT",
+        quantityChange: 2,
+        occurredAt: new Date("2026-07-03T00:00:00Z"),
+      },
+      {
+        movementType: "ADJUSTMENT",
+        quantityChange: -1,
+        occurredAt: new Date("2026-07-04T00:00:00Z"),
+      },
     ]);
 
     expect(summary).toEqual({

@@ -1,5 +1,4 @@
 import { AlertTriangle, BarChart3, CheckCircle2, CircleDot, ClipboardList, Factory, Flame, Gauge, History, Wrench } from "lucide-react";
-import { AppShell } from "../../components/app-shell";
 
 const statusRows = [
   { label: "แจ้งใหม่", value: 45, color: "#3b82f6" },
@@ -38,7 +37,7 @@ export default function DashboardV2MockupPage() {
   const totalStatus = statusRows.reduce((sum, row) => sum + row.value, 0);
 
   return (
-    <AppShell>
+    <>
       <section className="overflow-hidden rounded-3xl border border-[var(--line)] bg-[var(--surface)] p-7 shadow-[var(--shadow)]">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
@@ -123,7 +122,7 @@ export default function DashboardV2MockupPage() {
         <MiniPanel label="Average Close Time" value="2.8d" note="จากงานที่ปิดแล้ว" color="#14b8a6" />
         <MiniPanel label="Waiting Close" value="7" note="พร้อมตรวจรับ/ปิดงาน" color="#ef4444" />
       </section>
-    </AppShell>
+    </>
   );
 }
 

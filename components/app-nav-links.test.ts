@@ -4,7 +4,10 @@ import { RoleName } from "../modules/cm-work/cm-work-types";
 import { getAppLinks, isActivePath } from "./app-nav-links";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { AppNavLinks } from "./app-nav-links";
-import { PermissionKey, type SiteAdminPermissionRecord } from "../modules/auth/site-admin-permissions";
+import {
+  PermissionKey,
+  type SiteAdminPermissionRecord,
+} from "../modules/auth/site-admin-permissions";
 
 const plantAdminContext = (...permissionKeys: string[]) => ({
   id: "plant-admin-1",
@@ -25,17 +28,46 @@ describe("getAppLinks", () => {
     const createView = new URLSearchParams("view=create");
     const trackingView = new URLSearchParams("view=tracking");
 
-    expect(isActivePath("/dashboardstore/issue", "/dashboardstore/issue?view=create", createView)).toBe(true);
-    expect(isActivePath("/dashboardstore/issue", "/dashboardstore/issue?view=tracking", createView)).toBe(false);
-    expect(isActivePath("/dashboardstore/issue", "/dashboardstore/issue?view=create", trackingView)).toBe(false);
-    expect(isActivePath("/dashboardstore/issue", "/dashboardstore/issue?view=tracking", trackingView)).toBe(true);
+    expect(
+      isActivePath(
+        "/dashboardstore/issue",
+        "/dashboardstore/issue?view=create",
+        createView,
+      ),
+    ).toBe(true);
+    expect(
+      isActivePath(
+        "/dashboardstore/issue",
+        "/dashboardstore/issue?view=tracking",
+        createView,
+      ),
+    ).toBe(false);
+    expect(
+      isActivePath(
+        "/dashboardstore/issue",
+        "/dashboardstore/issue?view=create",
+        trackingView,
+      ),
+    ).toBe(false);
+    expect(
+      isActivePath(
+        "/dashboardstore/issue",
+        "/dashboardstore/issue?view=tracking",
+        trackingView,
+      ),
+    ).toBe(true);
   });
 
-  it("keeps PM Calendar active only on the PM root route", () => {
+  it("keeps Dashboard PM and PM Calendar active only on their exact routes", () => {
     expect(isActivePath("/dashboardpm", "/dashboardpm")).toBe(true);
     expect(isActivePath("/dashboardpm/groups", "/dashboardpm")).toBe(false);
     expect(isActivePath("/dashboardpm/work", "/dashboardpm")).toBe(false);
-    expect(isActivePath("/dashboardpm/groups", "/dashboardpm/groups")).toBe(true);
+    expect(isActivePath("/dashboardpm/calendar", "/dashboardpm")).toBe(false);
+    expect(isActivePath("/dashboardpm/calendar", "/dashboardpm/calendar")).toBe(true);
+    expect(isActivePath("/dashboardpm/calendar/day", "/dashboardpm/calendar")).toBe(false);
+    expect(isActivePath("/dashboardpm/groups", "/dashboardpm/groups")).toBe(
+      true,
+    );
     expect(isActivePath("/dashboardpm/work", "/dashboardpm/work")).toBe(true);
   });
 
@@ -55,6 +87,24 @@ describe("getAppLinks", () => {
     ]);
   });
 
+  it("groups authorized CM, PM, and Store dashboards under Dashboard", () => {
+    const links = getAppLinks(RoleName.ADMIN);
+
+    expect(links.find((link) => link.label === "Dashboard")).toMatchObject({
+      kind: "section",
+      sectionId: "dashboard",
+    });
+    expect(
+      links
+        .filter((link) => link.parentSectionId === "dashboard")
+        .map((link) => [link.label, link.href]),
+    ).toEqual([
+      ["Dashboard CM", "/dashboardcm"],
+      ["Dashboard PM", "/dashboardpm"],
+      ["Dashboard Store", "/dashboardstore"],
+    ]);
+  });
+
   it("uses the signed-in user's Site request URL and disables it for Owner Admin", () => {
     const siteLinks = getAppLinks(RoleName.ENGINEER, {
       plantId: "plant-rayong",
@@ -66,49 +116,158 @@ describe("getAppLinks", () => {
     });
 
     expect(siteLinks.some((link) => link.href === "/p/ryg/request")).toBe(true);
-    expect(siteLinks.some((link) => link.href === "/p/ryg/tracking")).toBe(true);
-    expect(ownerLinks.some((link) => link.label === "Create Request")).toBe(false);
+    expect(siteLinks.some((link) => link.href === "/p/ryg/tracking")).toBe(
+      true,
+    );
+    expect(ownerLinks.some((link) => link.label === "Create Request")).toBe(
+      false,
+    );
     expect(ownerLinks.some((link) => link.label === "Track Work")).toBe(false);
   });
 
-  it.each([RoleName.ADMIN, RoleName.ORGANIZATION_ADMIN, RoleName.SITE_ADMIN, RoleName.ENGINEER, RoleName.TECHNICIAN, RoleName.VISITOR])("shows Members to %s", (role) => {
-    expect(getAppLinks(role).some((link) => link.href === "/members")).toBe(true);
+  it.each([
+    RoleName.ADMIN,
+    RoleName.ORGANIZATION_ADMIN,
+    RoleName.SITE_ADMIN,
+    RoleName.ENGINEER,
+    RoleName.TECHNICIAN,
+    RoleName.VISITOR,
+  ])("shows Members to %s", (role) => {
+    expect(getAppLinks(role).some((link) => link.href === "/members")).toBe(
+      true,
+    );
   });
 
-  it.each([RoleName.ADMIN, RoleName.ORGANIZATION_ADMIN, RoleName.SITE_ADMIN, RoleName.ENGINEER, RoleName.TECHNICIAN])("shows Notifications to %s", (role) => {
-    expect(getAppLinks(role).some((link) => link.href === "/notifications")).toBe(true);
+  it.each(Object.values(RoleName))("shows personal Settings to %s", (role) => {
+    expect(
+      getAppLinks(role).some(
+        (link) => link.href === "/settings" && link.label === "Settings",
+      ),
+    ).toBe(true);
+  });
+
+  it.each([
+    RoleName.ADMIN,
+    RoleName.ORGANIZATION_ADMIN,
+    RoleName.SITE_ADMIN,
+    RoleName.ENGINEER,
+    RoleName.TECHNICIAN,
+  ])("shows Notifications to %s", (role) => {
+    expect(
+      getAppLinks(role).some((link) => link.href === "/notifications"),
+    ).toBe(true);
   });
 
   it("shows System Settings to admin and Site Admin for engineer assignment mode", () => {
-    expect(getAppLinks(RoleName.ADMIN).some((link) => link.href === "/admin/settings")).toBe(true);
-    expect(getAppLinks(RoleName.SITE_ADMIN).some((link) => link.href === "/admin/settings")).toBe(false);
-    expect(getAppLinks(RoleName.SITE_ADMIN, plantAdminContext(PermissionKey.MANAGE_ENGINEER_ASSIGNMENT)).some((link) => link.href === "/admin/settings")).toBe(true);
-    expect(getAppLinks(RoleName.ENGINEER).some((link) => link.href === "/admin/settings")).toBe(false);
-    expect(getAppLinks(RoleName.TECHNICIAN).some((link) => link.href === "/admin/settings")).toBe(false);
+    expect(
+      getAppLinks(RoleName.ADMIN).some(
+        (link) => link.href === "/admin/settings",
+      ),
+    ).toBe(true);
+    expect(
+      getAppLinks(RoleName.SITE_ADMIN).some(
+        (link) => link.href === "/admin/settings",
+      ),
+    ).toBe(false);
+    expect(
+      getAppLinks(
+        RoleName.SITE_ADMIN,
+        plantAdminContext(PermissionKey.MANAGE_ENGINEER_ASSIGNMENT),
+      ).some((link) => link.href === "/admin/settings"),
+    ).toBe(true);
+    expect(
+      getAppLinks(RoleName.ENGINEER).some(
+        (link) => link.href === "/admin/settings",
+      ),
+    ).toBe(false);
+    expect(
+      getAppLinks(RoleName.TECHNICIAN).some(
+        (link) => link.href === "/admin/settings",
+      ),
+    ).toBe(false);
   });
 
   it("shows Admin Settings tools to admins and permitted Site Admins", () => {
-    expect(getAppLinks(RoleName.ADMIN).some((link) => link.href === "/admin/line")).toBe(true);
-    expect(getAppLinks(RoleName.SITE_ADMIN).some((link) => link.href === "/admin/line")).toBe(false);
-    expect(getAppLinks(RoleName.SITE_ADMIN, plantAdminContext(PermissionKey.MANAGE_LINE_SETTINGS)).some((link) => link.href === "/admin/line")).toBe(true);
-    expect(getAppLinks(RoleName.ENGINEER).some((link) => link.href === "/admin/line")).toBe(false);
-    expect(getAppLinks(RoleName.TECHNICIAN).some((link) => link.href === "/admin/line")).toBe(false);
+    expect(
+      getAppLinks(RoleName.ADMIN).some((link) => link.href === "/admin/line"),
+    ).toBe(true);
+    expect(
+      getAppLinks(RoleName.SITE_ADMIN).some(
+        (link) => link.href === "/admin/line",
+      ),
+    ).toBe(false);
+    expect(
+      getAppLinks(
+        RoleName.SITE_ADMIN,
+        plantAdminContext(PermissionKey.MANAGE_LINE_SETTINGS),
+      ).some((link) => link.href === "/admin/line"),
+    ).toBe(true);
+    expect(
+      getAppLinks(RoleName.ENGINEER).some(
+        (link) => link.href === "/admin/line",
+      ),
+    ).toBe(false);
+    expect(
+      getAppLinks(RoleName.TECHNICIAN).some(
+        (link) => link.href === "/admin/line",
+      ),
+    ).toBe(false);
   });
 
   it("shows Organization to admins and Site Admins", () => {
-    expect(getAppLinks(RoleName.ADMIN).some((link) => link.href === "/admin/organization")).toBe(true);
-    expect(getAppLinks(RoleName.SITE_ADMIN).some((link) => link.href === "/admin/organization")).toBe(true);
-    expect(getAppLinks(RoleName.SITE_ADMIN, plantAdminContext(PermissionKey.MANAGE_PLANT_PROFILE)).some((link) => link.href === "/admin/organization")).toBe(true);
-    expect(getAppLinks(RoleName.ENGINEER).some((link) => link.href === "/admin/organization")).toBe(false);
-    expect(getAppLinks(RoleName.TECHNICIAN).some((link) => link.href === "/admin/organization")).toBe(false);
+    expect(
+      getAppLinks(RoleName.ADMIN).some(
+        (link) => link.href === "/admin/organization",
+      ),
+    ).toBe(true);
+    expect(
+      getAppLinks(RoleName.SITE_ADMIN).some(
+        (link) => link.href === "/admin/organization",
+      ),
+    ).toBe(true);
+    expect(
+      getAppLinks(
+        RoleName.SITE_ADMIN,
+        plantAdminContext(PermissionKey.MANAGE_PLANT_PROFILE),
+      ).some((link) => link.href === "/admin/organization"),
+    ).toBe(true);
+    expect(
+      getAppLinks(RoleName.ENGINEER).some(
+        (link) => link.href === "/admin/organization",
+      ),
+    ).toBe(false);
+    expect(
+      getAppLinks(RoleName.TECHNICIAN).some(
+        (link) => link.href === "/admin/organization",
+      ),
+    ).toBe(false);
   });
 
   it("shows Admin Users to owner admins and Site Admins", () => {
-    expect(getAppLinks(RoleName.ADMIN).some((link) => link.href === "/admin/users")).toBe(true);
-    expect(getAppLinks(RoleName.ORGANIZATION_ADMIN).some((link) => link.href === "/admin/users")).toBe(true);
-    expect(getAppLinks(RoleName.SITE_ADMIN).some((link) => link.href === "/admin/users")).toBe(false);
-    expect(getAppLinks(RoleName.SITE_ADMIN, plantAdminContext(PermissionKey.MANAGE_USERS_PLANT)).some((link) => link.href === "/admin/users")).toBe(true);
-    expect(getAppLinks(RoleName.ENGINEER).some((link) => link.href === "/admin/users")).toBe(false);
+    expect(
+      getAppLinks(RoleName.ADMIN).some((link) => link.href === "/admin/users"),
+    ).toBe(true);
+    expect(
+      getAppLinks(RoleName.ORGANIZATION_ADMIN).some(
+        (link) => link.href === "/admin/users",
+      ),
+    ).toBe(true);
+    expect(
+      getAppLinks(RoleName.SITE_ADMIN).some(
+        (link) => link.href === "/admin/users",
+      ),
+    ).toBe(false);
+    expect(
+      getAppLinks(
+        RoleName.SITE_ADMIN,
+        plantAdminContext(PermissionKey.MANAGE_USERS_PLANT),
+      ).some((link) => link.href === "/admin/users"),
+    ).toBe(true);
+    expect(
+      getAppLinks(RoleName.ENGINEER).some(
+        (link) => link.href === "/admin/users",
+      ),
+    ).toBe(false);
   });
 
   it("places Admin Users inside the Administration submenu", () => {
@@ -124,65 +283,189 @@ describe("getAppLinks", () => {
   it("groups platform setup pages under the new sidebar sections", () => {
     const links = getAppLinks(RoleName.ADMIN);
 
-    expect(links.some((link) => link.kind === "section" && link.label === "Organization")).toBe(true);
-    expect(links.some((link) => link.kind === "section" && link.label === "Master Data")).toBe(true);
-    expect(links.some((link) => link.kind === "section" && link.label === "Communication")).toBe(true);
-    expect(links.some((link) => link.kind === "section" && link.label === "Administration")).toBe(true);
-    expect(links.some((link) => link.label === "Permissions" && link.href === "/admin/permissions" && link.parentSectionId === "organization")).toBe(true);
-    expect(links.some((link) => link.label === "Plant Admin Permissions")).toBe(false);
-    for (const href of ["/admin/settings", "/admin/line", "/admin/history", "/admin/users"]) {
-      expect(links.some((link) => link.href === href && link.nested && link.parentSectionId === "administration")).toBe(true);
+    expect(
+      links.some(
+        (link) => link.kind === "section" && link.label === "Organization",
+      ),
+    ).toBe(true);
+    expect(
+      links.some(
+        (link) => link.kind === "section" && link.label === "Master Data",
+      ),
+    ).toBe(true);
+    expect(
+      links.some(
+        (link) => link.kind === "section" && link.label === "Communication",
+      ),
+    ).toBe(true);
+    expect(
+      links.some(
+        (link) => link.kind === "section" && link.label === "Administration",
+      ),
+    ).toBe(true);
+    expect(
+      links.some(
+        (link) =>
+          link.label === "Permissions" &&
+          link.href === "/admin/permissions" &&
+          link.parentSectionId === "organization",
+      ),
+    ).toBe(true);
+    expect(links.some((link) => link.label === "Plant Admin Permissions")).toBe(
+      false,
+    );
+    for (const href of [
+      "/admin/settings",
+      "/admin/line",
+      "/admin/history",
+      "/admin/users",
+    ]) {
+      expect(
+        links.some(
+          (link) =>
+            link.href === href &&
+            link.nested &&
+            link.parentSectionId === "administration",
+        ),
+      ).toBe(true);
     }
-    for (const href of ["/admin/categories", "/admin/zones", "/admin/qr-code", "/admin/sla"]) {
-      expect(links.some((link) => link.href === href && link.nested && link.parentSectionId === "master-data")).toBe(true);
+    for (const href of [
+      "/admin/categories",
+      "/admin/zones",
+      "/admin/qr-code",
+      "/admin/sla",
+    ]) {
+      expect(
+        links.some(
+          (link) =>
+            link.href === href &&
+            link.nested &&
+            link.parentSectionId === "master-data",
+        ),
+      ).toBe(true);
     }
-    for (const href of ["/admin/organization", "/admin/sites", "/admin/permissions"]) {
-      expect(links.some((link) => link.href === href && link.nested && link.parentSectionId === "organization")).toBe(true);
+    for (const href of [
+      "/admin/organization",
+      "/admin/sites",
+      "/admin/permissions",
+    ]) {
+      expect(
+        links.some(
+          (link) =>
+            link.href === href &&
+            link.nested &&
+            link.parentSectionId === "organization",
+        ),
+      ).toBe(true);
     }
     for (const href of ["/admin/announcements", "/admin/feedback"]) {
-      expect(links.some((link) => link.href === href && link.nested)).toBe(true);
+      expect(links.some((link) => link.href === href && link.nested)).toBe(
+        true,
+      );
     }
   });
 
   it("shows organization admin tools without platform-only announcement and feedback tools", () => {
     const links = getAppLinks(RoleName.ORGANIZATION_ADMIN);
 
-    expect(links.some((link) => link.kind === "section" && link.label === "Administration")).toBe(true);
-    expect(links.some((link) => link.kind === "section" && link.label === "Organization")).toBe(true);
+    expect(
+      links.some(
+        (link) => link.kind === "section" && link.label === "Administration",
+      ),
+    ).toBe(true);
+    expect(
+      links.some(
+        (link) => link.kind === "section" && link.label === "Organization",
+      ),
+    ).toBe(true);
     expect(links.some((link) => link.href === "/admin/users")).toBe(true);
     expect(links.some((link) => link.href === "/admin/sites")).toBe(true);
-    expect(links.some((link) => link.href === "/admin/site-admin-permissions")).toBe(false);
-    expect(links.some((link) => link.href === "/admin/announcements")).toBe(false);
+    expect(
+      links.some((link) => link.href === "/admin/site-admin-permissions"),
+    ).toBe(false);
+    expect(links.some((link) => link.href === "/admin/announcements")).toBe(
+      false,
+    );
     expect(links.some((link) => link.href === "/admin/feedback")).toBe(false);
   });
 
   it("shows SLA Settings to admins and Site Admins with SLA permission", () => {
-    expect(getAppLinks(RoleName.ADMIN).some((link) => link.href === "/admin/sla")).toBe(true);
-    expect(getAppLinks(RoleName.SITE_ADMIN).some((link) => link.href === "/admin/sla")).toBe(false);
-    expect(getAppLinks(RoleName.SITE_ADMIN, plantAdminContext(PermissionKey.MANAGE_SLA_DUE_DATE)).some((link) => link.href === "/admin/sla")).toBe(true);
-    expect(getAppLinks(RoleName.ENGINEER).some((link) => link.href === "/admin/sla")).toBe(false);
+    expect(
+      getAppLinks(RoleName.ADMIN).some((link) => link.href === "/admin/sla"),
+    ).toBe(true);
+    expect(
+      getAppLinks(RoleName.SITE_ADMIN).some(
+        (link) => link.href === "/admin/sla",
+      ),
+    ).toBe(false);
+    expect(
+      getAppLinks(
+        RoleName.SITE_ADMIN,
+        plantAdminContext(PermissionKey.MANAGE_SLA_DUE_DATE),
+      ).some((link) => link.href === "/admin/sla"),
+    ).toBe(true);
+    expect(
+      getAppLinks(RoleName.ENGINEER).some((link) => link.href === "/admin/sla"),
+    ).toBe(false);
   });
 
   it("shows Site Admin tools without super admin announcement and feedback tools", () => {
-    const links = getAppLinks(RoleName.SITE_ADMIN, plantAdminContext(PermissionKey.MANAGE_USERS_PLANT, PermissionKey.MANAGE_PLANT_PROFILE));
+    const links = getAppLinks(
+      RoleName.SITE_ADMIN,
+      plantAdminContext(
+        PermissionKey.MANAGE_USERS_PLANT,
+        PermissionKey.MANAGE_PLANT_PROFILE,
+      ),
+    );
 
-    expect(links.some((link) => link.kind === "section" && link.label === "Administration")).toBe(true);
-    expect(links.some((link) => link.kind === "section" && link.label === "Organization")).toBe(true);
+    expect(
+      links.some(
+        (link) => link.kind === "section" && link.label === "Administration",
+      ),
+    ).toBe(true);
+    expect(
+      links.some(
+        (link) => link.kind === "section" && link.label === "Organization",
+      ),
+    ).toBe(true);
     expect(links.some((link) => link.href === "/admin/settings")).toBe(false);
-    expect(links.some((link) => link.href === "/admin/site-admin-permissions")).toBe(false);
+    expect(
+      links.some((link) => link.href === "/admin/site-admin-permissions"),
+    ).toBe(false);
     expect(links.some((link) => link.href === "/admin/sites")).toBe(false);
-    expect(links.some((link) => link.href === "/admin/announcements")).toBe(false);
+    expect(links.some((link) => link.href === "/admin/announcements")).toBe(
+      false,
+    );
     expect(links.some((link) => link.href === "/admin/feedback")).toBe(false);
     expect(links.some((link) => link.href === "/admin/users")).toBe(true);
-    expect(links.some((link) => link.href === "/admin/organization" && link.nested && link.parentSectionId === "organization")).toBe(true);
+    expect(
+      links.some(
+        (link) =>
+          link.href === "/admin/organization" &&
+          link.nested &&
+          link.parentSectionId === "organization",
+      ),
+    ).toBe(true);
   });
 
   it("shows one Report link under Maintenance instead of separate daily and CM report pages", () => {
     const links = getAppLinks(RoleName.ENGINEER);
 
-    expect(links.some((link) => link.kind === "section" && link.label === "CM")).toBe(true);
-    expect(links.some((link) => link.label === "Report" && link.href === "/reports" && link.nested && link.parentSectionId === "maintenance")).toBe(true);
-    expect(links.some((link) => link.kind === "section" && link.label === "Reports")).toBe(false);
+    expect(
+      links.some((link) => link.kind === "section" && link.label === "CM"),
+    ).toBe(true);
+    expect(
+      links.some(
+        (link) =>
+          link.label === "Report" &&
+          link.href === "/reports" &&
+          link.nested &&
+          link.parentSectionId === "maintenance",
+      ),
+    ).toBe(true);
+    expect(
+      links.some((link) => link.kind === "section" && link.label === "Reports"),
+    ).toBe(false);
     expect(links.some((link) => link.href === "/reports/daily")).toBe(false);
     expect(links.some((link) => link.href === "/reports/cm")).toBe(false);
   });
@@ -191,53 +474,161 @@ describe("getAppLinks", () => {
     const links = getAppLinks(RoleName.ADMIN);
     const visitorLinks = getAppLinks(RoleName.VISITOR);
 
-    expect(links.some((link) => link.kind === "section" && link.label === "Assets")).toBe(true);
-    expect(links.some((link) => link.kind === "section" && link.label === "Inventory")).toBe(true);
-    expect(links.some((link) => link.label === "Equipment" && link.disabled)).toBe(true);
-    expect(links.some((link) => link.label === "Spare Parts" && link.href === "/dashboardstore/spare-parts" && !link.disabled)).toBe(true);
-    expect(visitorLinks.some((link) => link.label === "Spare Parts" && !link.disabled)).toBe(true);
+    expect(
+      links.some((link) => link.kind === "section" && link.label === "Assets"),
+    ).toBe(true);
+    expect(
+      links.some(
+        (link) => link.kind === "section" && link.label === "Inventory",
+      ),
+    ).toBe(true);
+    expect(
+      links.some((link) => link.label === "Equipment" && link.disabled),
+    ).toBe(true);
+    expect(
+      links.some(
+        (link) =>
+          link.label === "Spare Parts" &&
+          link.href === "/dashboardstore/spare-parts" &&
+          !link.disabled,
+      ),
+    ).toBe(true);
+    expect(
+      visitorLinks.some(
+        (link) => link.label === "Spare Parts" && !link.disabled,
+      ),
+    ).toBe(true);
   });
 
   it("shows real Inventory links to Store Officer", () => {
     const links = getAppLinks(RoleName.STORE_OFFICER);
 
-    expect(links.some((link) => link.href === "/dashboardstore/spare-parts" && !link.disabled)).toBe(true);
-    expect(links.some((link) => link.href === "/dashboardstore/stock" && !link.disabled)).toBe(true);
-    expect(links.some((link) => link.href === "/dashboardstore/stock" && link.label === "Stock")).toBe(true);
-    expect(links.some((link) => link.href === "/dashboardstore/issue?view=tracking" && link.label === "Stock Issue" && !link.disabled)).toBe(true);
-    expect(links.some((link) => link.href === "/dashboardstore/issue?view=create" && !link.disabled)).toBe(true);
-    expect(links.some((link) => link.href === "/dashboardstore/public-issue" && !link.disabled)).toBe(true);
-    expect(links.some((link) => link.href === "/dashboardstore/receive" && !link.disabled)).toBe(true);
-    expect(links.some((link) => link.href === "/dashboardstore/tracking" && link.label === "Issue Tracking" && !link.disabled)).toBe(true);
+    expect(
+      links.some(
+        (link) => link.href === "/dashboardstore/spare-parts" && !link.disabled,
+      ),
+    ).toBe(true);
+    expect(
+      links.some(
+        (link) => link.href === "/dashboardstore/stock" && !link.disabled,
+      ),
+    ).toBe(true);
+    expect(
+      links.some(
+        (link) =>
+          link.href === "/dashboardstore/stock" && link.label === "Stock",
+      ),
+    ).toBe(true);
+    expect(
+      links.some(
+        (link) =>
+          link.href === "/dashboardstore/issue?view=tracking" &&
+          link.label === "Stock Issue" &&
+          !link.disabled,
+      ),
+    ).toBe(true);
+    expect(
+      links.some(
+        (link) =>
+          link.href === "/dashboardstore/issue?view=create" && !link.disabled,
+      ),
+    ).toBe(true);
+    expect(
+      links.some(
+        (link) =>
+          link.href === "/dashboardstore/public-issue" && !link.disabled,
+      ),
+    ).toBe(true);
+    expect(
+      links.some(
+        (link) => link.href === "/dashboardstore/receive" && !link.disabled,
+      ),
+    ).toBe(true);
+    expect(
+      links.some(
+        (link) =>
+          link.href === "/dashboardstore/tracking" &&
+          link.label === "Issue Tracking" &&
+          !link.disabled,
+      ),
+    ).toBe(true);
     expect(links.findIndex((link) => link.label === "Stock Issue")).toBe(
       links.findIndex((link) => link.label === "Stock") + 1,
     );
     expect(links.findIndex((link) => link.label === "Issue Tracking")).toBe(
       links.findIndex((link) => link.label === "Receive") + 1,
     );
-    expect(links.some((link) => link.href === "/dashboardstore/movements" && link.label === "Stock Movement")).toBe(true);
-    expect(links.some((link) => link.href === "/dashboardstore/movements" && !link.disabled)).toBe(true);
-    expect(links.some((link) => link.href === "/dashboardstore/reports" && !link.disabled)).toBe(true);
+    expect(
+      links.some(
+        (link) =>
+          link.href === "/dashboardstore/movements" &&
+          link.label === "Stock Movement",
+      ),
+    ).toBe(true);
+    expect(
+      links.some(
+        (link) => link.href === "/dashboardstore/movements" && !link.disabled,
+      ),
+    ).toBe(true);
+    expect(
+      links.some(
+        (link) => link.href === "/dashboardstore/reports" && !link.disabled,
+      ),
+    ).toBe(true);
     expect(links.some((link) => link.href === "/dashboardcm")).toBe(false);
     expect(links.some((link) => link.href === "/work")).toBe(false);
     expect(links.some((link) => link.href === "/admin/users")).toBe(false);
   });
 
-  it("shows PM calendar and work to viewers, while PM Groups requires management", () => {
+  it("shows PM Setup under PM to viewers, while PM Groups requires management", () => {
     const technicianLinks = getAppLinks(RoleName.TECHNICIAN);
     const adminLinks = getAppLinks(RoleName.ADMIN);
     const deniedViewerLinks = getAppLinks(RoleName.TECHNICIAN, {
       id: "tech-denied",
       userPermissionOverrides: [
-        { userId: "tech-denied", permissionKey: PermissionKey.VIEW_PM, decision: "DENY" },
+        {
+          userId: "tech-denied",
+          permissionKey: PermissionKey.VIEW_PM,
+          decision: "DENY",
+        },
       ],
     });
 
-    expect(technicianLinks.some((link) => link.href === "/dashboardpm")).toBe(true);
-    expect(technicianLinks.some((link) => link.href === "/dashboardpm/work")).toBe(true);
-    expect(technicianLinks.some((link) => link.href === "/dashboardpm/groups")).toBe(false);
-    expect(adminLinks.some((link) => link.href === "/dashboardpm/groups")).toBe(true);
-    expect(deniedViewerLinks.some((link) => link.parentSectionId === "pm")).toBe(false);
+    expect(
+      technicianLinks.some(
+        (link) =>
+          link.href === "/dashboardpm/setup" &&
+          link.nested &&
+          link.parentSectionId === "pm",
+      ),
+    ).toBe(true);
+    expect(technicianLinks.some((link) => link.href === "/dashboardpm")).toBe(
+      true,
+    );
+    expect(
+      technicianLinks.some((link) => link.href === "/dashboardpm/work"),
+    ).toBe(true);
+    expect(
+      technicianLinks.some((link) => link.href === "/dashboardpm/groups"),
+    ).toBe(false);
+    expect(
+      adminLinks
+        .filter((link) => link.parentSectionId === "pm")
+        .map((link) => link.href),
+    ).toEqual([
+      "/dashboardpm/setup",
+      "/dashboardpm/calendar",
+      "/dashboardpm/groups",
+      "/dashboardpm/work",
+    ]);
+    expect(
+      deniedViewerLinks.some((link) => link.parentSectionId === "pm"),
+    ).toBe(false);
+    render(React.createElement(AppNavLinks, { role: RoleName.TECHNICIAN }));
+    fireEvent.click(screen.getByRole("button", { name: /^PM$/i }));
+    expect(
+      screen.getByRole("link", { name: "PM Setup" }).getAttribute("href"),
+    ).toBe("/dashboardpm/setup");
   });
 
   it("opens the Assets section without turning future items into links", () => {
@@ -254,7 +645,12 @@ describe("getAppLinks", () => {
   });
 
   it("renders expanded desktop navigation with Asset-style tree branches", () => {
-    render(React.createElement(AppNavLinks, { role: RoleName.ADMIN, treeStyle: true }));
+    render(
+      React.createElement(AppNavLinks, {
+        role: RoleName.ADMIN,
+        treeStyle: true,
+      }),
+    );
 
     fireEvent.click(screen.getByRole("button", { name: /^CM$/i }));
 
@@ -270,27 +666,58 @@ describe("getAppLinks", () => {
   });
 
   it("can render the sidebar as icon-only collapsed navigation", () => {
-    render(React.createElement(AppNavLinks, { role: RoleName.ADMIN, collapsed: true }));
+    render(
+      React.createElement(AppNavLinks, {
+        role: RoleName.ADMIN,
+        collapsed: true,
+      }),
+    );
 
-    expect(screen.getByRole("link", { name: /^Dashboard$/i })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /^Dashboard$/i })).toBeTruthy();
     expect(screen.queryByText("Dashboard")).toBeNull();
     expect(screen.getByRole("button", { name: /^CM$/i })).toBeTruthy();
   });
 
   it("shows My Activities to logged-in working roles", () => {
     const adminLinks = getAppLinks(RoleName.ADMIN);
-    const adminActivitiesLink = adminLinks.find((link) => link.href === "/activities");
+    const adminActivitiesLink = adminLinks.find(
+      (link) => link.href === "/activities",
+    );
     expect(adminActivitiesLink).toBeTruthy();
     expect(adminActivitiesLink?.nested).toBeUndefined();
-    expect(adminLinks.findIndex((link) => link.href === "/activities")).toBeGreaterThan(
+    expect(
+      adminLinks.findIndex((link) => link.href === "/activities"),
+    ).toBeGreaterThan(
       adminLinks.findIndex((link) => link.href === "/dashboardcm"),
     );
-    expect(getAppLinks(RoleName.ORGANIZATION_ADMIN).some((link) => link.href === "/activities")).toBe(true);
-    expect(getAppLinks(RoleName.SITE_ADMIN).some((link) => link.href === "/activities")).toBe(true);
-    expect(getAppLinks(RoleName.ENGINEER).some((link) => link.href === "/activities")).toBe(true);
-    expect(getAppLinks(RoleName.TECHNICIAN).some((link) => link.href === "/activities")).toBe(true);
-    expect(getAppLinks(RoleName.STORE_OFFICER).some((link) => link.href === "/activities")).toBe(true);
-    expect(getAppLinks(RoleName.VISITOR).some((link) => link.href === "/activities")).toBe(false);
+    expect(
+      getAppLinks(RoleName.ORGANIZATION_ADMIN).some(
+        (link) => link.href === "/activities",
+      ),
+    ).toBe(true);
+    expect(
+      getAppLinks(RoleName.SITE_ADMIN).some(
+        (link) => link.href === "/activities",
+      ),
+    ).toBe(true);
+    expect(
+      getAppLinks(RoleName.ENGINEER).some(
+        (link) => link.href === "/activities",
+      ),
+    ).toBe(true);
+    expect(
+      getAppLinks(RoleName.TECHNICIAN).some(
+        (link) => link.href === "/activities",
+      ),
+    ).toBe(true);
+    expect(
+      getAppLinks(RoleName.STORE_OFFICER).some(
+        (link) => link.href === "/activities",
+      ),
+    ).toBe(true);
+    expect(
+      getAppLinks(RoleName.VISITOR).some((link) => link.href === "/activities"),
+    ).toBe(false);
   });
 
   it("keeps My Activities visible when a working role has narrowly denied permissions", () => {
@@ -310,17 +737,23 @@ describe("getAppLinks", () => {
       userPermissionOverrides: deniedPermissions,
     });
 
-    expect(links.some((link) => link.href === "/activities" && link.label === "My Activities")).toBe(true);
+    expect(
+      links.some(
+        (link) => link.href === "/activities" && link.label === "My Activities",
+      ),
+    ).toBe(true);
   });
 
   it("hides My Activities when its dedicated permission is denied", () => {
     const links = getAppLinks(RoleName.ENGINEER, {
       id: "engineer-without-activities",
-      userPermissionOverrides: [{
-        userId: "engineer-without-activities",
-        permissionKey: PermissionKey.VIEW_MY_ACTIVITIES,
-        decision: "DENY",
-      }],
+      userPermissionOverrides: [
+        {
+          userId: "engineer-without-activities",
+          permissionKey: PermissionKey.VIEW_MY_ACTIVITIES,
+          decision: "DENY",
+        },
+      ],
     });
 
     expect(links.some((link) => link.href === "/activities")).toBe(false);
@@ -346,7 +779,9 @@ describe("getAppLinks", () => {
     const allWorkLink = screen.getByRole("link", { name: /All Work/i });
 
     expect(allWorkLink.className).toContain("ml-6");
-    expect(allWorkLink.querySelector("[data-nav-submenu-bullet='true']")).toBeTruthy();
+    expect(
+      allWorkLink.querySelector("[data-nav-submenu-bullet='true']"),
+    ).toBeTruthy();
     expect(allWorkLink.querySelector("svg")).toBeNull();
   });
 
@@ -358,7 +793,9 @@ describe("getAppLinks", () => {
     fireEvent.click(screen.getByRole("button", { name: /^Organization$/i }));
 
     expect(screen.getByRole("link", { name: /^Organizations$/i })).toBeTruthy();
-    expect(screen.queryByRole("link", { name: /Organization Structure/i })).toBeNull();
+    expect(
+      screen.queryByRole("link", { name: /Organization Structure/i }),
+    ).toBeNull();
     expect(screen.getByRole("link", { name: /Sites/i })).toBeTruthy();
     expect(screen.getByRole("link", { name: /Members/i })).toBeTruthy();
   });

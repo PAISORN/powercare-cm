@@ -2,7 +2,6 @@ import { CalendarClock, MessageCircleMore, RefreshCw, Save, Send, ShieldCheck } 
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { AdminScopeHiddenFields, AdminSiteScopeSelector } from "../../../components/admin-site-scope-selector";
-import { AppShell } from "../../../components/app-shell";
 import type { AdminSiteScope } from "../../../modules/admin/admin-site-scope";
 import { formatThaiDateTime } from "../../../lib/date-time/bangkok-time";
 import { db } from "../../../lib/db";
@@ -231,7 +230,7 @@ export default async function AdminLineSettingsPage({
   const canSendLineTest = canTestLineMessaging(user);
 
   return (
-    <AppShell>
+    <>
       <header>
         <p className="flex items-center gap-2 text-sm font-semibold text-[var(--primary)]">
           <MessageCircleMore aria-hidden="true" size={18} /> Admin Communication
@@ -391,7 +390,7 @@ export default async function AdminLineSettingsPage({
           {!deliveries.length ? <p className="p-6 text-center text-[var(--muted)]">ยังไม่มีประวัติการส่ง</p> : null}
         </div>
       </section>
-    </AppShell>
+    </>
   );
 }
 

@@ -1,0 +1,29 @@
+"use client";
+
+import Link from "next/link";
+import { useRef, useState } from "react";
+import { saveListPosition } from "../preserve-list-position";
+
+type Item = { id:string; label:string; status:string; mainAssetCount:number; color?:{backgroundColor:string;borderColor:string;color:string} };
+type Day = { date:string; weekday:string; markers:Array<{id:string;title:string;type:string}>; items:Item[]; href:string };
+
+const START_HOUR=8;
+const END_HOUR=18;
+const HOUR_HEIGHT=56;
+const TIMELINE_HEIGHT=(END_HOUR-START_HOUR)*HOUR_HEIGHT;
+const timeLabel=(hour:number)=>String(hour).padStart(2,"0")+":00";
+
+export function PmAnnualWeekBoard({action,days,hidden,positionKey}:{action:(data:FormData)=>void|Promise<void>;days:Day[];hidden:{organizationId:string;plantId:string;planId:string;year:number;month:number};positionKey:string}){
+ const form=useRef<HTMLFormElement>(null);const [dragged,setDragged]=useState<string|null>(null);const scheduleId=useRef<HTMLInputElement>(null);const destination=useRef<HTMLInputElement>(null);const reason=useRef<HTMLInputElement>(null);
+ function drop(date:string){if(!dragged||!form.current||!scheduleId.current||!destination.current||!reason.current)return;const why=window.prompt("ระบุเหตุผลที่ย้ายกำหนดการ PM");if(!why?.trim()){setDragged(null);return;}scheduleId.current.value=dragged;destination.current.value=date;reason.current.value=why.trim();saveListPosition(positionKey,"pm-day-"+date);form.current.requestSubmit();setDragged(null);}
+ function card(item:Item,day:Day,compact=false){return <Link className={"cursor-grab rounded-lg border p-2 text-xs font-bold shadow-sm active:cursor-grabbing "+(compact?"min-h-14":"h-full")} draggable={item.status==="SCHEDULED"} href={day.href} key={item.id} onClick={()=>saveListPosition(positionKey,"pm-day-"+day.date)} onDragEnd={()=>setDragged(null)} onDragStart={()=>setDragged(item.id)} scroll={false} style={item.color}><span className="flex items-start justify-between gap-1"><span className="min-w-0 break-words">{item.label}</span><span aria-label={"Main Assets "+item.mainAssetCount} className="shrink-0 rounded-full border border-current/30 px-1.5 text-[10px]">{item.mainAssetCount}</span></span><span className="mt-1 block text-[10px] font-normal">{item.status}</span></Link>;}
+ return <><form action={action} className="hidden" ref={form}><input name="organizationId" type="hidden" value={hidden.organizationId}/><input name="plantId" type="hidden" value={hidden.plantId}/><input name="planId" type="hidden" value={hidden.planId}/><input name="year" type="hidden" value={hidden.year}/><input name="view" type="hidden" value="week"/><input name="month" type="hidden" value={hidden.month}/><input name="scheduleId" ref={scheduleId} type="hidden"/><input name="destinationDateKey" ref={destination} type="hidden"/><input name="reason" ref={reason} type="hidden"/></form>
+ <div className="mt-5 overflow-x-auto rounded-2xl border border-[var(--line)] bg-white"><div className="min-w-[1080px]" role="grid" aria-label="ตารางเวลา PM รายสัปดาห์">
+  <div className="grid grid-cols-[76px_repeat(7,minmax(0,1fr))] border-b border-[var(--line)] bg-[var(--soft)]" role="row"><div className="border-r border-[var(--line)] p-3 text-center text-xs font-extrabold text-[var(--muted)]" role="columnheader">เวลา</div>{days.map(day=><Link className="min-w-0 border-r border-[var(--line)] p-3 text-center last:border-r-0 hover:bg-emerald-50" href={day.href} id={"pm-day-"+day.date} key={day.date} onClick={()=>saveListPosition(positionKey,"pm-day-"+day.date)} role="columnheader" scroll={false}><p className="text-xs font-bold uppercase text-[var(--muted)]">{day.weekday}</p><p className="mt-1 text-lg font-black">{day.date.slice(8,10)}</p>{day.markers.map(marker=><span className={"mt-1 block break-words rounded-md px-2 py-1 text-[10px] font-bold "+(marker.type==="SHUTDOWN"?"bg-red-100 text-red-800":"bg-amber-100 text-amber-800")} key={marker.id}>{marker.title}</span>)}</Link>)}</div>
+  <div className="grid grid-cols-[76px_repeat(7,minmax(0,1fr))]" role="row"><div className="relative border-r border-[var(--line)] bg-[var(--soft)]/60" style={{height:TIMELINE_HEIGHT}}>{Array.from({length:END_HOUR-START_HOUR+1},(_,index)=>{const hour=START_HOUR+index;return <span className={"absolute right-2 text-[10px] font-bold text-[var(--muted)] "+(index===0?"translate-y-0":index===END_HOUR-START_HOUR?"-translate-y-full":"-translate-y-1/2")} key={hour} style={{top:index*HOUR_HEIGHT}}>{timeLabel(hour)}</span>;})}</div>
+  {days.map(day=>{const morning=day.items.slice(0,1);const afternoon=day.items.slice(1);return <div className={"relative border-r border-[var(--line)] last:border-r-0 "+(dragged?"bg-blue-50/40":"")} key={day.date} onDragOver={event=>event.preventDefault()} onDrop={()=>drop(day.date)} role="gridcell" style={{height:TIMELINE_HEIGHT,backgroundImage:"repeating-linear-gradient(to bottom, transparent 0, transparent "+(HOUR_HEIGHT-1)+"px, var(--line) "+HOUR_HEIGHT+"px)"}}>
+   {morning.length?<div aria-label="ช่วง PM 09:00 ถึง 12:00" className="absolute inset-x-1.5 grid grid-rows-[auto_minmax(0,1fr)] gap-1 overflow-hidden rounded-xl border border-dashed border-slate-300 bg-white/65 p-1.5" data-time-slot="09:00-12:00" style={{top:(9-START_HOUR)*HOUR_HEIGHT+4,height:3*HOUR_HEIGHT-8}}><span className="text-[9px] font-extrabold text-[var(--muted)]">09:00–12:00</span>{morning.map(item=>card(item,day))}</div>:null}
+   {afternoon.length?<div aria-label="ช่วง PM 14:00 ถึง 17:00" className="absolute inset-x-1.5 grid auto-rows-max gap-1 overflow-y-auto rounded-xl border border-dashed border-slate-300 bg-white/65 p-1.5" data-time-slot="14:00-17:00" style={{top:(14-START_HOUR)*HOUR_HEIGHT+4,height:3*HOUR_HEIGHT-8}}><span className="sticky top-0 z-10 bg-white/90 text-[9px] font-extrabold text-[var(--muted)]">14:00–17:00</span>{afternoon.map(item=>card(item,day,afternoon.length>1))}</div>:null}
+  </div>;})}</div>
+ </div></div></>;
+}

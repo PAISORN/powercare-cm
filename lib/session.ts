@@ -1,5 +1,6 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { cache } from "react";
 import { db } from "./db";
 
 const sessionCookie = "cm_session_user";
@@ -22,7 +23,7 @@ export async function clearSession() {
   cookieStore.delete(sessionCookie);
 }
 
-export async function getCurrentUser() {
+export const getCurrentUser = cache(async function getCurrentUser() {
   const cookieStore = await cookies();
   const userId = cookieStore.get(sessionCookie)?.value;
   if (!userId) return null;
@@ -51,7 +52,7 @@ export async function getCurrentUser() {
     await db.user.update({ where: { id: user.id }, data: { lastSeenAt: new Date() }, select: lastSeenSelect });
   }
   return { ...user, rolePermissionOverrides, userPermissionOverrides };
-}
+});
 
 export async function requireUser() {
   const user = await getCurrentUser();

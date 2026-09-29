@@ -1,6 +1,5 @@
 import { Database, History, PencilLine, PlusCircle, Trash2 } from "lucide-react";
 import { redirect } from "next/navigation";
-import { AppShell } from "../../../components/app-shell";
 import { db } from "../../../lib/db";
 import { formatThaiDateTime as formatThaiDate } from "../../../lib/date-time/bangkok-time";
 import { requireUser } from "../../../lib/session";
@@ -81,7 +80,7 @@ export default async function AdminHistoryPage() {
   const updateCount = events.length - createCount - deleteCount;
 
   return (
-    <AppShell>
+    <>
       <section className="menu-heading-plain rounded-3xl border border-[var(--line)] bg-[var(--surface)] p-5 shadow-[var(--shadow)] md:p-7">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
@@ -94,7 +93,7 @@ export default async function AdminHistoryPage() {
               แสดงประวัติการจัดการ Organization, Site, Users, Master Data, SLA, System Settings และ LINE Settings โดยไม่รวมกิจกรรมงานซ่อมทั่วไป
             </p>
           </div>
-          <div className="grid min-w-72 grid-cols-3 gap-2">
+          <div className="grid w-full grid-cols-3 gap-2 sm:w-auto sm:min-w-72">
             <SummaryTile label="Create" value={createCount} tone="green" />
             <SummaryTile label="Update" value={updateCount} tone="blue" />
             <SummaryTile label="Delete / Off" value={deleteCount} tone="red" />
@@ -142,7 +141,7 @@ export default async function AdminHistoryPage() {
           )}
         </div>
       </section>
-    </AppShell>
+    </>
   );
 }
 

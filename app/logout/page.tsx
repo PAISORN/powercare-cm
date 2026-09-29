@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { AppShell } from "../../components/app-shell";
 import { requireUser } from "../../lib/session";
 import { logoutAction } from "./actions";
 
@@ -7,7 +6,7 @@ export default async function LogoutPage() {
   const user = await requireUser();
 
   return (
-    <AppShell>
+    <>
       <section className="mx-auto mt-16 max-w-lg rounded-3xl border border-[var(--line)] bg-[var(--surface)] p-6 shadow-[var(--shadow)]">
         <h1 className="text-3xl font-bold">Logout</h1>
         <p className="mt-3 text-[var(--muted)]">Sign out from {user.fullName}?</p>
@@ -20,6 +19,6 @@ export default async function LogoutPage() {
           </Link>
         </form>
       </section>
-    </AppShell>
+    </>
   );
 }

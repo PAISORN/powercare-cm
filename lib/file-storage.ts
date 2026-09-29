@@ -100,13 +100,14 @@ export async function saveSignatureFile(userId: string, file: File) {
 
   const extension = extensionForMimeType(file.type);
   const bytes = Buffer.from(await file.arrayBuffer());
+  const version = randomUUID();
   const supabaseFileName = `signature.${extension}`;
   const uploadedAt = new Date();
 
   if (isSupabaseStorageEnabled()) {
     const target = {
       bucket: process.env.SUPABASE_SIGNATURES_BUCKET || defaultSignaturesBucket,
-      objectPath: `users/${userId}/signature`,
+      objectPath: `users/${userId}/signature/${version}`,
     };
     await uploadSupabaseObject(target, bytes, file.type);
     return {
@@ -121,7 +122,7 @@ export async function saveSignatureFile(userId: string, file: File) {
   const storageDir = path.join(process.cwd(), "storage", "signatures");
   await mkdir(storageDir, { recursive: true });
 
-  const fileName = `${userId}.${extension}`;
+  const fileName = `${userId}-${version}.${extension}`;
   const storagePath = path.join(storageDir, fileName);
   await writeFile(storagePath, bytes);
 
@@ -141,12 +142,13 @@ export async function saveProfilePhotoFile(userId: string, file: File) {
   const extension = extensionForMimeType(file.type);
   const bytes = Buffer.from(await file.arrayBuffer());
   const checksum = createHash("sha256").update(bytes).digest("hex");
+  const version = randomUUID();
   const supabaseFileName = `profile.${extension}`;
 
   if (isSupabaseStorageEnabled()) {
     const target = {
       bucket: process.env.SUPABASE_PROFILE_PHOTOS_BUCKET || defaultProfilePhotosBucket,
-      objectPath: `users/${userId}/profile`,
+      objectPath: `users/${userId}/profile/${version}`,
     };
     await uploadSupabaseObject(target, bytes, file.type);
     return {
@@ -161,7 +163,7 @@ export async function saveProfilePhotoFile(userId: string, file: File) {
   const storageDir = path.join(process.cwd(), "storage", "profile-photos");
   await mkdir(storageDir, { recursive: true });
 
-  const fileName = `${userId}.${extension}`;
+  const fileName = `${userId}-${version}.${extension}`;
   const storagePath = path.join(storageDir, fileName);
   await writeFile(storagePath, bytes);
 

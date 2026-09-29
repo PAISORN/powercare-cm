@@ -1,0 +1,21 @@
+export type StockPageQuery = {
+  organizationId?: string;
+  plantId?: string;
+  search?: string;
+  storeId?: string;
+  typeId?: string;
+  categoryId?: string;
+  materialGroupId?: string;
+  itemKind?: "SPARE_PART" | "CHEMICAL" | "OIL";
+  unit?: string;
+  stockStatus?: "all" | "available" | "nearMin" | "outOfStock";
+  stockAction?: "issue" | "receive" | "adjust";
+  stockId?: string;
+  page?: string;
+  saved?: string;
+  error?: string;
+  importExcel?: string;
+  imported?: string;
+  importError?: string;
+  editPartId?: string;
+};

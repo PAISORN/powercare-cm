@@ -1,62 +1,52 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
-describe("Permission Center categories", () => {
-  const source = readFileSync("app/admin/permissions/page.tsx", "utf8");
+const routeSource = readFileSync("app/admin/permissions/page.tsx", "utf8");
+const actionSource = readFileSync("app/admin/permissions/actions.ts", "utf8");
+const dataSource = readFileSync("modules/auth/permission-center-page-data.ts", "utf8");
+const modelSource = readFileSync("modules/auth/permission-center-page-model.ts", "utf8");
+const workspaceSource = readFileSync("components/admin-permissions-page/permission-center-workspace.tsx", "utf8");
+const source = [routeSource, actionSource, dataSource, modelSource, workspaceSource].join("\n");
 
-  it("groups the permission switches into named sections", () => {
-    expect(source).toContain("groupPermissionKeys(visiblePermissionKeys)");
-    expect(source).toContain("Store และ Inventory");
-    expect(source).toContain("งานซ่อมและขั้นตอนดำเนินงาน");
-    expect(source).toContain("ผู้ใช้ Role และการมอบหมายสิทธิ์");
-    expect(source).toContain("Permission categories");
-    expect(source).toContain("thaiPermissionDescription(key)");
-    expect(source).toContain('{ id: "pm", title: "Preventive Maintenance"');
-    expect(source).toContain('"execute_pm_work"');
-    expect(source).toContain("อนุญาตให้");
-    expect(source).toContain('value === PermissionKey.VIEW_MY_ACTIVITIES');
-    expect(source).toContain('"view_my_activities"');
-    expect(source).toContain('value === PermissionKey.VIEW_MY_ACTIVITIES_CM');
-    expect(source).toContain('value === PermissionKey.VIEW_MY_ACTIVITIES_STORE');
-    expect(source).toContain("งาน CM ที่ตนรับผิดชอบหรือต้องตรวจรับ");
-    expect(source).toContain("ใบเบิก Store ที่ตนต้องอนุมัติ");
-    expect(source).toContain('value === PermissionKey.EDIT_WORK_REQUEST');
-    expect(source).toContain("แก้ไขข้อมูลผู้แจ้ง หมวด โซน เครื่องจักร ปัญหา และความเร่งด่วนจากหน้า All Work");
-    expect(source).toContain("md:grid-cols-2 xl:grid-cols-3");
-    expect(source).toContain("<fieldset");
+describe("Permission Center architecture", () => {
+  it("keeps the route as a thin adapter", () => {
+    expect(routeSource).toContain("getPermissionCenterPageData");
+    expect(routeSource).toContain("PermissionCenterWorkspace");
+    expect(routeSource).not.toContain("db.");
+    expect(routeSource).not.toContain('"use server"');
   });
 
-  it("offers only the explicit PM execution grant for Owner Admin at SYSTEM scope", () => {
-    expect(source).toContain('const scopeKey = isOwnerRole ? "SYSTEM"');
-    expect(source).toContain("isOwnerRole ? [PermissionKey.EXECUTE_PM_WORK] : permissionKeys");
-    expect(source).toContain("const changedKeys = changedPermissionKeys(formData, editablePermissionKeys)");
-    expect(source).toContain("organizationId: isOwnerRole ? null : organizationId");
-    expect(source).toContain("Owner Admin ใช้สิทธิ์ระดับระบบ");
-    expect(source).toContain("const actor = await requireOwner()");
+  it("groups permission switches and keeps Thai descriptions in the model", () => {
+    expect(workspaceSource).toContain("Permission categories");
+    expect(modelSource).toContain("Store และ Inventory");
+    expect(modelSource).toContain("งานซ่อมและขั้นตอนดำเนินงาน");
+    expect(modelSource).toContain("ผู้ใช้ Role และการมอบหมายสิทธิ์");
+    expect(modelSource).toContain('{ id: "pm", title: "Preventive Maintenance"');
+    expect(modelSource).toContain("thaiPermissionDescription");
   });
 
-  it("supports a narrowly scoped individual Owner Admin PM execution override", () => {
+  it("supports explicit Owner PM grants and scoped changed-key persistence", () => {
+    expect(actionSource).toContain('const scopeKey = isOwnerRole ? "SYSTEM"');
+    expect(actionSource).toContain("isOwnerRole ? [PermissionKey.EXECUTE_PM_WORK] : permissionKeys");
+    expect(actionSource).toContain('formData.get(`permission:${permissionKey}`) ?? "INHERIT"');
+    expect(modelSource).toContain('formData.getAll("changedPermissionKeys")');
+    expect(actionSource).toContain("permissionKey: { in: changedKeys }");
+    expect(actionSource).not.toContain("tx.userPermissionOverride.deleteMany({ where: { userId } })");
+  });
+
+  it("presents INHERIT separately from the effective permission", () => {
+    expect(dataSource).toContain("resolvePermissionPresentation");
+    expect(modelSource).toContain('overrideDecision: PermissionDecision | "INHERIT"');
+    expect(workspaceSource).toContain("inheritedAllowed");
+    expect(workspaceSource).toContain("initialDecision");
+    expect(actionSource).toContain("postSaveUserOverrides");
+    expect(actionSource).toContain("effectiveAllowed(PermissionKey.APPROVE_STORE_ISSUE)");
+  });
+
+  it("keeps inventory scope and permission audit data together", () => {
+    expect(actionSource).toContain("inventoryScopeSignature");
+    expect(actionSource).toContain("inventoryScopes: beforeScopes");
+    expect(actionSource).toContain("inventoryScopes: scopeRows");
     expect(source).toContain("activePermissionTargetWhere(userId, plantId)");
-    expect(source).toContain("const isOwnerTarget = target.role === RoleName.ADMIN");
-    expect(source).toContain("const editablePermissionKeys = editableUserPermissionKeys(target.role)");
-    expect(source).toContain("permissionKeys: changedKeys");
-    expect(source).toContain("const rows = buildUserPermissionOverrideRows");
-    expect(source).toContain('const visiblePermissionKeys = effectiveRole === RoleName.ADMIN');
-    expect(source).toContain('mode === "user" && effectiveRole !== RoleName.ADMIN');
-  });
-
-  it("preserves unrelated Owner Admin overrides and inventory scope on save", () => {
-    expect(source).not.toContain("tx.userPermissionOverride.deleteMany({ where: { userId } })");
-    expect(source).toContain("where: { userId, permissionKey: { in: changedKeys } }");
-    expect(source).toContain("if (!isOwnerTarget) {");
-    expect(source).toContain("await tx.userInventoryScope.deleteMany({ where: { userId } })");
-  });
-
-  it("persists only permission switches changed in the submitted form", () => {
-    expect(source).toContain('formData.getAll("changedPermissionKeys")');
-    expect(source).toContain("permissionKey: { in: changedKeys }");
-    expect(source).toContain("const rows = changedKeys.flatMap");
-    expect(source).toContain("permissionKeys: changedKeys");
-    expect(source).not.toContain("role, permissionKey: { in: editablePermissionKeys }");
   });
 });

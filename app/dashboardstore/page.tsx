@@ -131,7 +131,7 @@ export default async function StoreDashboardPage({ searchParams }: { searchParam
         {(scope.canSelectOrganization || scope.canSelectPlant) ? <div className="dashboard-glass-host"><AdminSiteScopeSelector action="/dashboardstore" scope={scope} title="ขอบเขตคลังสินค้า" description="เลือก Organization และ Site ที่ต้องการดู Dashboard" /></div> : null}
         <StoreDashboardFilter activeDateFilter={activeDateFilter} organizationId={scope.organization.id} plantId={scope.plant.id} />
 
-        <section aria-label="สรุปข้อมูลคลังสินค้า" className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5">
+        <section aria-label="สรุปข้อมูลคลังสินค้า" className="dashboard-kpi-carousel sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5">
           <MetricCard detail={canViewValue ? `${formatNumber(stocks.length)} รายการสินค้า` : `${formatNumber(totalQuantity)} หน่วยคงเหลือ`} href={canViewStock ? "/dashboardstore/stock" : undefined} icon={<Boxes size={21} />} label={canViewValue ? "มูลค่าสินค้าคงคลัง" : "รายการสินค้าคงคลัง"} tone="blue" value={canViewValue ? formatMoney(totalValue) : `${formatNumber(stocks.length)} รายการ`} />
           <MetricCard detail={periodLabel} href={canReceive ? "/dashboardstore/receive" : undefined} icon={<ArrowDownToLine size={21} />} label="รายการรับเข้า" tone="emerald" value={`${formatNumber(receivesInPeriod)} รายการ`} />
           <MetricCard detail={`${formatNumber(issuedMovements)} รายการเคลื่อนไหว`} href={canTrack ? "/dashboardstore/tracking" : undefined} icon={<ArrowUpFromLine size={21} />} label="รายการเบิกจ่าย" tone="violet" value={`${formatNumber(issuesInPeriod.length)} รายการ`} />
@@ -197,7 +197,7 @@ function MetricCard({ detail, href, icon, label, tone, value }: { detail: string
     </div>
     <small className="relative z-10 mt-4 block truncate text-xs font-semibold leading-snug text-[var(--muted)] sm:text-sm">{detail}</small>
   </>;
-  const className = "dashboard-kpi relative block min-h-[148px] h-full w-full min-w-0 overflow-hidden rounded-2xl border border-[var(--line)] p-4 text-left text-[var(--ink)] shadow-[var(--shadow)] transition duration-300 ease-out hover:-translate-y-1 hover:shadow-lg active:translate-y-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg)] sm:p-5";
+  const className = "dashboard-kpi dashboard-kpi-slide relative block min-h-[148px] h-full w-full min-w-0 overflow-hidden rounded-2xl border border-[var(--line)] p-4 text-left text-[var(--ink)] shadow-[var(--shadow)] transition duration-300 ease-out hover:-translate-y-1 hover:shadow-lg active:translate-y-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg)] sm:p-5";
   const style = { "--kpi-color": tones[tone] } as React.CSSProperties;
   return href ? <Link aria-label={`${label} ${value}`} className={`${className} cursor-pointer`} href={href} style={style}>{content}</Link> : <article className={className} style={style}>{content}</article>;
 }

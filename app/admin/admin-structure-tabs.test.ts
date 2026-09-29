@@ -14,9 +14,15 @@ describe("Admin structure tabs", () => {
   });
 
   it("renders the shared tab bar on all structure management pages", () => {
-    const organization = readFileSync("app/admin/organization/page.tsx", "utf8");
+    const organization = readFileSync(
+      "components/admin-organization-page/admin-organization-workspace.tsx",
+      "utf8",
+    );
     const sites = readFileSync("app/admin/sites/page.tsx", "utf8");
-    const users = readFileSync("app/admin/users/page.tsx", "utf8");
+    const users = readFileSync(
+      "components/admin-users-page/admin-users-workspace.tsx",
+      "utf8",
+    );
 
     expect(organization).toContain("AdminStructureTabs");
     expect(organization).toContain('activeTab="organization"');
@@ -27,7 +33,10 @@ describe("Admin structure tabs", () => {
   });
 
   it("keeps the Owner Admin organization create form visible on the organization tab", () => {
-    const source = readFileSync("app/admin/organization/page.tsx", "utf8");
+    const source = [
+      "app/admin/organization/actions.ts",
+      "components/admin-organization-page/admin-organization-workspace.tsx",
+    ].map((file) => readFileSync(file, "utf8")).join("\n");
 
     expect(source).toContain("createOrganizationAction");
     expect(source).toContain('aria-label="Create organization"');

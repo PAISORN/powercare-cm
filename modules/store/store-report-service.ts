@@ -1,6 +1,31 @@
 import { StoreIssueStatus } from "./store-types";
 
 const UNCATEGORIZED_LABEL = "ไม่ระบุหมวดหมู่";
+const STOCK_VALUE_COLUMNS = new Set(["Unit Price", "Total Value"]);
+
+export function applyStoreReportValueAccess<T extends Record<string, unknown>>(
+  rows: T[],
+  canViewStockValue: boolean,
+): T[] {
+  if (canViewStockValue) return rows;
+  return rows.map(
+    (row) =>
+      Object.fromEntries(
+        Object.entries(row).filter(
+          ([column]) => !STOCK_VALUE_COLUMNS.has(column),
+        ),
+      ) as T,
+  );
+}
+
+export function applyStoreReportColumnValueAccess(
+  columns: string[],
+  canViewStockValue: boolean,
+) {
+  return canViewStockValue
+    ? columns
+    : columns.filter((column) => !STOCK_VALUE_COLUMNS.has(column));
+}
 
 export type StoreIssueReportRow = {
   id: string;
@@ -66,7 +91,9 @@ export type StockMovementSummary = {
   adjustmentOutQuantity: number;
 };
 
-export function summarizeStoreIssues(rows: StoreIssueReportRow[]): StoreIssueSummary {
+export function summarizeStoreIssues(
+  rows: StoreIssueReportRow[],
+): StoreIssueSummary {
   const byCategory = new Map<string, number>();
   const summary: StoreIssueSummary = {
     total: rows.length,
@@ -80,8 +107,10 @@ export function summarizeStoreIssues(rows: StoreIssueReportRow[]): StoreIssueSum
   for (const row of rows) {
     const categoryName = row.categoryName?.trim() || UNCATEGORIZED_LABEL;
     byCategory.set(categoryName, (byCategory.get(categoryName) ?? 0) + 1);
-    if (row.status === StoreIssueStatus.WAITING_ENGINEER_APPROVAL) summary.waitingEngineerApproval += 1;
-    if (row.status === StoreIssueStatus.WAITING_STORE_ISSUE) summary.waitingStoreIssue += 1;
+    if (row.status === StoreIssueStatus.WAITING_ENGINEER_APPROVAL)
+      summary.waitingEngineerApproval += 1;
+    if (row.status === StoreIssueStatus.WAITING_STORE_ISSUE)
+      summary.waitingStoreIssue += 1;
     if (row.status === StoreIssueStatus.ISSUED) summary.issued += 1;
     if (
       row.status === StoreIssueStatus.ENGINEER_REJECTED ||
@@ -94,13 +123,21 @@ export function summarizeStoreIssues(rows: StoreIssueReportRow[]): StoreIssueSum
 
   summary.byCategory = Array.from(byCategory.entries())
     .map(([categoryName, total]) => ({ categoryName, total }))
-    .sort((a, b) => b.total - a.total || a.categoryName.localeCompare(b.categoryName));
+    .sort(
+      (a, b) =>
+        b.total - a.total || a.categoryName.localeCompare(b.categoryName),
+    );
 
   return summary;
 }
 
-export function summarizeStockBalances(rows: StockBalanceReportRow[]): StockBalanceSummary {
-  const byCategory = new Map<string, { totalItems: number; totalQuantity: number; totalValue: number }>();
+export function summarizeStockBalances(
+  rows: StockBalanceReportRow[],
+): StockBalanceSummary {
+  const byCategory = new Map<
+    string,
+    { totalItems: number; totalQuantity: number; totalValue: number }
+  >();
   const lowStockItems: StockBalanceSummary["lowStockItems"] = [];
   let totalQuantity = 0;
   let totalValue = 0;
@@ -110,7 +147,11 @@ export function summarizeStockBalances(rows: StockBalanceReportRow[]): StockBala
     const unitPrice = Number(row.latestUnitPrice ?? 0);
     const value = quantity * unitPrice;
     const categoryName = row.categoryName?.trim() || UNCATEGORIZED_LABEL;
-    const category = byCategory.get(categoryName) ?? { totalItems: 0, totalQuantity: 0, totalValue: 0 };
+    const category = byCategory.get(categoryName) ?? {
+      totalItems: 0,
+      totalQuantity: 0,
+      totalValue: 0,
+    };
 
     totalQuantity += quantity;
     totalValue += value;
@@ -136,14 +177,20 @@ export function summarizeStockBalances(rows: StockBalanceReportRow[]): StockBala
     totalItems: rows.length,
     totalQuantity,
     totalValue,
-    lowStockItems: lowStockItems.sort((a, b) => a.quantity - b.quantity || a.sparePartName.localeCompare(b.sparePartName)),
+    lowStockItems: lowStockItems.sort(
+      (a, b) =>
+        a.quantity - b.quantity ||
+        a.sparePartName.localeCompare(b.sparePartName),
+    ),
     byCategory: Array.from(byCategory.entries())
       .map(([categoryName, value]) => ({ categoryName, ...value }))
       .sort((a, b) => a.categoryName.localeCompare(b.categoryName, "en-US")),
   };
 }
 
-export function summarizeStockMovements(rows: StockMovementReportRow[]): StockMovementSummary {
+export function summarizeStockMovements(
+  rows: StockMovementReportRow[],
+): StockMovementSummary {
   const summary: StockMovementSummary = {
     totalMovements: rows.length,
     receivedQuantity: 0,
@@ -154,10 +201,14 @@ export function summarizeStockMovements(rows: StockMovementReportRow[]): StockMo
 
   for (const row of rows) {
     const quantity = Number(row.quantityChange);
-    if (row.movementType === "RECEIVE") summary.receivedQuantity += Math.abs(quantity);
-    if (row.movementType === "ISSUE") summary.issuedQuantity += Math.abs(quantity);
-    if (row.movementType === "ADJUSTMENT" && quantity > 0) summary.adjustmentInQuantity += quantity;
-    if (row.movementType === "ADJUSTMENT" && quantity < 0) summary.adjustmentOutQuantity += Math.abs(quantity);
+    if (row.movementType === "RECEIVE")
+      summary.receivedQuantity += Math.abs(quantity);
+    if (row.movementType === "ISSUE")
+      summary.issuedQuantity += Math.abs(quantity);
+    if (row.movementType === "ADJUSTMENT" && quantity > 0)
+      summary.adjustmentInQuantity += quantity;
+    if (row.movementType === "ADJUSTMENT" && quantity < 0)
+      summary.adjustmentOutQuantity += Math.abs(quantity);
   }
 
   return summary;

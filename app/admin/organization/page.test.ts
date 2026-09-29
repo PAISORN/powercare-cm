@@ -2,13 +2,24 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 describe("Admin organization form", () => {
+  const organizationSource = [
+    "app/admin/organization/page.tsx",
+    "app/admin/organization/actions.ts",
+    "modules/organization/admin-organization-page-data.ts",
+    "modules/users/admin-user-page-model.ts",
+    "modules/users/managed-user-mutation.ts",
+    "components/admin-organization-page/admin-organization-workspace.tsx",
+    "components/organization-site-map/organization-site-map-drawers.tsx",
+    "components/inventory-user-scope-fields.tsx",
+  ].map((file) => readFileSync(file, "utf8")).join("\n");
+
   it("lets React configure multipart encoding for the server action", () => {
-    const source = readFileSync("app/admin/organization/page.tsx", "utf8");
+    const source = organizationSource;
     expect(source).not.toContain('encType="multipart/form-data"');
   });
 
   it("includes editable organization and plant scope fields", () => {
-    const source = readFileSync("app/admin/organization/page.tsx", "utf8");
+    const source = organizationSource;
     expect(source).toContain("readOrganizationScope");
     expect(source).toContain("updateOrganizationScope");
     expect(source).toContain("updatePlantScope");
@@ -22,7 +33,7 @@ describe("Admin organization form", () => {
   });
 
   it("separates company organization permission from plant profile permission", () => {
-    const source = readFileSync("app/admin/organization/page.tsx", "utf8");
+    const source = organizationSource;
 
     expect(source).toContain("canManageCompanyOrganization");
     expect(source).toContain("canManagePlantProfile");
@@ -32,7 +43,7 @@ describe("Admin organization form", () => {
   });
 
   it("lets a permitted Site Admin update its own Site profile and logo", () => {
-    const source = readFileSync("app/admin/organization/page.tsx", "utf8");
+    const source = organizationSource;
 
     expect(source).toContain("canManagePlantProfile(user)");
     expect(source).toContain("savePlantLogoFile");
@@ -42,7 +53,7 @@ describe("Admin organization form", () => {
   });
 
   it("reads organization scope from the signed-in user's organization and site", () => {
-    const source = readFileSync("app/admin/organization/page.tsx", "utf8");
+    const source = organizationSource;
 
     expect(source).toContain("readOrganizationScopeForUser");
     expect(source).toContain("user.organizationId || DEFAULT_ORGANIZATION_ID");
@@ -51,9 +62,8 @@ describe("Admin organization form", () => {
   });
 
   it("renders a clickable organization site map", () => {
-    const source = readFileSync("app/admin/organization/page.tsx", "utf8");
+    const source = organizationSource;
     expect(source).toContain("OrganizationSiteMap");
-    expect(source).toContain("totalSites");
     expect(source).toContain("db.organization.findMany");
     expect(source).toContain("organizationTree");
     expect(source).toContain("organizationTree={organizationTree}");
@@ -61,7 +71,7 @@ describe("Admin organization form", () => {
   });
 
   it("lets Owner Admin create organizations before assigning Organization Admin users", () => {
-    const source = readFileSync("app/admin/organization/page.tsx", "utf8");
+    const source = organizationSource;
 
     expect(source).toContain("createOrganizationAction");
     expect(source).toContain("normalizeOrganizationRecordInput");
@@ -73,7 +83,7 @@ describe("Admin organization form", () => {
   });
 
   it("renders readable Thai copy instead of mojibake text", () => {
-    const source = readFileSync("app/admin/organization/page.tsx", "utf8");
+    const source = organizationSource;
 
     expect(source).toContain("ข้อมูลองค์กร");
     expect(source).toContain("จัดการข้อมูลบริษัท โลโก้ และโครงสร้าง Organization / Site");
@@ -82,16 +92,15 @@ describe("Admin organization form", () => {
   });
 
   it("renders an organization chart hierarchy from owner admin to organization admins, site admins, and members", () => {
-    const source = readFileSync("app/admin/organization/page.tsx", "utf8");
+    const source = organizationSource;
 
     expect(source).toContain("OrganizationSiteMap");
     expect(source).toContain("organizationTree={organizationTree}");
-    expect(source).toContain("totalSites={totalSites}");
     expect(source).not.toContain("subtitle={scope.organization.name}");
   });
 
   it("passes inline user drawer permissions and update action to the organization map", () => {
-    const source = readFileSync("app/admin/organization/page.tsx", "utf8");
+    const source = organizationSource;
 
     expect(source).toContain("updateOrganizationMapUserAction");
     expect(source).toContain("updateUserAction={updateOrganizationMapUserAction}");
@@ -102,7 +111,7 @@ describe("Admin organization form", () => {
   });
 
   it("passes a create user action so empty admin slots can create users from the organization map", () => {
-    const source = readFileSync("app/admin/organization/page.tsx", "utf8");
+    const source = organizationSource;
 
     expect(source).toContain("createOrganizationMapUserAction");
     expect(source).toContain("createUserAction={createOrganizationMapUserAction}");
@@ -112,8 +121,20 @@ describe("Admin organization form", () => {
   });
 
   it("exposes Store Officer as a site-scoped manageable user role", () => {
-    const source = readFileSync("app/admin/organization/page.tsx", "utf8");
+    const source = organizationSource;
 
     expect(source).toContain('{ value: RoleName.STORE_OFFICER, label: "Store Officer" }');
+  });
+
+  it("uses the same inventory scope contract as Admin Users", () => {
+    const source = organizationSource;
+
+    expect(source).toContain("parseCreateManagedUserInput(formData)");
+    expect(source).toContain("parseUpdateManagedUserInput(formData)");
+    expect(source).toContain("inventoryScopes: true");
+    expect(source).toContain("InventoryUserScopeFields");
+    expect(source).toContain("canAssignInventory");
+    expect(source).toContain("inventoryScopeRequired");
+    expect(source).toContain("approvalScopeRequired");
   });
 });

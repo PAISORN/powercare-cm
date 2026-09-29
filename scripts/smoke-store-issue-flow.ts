@@ -24,7 +24,7 @@ let sequenceBefore: { id: string; lastNumber: number } | null = null;
 const requestedAt = new Date();
 
 try {
-  const actor = await db.user.findFirst({
+  const requester = await db.user.findFirst({
     where: { role: RoleName.ADMIN, active: true },
     select: {
       id: true,
@@ -38,7 +38,7 @@ try {
       },
     },
   });
-  if (!actor) throw new Error("No active Owner Admin account was found for the smoke test.");
+  if (!requester) throw new Error("No active Owner Admin account was found for the smoke test.");
 
   const stock = await db.storeStock.findFirst({
     where: {
@@ -61,10 +61,53 @@ try {
       quantity: true,
       plant: { select: { name: true, inventoryCode: true } },
       store: { select: { name: true, code: true } },
-      sparePart: { select: { name: true, code: true } },
+      sparePart: { select: { name: true, code: true, itemKind: true } },
     },
   });
   if (!stock?.plant.inventoryCode) throw new Error("No issue-ready stock row was found.");
+
+  const actorSelect = {
+    id: true,
+    role: true,
+    fullName: true,
+    department: true,
+    organizationId: true,
+    plantId: true,
+    siteAdminPermissions: {
+      select: { userId: true, plantId: true, permissionKey: true, enabled: true },
+    },
+    inventoryScopes: {
+      select: { itemKind: true, responsibilityEnabled: true, approvalEnabled: true },
+    },
+  } as const;
+  const [approver, issuer] = await Promise.all([
+    db.user.findFirst({
+      where: {
+        active: true,
+        role: RoleName.ENGINEER,
+        organizationId: stock.organizationId,
+        plantId: stock.plantId,
+        inventoryScopes: {
+          some: { itemKind: stock.sparePart.itemKind, approvalEnabled: true },
+        },
+      },
+      select: actorSelect,
+    }),
+    db.user.findFirst({
+      where: {
+        active: true,
+        role: RoleName.STORE_OFFICER,
+        organizationId: stock.organizationId,
+        plantId: stock.plantId,
+        inventoryScopes: {
+          some: { itemKind: stock.sparePart.itemKind, responsibilityEnabled: true },
+        },
+      },
+      select: actorSelect,
+    }),
+  ]);
+  if (!approver) throw new Error("No eligible Engineer was found for the smoke test inventory type.");
+  if (!issuer) throw new Error("No eligible Store Officer was found for the smoke test inventory type.");
 
   const zone = await db.storeApplicableZone.findFirst({
     where: {
@@ -108,10 +151,10 @@ try {
       },
     ],
   };
-  const created = await createLoggedInStoreIssue(actor, scope, issueInput);
+  const created = await createLoggedInStoreIssue(requester, scope, issueInput);
   issueId = created.id;
 
-  const duplicate = await createLoggedInStoreIssue(actor, scope, issueInput);
+  const duplicate = await createLoggedInStoreIssue(requester, scope, issueInput);
   if (duplicate.id !== created.id || duplicate.number !== created.number) {
     throw new Error("Duplicate submission created a different store issue.");
   }
@@ -129,7 +172,7 @@ try {
   }
   if (!createdIssue.items[0]?.lineNumber) throw new Error("Issue line number was not generated.");
 
-  await approveStoreIssue(actor, scope, issueId, "APPROVE", "Local smoke-test owner override");
+  await approveStoreIssue(approver, scope, issueId, "APPROVE", "Local smoke test approval");
   const approved = await db.sparePartIssue.findUniqueOrThrow({
     where: { id: issueId },
     select: { status: true },
@@ -138,7 +181,7 @@ try {
     throw new Error(`Unexpected status after approval: ${approved.status}`);
   }
 
-  await issueStoreStock(actor, scope, issueId);
+  await issueStoreStock(issuer, scope, issueId);
   const [issued, stockAfter] = await Promise.all([
     db.sparePartIssue.findUniqueOrThrow({ where: { id: issueId }, select: { status: true } }),
     db.storeStock.findUniqueOrThrow({ where: { id: stock.id }, select: { quantity: true } }),

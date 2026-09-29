@@ -245,6 +245,7 @@ describe("IssueRequestForm", () => {
         lockedCmWork={{ id: "cm-1", number: "CM-2026-07-0001", label: "Pump vibration" }}
         organizationId="org-1"
         plantId="plant-1"
+        siteSummary={{ inventoryCode: "RTB", organizationName: "Mitrphol", plantName: "Rungtiva" }}
         singleCard
         stocks={stocks}
       />,
@@ -252,8 +253,14 @@ describe("IssueRequestForm", () => {
 
     const form = screen.getByTestId("issue-request-form");
     const reviewButton = screen.getByRole("button", { name: /ตรวจสอบและเสร็จสิ้น/ });
+    const quantityButton = screen.getByRole("button", { name: "ลดจำนวน" });
+    const removeButton = screen.getByRole("button", { name: "ลบรายการที่ 1" });
     expect(reviewButton.parentElement?.className).not.toContain("sticky");
     expect(form.querySelector('[role="tablist"]')?.className).toContain("grid-cols-3");
+    expect(screen.getByText("RTB").parentElement?.className).toContain("flex-wrap");
+    expect(quantityButton.parentElement?.className).toContain("grid-cols-[44px_minmax(44px,1fr)_44px]");
+    expect(removeButton.className).toContain("shrink-0");
+    expect(removeButton.parentElement?.className).toContain("col-span-3");
   });
 
   it("renders stock suggestions in a portal above the form", () => {
@@ -293,5 +300,73 @@ describe("IssueRequestForm", () => {
     expect(container.querySelector('input[name="requesterDepartment"]')).toBeTruthy();
     expect(container.querySelector('input[name="requesterContact"]')).toBeNull();
     expect(screen.getByRole("button", { name: "สแกนบาร์โค้ต" })).toBeTruthy();
+  });
+
+  it("switches between CM-referenced and direct issue context fields", () => {
+    const { container } = render(
+      <IssueRequestForm
+        action={vi.fn()}
+        cmWorks={[{ id: "cm-1", number: "CM-2026-07-0001", label: "Pump vibration" }]}
+        issueZones={issueZones}
+        organizationId="org-1"
+        plantId="plant-1"
+        stocks={stocks}
+      />,
+    );
+
+    expect(container.querySelector('select[name="cmWorkNumber"]')).toBeTruthy();
+    expect(container.querySelector('input[name="note"]')).toBeNull();
+
+    fireEvent.click(screen.getByRole("radio", { name: "เบิกโดยตรง" }));
+
+    expect(container.querySelector('select[name="cmWorkNumber"]')).toBeNull();
+    expect(container.querySelector('input[name="note"]')?.hasAttribute("required")).toBe(true);
+  });
+
+  it("keeps direct oil issue metadata in the submitted form", () => {
+    const { container } = render(
+      <IssueRequestForm
+        action={vi.fn()}
+        cmWorks={[]}
+        directOnly
+        initialItemKind="OIL"
+        issueZones={issueZones}
+        organizationId="org-1"
+        plantId="plant-1"
+        stocks={stocks}
+      />,
+    );
+
+    expect(container.querySelector('input[name="issueType"]')?.getAttribute("value")).toBe("DIRECT");
+    for (const fieldName of [
+      "vehicle",
+      "odometerBefore",
+      "odometerAfter",
+      "dispenserMeterBefore",
+      "dispenserMeterAfter",
+    ]) {
+      expect(container.querySelector(`[name="${fieldName}"]`)?.hasAttribute("required")).toBe(true);
+    }
+  });
+
+  it("resets the issue context and controlled line state when canceled", () => {
+    const { container } = render(
+      <IssueRequestForm
+        action={vi.fn()}
+        cmWorks={[{ id: "cm-1", number: "CM-2026-07-0001", label: "Pump vibration" }]}
+        issueZones={issueZones}
+        organizationId="org-1"
+        plantId="plant-1"
+        stocks={stocks}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("radio", { name: "เบิกโดยตรง" }));
+    chooseStock(screen.getByLabelText("ค้นหาและเลือกอะไหล่ รายการ 1"), "Bearing", /Bearing 6208/);
+    fireEvent.click(screen.getByRole("button", { name: "ยกเลิก" }));
+
+    expect((screen.getByRole("radio", { name: "ดำเนินงาน CM" }) as HTMLInputElement).checked).toBe(true);
+    expect(container.querySelector<HTMLInputElement>('input[name="stockKey"]')?.value).toBe("");
+    expect(screen.getByLabelText("ค้นหาและเลือกอะไหล่ รายการ 1")).toHaveProperty("value", "");
   });
 });

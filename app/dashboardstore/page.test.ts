@@ -12,6 +12,10 @@ describe("Store Dashboard", () => {
     expect(source).toContain("ความเคลื่อนไหวล่าสุด");
     expect(source).toContain("ใบเบิกที่ต้องติดตาม");
     expect(source).toContain("สรุปตามคลังสินค้า");
+    expect(source).not.toContain('className="dashboard-content-surface dashboard-panel');
+    expect(source).toContain('className="dashboard-panel');
+    expect(source).toContain("dashboard-kpi-carousel");
+    expect(source).toContain('className = "dashboard-kpi dashboard-kpi-slide');
     expect(source).toContain("db.storeStock.findMany");
     expect(source).toContain("db.stockMovement.findMany");
     expect(source).toContain("db.sparePartIssue.findMany");
@@ -46,6 +50,10 @@ describe("Store Dashboard", () => {
     expect(page).toContain("min-w-0 rounded-3xl");
     expect(page).toContain("overflow-x-auto");
     expect(filter).toContain("CmDateFilterBar");
+    expect(filter).toContain('data-testid="store-dashboard-filter"');
+    expect(filter).toContain("<details");
+    expect(filter).toContain("<summary");
+    expect(filter).toContain("group-open:rotate-180");
     expect(filter).toContain('method="get"');
     expect(filter).not.toContain("ประเภท Dashboard");
     expect(charts).toContain('role="img"');
@@ -64,6 +72,7 @@ describe("Store Dashboard", () => {
     expect(charts).toContain("จำนวนรายการที่เบิก");
     expect(charts).toContain('stroke="#f97316"');
     expect(charts).toContain("smoothValues");
+    expect(charts).toContain("pathCoordinate");
     expect(charts).toContain("ชี้เพื่อดูค่าจริง");
     expect(charts).toContain("strokeDasharray");
   });

@@ -10,9 +10,9 @@ describe("Store reports page", () => {
     expect(source).toContain("Low Stock");
     expect(source).toContain("Stock Balance");
     expect(source).toContain("Receive / Issue");
-    expect(source).toContain("summarizeStockBalances");
-    expect(source).toContain("summarizeStockMovements");
+    expect(source).toContain("loadStoreReportPageData");
     expect(source).toContain("VIEW_STORE_REPORTS");
+    expect(source).toContain("VIEW_STOCK_VALUE");
     expect(source).toContain("resolveStorePageScope");
     expect(source).toContain('action="/dashboardstore/reports/export"');
     expect(source).toContain("StoreReportItemPicker");
@@ -22,8 +22,8 @@ describe("Store reports page", () => {
     expect(source).toContain("categories={categories}");
     expect(source).toContain("materialGroups={materialGroups}");
     expect(source).toContain("units={units.map");
-    expect(source).toContain("minStock: Number(item.minStock)");
-    expect(source).toContain("db.sparePartType.findMany");
+    expect(source).toContain("canViewStockValue");
+    expect(source).not.toContain("db.storeStock.findMany");
 
     expect(source).toContain('name="movementType"');
     expect(source).toContain('name="issueStatus"');

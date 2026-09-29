@@ -3,7 +3,6 @@ import { formatInTimeZone, fromZonedTime } from "date-fns-tz";
 import { CalendarClock, Megaphone, Pin, Save } from "lucide-react";
 import { redirect } from "next/navigation";
 import { AnnouncementDeleteButton } from "../../../components/announcement-delete-button";
-import { AppShell } from "../../../components/app-shell";
 import { BANGKOK_TIME_ZONE, formatThaiDateTime } from "../../../lib/date-time/bangkok-time";
 import { db } from "../../../lib/db";
 import { deleteStoredFile, saveAnnouncementImageFile } from "../../../lib/file-storage";
@@ -140,7 +139,7 @@ export default async function AdminAnnouncementsPage({ searchParams }: { searchP
   const defaultEnd = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
 
   return (
-    <AppShell>
+    <>
       <header>
         <p className="flex items-center gap-2 text-sm font-semibold text-[var(--primary)]"><Megaphone size={17} /> Admin Communication</p>
         <h1 className="mt-2 text-3xl font-extrabold">Announcements</h1>
@@ -190,7 +189,7 @@ export default async function AdminAnnouncementsPage({ searchParams }: { searchP
           {!announcements.length ? <p className="rounded-lg border border-dashed border-[var(--line)] p-6 text-center text-[var(--muted)]">ยังไม่มีประกาศ</p> : null}
         </div>
       </section>
-    </AppShell>
+    </>
   );
 }
 

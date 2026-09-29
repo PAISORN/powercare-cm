@@ -177,7 +177,7 @@ export function canManagePmGroups(input: string | PermissionUserContext) {
 }
 
 export function canManagePmPlans(input: string | PermissionUserContext) {
-  return canUse(input, PermissionKey.MANAGE_PM_PLANS, [RoleName.ADMIN, RoleName.ORGANIZATION_ADMIN, RoleName.SITE_ADMIN]);
+  return canUse(input, PermissionKey.MANAGE_PM_PLANS, [RoleName.ADMIN, RoleName.ORGANIZATION_ADMIN, RoleName.SITE_ADMIN, RoleName.ENGINEER]);
 }
 
 export function canExecutePmWork(input: string | PermissionUserContext) {

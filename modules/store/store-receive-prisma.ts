@@ -1,15 +1,20 @@
 import { randomUUID } from "node:crypto";
 import type { Prisma } from "@prisma/client";
-import { db } from "../../lib/db";
-import { recordAudit } from "../audit/audit-service";
-import { PermissionKey, type PermissionUserContext } from "../auth/site-admin-permissions";
+import {
+  PermissionKey,
+  type PermissionUserContext,
+} from "../auth/site-admin-permissions";
 import { formatSparePartReceiveNumber } from "./store-numbering";
-import { assertActorStoreScope, requireStorePermission } from "./store-prisma-service";
+import {
+  assertActorStoreScope,
+  requireStorePermission,
+} from "./store-authorization";
 import {
   receiveStockWithRepository,
   type ReceiveStockItemInput,
   type StoreReceiveRepository,
 } from "./store-receive-service";
+import { runStoreMutation } from "./store-mutation-prisma";
 import type { StoreScope } from "./store-types";
 import { hasInventoryResponsibility } from "./inventory-user-scope";
 
@@ -22,19 +27,36 @@ export type ReceiveStockFormInput = {
 };
 
 export async function receiveStock(
-  actor: PermissionUserContext & { id: string; inventoryScopes?: Array<{ itemKind: string; responsibilityEnabled: boolean }> },
+  actor: PermissionUserContext & {
+    id: string;
+    inventoryScopes?: Array<{
+      itemKind: string;
+      responsibilityEnabled: boolean;
+    }>;
+  },
   scope: StoreScope,
   input: ReceiveStockFormInput,
 ) {
   requireStorePermission(actor, PermissionKey.RECEIVE_STOCK);
   assertActorStoreScope(actor, scope);
-  const kinds = await db.sparePart.findMany({ where: { id: { in: [...new Set(input.items.map((item) => item.sparePartId))] }, plantId: scope.plantId }, select: { itemKind: true } });
-  const itemKinds = [...new Set(kinds.map((item) => item.itemKind))];
-  if (itemKinds.length !== 1 || !hasInventoryResponsibility(actor, itemKinds[0])) throw new Error("No receive scope for this inventory type.");
 
-  const result = await db.$transaction(async (tx) => {
-    await tx.plant.findFirstOrThrow({ where: { id: scope.plantId, organizationId: scope.organizationId, active: true } });
+  return runStoreMutation(actor.id, scope, async (tx) => {
     await assertReceiveItemsInScope(tx, scope, input.items);
+    const kinds = await tx.sparePart.findMany({
+      where: {
+        id: { in: [...new Set(input.items.map((item) => item.sparePartId))] },
+        plantId: scope.plantId,
+        active: true,
+      },
+      select: { itemKind: true },
+    });
+    const itemKinds = [...new Set(kinds.map((item) => item.itemKind))];
+    if (
+      itemKinds.length !== 1 ||
+      !hasInventoryResponsibility(actor, itemKinds[0])
+    ) {
+      throw new Error("No receive scope for this inventory type.");
+    }
 
     const repository: StoreReceiveRepository = {
       async createReceive(receiveInput) {
@@ -121,22 +143,27 @@ export async function receiveStock(
       },
     };
 
-    return receiveStockWithRepository(repository, actor, scope, {
+    const result = await receiveStockWithRepository(repository, actor, scope, {
       ...input,
-      number: formatSparePartReceiveNumber(scope.plantCode, input.receivedAt, randomUUID().slice(0, 6)),
+      number: formatSparePartReceiveNumber(
+        scope.plantCode,
+        input.receivedAt,
+        randomUUID().slice(0, 6),
+      ),
     });
+    return {
+      value: result,
+      audit: {
+        entityType: "SparePartReceive",
+        entityId: result.id,
+        action: "RECEIVE_SPARE_PART_STOCK",
+        after: {
+          itemCount: input.items.length,
+          referenceNo: input.referenceNo ?? null,
+        },
+      },
+    };
   });
-
-  await recordAudit({
-    actorId: actor.id,
-    organizationId: scope.organizationId,
-    plantId: scope.plantId,
-    entityType: "SparePartReceive",
-    entityId: result.id,
-    action: "RECEIVE_SPARE_PART_STOCK",
-    after: { itemCount: input.items.length, referenceNo: input.referenceNo ?? null },
-  });
-  return result;
 }
 
 async function assertReceiveItemsInScope(
@@ -147,10 +174,17 @@ async function assertReceiveItemsInScope(
   const storeIds = [...new Set(items.map((item) => item.storeId))];
   const sparePartIds = [...new Set(items.map((item) => item.sparePartId))];
   const [storeCount, sparePartCount] = await Promise.all([
-    tx.store.count({ where: { id: { in: storeIds }, plantId: scope.plantId, active: true } }),
-    tx.sparePart.count({ where: { id: { in: sparePartIds }, plantId: scope.plantId, active: true } }),
+    tx.store.count({
+      where: { id: { in: storeIds }, plantId: scope.plantId, active: true },
+    }),
+    tx.sparePart.count({
+      where: { id: { in: sparePartIds }, plantId: scope.plantId, active: true },
+    }),
   ]);
-  if (storeCount !== storeIds.length || sparePartCount !== sparePartIds.length) {
+  if (
+    storeCount !== storeIds.length ||
+    sparePartCount !== sparePartIds.length
+  ) {
     throw new Error("Receive item is outside the selected Site.");
   }
 }

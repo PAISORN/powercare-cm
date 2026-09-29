@@ -4,19 +4,22 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import RootLayout from "./layout";
 
+vi.mock("next/headers", () => ({
+  cookies: vi.fn(async () => ({ get: vi.fn(() => undefined) })),
+}));
+
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn() }),
 }));
 
 describe("RootLayout theme initialization", () => {
-  it("renders a server-selected initial theme without an inline script", () => {
-    const markup = renderToStaticMarkup(
-      <RootLayout>
-        <main>content</main>
-      </RootLayout>,
-    );
+  it("renders server-selected preferences without an inline script", async () => {
+    const layout = await RootLayout({ children: <main>content</main> });
+    const markup = renderToStaticMarkup(layout);
 
     expect(markup).toMatch(/<html[^>]+data-theme="(?:day|night)"/);
+    expect(markup).toContain('data-theme-preference="auto"');
+    expect(markup).toContain('data-background="original"');
     expect(markup).not.toContain("theme-boot");
     expect(markup).not.toContain("<script");
     expect(markup).toContain("<body>");
@@ -33,5 +36,11 @@ describe("RootLayout theme initialization", () => {
 
     expect(source).toContain("<NavigationExperience />");
     expect(source).not.toContain("<RevealOnScroll />");
+  });
+
+  it("clips the decorative public Store issue background at the page boundary", () => {
+    const source = readFileSync(join(process.cwd(), "app/globals.css"), "utf8");
+
+    expect(source).toMatch(/\.issue-request-page-gradient\s*\{[^}]*overflow-x:\s*clip;/s);
   });
 });

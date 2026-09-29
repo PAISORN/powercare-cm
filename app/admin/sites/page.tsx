@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { AdminStructureTabs } from "../../../components/admin-structure-tabs";
-import { AppShell } from "../../../components/app-shell";
 import { AutoSubmitSelect } from "../../../components/auto-submit-select";
 import { db } from "../../../lib/db";
 import { cacheTags, revalidateCmData } from "../../../lib/query-cache";
@@ -176,7 +175,7 @@ export default async function AdminSitesPage({
   }
 
   return (
-    <AppShell>
+    <>
       <section className="menu-heading-plain rounded-3xl border border-[var(--line)] bg-[var(--surface)] p-6 shadow-[var(--shadow)]">
         <p className="text-sm font-semibold text-[var(--primary)]">Owner Admin</p>
         <h1 className="mt-2 text-3xl font-extrabold">Sites</h1>
@@ -313,7 +312,7 @@ export default async function AdminSitesPage({
           ))}
         </div>
       </section>
-    </AppShell>
+    </>
   );
 }
 

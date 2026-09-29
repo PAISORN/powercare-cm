@@ -2,9 +2,13 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 describe("All Work date filtering", () => {
-  it("uses the shared Bangkok date range and preserves its query fields", () => {
-    const source = readFileSync("app/work/page.tsx", "utf8");
+  const source = [
+    "modules/cm-work/work-list-page-data.ts",
+    "modules/cm-work/work-list-query.ts",
+    "components/work-list-page/work-list-workspace.tsx",
+  ].map((file) => readFileSync(file, "utf8")).join("\n");
 
+  it("uses the shared Bangkok date range and preserves its query fields", () => {
     expect(source).toContain("parseCmDateFilter");
     expect(source).toContain("dateFilter.start");
     expect(source).toContain("dateFilter.endExclusive");
@@ -15,10 +19,8 @@ describe("All Work date filtering", () => {
   });
 
   it("uses the dashboard year-to-date period when no date filter is selected", () => {
-    const source = readFileSync("app/work/page.tsx", "utf8");
-
     expect(source).toContain("hasExplicitCmDateFilter");
     expect(source).toContain('getCmDatePreset("yearToDate"');
-    expect(source).toContain("initiallyUnset={!hasExplicitDateFilter}");
+    expect(source).toContain("initiallyUnset={!data.hasExplicitDateFilter}");
   });
 });

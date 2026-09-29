@@ -16,7 +16,13 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
   const canView = canViewReports(user);
   const canExport = canExportReports(user);
 
-  if (!canView) return <ReportAccessDenied />;
+  if (!canView) {
+    return (
+      <AppShell>
+        <ReportAccessDenied />
+      </AppShell>
+    );
+  }
 
   const rawParams = await searchParams;
   const filter = parseReportFilter(toUrlSearchParams(rawParams));

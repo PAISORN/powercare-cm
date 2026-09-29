@@ -55,24 +55,12 @@ describe("PmRouteShell", () => {
     expect(screen.queryByText("PM scope")).not.toBeInTheDocument();
   });
 
-  it("preserves the resolved scope in every PM navigation href", () => {
+  it("removes the redundant PM section tabs because navigation lives in the sidebar", () => {
     renderShell();
-    expect(screen.getByRole("link", { name: "Calendar" })).toHaveAttribute("href", "/dashboardpm?organizationId=org-a&plantId=site-a");
-    expect(screen.getByRole("link", { name: "Groups" })).toHaveAttribute("href", "/dashboardpm/groups?organizationId=org-a&plantId=site-a");
-    expect(screen.getByRole("link", { name: "Work" })).toHaveAttribute("href", "/dashboardpm/work?organizationId=org-a&plantId=site-a");
-  });
-
-  it("marks only the exact current PM page as active", () => {
-    renderShell({ currentPage: "work" });
-    expect(screen.getByRole("link", { name: "Work" })).toHaveAttribute("aria-current", "page");
-    expect(screen.getByRole("link", { name: "Calendar" })).not.toHaveAttribute("aria-current");
-    expect(screen.getByRole("link", { name: "Groups" })).not.toHaveAttribute("aria-current");
-  });
-
-  it("hides Groups from viewers without PM Group management permission", () => {
-    renderShell({ canManageGroups: false });
+    expect(screen.queryByRole("navigation", { name: "PM sections" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Groups" })).not.toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Calendar" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Work" })).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "PM Setup" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "PM Schedule" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "PM History" })).not.toBeInTheDocument();
   });
 });

@@ -54,6 +54,10 @@ model User {
   correctedPmWorks            PmWork[]                 @relation("PmWorkCorrectedBy")
   pmWorkAssignments           PmWorkAssignee[]         @relation("PmWorkAssigneeUser")
   assignedPmWorks             PmWorkAssignee[]         @relation("PmWorkAssignedBy")
+  createdAnnualPmPlans        PmAnnualPlan[]           @relation("PmAnnualPlanCreatedBy")
+  activatedAnnualPmPlans      PmAnnualPlan[]           @relation("PmAnnualPlanActivatedBy")
+  supersededAnnualPmPlans     PmAnnualPlan[]           @relation("PmAnnualPlanSupersededBy")
+  canceledAnnualPmPlans       PmAnnualPlan[]           @relation("PmAnnualPlanCanceledBy")
 
   @@index([role])
   @@index([organizationId])
@@ -67,11 +71,11 @@ model UserInventoryScope {
   id                    String   @id @default(cuid())
   userId                String
   user                  User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  itemKind               String
+  itemKind              String
   responsibilityEnabled Boolean  @default(false)
   approvalEnabled       Boolean  @default(false)
-  createdAt              DateTime @default(now())
-  updatedAt              DateTime @updatedAt
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
 
   @@unique([userId, itemKind])
   @@index([itemKind, responsibilityEnabled])
@@ -111,6 +115,8 @@ model Organization {
   rolePermissionOverrides RolePermissionOverride[]
   pmGroups                PmGroup[]
   pmPlans                 PmPlan[]
+  annualPmPlans           PmAnnualPlan[]
+  annualPmReleaseBatches  PmAnnualReleaseBatch[]
 
   @@index([active])
 }
@@ -165,6 +171,7 @@ model Plant {
   assetQrSetting          AssetQrSetting?
   pmGroups                PmGroup[]
   pmPlans                 PmPlan[]
+  annualPmPlans           PmAnnualPlan[]
 
   @@unique([organizationId, code])
   @@unique([organizationId, name])
@@ -295,8 +302,11 @@ model Zone {
   storeApplicableZones StoreApplicableZone[]
   sparePartIssueItems  SparePartIssueItem[]
   assets               Asset[]
+  annualPmPatterns     PmAnnualWeeklyPattern[]
+  annualPmSchedules    PmAnnualSchedule[]
 
   @@unique([plantId, name])
+  @@unique([id, plantId])
   @@index([active])
   @@index([plantId, active])
 }
@@ -446,10 +456,199 @@ model PmPlan {
   draftGroups            PmPlanDraftGroup[]
   groupSnapshots         PmPlanGroupSnapshot[]
   works                  PmWork[]
+  annualReleaseBatch     PmAnnualReleaseBatch?
 
-  @@index([organizationId, plantId, plannedDateKey])
   @@unique([id, plantId])
+  @@index([organizationId, plantId, plannedDateKey])
   @@index([plantId, status, plannedDateKey])
+}
+
+model PmAnnualPlan {
+  id                 String                  @id @default(cuid())
+  organizationId     String
+  organization       Organization            @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  plantId            String
+  plant              Plant                   @relation(fields: [plantId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  name               String
+  year               Int
+  pmBy               String
+  scheduleMode       String
+  patternCycleWeeks  Int                     @default(1)
+  rotationAnchorDateKey String?
+  status             String                  @default("DRAFT")
+  activeKey          String?                 @unique
+  effectiveDateKey   String?
+  createdById        String
+  createdBy          User                    @relation("PmAnnualPlanCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  activatedAt        DateTime?
+  activatedById      String?
+  activatedBy        User?                   @relation("PmAnnualPlanActivatedBy", fields: [activatedById], references: [id], onDelete: Restrict)
+  supersededAt       DateTime?
+  supersededById     String?
+  supersededBy       User?                   @relation("PmAnnualPlanSupersededBy", fields: [supersededById], references: [id], onDelete: Restrict)
+  replacementPlanId  String?                 @unique
+  replacementPlan    PmAnnualPlan?           @relation("PmAnnualPlanReplacement", fields: [replacementPlanId], references: [id], onDelete: Restrict)
+  replacedPlan       PmAnnualPlan?           @relation("PmAnnualPlanReplacement")
+  canceledAt         DateTime?
+  canceledById       String?
+  canceledBy         User?                   @relation("PmAnnualPlanCanceledBy", fields: [canceledById], references: [id], onDelete: Restrict)
+  cancellationReason String?
+  createdAt          DateTime                @default(now())
+  updatedAt          DateTime                @updatedAt
+  weeklyPatterns     PmAnnualWeeklyPattern[]
+  schedules          PmAnnualSchedule[]
+  dayNotes           PmAnnualDayNote[]
+  releaseBatches     PmAnnualReleaseBatch[]
+
+  @@unique([id, plantId])
+  @@index([organizationId, plantId, year])
+  @@index([plantId, year, status])
+}
+
+model PmAnnualWeeklyPattern {
+  id            String       @id @default(cuid())
+  plantId       String
+  planId        String
+  plan          PmAnnualPlan @relation(fields: [planId, plantId], references: [id, plantId], onDelete: Cascade)
+  dayOfWeek     Int
+  weekIndex     Int          @default(1)
+  assetSystemId String?
+  assetSystem   AssetSystem? @relation(fields: [assetSystemId, plantId], references: [id, plantId], onDelete: Restrict)
+  zoneId        String?
+  zone          Zone?        @relation(fields: [zoneId, plantId], references: [id, plantId], onDelete: Restrict)
+  patternKey    String       @unique
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  @@index([planId, dayOfWeek])
+  @@index([assetSystemId])
+  @@index([zoneId])
+}
+
+model PmAnnualSchedule {
+  id                 String                    @id @default(cuid())
+  plantId            String
+  planId             String
+  plan               PmAnnualPlan              @relation(fields: [planId, plantId], references: [id, plantId], onDelete: Cascade)
+  scheduleDateKey    String
+  assetSystemId      String?
+  assetSystem        AssetSystem?              @relation(fields: [assetSystemId, plantId], references: [id, plantId], onDelete: Restrict)
+  zoneId             String?
+  zone               Zone?                     @relation(fields: [zoneId, plantId], references: [id, plantId], onDelete: Restrict)
+  source             String
+  status             String                    @default("SCHEDULED")
+  overrideAction     String?
+  originalScheduleId String?
+  originalSchedule   PmAnnualSchedule?         @relation("PmAnnualScheduleOverride", fields: [originalScheduleId], references: [id], onDelete: Restrict)
+  overrides          PmAnnualSchedule[]        @relation("PmAnnualScheduleOverride")
+  slotKey            String?                   @unique
+  note               String?
+  reason             String?
+  recordedById       String?
+  releasedAt         DateTime?
+  createdAt          DateTime                  @default(now())
+  updatedAt          DateTime                  @updatedAt
+  releaseSchedules   PmAnnualReleaseSchedule[]
+  workSources        PmAnnualWorkSource[]
+
+  @@index([planId, scheduleDateKey, status])
+  @@index([assetSystemId])
+  @@index([zoneId])
+  @@index([originalScheduleId])
+}
+
+model PmAnnualDayNote {
+  id              String       @id @default(cuid())
+  plantId         String
+  planId          String
+  plan            PmAnnualPlan @relation(fields: [planId, plantId], references: [id, plantId], onDelete: Cascade)
+  scheduleDateKey String
+  note            String
+  updatedById     String
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  @@unique([planId, scheduleDateKey])
+  @@index([plantId, scheduleDateKey])
+}
+
+model PmAnnualSiteSetting {
+  plantId                  String   @id
+  releaseWindowDays        Int      @default(30)
+  workloadWarningThreshold Int      @default(40)
+  createdAt                DateTime @default(now())
+  updatedAt                DateTime @updatedAt
+}
+
+model PmSiteCalendarDay {
+  id          String   @id @default(cuid())
+  plantId     String
+  dateKey     String
+  type        String
+  title       String
+  note        String?
+  createdById String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([plantId, dateKey, type])
+  @@index([plantId, dateKey])
+}
+
+model PmAnnualReleaseBatch {
+  id              String                     @id @default(cuid())
+  organizationId  String
+  organization    Organization               @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  plantId         String
+  planId          String
+  plan            PmAnnualPlan               @relation(fields: [planId, plantId], references: [id, plantId], onDelete: Restrict)
+  scheduleDateKey String
+  pmPlanId        String                     @unique
+  pmPlan          PmPlan                     @relation(fields: [pmPlanId], references: [id], onDelete: Restrict)
+  releasedById    String
+  releasedAt      DateTime                   @default(now())
+  schedules       PmAnnualReleaseSchedule[]
+  exclusions      PmAnnualReleaseExclusion[]
+
+  @@index([plantId, scheduleDateKey])
+  @@index([planId, scheduleDateKey])
+}
+
+model PmAnnualReleaseSchedule {
+  id         String               @id @default(cuid())
+  batchId    String
+  batch      PmAnnualReleaseBatch @relation(fields: [batchId], references: [id], onDelete: Restrict)
+  scheduleId String
+  schedule   PmAnnualSchedule     @relation(fields: [scheduleId], references: [id], onDelete: Restrict)
+  createdAt  DateTime             @default(now())
+
+  @@unique([batchId, scheduleId])
+  @@unique([scheduleId])
+}
+
+model PmAnnualReleaseExclusion {
+  id        String               @id @default(cuid())
+  batchId   String
+  batch     PmAnnualReleaseBatch @relation(fields: [batchId], references: [id], onDelete: Restrict)
+  assetId   String
+  asset     Asset                @relation(fields: [assetId], references: [id], onDelete: Restrict)
+  reason    String
+  createdAt DateTime             @default(now())
+
+  @@unique([batchId, assetId])
+  @@index([assetId])
+}
+
+model PmAnnualWorkSource {
+  id         String           @id @default(cuid())
+  pmWorkId   String
+  pmWork     PmWork           @relation(fields: [pmWorkId], references: [id], onDelete: Restrict)
+  scheduleId String
+  schedule   PmAnnualSchedule @relation(fields: [scheduleId], references: [id], onDelete: Restrict)
+  createdAt  DateTime         @default(now())
+
+  @@unique([pmWorkId, scheduleId])
+  @@index([scheduleId])
 }
 
 model PmPlanDraftGroup {
@@ -469,7 +668,7 @@ model PmPlanGroupSnapshot {
   id              String              @id @default(cuid())
   plantId         String
   pmPlanId        String
-  pmPlan          PmPlan              @relation(fields: [pmPlanId, plantId], references: [id, plantId], onDelete: Restrict)
+  pmPlan          PmPlan              @relation(fields: [pmPlanId], references: [id], onDelete: Restrict)
   sourcePmGroupId String
   sourcePmGroup   PmGroup             @relation(fields: [sourcePmGroupId, plantId], references: [id, plantId], onDelete: Restrict)
   codeSnapshot    String
@@ -483,36 +682,37 @@ model PmPlanGroupSnapshot {
 }
 
 model PmWork {
-  id                     String              @id @default(cuid())
+  id                     String               @id @default(cuid())
   plantId                String
   pmPlanId               String
-  pmPlan                 PmPlan              @relation(fields: [pmPlanId, plantId], references: [id, plantId], onDelete: Restrict)
+  pmPlan                 PmPlan               @relation(fields: [pmPlanId], references: [id], onDelete: Restrict)
   assetId                String
-  asset                  Asset               @relation(fields: [assetId, plantId], references: [id, plantId], onDelete: Restrict)
+  asset                  Asset                @relation(fields: [assetId, plantId], references: [id, plantId], onDelete: Restrict)
   assetCodeSnapshot      String?
   assetNameSnapshot      String
-  number                 String              @unique
-  status                 String              @default("PLANNED")
+  number                 String               @unique
+  status                 String               @default("PLANNED")
   result                 String?
   resultNote             String?
   startedAt              DateTime?
   completedAt            DateTime?
   completedById          String?
-  completedBy            User?               @relation("PmWorkCompletedBy", fields: [completedById], references: [id], onDelete: Restrict)
+  completedBy            User?                @relation("PmWorkCompletedBy", fields: [completedById], references: [id], onDelete: Restrict)
   canceledAt             DateTime?
   canceledById           String?
-  canceledBy             User?               @relation("PmWorkCanceledBy", fields: [canceledById], references: [id], onDelete: Restrict)
+  canceledBy             User?                @relation("PmWorkCanceledBy", fields: [canceledById], references: [id], onDelete: Restrict)
   cancellationReason     String?
   correctedAt            DateTime?
   correctedById          String?
-  correctedBy            User?               @relation("PmWorkCorrectedBy", fields: [correctedById], references: [id], onDelete: Restrict)
+  correctedBy            User?                @relation("PmWorkCorrectedBy", fields: [correctedById], references: [id], onDelete: Restrict)
   correctionReason       String?
-  addedAfterConfirmation Boolean             @default(false)
-  createdAt              DateTime            @default(now())
-  updatedAt              DateTime            @updatedAt
+  addedAfterConfirmation Boolean              @default(false)
+  createdAt              DateTime             @default(now())
+  updatedAt              DateTime             @updatedAt
   sourceGroups           PmWorkSourceGroup[]
   assignees              PmWorkAssignee[]
   originatingCmWork      CmWork?
+  annualSources          PmAnnualWorkSource[]
 
   @@unique([pmPlanId, assetId])
   @@unique([id, pmPlanId])
@@ -1168,18 +1368,21 @@ model AssetCodeSequence {
   @@unique([plantId, typeCode])
   @@index([plantId])
 }
+
 model AssetSystem {
-  id        String   @id @default(cuid())
-  plantId   String
-  plant     Plant    @relation(fields: [plantId], references: [id], onDelete: Cascade)
-  code      String
-  nameTh    String
-  nameEn    String?
-  active    Boolean  @default(true)
-  sortOrder Int      @default(0)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  assets    Asset[]
+  id                String                  @id @default(cuid())
+  plantId           String
+  plant             Plant                   @relation(fields: [plantId], references: [id], onDelete: Cascade)
+  code              String
+  nameTh            String
+  nameEn            String?
+  active            Boolean                 @default(true)
+  sortOrder         Int                     @default(0)
+  createdAt         DateTime                @default(now())
+  updatedAt         DateTime                @updatedAt
+  assets            Asset[]
+  annualPmPatterns  PmAnnualWeeklyPattern[]
+  annualPmSchedules PmAnnualSchedule[]
 
   @@unique([plantId, code])
   @@unique([id, plantId])
@@ -1233,6 +1436,7 @@ model AssetTechnicalField {
   labelEn     String?
   dataType    String                @default("TEXT")
   unit        String?
+  helpText    String?
   optionsJson String?
   required    Boolean               @default(false)
   active      Boolean               @default(true)
@@ -1275,58 +1479,59 @@ model AssetSequence {
 }
 
 model Asset {
-  id                   String                @id @default(cuid())
-  systemId             String?
-  system               AssetSystem?          @relation(fields: [systemId, plantId], references: [id, plantId], onDelete: Restrict)
-  assetLevel           String                @default("MAIN_ASSET")
-  discipline           String?
-  tagKks               String?
-  registrationCode     String?
-  keySpecification     String?
-  metadataJson         String?
-  migrationStatus      String                @default("NEED_REVIEW")
-  publicToken          String                @unique @default(cuid())
-  plantId              String
-  plant                Plant                 @relation(fields: [plantId], references: [id], onDelete: Cascade)
-  familyId             String?
-  family               AssetFamily?          @relation(fields: [familyId], references: [id], onDelete: Restrict)
-  assetClassId         String?
-  assetClass           AssetClass?           @relation(fields: [assetClassId], references: [id], onDelete: Restrict)
-  assetTypeId          String?
-  assetType            AssetType?            @relation(fields: [assetTypeId], references: [id])
-  zoneId               String?
-  zone                 Zone?                 @relation(fields: [zoneId], references: [id], onDelete: SetNull)
-  parentId             String?
-  parent               Asset?                @relation("AssetHierarchy", fields: [parentId, plantId], references: [id, plantId], onDelete: Restrict)
-  children             Asset[]               @relation("AssetHierarchy")
-  code                 String?               @unique
-  sequence             Int?
-  componentCode        String?
-  nameTh               String
-  nameEn               String?
-  installationLocation String?
-  manufacturer         String?
-  model                String?
-  serialNumber         String?
-  serialNormalized     String?
-  installedAt          DateTime?
-  commissionedAt       DateTime?
-  operatingStatus      String                @default("IN_SERVICE")
-  criticality          String                @default("MEDIUM")
-  registrationStatus   String                @default("ACTIVE")
-  cancellationReason   String?
-  imageFileName        String?
-  imageMimeType        String?
-  imageFileSize        Int?
-  imageStoragePath     String?
-  qrOverrideJson       String?
-  createdAt            DateTime              @default(now())
-  updatedAt            DateTime              @updatedAt
-  technicalValues      AssetTechnicalValue[]
-  documents            AssetDocument[]
-  cmWorks              CmWork[]
-  pmGroups             PmGroupAsset[]
-  pmWorks              PmWork[]
+  id                        String                     @id @default(cuid())
+  systemId                  String?
+  system                    AssetSystem?               @relation(fields: [systemId, plantId], references: [id, plantId], onDelete: Restrict)
+  assetLevel                String                     @default("MAIN_ASSET")
+  discipline                String?
+  tagKks                    String?
+  registrationCode          String?
+  keySpecification          String?
+  metadataJson              String?
+  migrationStatus           String                     @default("NEED_REVIEW")
+  publicToken               String                     @unique @default(cuid())
+  plantId                   String
+  plant                     Plant                      @relation(fields: [plantId], references: [id], onDelete: Cascade)
+  familyId                  String?
+  family                    AssetFamily?               @relation(fields: [familyId], references: [id], onDelete: Restrict)
+  assetClassId              String?
+  assetClass                AssetClass?                @relation(fields: [assetClassId], references: [id], onDelete: Restrict)
+  assetTypeId               String?
+  assetType                 AssetType?                 @relation(fields: [assetTypeId], references: [id])
+  zoneId                    String?
+  zone                      Zone?                      @relation(fields: [zoneId], references: [id], onDelete: SetNull)
+  parentId                  String?
+  parent                    Asset?                     @relation("AssetHierarchy", fields: [parentId, plantId], references: [id, plantId], onDelete: Restrict)
+  children                  Asset[]                    @relation("AssetHierarchy")
+  code                      String?                    @unique
+  sequence                  Int?
+  componentCode             String?
+  nameTh                    String
+  nameEn                    String?
+  installationLocation      String?
+  manufacturer              String?
+  model                     String?
+  serialNumber              String?
+  serialNormalized          String?
+  installedAt               DateTime?
+  commissionedAt            DateTime?
+  operatingStatus           String                     @default("IN_SERVICE")
+  criticality               String                     @default("MEDIUM")
+  registrationStatus        String                     @default("ACTIVE")
+  cancellationReason        String?
+  imageFileName             String?
+  imageMimeType             String?
+  imageFileSize             Int?
+  imageStoragePath          String?
+  qrOverrideJson            String?
+  createdAt                 DateTime                   @default(now())
+  updatedAt                 DateTime                   @updatedAt
+  technicalValues           AssetTechnicalValue[]
+  documents                 AssetDocument[]
+  cmWorks                   CmWork[]
+  pmGroups                  PmGroupAsset[]
+  pmWorks                   PmWork[]
+  annualPmReleaseExclusions PmAnnualReleaseExclusion[]
 
   @@unique([parentId, componentCode])
   @@unique([id, plantId])

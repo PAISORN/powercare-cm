@@ -1,5 +1,4 @@
 import { Bell, CheckCheck } from "lucide-react";
-import { AppShell } from "../../components/app-shell";
 import { formatThaiDateTime } from "../../lib/date-time/bangkok-time";
 import { requireUser } from "../../lib/session";
 import { getUnreadCount, listNotifications } from "../../modules/notifications/notification-service";
@@ -14,7 +13,7 @@ export default async function NotificationsPage() {
   ]);
 
   return (
-    <AppShell>
+    <>
       <section className="rounded-3xl border border-[var(--line)] bg-[var(--surface)] p-5 shadow-[var(--shadow)] sm:p-7">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
@@ -44,6 +43,6 @@ export default async function NotificationsPage() {
           )) : <p className="rounded-2xl bg-[var(--soft)] p-8 text-center text-[var(--muted)]">No notifications yet.</p>}
         </div>
       </section>
-    </AppShell>
+    </>
   );
 }

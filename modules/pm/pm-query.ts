@@ -37,6 +37,7 @@ export const pmWorkListSelect = {
   pmPlan: { select: { id: true, number: true, plannedDateKey: true } },
   assignees: { select: { role: true, user: { select: { id: true, fullName: true } } }, orderBy: [{ role: "asc" }, { assignedAt: "asc" }] },
   sourceGroups: { select: { pmPlanGroupSnapshot: { select: { sourcePmGroupId: true, codeSnapshot: true, nameSnapshot: true } } }, orderBy: { createdAt: "asc" } },
+  annualSources: { select: { id: true } },
 } satisfies Prisma.PmWorkSelect;
 
 export const PM_CSV_EXPORT_MAX_ROWS = 10_000;

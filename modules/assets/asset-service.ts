@@ -63,6 +63,12 @@ export type RegisteredAssetInput = {
   serialNumber?: string | null; installedAt?: Date | null; commissionedAt?: Date | null;
   operatingStatus: string; criticality: string;
 };
+export type AssetRegistrationOptions = {
+  actorId: string;
+  organizationId: string;
+  technicalValues?: Readonly<Record<string, string>>;
+  auditSource?: string;
+};
 const clean = (s?: string | null) => s?.trim() || null;
 export async function validateRegisteredAsset(tx: Prisma.TransactionClient, input: RegisteredAssetInput, id: string, graph?: readonly AssetHierarchyNode[]) {
   if (!input.nameTh.trim()) throw new Error("กรุณาระบุชื่อ Asset");
@@ -122,18 +128,108 @@ async function reserveNextAssetCode(tx: Prisma.TransactionClient, plantId: strin
   return `MC-${typeCode}-${String(sequence.lastNumber).padStart(3, "0")}`;
 }
 
-export async function createRegisteredAsset(input: RegisteredAssetInput) {
+async function validateRegistrationScope(tx: Prisma.TransactionClient, input: RegisteredAssetInput, options: AssetRegistrationOptions) {
+  await tx.plant.findFirstOrThrow({
+    where: { id: input.plantId, organizationId: options.organizationId, active: true },
+    select: { id: true },
+  });
+}
+
+async function saveTechnicalValues(
+  tx: Prisma.TransactionClient,
+  assetId: string,
+  assetTypeId: string,
+  submittedValues: Readonly<Record<string, string>> | undefined,
+) {
+  if (!submittedValues) return;
+  const fields = await tx.assetTechnicalField.findMany({
+    where: { assetTypeId, active: true },
+    orderBy: { sortOrder: "asc" },
+  });
+  const values = fields.map(field => ({ field, value: submittedValues[field.id]?.trim() ?? "" }));
+  const missing = values.find(item => item.field.required && !item.value);
+  if (missing) throw new Error(`กรุณาระบุ ${missing.field.labelTh}`);
+
+  for (const { field, value } of values) {
+    if (!value) {
+      await tx.assetTechnicalValue.deleteMany({ where: { assetId, fieldId: field.id } });
+      continue;
+    }
+    await tx.assetTechnicalValue.upsert({
+      where: { assetId_fieldId: { assetId, fieldId: field.id } },
+      update: { value, unit: field.unit, dataType: field.dataType, sortOrder: field.sortOrder },
+      create: { assetId, fieldId: field.id, value, unit: field.unit, dataType: field.dataType, sortOrder: field.sortOrder },
+    });
+  }
+}
+
+function assetAuditSnapshot(asset: {
+  code: string | null;
+  nameTh: string;
+  nameEn?: string | null;
+  assetLevel: string | null;
+  assetTypeId?: string | null;
+  systemId: string | null;
+  zoneId?: string | null;
+  parentId: string | null;
+  discipline?: string | null;
+  criticality?: string | null;
+  operatingStatus?: string | null;
+}, source?: string) {
+  return {
+    code: asset.code, nameTh: asset.nameTh, nameEn: asset.nameEn, assetLevel: asset.assetLevel,
+    assetTypeId: asset.assetTypeId, systemId: asset.systemId, zoneId: asset.zoneId, parentId: asset.parentId,
+    discipline: asset.discipline, criticality: asset.criticality, operatingStatus: asset.operatingStatus,
+    ...(source ? { source } : {}),
+  };
+}
+
+async function recordAssetAudit(
+  tx: Prisma.TransactionClient,
+  options: AssetRegistrationOptions,
+  asset: { id: string; plantId: string; code: string | null; nameTh: string; nameEn?: string | null; assetLevel: string | null; assetTypeId?: string | null; systemId: string | null; zoneId?: string | null; parentId: string | null; discipline?: string | null; criticality?: string | null; operatingStatus?: string | null },
+  action: string,
+  before?: ReturnType<typeof assetAuditSnapshot>,
+) {
+  await tx.auditEvent.create({ data: {
+    actorId: options.actorId,
+    organizationId: options.organizationId,
+    plantId: asset.plantId,
+    entityType: "Asset",
+    entityId: asset.id,
+    action,
+    beforeJson: before ? JSON.stringify(before) : null,
+    afterJson: JSON.stringify(assetAuditSnapshot(asset, options.auditSource)),
+  } });
+}
+
+export async function createRegisteredAsset(input: RegisteredAssetInput, options: AssetRegistrationOptions) {
   return db.$transaction(async tx => {
+    await validateRegistrationScope(tx, input, options);
     if (!input.assetTypeId) throw new Error("กรุณาระบุ Asset Type");
     const prepared = { ...input, code: clean(input.code)?.toUpperCase() || await reserveNextAssetCode(tx, input.plantId, input.assetTypeId) };
     await validateRegisteredAsset(tx, prepared, "__new_asset__");
-    return tx.asset.create({ data: registeredAssetData(prepared) });
+    const asset = await tx.asset.create({ data: registeredAssetData(prepared) });
+    await saveTechnicalValues(tx, asset.id, input.assetTypeId, options.technicalValues);
+    await recordAssetAudit(tx, options, asset, "CREATE_ASSET");
+    return asset;
   }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
 }
-export async function updateRegisteredAsset(id: string, input: RegisteredAssetInput) {
+export async function updateRegisteredAsset(id: string, input: RegisteredAssetInput, options: AssetRegistrationOptions) {
   return db.$transaction(async tx => {
-    await tx.asset.findFirstOrThrow({ where: { id, plantId: input.plantId, registrationStatus: "ACTIVE" } });
+    await validateRegistrationScope(tx, input, options);
+    const existing = await tx.asset.findFirstOrThrow({ where: { id, plantId: input.plantId, registrationStatus: "ACTIVE" } });
     await validateRegisteredAsset(tx, input, id);
-    return tx.asset.update({ where: { id }, data: registeredAssetData(input) });
+    const asset = await tx.asset.update({ where: { id }, data: registeredAssetData(input) });
+    if (!input.assetTypeId) throw new Error("กรุณาระบุ Asset Type");
+    await saveTechnicalValues(tx, asset.id, input.assetTypeId, options.technicalValues);
+    await recordAssetAudit(
+      tx,
+      options,
+      asset,
+      existing.code !== asset.code ? "RECODE_ASSET" : "UPDATE_ASSET",
+      assetAuditSnapshot(existing),
+    );
+    return asset;
   }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
 }

@@ -2,9 +2,8 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 const sourceFiles = [
-  "components/app-nav-links.tsx",
+  "components/app-navigation/app-navigation-model.ts",
   "app/admin/site-admin-permissions/page.tsx",
-  "components/site-admin-permission-group-panel.tsx",
   "modules/auth/site-admin-permissions.ts",
   "prisma/schema.prisma",
   "prisma/schema.supabase.prisma",
@@ -19,7 +18,7 @@ describe("site admin naming", () => {
   });
 
   it("routes permission management through the unified Owner Admin URL", () => {
-    const navSource = readFileSync("components/app-nav-links.tsx", "utf8");
+    const navSource = readFileSync("components/app-navigation/app-navigation-model.ts", "utf8");
     expect(navSource).toContain("/admin/permissions");
     expect(navSource).not.toContain("/admin/plant-admin-permissions");
   });

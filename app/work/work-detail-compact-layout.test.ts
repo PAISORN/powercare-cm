@@ -3,17 +3,22 @@ import { describe, expect, it } from "vitest";
 
 describe("work detail compact layout", () => {
   it("keeps the work detail page using compact grouped panels", () => {
-    const source = readFileSync("app/work/[id]/page.tsx", "utf8");
+    const source = readFileSync("components/work-detail-page/work-detail-workspace.tsx", "utf8");
 
     expect(source).toContain("work-detail-grid");
     expect(source).toContain("work-action-panel");
     expect(source).toContain("work-compact-form");
     expect(source).toContain("sm:grid-cols-[minmax(0,1fr)_auto] sm:items-stretch");
+    expect(source).toContain("min-w-0 flex-1 rounded-md border p-3 text-black sm:min-w-72");
+    expect(source).toContain("w-full rounded-md border border-[var(--line)] px-4 py-2 sm:w-auto");
     expect(source).toContain("dark:bg-amber-50 dark:text-slate-900");
   });
 
   it("uses the modern work detail command-center layout", () => {
-    const source = readFileSync("app/work/[id]/page.tsx", "utf8");
+    const source = [
+      "components/work-detail-page/work-detail-workspace.tsx",
+      "components/work-detail-page/work-detail-support.tsx",
+    ].map((file) => readFileSync(file, "utf8")).join("\n");
 
     expect(source).toContain("work-detail-hero");
     expect(source).toContain("work-meta-strip");
@@ -31,7 +36,7 @@ describe("work detail compact layout", () => {
   });
 
   it("keeps the modern work detail layout in the original minimalist surface style", () => {
-    const source = readFileSync("app/work/[id]/page.tsx", "utf8");
+    const source = readFileSync("components/work-detail-page/work-detail-workspace.tsx", "utf8");
 
     expect(source).toContain("work-detail-hero mx-auto w-full max-w-3xl rounded-3xl border border-[var(--line)] bg-[var(--surface)]");
     expect(source).not.toContain("work-detail-hero mx-auto w-full max-w-3xl rounded-3xl border border-cyan");
@@ -40,7 +45,7 @@ describe("work detail compact layout", () => {
   });
 
   it("places operations and store request in icon underline tabs", () => {
-    const source = readFileSync("app/work/[id]/page.tsx", "utf8");
+    const source = readFileSync("components/work-detail-page/work-detail-workspace.tsx", "utf8");
 
     const operationsGrid = source.indexOf("work-operations-grid");
     const operationsPanel = source.indexOf("work-operation-tabs", operationsGrid);
@@ -67,7 +72,12 @@ describe("work detail compact layout", () => {
   });
 
   it("hides the old operation tab labels and supports canceling a pending store issue request", () => {
-    const source = readFileSync("app/work/[id]/page.tsx", "utf8");
+    const source = [
+      "modules/cm-work/work-detail-page-data.ts",
+      "app/work/[id]/actions.ts",
+      "components/work-detail-page/work-detail-workspace.tsx",
+      "components/work-detail-page/work-detail-support.tsx",
+    ].map((file) => readFileSync(file, "utf8")).join("\n");
 
     expect(source).toContain("cancelOwnPendingStoreIssueAction");
     expect(source).toContain("requesterUserId: true");
