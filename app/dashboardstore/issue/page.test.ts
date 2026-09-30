@@ -117,6 +117,7 @@ describe("Inventory issue page", () => {
       '.issue-row-two-line[data-drawer-open="true"]',
     );
     expect(globalsSource).toContain("transition: none !important");
+    expect(globalsSource).toContain("z-index: auto !important");
     expect(filterSource).toContain('data-testid="issue-filter-bar"');
   });
 

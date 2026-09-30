@@ -28,11 +28,12 @@ export function StockExcelImportDrawer({
 <>
             <Link
               aria-label="ปิดหน้าต่างนำเข้า Excel"
-              className="fixed inset-0 z-40 bg-black/30 backdrop-blur-[1px]"
+              className="fixed inset-0 z-[75] bg-black/35 backdrop-blur-sm"
               href={stockPageHref(currentPage)}
+              scroll={false}
             />
             <aside
-              className="stock-right-sidebar fixed bottom-0 right-0 z-[80] w-full max-w-2xl overflow-y-auto border-l border-[var(--line)] bg-[var(--surface)] p-5 shadow-2xl sm:p-7"
+              className="fixed inset-y-0 right-0 z-[80] w-full max-w-2xl overflow-y-auto border-l border-[var(--line)] bg-[var(--surface)] p-5 shadow-2xl sm:p-7"
               id="excel-import-drawer"
             >
               <div className="flex items-start justify-between gap-4">

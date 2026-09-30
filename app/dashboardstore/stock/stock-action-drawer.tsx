@@ -31,10 +31,17 @@ export function StockActionDrawer({
   };
 
   return (
-    <aside
-      className="stock-right-sidebar fixed bottom-0 right-0 z-[80] w-full max-w-lg overflow-y-auto border-l border-[var(--line)] bg-[var(--surface)] p-5 shadow-2xl sm:p-6"
-      id="stock-action-drawer"
-    >
+    <>
+      <Link
+        aria-label="ปิดหน้าต่างดำเนินการ Stock"
+        className="fixed inset-0 z-[75] bg-black/35 backdrop-blur-sm"
+        href={`${stockPageHref(currentPage)}#stock-row-${selectedStock.sparePart.id}`}
+        scroll={false}
+      />
+      <aside
+        className="fixed inset-y-0 right-0 z-[80] w-full max-w-lg overflow-y-auto border-l border-[var(--line)] bg-[var(--surface)] p-5 shadow-2xl sm:p-6"
+        id="stock-action-drawer"
+      >
       <div className="flex items-start justify-between gap-4">
         <div>
           <p className="text-sm font-bold text-[var(--primary)]">
@@ -70,7 +77,8 @@ export function StockActionDrawer({
       ) : null}
       {stockAction === "receive" ? <StockReceiveForm {...formProps} /> : null}
       {stockAction === "adjust" ? <StockAdjustForm {...formProps} /> : null}
-    </aside>
+      </aside>
+    </>
   );
 }
 

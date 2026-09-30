@@ -311,20 +311,6 @@ html[data-stock-header-replacement="active"] .stock-table-panel {
   transition: none !important;
 }
 
-.stock-right-sidebar {
-  top: var(--stock-app-topbar-offset, 5.25rem);
-}
-
-html[data-stock-header-replacement="active"] .stock-right-sidebar {
-  top: var(--stock-replacement-header-height, 4rem);
-}
-
-@media (max-width: 767px) {
-  .stock-right-sidebar {
-    top: var(--stock-app-topbar-offset, 4.75rem);
-  }
-}
-
 @media (prefers-reduced-motion: reduce) {
   :where(
     a,
@@ -909,6 +895,7 @@ html[data-stock-header-replacement="active"] .stock-right-sidebar {
 
 .stock-table-panel {
   backdrop-filter: none;
+  transform: none !important;
 }
 
 .stock-page-hero {
@@ -3493,6 +3480,7 @@ body
     filter: none !important;
     transform: none !important;
     transition: none !important;
+    z-index: auto !important;
   }
 
   .dashboard-kpi-carousel .dashboard-kpi:hover,

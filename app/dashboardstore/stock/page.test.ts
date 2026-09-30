@@ -101,6 +101,7 @@ describe("Store stock page", () => {
     expect(source).toContain("<StockEditDrawer");
     expect(source).toContain("<StockActionDrawer");
     expect(source).toContain("<StockExcelImportDrawer");
+    expect(source).toContain('<div className="contents">');
     expect(source).not.toContain("<form");
     expect(source).not.toContain("stock-right-sidebar");
   });
@@ -181,22 +182,12 @@ describe("Store stock page", () => {
     expect(actions).not.toContain("const existingPrice =");
   });
 
-  it("keeps right sidebars below whichever stock header is fixed", () => {
+  it("keeps the replacement Stock header fixed without transforming the table", () => {
     const source = readStockUiSource();
     const styles = readFileSync("app/globals.css", "utf8");
     const controller = readFileSync(
       "components/stock-header-replacement-controller.tsx",
       "utf8",
-    );
-
-    expect(source.match(/stock-right-sidebar/g)).toHaveLength(3);
-    expect(source).not.toContain("fixed inset-y-0 right-0 z-50 w-full");
-    expect(styles).toContain("top: var(--stock-app-topbar-offset, 5.25rem)");
-    expect(styles).toContain(
-      'html[data-stock-header-replacement="active"] .stock-right-sidebar',
-    );
-    expect(styles).toContain(
-      "top: var(--stock-replacement-header-height, 4rem)",
     );
     expect(styles).toContain(
       'html[data-stock-header-replacement="active"] .stock-table-panel',
@@ -209,6 +200,25 @@ describe("Store stock page", () => {
       'removeProperty("--stock-replacement-header-height")',
     );
   });
+
+  it("keeps Stock rows still and blurs the page behind every right drawer", () => {
+    const source = readStockUiSource();
+    const styles = readFileSync("app/globals.css", "utf8");
+
+    expect(
+      source.match(/z-\[75\] bg-black\/35 backdrop-blur-sm/g),
+    ).toHaveLength(3);
+    expect(source).toContain('aria-label="ปิดหน้าต่างดำเนินการ Stock"');
+    expect(source).toContain('aria-label="ปิดหน้าต่างแก้ไข Stock"');
+    expect(source).toContain('aria-label="ปิดหน้าต่างนำเข้า Excel"');
+    expect(source.match(/fixed inset-y-0 right-0 z-\[80\]/g)).toHaveLength(3);
+    expect(styles).toMatch(
+      /\.stock-table-panel\s*\{[^}]*transform: none !important;/s,
+    );
+    expect(source).toContain("sticky top-0 z-40 bg-[var(--soft)]");
+    expect(source).toContain('data-testid="stock-filter-bar"');
+  });
+
   it("shows stock values and exports through the shared list query contract", () => {
     const source = readStockUiSource();
     const loader = readFileSync("modules/store/stock-page-data.ts", "utf8");

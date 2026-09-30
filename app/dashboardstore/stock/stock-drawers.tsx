@@ -40,7 +40,7 @@ export function StockDrawers({
   user: { role: string };
 }) {
   return (
-    <>
+    <div className="contents">
       {editPart && canManageParts ? (
         <StockEditDrawer
           canEditValue={canEditValue}
@@ -76,6 +76,6 @@ export function StockDrawers({
           stores={stores}
         />
       ) : null}
-    </>
+    </div>
   );
 }

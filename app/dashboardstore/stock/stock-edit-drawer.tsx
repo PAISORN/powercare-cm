@@ -31,8 +31,15 @@ export function StockEditDrawer({
   user: { role: string };
 }) {
   return (
-<aside
-            className="stock-right-sidebar fixed bottom-0 right-0 z-[80] w-full max-w-xl overflow-y-auto border-l border-[var(--line)] bg-[var(--surface)] p-5 shadow-2xl sm:p-6"
+    <>
+      <Link
+        aria-label="ปิดหน้าต่างแก้ไข Stock"
+        className="fixed inset-0 z-[75] bg-black/35 backdrop-blur-sm"
+        href={`${stockPageHref(currentPage)}#stock-row-${editPart.id}`}
+        scroll={false}
+      />
+      <aside
+            className="fixed inset-y-0 right-0 z-[80] w-full max-w-xl overflow-y-auto border-l border-[var(--line)] bg-[var(--surface)] p-5 shadow-2xl sm:p-6"
             id="edit-spare-part"
           >
             <div className="flex items-start justify-between gap-4">
@@ -228,6 +235,7 @@ export function StockEditDrawer({
                 <button className={primaryButtonClass}>บันทึกอะไหล่</button>
               </div>
             </form>
-          </aside>
+      </aside>
+    </>
   );
 }
