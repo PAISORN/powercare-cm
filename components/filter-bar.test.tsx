@@ -33,4 +33,23 @@ describe("FilterBar date range", () => {
     expect(screen.getByRole("button", { name: /Default dashboard periods/i })).toBeTruthy();
     expect(container.querySelector<HTMLInputElement>('input[name="startDate"]')?.disabled).toBe(true);
   });
+
+  it("keeps the hero filter inside the app workspace at every breakpoint", () => {
+    const { container } = render(
+      <FilterBar
+        categories={[]}
+        claimants={[]}
+        placement="hero"
+        values={{}}
+        zones={[]}
+      />,
+    );
+
+    const form = container.querySelector("form");
+    expect(form?.className).toContain("w-[calc(100vw-2.5rem)]");
+    expect(form?.className).toContain(
+      "md:w-[calc(100vw-var(--app-sidebar-width,18rem)-4rem)]",
+    );
+    expect(form?.className).not.toContain("calc(100vw-2rem)");
+  });
 });

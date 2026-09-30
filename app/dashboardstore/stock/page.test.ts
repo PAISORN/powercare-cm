@@ -198,6 +198,10 @@ describe("Store stock page", () => {
     expect(styles).toContain(
       "top: var(--stock-replacement-header-height, 4rem)",
     );
+    expect(styles).toContain(
+      'html[data-stock-header-replacement="active"] .stock-table-panel',
+    );
+    expect(styles).toContain("transform: none !important");
     expect(controller).toMatch(
       /setProperty\(\s*"--stock-replacement-header-height"/,
     );

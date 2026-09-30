@@ -87,6 +87,7 @@ export function IssueTrackingRow({
   return (
     <article
       className="issue-row-two-line rounded-2xl border border-[var(--line)] bg-[var(--soft)] transition duration-300 ease-out hover:-translate-y-0.5 hover:bg-[var(--surface)] hover:shadow-[var(--shadow)]"
+      data-drawer-open={inspected ? "true" : undefined}
       id={rowId}
     >
       <div className="hidden h-1 bg-[var(--primary)]" />

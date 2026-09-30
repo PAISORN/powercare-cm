@@ -109,6 +109,14 @@ describe("Inventory issue page", () => {
     expect(rowSource).toContain("PreserveListPositionLink");
     expect(rowSource).toContain("fixed inset-y-0 right-0 z-50");
     expect(rowSource).toContain("backdrop-blur-sm");
+    expect(rowSource).toContain(
+      'data-drawer-open={inspected ? "true" : undefined}',
+    );
+    const globalsSource = readFileSync("app/globals.css", "utf8");
+    expect(globalsSource).toContain(
+      '.issue-row-two-line[data-drawer-open="true"]',
+    );
+    expect(globalsSource).toContain("transition: none !important");
     expect(filterSource).toContain('data-testid="issue-filter-bar"');
   });
 

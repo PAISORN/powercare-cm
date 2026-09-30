@@ -305,6 +305,12 @@ html[data-stock-header-replacement="active"] .stock-replacement-header {
   transform: translateY(0);
 }
 
+html[data-stock-header-replacement="active"] .stock-table-panel {
+  filter: none !important;
+  transform: none !important;
+  transition: none !important;
+}
+
 .stock-right-sidebar {
   top: var(--stock-app-topbar-offset, 5.25rem);
 }
@@ -3481,6 +3487,12 @@ body
     box-shadow: var(--card-hover-shadow) !important;
     filter: saturate(1.035);
     transform: translateY(var(--card-hover-lift)) scale(1.006);
+  }
+
+  .issue-row-two-line[data-drawer-open="true"] {
+    filter: none !important;
+    transform: none !important;
+    transition: none !important;
   }
 
   .dashboard-kpi-carousel .dashboard-kpi:hover,

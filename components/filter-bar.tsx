@@ -65,7 +65,7 @@ export function FilterBar({
       <form
         className={
           placement === "hero"
-            ? "mt-4 w-[calc(100vw-2rem)] pt-4 sm:w-[min(900px,calc(100vw-2rem))] xl:absolute xl:right-0 xl:top-full xl:z-50 xl:w-[min(1500px,calc(100vw-2rem))]"
+            ? "mt-4 w-[calc(100vw-2.5rem)] pt-4 md:w-[calc(100vw-var(--app-sidebar-width,18rem)-4rem)] xl:absolute xl:right-0 xl:top-full xl:z-50"
             : "mt-4 pt-4"
         }
         method="get"
