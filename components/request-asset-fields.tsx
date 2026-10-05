@@ -12,7 +12,7 @@ export function RequestAssetFields({ zones, assets }: { zones: ZoneOption[]; ass
   return <>
     <label className="grid gap-1 text-sm font-bold text-[var(--ink)]">Zone/Area
       <select
-        className="min-h-12 cursor-pointer rounded-md border bg-white p-3 text-black disabled:cursor-not-allowed disabled:opacity-60"
+        className="min-h-12 cursor-pointer rounded-2xl border bg-white p-3 text-black disabled:cursor-not-allowed disabled:opacity-60"
         disabled={!zones.length}
         name="zoneId"
         onChange={(event)=>setZoneId(event.target.value)}

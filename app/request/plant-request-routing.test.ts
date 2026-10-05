@@ -12,10 +12,9 @@ describe("Plant-specific repair request routing", () => {
     expect(source).toContain('redirect("/dashboardcm")');
     expect(source).toContain('formData.get("plantCode")');
     expect(source).toContain('name="plantCode"');
-    expect(source).toContain("plantName={plantScope.name}");
-    expect(source).toContain(">{plantName}</span>");
-    expect(source).toContain(">{plantCode}</span>");
-    expect(source).not.toContain("Plant: {plantName}");
+    expect(source).toContain("<span>แจ้งซ่อม</span>");
+    expect(source).toContain("{plantScope.code}");
+    expect(source).not.toContain("SiteIdentityHeader");
     expect(source).toContain("db.zone.findMany");
     expect(source).toContain("db.category.findMany");
     expect(source).toContain("db.asset.findMany");
