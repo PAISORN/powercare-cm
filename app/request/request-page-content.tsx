@@ -80,7 +80,7 @@ export async function RequestPageContent({ error, plantCode }: { error?: string 
 
   return (
     <RequestShell signedIn={Boolean(user)}>
-      <form action={submitRepairRequest} className="mx-auto grid max-w-3xl gap-4 px-8 pb-10 pt-0 sm:pt-5">
+      <form action={submitRepairRequest} className="apple-ui-font mx-auto grid max-w-3xl gap-4 px-8 pb-10 pt-0 sm:pt-5">
         <input name="plantCode" type="hidden" value={plantScope.code} />
         <input name="submissionKey" type="hidden" value={submissionKey} />
         {error === "site-limit" ? (

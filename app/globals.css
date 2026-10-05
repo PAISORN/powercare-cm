@@ -213,6 +213,13 @@ body {
     color 520ms ease;
 }
 
+.apple-ui-font,
+.apple-ui-font :is(input, select, textarea, button) {
+  font-family:
+    -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display",
+    "Helvetica Neue", "Segoe UI", "Noto Sans Thai", Arial, sans-serif;
+}
+
 body::before {
   content: "";
   position: fixed;
@@ -1707,6 +1714,18 @@ input[type="checkbox"]:not(.sr-only):disabled {
 
 .guardian-sidebar .app-brand-power {
   color: #ffffff;
+}
+
+.guardian-sidebar .app-brand {
+  font-family:
+    -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text",
+    "Helvetica Neue", "Segoe UI", Arial, sans-serif;
+  font-style: normal;
+  letter-spacing: -0.015em;
+}
+
+.guardian-sidebar .app-brand :is(.app-brand-power, .app-brand-care) {
+  font-style: normal;
 }
 
 .guardian-sidebar

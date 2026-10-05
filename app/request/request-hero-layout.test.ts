@@ -7,6 +7,7 @@ describe("repair request heading", () => {
 
     expect(source).toContain("<span>แจ้งซ่อม</span>");
     expect(source).toContain("{plantScope.code}");
+    expect(source).toContain('className="apple-ui-font');
     expect(source).not.toContain("SiteIdentityHeader");
     expect(source).not.toContain('data-testid="repair-request-hero"');
     expect(source).not.toContain("readPlantProfile");
