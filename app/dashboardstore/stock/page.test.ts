@@ -20,6 +20,7 @@ function readStockUiSource() {
     readFileSync("app/dashboardstore/stock/stock-edit-drawer.tsx", "utf8"),
     readFileSync("app/dashboardstore/stock/stock-action-drawer.tsx", "utf8"),
     readFileSync("app/dashboardstore/stock/stock-action-forms.tsx", "utf8"),
+    readFileSync("app/dashboardstore/stock/stock-history-modal.tsx", "utf8"),
     readFileSync(
       "app/dashboardstore/stock/stock-action-hidden-fields.tsx",
       "utf8",
@@ -133,7 +134,9 @@ describe("Store stock page", () => {
     const source = readFileSync("app/dashboardstore/stock/page.tsx", "utf8");
 
     expect(source).toContain("dashboard-kpi-carousel stock-summary-grid");
-    expect(source).toContain("dashboard-kpi dashboard-kpi-glow dashboard-kpi-slide");
+    expect(source).toContain(
+      "dashboard-kpi dashboard-kpi-glow dashboard-kpi-slide",
+    );
     expect(source).toContain('blue: "#3b82f6"');
     expect(source).toContain('green: "#10b981"');
     expect(source).toContain('orange: "#f59e0b"');
@@ -154,7 +157,9 @@ describe("Store stock page", () => {
     expect(actions).toContain('"spare-part-updated"');
     expect(actions).toContain("stockHrefWithFeedback(returnTo, key, value)");
     expect(actions.match(/stockReturnTo\(scope, formData/g)).toHaveLength(6);
-    expect(source).toContain("enabled={!editPart && !stockAction}");
+    expect(source).toContain(
+      "enabled={!editPart && !stockAction && !stockHistory}",
+    );
     expect(source).toContain("${stockPageHref(currentPage)}&stockAction=issue");
     expect(source).toContain(
       "${stockPageHref(currentPage)}&stockAction=receive",
@@ -262,6 +267,30 @@ describe("Store stock page", () => {
     expect(source).toContain("value={stockPageHref(currentPage)}");
     expect(source).toContain("href={stockPageHref(currentPage)}");
   });
+
+  it("opens item movement history from the three-dot menu in a blurred modal", () => {
+    const source = readStockUiSource();
+    const page = readStockPageSource();
+    const loader = readFileSync(
+      "modules/store/stock-movement-history.ts",
+      "utf8",
+    );
+
+    expect(source).toContain("historyStockId=");
+    expect(source).toContain("ประวัติ");
+    expect(source).toContain('role="dialog"');
+    expect(source).toContain('aria-modal="true"');
+    expect(source).toContain("bg-slate-950/45 backdrop-blur-md");
+    expect(source).toContain("movements.map");
+    expect(page).toContain("loadStockMovementHistory({");
+    expect(page).toContain("<StockHistoryModal");
+    expect(page).toContain("stockHistory.stock.sparePartId");
+    expect(loader).toContain("organizationId: input.organizationId");
+    expect(loader).toContain("plantId: input.plantId");
+    expect(loader).toContain("storeId: stock.storeId");
+    expect(loader).toContain("sparePartId: stock.sparePartId");
+    expect(loader).toContain("take: 100");
+  });
   it("renders an enterprise stock dashboard with filters, inventory table, and row actions", () => {
     expect(existsSync("app/dashboardstore/stock/page.tsx")).toBe(true);
     const source = readStockUiSource();
@@ -301,9 +330,9 @@ describe("Store stock page", () => {
     expect(source).toContain("sticky top-0 z-40 bg-[var(--soft)]");
     expect(source).toContain('data-testid="stock-filter-bar"');
     expect(source).toContain('aria-label="ตัวกรอง"');
-    expect(source.indexOf("dashboard-kpi-carousel stock-summary-grid")).toBeLessThan(
-      source.indexOf('data-testid="stock-filter-bar"'),
-    );
+    expect(
+      source.indexOf("dashboard-kpi-carousel stock-summary-grid"),
+    ).toBeLessThan(source.indexOf('data-testid="stock-filter-bar"'));
     expect(source.indexOf('data-testid="stock-filter-bar"')).toBeLessThan(
       source.indexOf('id="stock-table-region"'),
     );
@@ -363,7 +392,7 @@ describe("Store stock page", () => {
     expect(source).toContain("นำเข้าอะไหล่จาก Excel สำเร็จ");
     expect(source).not.toContain("Stock Movement ล่าสุด");
     expect(source).not.toContain("db.stockMovement.findMany");
-    expect(source).not.toContain("movements.map");
+    expect(source).toContain("movements.map");
     expect(source).not.toContain("Ã Â¸");
   });
 });

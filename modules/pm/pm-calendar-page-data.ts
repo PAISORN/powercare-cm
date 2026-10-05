@@ -20,6 +20,7 @@ export type LoadPmCalendarPageDataInput = {
   month: string;
   selectedDate: string;
   canManage: boolean;
+  canExecute: boolean;
 };
 
 export async function loadPmCalendarPageData({
@@ -29,6 +30,7 @@ export async function loadPmCalendarPageData({
   month,
   selectedDate,
   canManage,
+  canExecute,
 }: LoadPmCalendarPageDataInput) {
   const serviceScope = {
     organizationId: scope.organization.id,
@@ -65,6 +67,7 @@ export async function loadPmCalendarPageData({
       query,
       selectedDate,
       canManage,
+      canExecute,
       annualPlan,
     }),
     selectedPlanId
@@ -113,6 +116,7 @@ async function loadAnnualReleasePreview({
   query,
   selectedDate,
   canManage,
+  canExecute,
   annualPlan,
 }: {
   user: PermissionUserContext;
@@ -120,9 +124,13 @@ async function loadAnnualReleasePreview({
   query: PmCalendarQuery;
   selectedDate: string;
   canManage: boolean;
+  canExecute: boolean;
   annualPlan: { id: string; status: string } | null;
 }) {
-  if (!annualPlan || !canManage || query.release !== "annual") {
+  const canOpenRelease =
+    Boolean(annualPlan) &&
+    (canManage || (canExecute && annualPlan?.status === "ACTIVE"));
+  if (!annualPlan || !canOpenRelease || query.release !== "annual") {
     return { preview: null, error: null };
   }
   const pending = await db.pmAnnualSchedule.count({

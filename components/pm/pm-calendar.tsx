@@ -1,5 +1,6 @@
 import {
   CalendarDays,
+  CheckCircle2,
   ChevronLeft,
   ChevronRight,
   Plus,
@@ -76,13 +77,20 @@ export function annualPmCalendarHref(
   scopeQuery: string,
   canManage = true,
   view: "month" | "day" = "month",
+  canExecute = canManage,
 ) {
   const date = item.scheduleDateKey;
   if (item.status === "RELEASED" || item.releasePmPlanId) {
     return `/dashboardpm/annual/${encodeURIComponent(item.id)}?${scopeQuery}`;
   }
-  if (["ACTIVE", "DRAFT"].includes(item.planStatus) && canManage) {
+  if (
+    (item.planStatus === "ACTIVE" && (canManage || canExecute)) ||
+    (item.planStatus === "DRAFT" && canManage)
+  ) {
     return `/dashboardpm/calendar?${scopeQuery}&view=${view}&month=${date.slice(0, 7)}&date=${date}&annualPlanId=${encodeURIComponent(item.planId)}&scheduleId=${encodeURIComponent(item.id)}&release=annual`;
+  }
+  if (!canManage) {
+    return `/dashboardpm/calendar?${scopeQuery}&view=${view}&month=${date.slice(0, 7)}&date=${date}`;
   }
   return `/dashboardpm/setup?${scopeQuery}&year=${date.slice(0, 4)}&planId=${encodeURIComponent(item.planId)}&view=month&month=${Number(date.slice(5, 7))}&date=${date}`;
 }
@@ -103,6 +111,7 @@ export function PmCalendar({
   annualEntries = [],
   scopeQuery,
   canManage,
+  canExecute = canManage,
   today,
   viewSwitcher,
 }: {
@@ -111,6 +120,7 @@ export function PmCalendar({
   annualEntries?: AnnualPmCalendarEntry[];
   scopeQuery: string;
   canManage: boolean;
+  canExecute?: boolean;
   today: string;
   viewSwitcher?: {
     view: PmCalendarView;
@@ -295,9 +305,22 @@ export function PmCalendar({
               const progress = workTotal
                 ? Math.round((workCompleted / workTotal) * 100)
                 : 0;
+              const allAnnualComplete =
+                annualForDate.length > 0 &&
+                annualForDate.every(isAnnualEntryComplete);
               const assignees = uniqueAssignees(annualForDate);
               const lead = assignees[0];
               const statusLabel = calendarDayStatus(annualForDate, progress);
+              const primaryAnnualItem = visibleAnnualItems[0];
+              const primaryAnnualHref = primaryAnnualItem
+                ? annualPmCalendarHref(
+                    primaryAnnualItem,
+                    scopeQuery,
+                    canManage,
+                    "month",
+                    canExecute,
+                  )
+                : null;
               const accessibleLabel =
                 dateFormatter.format(isoDateAtUtcNoon(date)) +
                 (plan ? " มีแผน " + groups.length + " กลุ่ม" : "") +
@@ -314,9 +337,12 @@ export function PmCalendar({
                   aria-current={isToday ? "date" : undefined}
                   aria-label={accessibleLabel}
                   className={[
-                    "group min-w-0 overflow-visible rounded-[1.75rem] border p-3.5 transition duration-200 ease-out hover:-translate-y-1 hover:scale-[1.01] focus-within:ring-2 focus-within:ring-[var(--primary)] motion-reduce:transform-none",
+                    "group relative min-w-0 overflow-visible rounded-[1.75rem] border p-3.5 transition duration-200 ease-out hover:-translate-y-1 hover:scale-[1.01] focus-within:ring-2 focus-within:ring-[var(--primary)] motion-reduce:transform-none",
+                    primaryAnnualHref ? "cursor-pointer" : "",
                     "lg:h-[156px]",
-                    outside
+                    allAnnualComplete
+                      ? "border-emerald-300 bg-gradient-to-br from-[#dcfce7] to-[#bbf7d0] text-emerald-950 shadow-[0_10px_28px_rgba(16,185,129,0.18)] hover:shadow-[0_14px_34px_rgba(16,185,129,0.26)]"
+                      : outside
                       ? "hidden border-[var(--line)] bg-[var(--soft)]/45 opacity-55 lg:block"
                       : plan || annualForDate.length
                         ? weekdayCardTones[weekdayIndex]
@@ -329,42 +355,71 @@ export function PmCalendar({
                   key={date}
                   role="gridcell"
                 >
-                  <div className="flex h-full min-h-0 flex-col">
+                  {primaryAnnualItem && primaryAnnualHref ? (
+                    <Link
+                      aria-label={`เปิดรายการ PM วันที่ ${date} ${primaryAnnualItem.targetName}`}
+                      className="absolute inset-0 z-0 rounded-[1.75rem] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]"
+                      data-pm-day-card-primary-action
+                      href={primaryAnnualHref}
+                      scroll={false}
+                    >
+                      <span className="sr-only">เปิดรายการ PM</span>
+                    </Link>
+                  ) : null}
+                  <div className="pointer-events-none relative z-10 flex h-full min-h-0 flex-col">
                     <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_3.5rem] items-start gap-2">
                       <div className="grid min-h-[4.75rem] min-w-0 content-start gap-1.5 overflow-visible">
-                        {visibleAnnualItems.map((item) => (
+                        {visibleAnnualItems.map((item) => {
+                          const complete = isAnnualEntryComplete(item);
+                          return (
                           <Link
-                            aria-label={`${item.targetName} ${item.mainAssetCount} Main Assets`}
-                            className="flex min-h-8 min-w-0 items-center gap-1.5 rounded-full bg-white/55 px-2 py-0.5 text-[10px] font-black shadow-none transition duration-200 ease-out hover:-translate-y-0.5 hover:scale-[1.02] hover:brightness-[1.03] hover:shadow-[0_8px_22px_var(--pm-target-glow)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] motion-reduce:transform-none"
+                            aria-label={`${item.targetName} ${item.mainAssetCount} Main Assets${complete ? " Complete" : ""}`}
+                            className={`pointer-events-auto flex min-h-8 min-w-0 items-center gap-1.5 rounded-full px-2 py-0.5 text-[10px] font-black shadow-none transition duration-200 ease-out hover:-translate-y-0.5 hover:scale-[1.02] hover:brightness-[1.03] hover:shadow-[0_8px_22px_var(--pm-target-glow)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] motion-reduce:transform-none ${complete ? "border border-emerald-300" : "bg-white/55"}`}
                             data-pm-target-row
                             href={annualPmCalendarHref(
                               item,
                               scopeQuery,
                               canManage,
+                              "month",
+                              canExecute,
                             )}
                             key={item.id}
                             scroll={false}
-                            style={
-                              {
+                            style={(
+                              complete
+                                ? {
+                                    background: "#dcfce7",
+                                    color: "#166534",
+                                    "--pm-target-glow": "rgba(16,185,129,0.28)",
+                                  }
+                                : {
                                 ...pmTargetColor(item.targetId),
                                 "--pm-target-glow": pmTargetGlowColor(
                                   item.targetId,
                                 ),
-                              } as CSSProperties
-                            }
+                              }
+                            ) as unknown as CSSProperties}
                             title={item.targetName}
                           >
                             <span className="min-w-0 flex-1 truncate">
                               {item.targetName}
                             </span>
-                            <span
-                              aria-label={"Main Assets " + item.mainAssetCount}
-                              className="grid size-6 shrink-0 place-items-center rounded-full bg-white/65 text-[9px] font-black"
-                            >
-                              {item.mainAssetCount}
-                            </span>
+                            {complete ? (
+                              <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-white/70 px-2 py-1 text-[9px] font-black text-emerald-800">
+                                <CheckCircle2 aria-hidden="true" size={11} />
+                                Complete
+                              </span>
+                            ) : (
+                              <span
+                                aria-label={"Main Assets " + item.mainAssetCount}
+                                className="grid size-6 shrink-0 place-items-center rounded-full bg-white/65 text-[9px] font-black"
+                              >
+                                {item.mainAssetCount}
+                              </span>
+                            )}
                           </Link>
-                        ))}
+                          );
+                        })}
 
                         {overflowCount ? (
                           <Link
@@ -374,7 +429,7 @@ export function PmCalendar({
                               " รายการในวันที่ " +
                               date
                             }
-                            className="w-fit rounded-full bg-white/45 px-2 py-0.5 text-[9px] font-black opacity-70 transition duration-200 hover:-translate-y-0.5 hover:bg-white/75 hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] motion-reduce:transform-none"
+                            className="pointer-events-auto w-fit rounded-full bg-white/45 px-2 py-0.5 text-[9px] font-black opacity-70 transition duration-200 hover:-translate-y-0.5 hover:bg-white/75 hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] motion-reduce:transform-none"
                             href={dayHref(date)}
                             scroll={false}
                           >
@@ -384,7 +439,7 @@ export function PmCalendar({
 
                         {!outside && !plan && !annualForDate.length ? (
                           <Link
-                            className="flex min-h-[4.75rem] items-center justify-center gap-2 rounded-[1.35rem] border border-dashed border-current/20 bg-white/30 px-2 text-center text-[10px] font-bold opacity-70 transition duration-200 hover:-translate-y-0.5 hover:bg-white/55 hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] motion-reduce:transform-none"
+                            className="pointer-events-auto flex min-h-[4.75rem] items-center justify-center gap-2 rounded-[1.35rem] border border-dashed border-current/20 bg-white/30 px-2 text-center text-[10px] font-bold opacity-70 transition duration-200 hover:-translate-y-0.5 hover:bg-white/55 hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] motion-reduce:transform-none"
                             href={calendarHref(date)}
                             scroll={false}
                           >
@@ -397,7 +452,7 @@ export function PmCalendar({
                       <Link
                         aria-label={`เปิดวันที่ ${date}`}
                         className={[
-                          "grid size-14 shrink-0 place-items-center rounded-full border border-white/80 bg-white/85 text-2xl font-black text-slate-950 shadow-sm transition duration-200 hover:-translate-y-0.5 hover:scale-105 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] motion-reduce:transform-none",
+                          "pointer-events-auto grid size-14 shrink-0 place-items-center rounded-full border border-white/80 bg-white/85 text-2xl font-black text-slate-950 shadow-sm transition duration-200 hover:-translate-y-0.5 hover:scale-105 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] motion-reduce:transform-none",
                           isToday ? "ring-2 ring-[var(--primary)]/35" : "",
                         ].join(" ")}
                         href={calendarHref(date, plan)}
@@ -468,10 +523,16 @@ function calendarDayStatus(entries: AnnualPmCalendarEntry[], progress: number) {
   const hasReleased = entries.some(
     (item) => item.status === "RELEASED" || item.releasePmPlanId,
   );
-  if (hasReleased && progress === 100) return "เสร็จสิ้น";
+  if (hasReleased && progress === 100) return "Complete";
   if (hasReleased && progress > 0) return "กำลังดำเนินการ";
   if (hasReleased) return "รอดำเนินการ";
   return "พร้อมเริ่ม PM";
+}
+
+export function isAnnualEntryComplete(entry: AnnualPmCalendarEntry) {
+  return Boolean(
+    entry.workTotal && entry.workCompleted === entry.workTotal,
+  );
 }
 
 function formatDayDate(date: string) {

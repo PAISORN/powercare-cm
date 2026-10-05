@@ -25,10 +25,12 @@ import {
 } from "../../../modules/store/stock-list-query";
 import { loadStockPageData } from "../../../modules/store/stock-page-data";
 import { buildStockPageModel } from "../../../modules/store/stock-page-model";
+import { loadStockMovementHistory } from "../../../modules/store/stock-movement-history";
 import { resolveStorePageScope } from "../../../modules/store/store-page-scope";
 import { StockDrawers } from "./stock-drawers";
 import { StockFilterPanel } from "./stock-filter-panel";
 import { StockInventoryTable } from "./stock-inventory-table";
+import { StockHistoryModal } from "./stock-history-modal";
 import type { StockPageQuery } from "./types";
 
 export default async function StockPage({
@@ -111,12 +113,19 @@ export default async function StockPage({
     canonicalStockQuery,
   );
   const activeFilterCount = countStockListFilters(canonicalStockQuery);
+  const stockHistory = query.historyStockId
+    ? await loadStockMovementHistory({
+        organizationId: scope.organization.id,
+        plantId: scope.plant.id,
+        stockId: query.historyStockId,
+      })
+    : null;
 
   return (
     <>
       <div className="space-y-5">
         <RestoreListPosition
-          enabled={!editPart && !stockAction}
+          enabled={!editPart && !stockAction && !stockHistory}
           storageKey={stockListPositionKey}
         />
         <header className="menu-heading-plain stock-page-hero stock-page-heading relative overflow-hidden rounded-3xl border p-5 shadow-[var(--shadow)] sm:p-6">
@@ -294,6 +303,12 @@ export default async function StockPage({
           stores={stores}
           user={user}
         />
+        {stockHistory ? (
+          <StockHistoryModal
+            closeHref={`${stockPageHref(currentPage)}#stock-row-${stockHistory.stock.sparePartId}`}
+            history={stockHistory}
+          />
+        ) : null}
       </div>
     </>
   );
@@ -332,9 +347,7 @@ function SummaryCard({
         <p className="mt-3 whitespace-nowrap text-2xl font-black tracking-tight">
           {value}
         </p>
-        <p className="mt-2 text-xs font-bold text-[var(--muted)]">
-          {sublabel}
-        </p>
+        <p className="mt-2 text-xs font-bold text-[var(--muted)]">{sublabel}</p>
       </div>
     </article>
   );

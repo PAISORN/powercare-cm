@@ -9,8 +9,9 @@ const outcomes = [
   { value: "UNABLE", label: "ไม่สามารถดำเนินการได้" },
 ] as const;
 
-export function PmWorksheetSummaryForm() {
-  const [note, setNote] = useState("");
+export function PmWorksheetSummaryForm({ completionFormId, defaultNote = "", defaultResult = "", readOnly = false }: { completionFormId: string; defaultNote?: string; defaultResult?: string; readOnly?: boolean }) {
+  const [note, setNote] = useState(defaultNote);
+  const [result, setResult] = useState(defaultResult);
   const [previews, setPreviews] = useState<{ name: string; url: string }[]>([]);
   const previewUrls = useRef<string[]>([]);
 
@@ -40,14 +41,24 @@ export function PmWorksheetSummaryForm() {
     });
   }
 
-  return <section className="overflow-hidden rounded-3xl border border-[var(--line)] bg-[var(--surface)] shadow-sm">
+  return <section className={`overflow-hidden rounded-3xl border border-[var(--line)] bg-[var(--surface)] shadow-sm ${readOnly ? "opacity-80" : ""}`}>
+    <fieldset className="min-w-0" disabled={readOnly}>
     <div className="grid lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]">
       <div className="p-4 sm:p-5 lg:border-r lg:border-[var(--line)]">
         <h2 className="flex items-center gap-2 text-lg font-black"><Wrench className="text-[var(--primary)]" size={20} />สรุปผลการปฏิบัติงาน</h2>
         <fieldset className="mt-2 flex flex-wrap items-center gap-x-5 gap-y-2">
           <legend className="sr-only">ผลสรุปการปฏิบัติงาน</legend>
           {outcomes.map((outcome) => <label className="inline-flex min-h-9 cursor-pointer items-center gap-2 text-sm font-bold" key={outcome.value}>
-            <input className="size-5 accent-[var(--primary)]" name="summaryResult" type="radio" value={outcome.value} />
+            <input
+              checked={result === outcome.value}
+              className="size-5 accent-[var(--primary)]"
+              form={completionFormId}
+              name="summaryResult"
+              onChange={(event) => setResult(event.target.value)}
+              required
+              type="radio"
+              value={outcome.value}
+            />
             <span>{outcome.label}</span>
           </label>)}
         </fieldset>
@@ -57,8 +68,11 @@ export function PmWorksheetSummaryForm() {
             <textarea
               className="min-h-16 w-full resize-y rounded-xl border border-[var(--line)] bg-[var(--surface)] p-3 pb-7 outline-none focus:ring-2 focus:ring-[var(--primary)]"
               maxLength={500}
+              form={completionFormId}
+              name="summaryNote"
               onChange={(event) => setNote(event.target.value)}
               placeholder="ระบุหมายเหตุ (ถ้ามี) ..."
+              required={result === "ABNORMAL"}
               value={note}
             />
             <span className="pointer-events-none absolute bottom-2 right-3 text-xs font-semibold text-[var(--muted)]">{note.length}/500</span>
@@ -97,5 +111,6 @@ export function PmWorksheetSummaryForm() {
         </div>
       </div>
     </div>
+    </fieldset>
   </section>;
 }

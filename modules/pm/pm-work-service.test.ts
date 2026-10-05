@@ -6,7 +6,7 @@ const tx = {
   plant: { findFirstOrThrow: vi.fn() }, user: { findMany: vi.fn() }, rolePermissionOverride: { findMany: vi.fn() }, asset: { findFirstOrThrow: vi.fn() },
   pmPlan: { findFirstOrThrow: vi.fn(), updateMany: vi.fn(), update: vi.fn() },
   pmWork: { findFirstOrThrow: vi.fn(), updateMany: vi.fn(), update: vi.fn(), count: vi.fn(), findUnique: vi.fn(), create: vi.fn() },
-  pmWorkAssignee: { count: vi.fn(), create: vi.fn(), deleteMany: vi.fn() }, auditEvent: { create: vi.fn() },
+  pmWorkAssignee: { count: vi.fn(), create: vi.fn(), upsert: vi.fn(), deleteMany: vi.fn() }, auditEvent: { create: vi.fn() },
   userNotification: { create: vi.fn() },
 };
 const transaction = vi.fn(async (fn: (client: typeof tx) => unknown) => fn(tx));
@@ -20,10 +20,21 @@ describe("PM work lifecycle service", () => {
   beforeEach(() => {
     vi.clearAllMocks(); transaction.mockImplementation(async fn => fn(tx)); tx.plant.findFirstOrThrow.mockResolvedValue({ id: "site" }); tx.auditEvent.create.mockResolvedValue({}); tx.pmWorkAssignee.count.mockResolvedValue(1); tx.pmWork.updateMany.mockResolvedValue({ count: 1 });
   });
-  it("starts only an assigned Planned work through a conditional transition", async () => {
+  it("lets any Site PM executor start Planned work and joins them as a collaborator", async () => {
     tx.pmWork.findFirstOrThrow.mockResolvedValue({ id: "work" });
     const { startPmWork } = await import("./pm-work-service"); await startPmWork(technician, { ...scope, workId: "work", now: new Date("2026-08-15T01:00:00Z") });
-    expect(tx.pmWork.updateMany).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ status: "PLANNED" }), data: expect.objectContaining({ status: "IN_PROGRESS" }) })); expect(tx.auditEvent.create).toHaveBeenCalledOnce();
+    expect(tx.pmWorkAssignee.upsert).toHaveBeenCalledWith(expect.objectContaining({create:expect.objectContaining({userId:"tech",role:"COLLABORATOR"})}));
+    expect(tx.pmWork.updateMany).toHaveBeenCalledWith(expect.objectContaining({ where: { id:"work",plantId:"site",status:"PLANNED" }, data: expect.objectContaining({ status: "IN_PROGRESS" }) })); expect(tx.auditEvent.create).toHaveBeenCalledOnce();
+  });
+  it("lets a Site PM executor load eligible teammates for the Annual PM popup", async () => {
+    db.user.findMany.mockResolvedValue([
+      { id: "tech", role: RoleName.TECHNICIAN, active: true, ...scope, siteAdminPermissions: [], userPermissionOverrides: [] },
+      { id: "viewer", role: RoleName.VISITOR, active: true, ...scope, siteAdminPermissions: [], userPermissionOverrides: [] },
+    ]);
+    db.rolePermissionOverride.findMany.mockResolvedValue([]);
+    const { listEligiblePmAssignees } = await import("./pm-work-service");
+    const users = await listEligiblePmAssignees(technician, scope);
+    expect(users.map((user) => user.id)).toEqual(["tech"]);
   });
   it("writes assignment notifications atomically for assignees and scoped managers", async () => {
     tx.pmWork.findFirstOrThrow.mockResolvedValue({ id: "work", number: "PM-1", status: "PLANNED", plantId: "site", pmPlan: { organizationId: "org", plannedDateKey: "2026-08-15" }, assignees: [] });
@@ -45,7 +56,71 @@ describe("PM work lifecycle service", () => {
   it("records completing actor and time automatically", async () => {
     tx.pmWork.findFirstOrThrow.mockResolvedValue({ id: "work" }); const now = new Date("2026-08-15T02:00:00Z");
     const { completePmWork } = await import("./pm-work-service"); await completePmWork(technician, { ...scope, workId: "work", result: "NORMAL", now });
+    expect(tx.pmWorkAssignee.upsert).toHaveBeenCalledWith(expect.objectContaining({create:expect.objectContaining({userId:"tech",role:"COLLABORATOR"})}));
     expect(tx.pmWork.updateMany).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ status: "IN_PROGRESS" }), data: expect.objectContaining({ status: "COMPLETED", completedById: "tech", completedAt: now, result: "NORMAL" }) }));
+  });
+  it("submits a Planned worksheet as Completed atomically without a separate Start PM step", async () => {
+    const now = new Date("2026-10-03T15:00:00Z");
+    tx.pmWork.findFirstOrThrow.mockResolvedValue({ id: "work", status: "PLANNED", startedAt: null });
+    const { completePmWorksheet } = await import("./pm-work-service");
+    await completePmWorksheet(technician, { ...scope, workId: "work", result: "NORMAL", worksheetDataJson: '{"result_asset_field":"OK"}', now });
+    expect(transaction).toHaveBeenCalledTimes(1);
+    expect(tx.pmWorkAssignee.upsert).toHaveBeenCalledWith(expect.objectContaining({ create: expect.objectContaining({ userId: "tech", role: "COLLABORATOR" }) }));
+    expect(tx.pmWork.updateMany).toHaveBeenCalledWith({
+      where: { id: "work", plantId: "site", status: "PLANNED" },
+      data: expect.objectContaining({ status: "COMPLETED", result: "NORMAL", worksheetDataJson: '{"result_asset_field":"OK"}', startedAt: now, completedAt: now, completedById: "tech" }),
+    });
+    expect(tx.auditEvent.create).toHaveBeenCalledOnce();
+  });
+  it("rejects a worksheet before writing when a required checklist result is missing", async () => {
+    const { completePmWorksheet } = await import("./pm-work-service");
+    await expect(completePmWorksheet(technician, {
+      ...scope,
+      workId: "work",
+      result: "NORMAL",
+      worksheetDataJson: '{"result_asset_optional":"OK"}',
+      requiredFieldNames: ["result_asset_required"],
+    })).rejects.toThrow("กรุณาใส่ข้อมูลให้ครบ");
+    expect(transaction).not.toHaveBeenCalled();
+  });
+  it("completes every PM work represented by one Main Asset worksheet in the same transaction", async () => {
+    const now = new Date("2026-10-03T14:00:00Z");
+    tx.pmWork.findFirstOrThrow
+      .mockResolvedValueOnce({ id: "main-work", status: "IN_PROGRESS", startedAt: new Date("2026-10-03T13:00:00Z") })
+      .mockResolvedValueOnce({ id: "sub-work", status: "PLANNED", startedAt: null });
+    const { completePmWorksheet } = await import("./pm-work-service");
+    await completePmWorksheet(technician, {
+      ...scope,
+      workId: "main-work",
+      workIds: ["main-work", "sub-work"],
+      result: "NORMAL",
+      worksheetDataJson: '{"result_asset_field":"OK"}',
+      now,
+    });
+    expect(transaction).toHaveBeenCalledTimes(1);
+    expect(tx.pmWork.updateMany).toHaveBeenCalledTimes(2);
+    expect(tx.pmWork.updateMany).toHaveBeenNthCalledWith(1, expect.objectContaining({
+      where: { id: "main-work", plantId: "site", status: "IN_PROGRESS" },
+      data: expect.objectContaining({ status: "COMPLETED" }),
+    }));
+    expect(tx.pmWork.updateMany).toHaveBeenNthCalledWith(2, expect.objectContaining({
+      where: { id: "sub-work", plantId: "site", status: "PLANNED" },
+      data: expect.objectContaining({ status: "COMPLETED" }),
+    }));
+    expect(tx.auditEvent.create).toHaveBeenCalledTimes(2);
+  });
+  it("lets an executor revise a Completed worksheet while preserving Completed status and audit history", async () => {
+    const updatedAt = new Date("2026-10-03T15:00:00Z");
+    const now = new Date("2026-10-03T16:00:00Z");
+    tx.pmWork.findFirstOrThrow.mockResolvedValue({ id: "work", status: "COMPLETED", result: "NORMAL", resultNote: null, worksheetDataJson: '{"result_asset_field":"OK"}', correctedAt: null, correctedById: null, correctionReason: null, updatedAt });
+    const { reviseCompletedPmWorksheet } = await import("./pm-work-service");
+    await reviseCompletedPmWorksheet(technician, { ...scope, workId: "work", result: "ABNORMAL", note: "พบเสียงดัง", worksheetDataJson: '{"result_asset_field":"NG"}', now });
+    expect(tx.pmWorkAssignee.upsert).toHaveBeenCalledWith(expect.objectContaining({ create: expect.objectContaining({ userId: "tech" }) }));
+    expect(tx.pmWork.updateMany).toHaveBeenCalledWith({
+      where: { id: "work", plantId: "site", status: "COMPLETED", updatedAt },
+      data: expect.objectContaining({ result: "ABNORMAL", resultNote: "พบเสียงดัง", worksheetDataJson: '{"result_asset_field":"NG"}', correctedById: "tech" }),
+    });
+    expect(tx.auditEvent.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ action: "REVISE_COMPLETED_PM_WORKSHEET" }) }));
   });
   it("does not let management permission substitute for execution permission", async () => {
     const { startPmWork } = await import("./pm-work-service"); await expect(startPmWork(manager, { ...scope, workId: "work" })).rejects.toThrow("cannot execute");

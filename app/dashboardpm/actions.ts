@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { db } from "../../lib/db";
 import { getBangkokDateString } from "../../lib/date-time/bangkok-time";
 import { requireUser } from "../../lib/session";
-import { canManagePmPlans } from "../../modules/auth/permission";
+import { canExecutePmWork, canManagePmPlans } from "../../modules/auth/permission";
 import { releaseAnnualPmDay } from "../../modules/pm/pm-annual-phase2-service";
 import { activateAnnualPmPlan } from "../../modules/pm/pm-annual-service";
 import {
@@ -297,7 +297,9 @@ export async function cancelConfirmed(data: FormData) {
 export async function releaseAnnual(data: FormData) {
   "use server";
   const user = await requireUser();
-  if (!canManagePmPlans(user)) redirect("/dashboardpm");
+  const canManage = canManagePmPlans(user);
+  const canExecute = canExecutePmWork(user);
+  if (!canManage && !canExecute) redirect("/dashboardpm");
   const scope = await resolvePmPageScope(user, {
     organizationId: String(data.get("organizationId") ?? ""),
     plantId: String(data.get("plantId") ?? ""),
@@ -316,12 +318,21 @@ export async function releaseAnnual(data: FormData) {
       assetId,
       reason: String(data.get(`exclusionReason:${assetId}`) ?? ""),
     }));
-  const scheduleId = String(data.get("releaseScheduleIds") ?? "");
+  const scheduleIds = data.getAll("releaseScheduleIds").map(String).filter(Boolean);
+  const scheduleId = scheduleIds[0] ?? "";
+  const submittedLeadUserId = String(data.get("leadUserId") ?? "").trim();
+  const leadUserId = submittedLeadUserId || (!canManage ? user.id : "");
+  const collaboratorUserIds = data
+    .getAll("collaboratorUserIds")
+    .map(String)
+    .filter(Boolean);
   try {
     const annualPlan = await db.pmAnnualPlan.findFirstOrThrow({
       where: { id: annualPlanId, ...serviceScope },
       select: { status: true },
     });
+    if (annualPlan.status === "DRAFT" && !canManage)
+      throw new Error("Only a PM plan manager can activate a Draft Annual PM Plan");
     if (annualPlan.status === "DRAFT")
       await activateAnnualPmPlan(user, {
         ...serviceScope,
@@ -332,8 +343,10 @@ export async function releaseAnnual(data: FormData) {
       ...serviceScope,
       planId: annualPlanId,
       scheduleDateKey: date,
-      scheduleIds: [scheduleId],
+      scheduleIds,
       exclusions,
+      leadUserId: leadUserId || undefined,
+      collaboratorUserIds,
     });
   } catch (error) {
     redirect(

@@ -86,6 +86,13 @@ export default async function StockMovementsPage({ searchParams }: { searchParam
     <>
       <RestoreListPosition enabled key={currentPage} storageKey={movementListPositionKey} />
       <div className="space-y-5">
+        <AdminSiteScopeSelector
+          action="/dashboardstore/movements"
+          description="เลือก Organization และ Site เพื่อดูประวัติการเคลื่อนไหวของสต็อก"
+          scope={scope}
+          title="Stock movement scope"
+        />
+
         <header className="menu-heading-plain rounded-3xl border border-[var(--line)] bg-[var(--surface)] p-5 shadow-[var(--shadow)] sm:p-7">
           <p className="text-sm font-semibold text-[var(--muted)]">Home &gt; Inventory &gt; Stock Movement</p>
           <div className="mt-3 flex items-center gap-3">
@@ -98,13 +105,6 @@ export default async function StockMovementsPage({ searchParams }: { searchParam
             </div>
           </div>
         </header>
-
-        <AdminSiteScopeSelector
-          action="/dashboardstore/movements"
-          description="เลือก Organization และ Site เพื่อดูประวัติการเคลื่อนไหวของสต็อก"
-          scope={scope}
-          title="Stock movement scope"
-        />
 
         <StockHeaderReplacementController regionId="stock-movement-table-region" />
         <section

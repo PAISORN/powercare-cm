@@ -2,12 +2,12 @@ import { CalendarPlus, ChevronLeft, ChevronRight, Clock3, Layers3, Wrench } from
 import Link from "next/link";
 import { addCalendarDays, isoDateAtUtcNoon, type AnnualPmCalendarEntry } from "../../modules/pm/pm-calendar-query";
 import { pmTargetColor } from "../../modules/pm/pm-target-color";
-import { annualPmCalendarHref, pmCalendarPlanGroups, type PmCalendarPlanItem } from "./pm-calendar";
+import { annualPmCalendarHref, isAnnualEntryComplete, pmCalendarPlanGroups, type PmCalendarPlanItem } from "./pm-calendar";
 
 const fullDate = new Intl.DateTimeFormat("th-TH-u-ca-buddhist-nu-latn", { weekday: "long", day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
 const shortDate = new Intl.DateTimeFormat("th-TH-u-ca-buddhist-nu-latn", { day: "numeric", month: "short", timeZone: "UTC" });
 
-export function PmDayColumn({ date, plan, annualEntries = [], scopeQuery, canManage, today }: { date: string; plan?: PmCalendarPlanItem; annualEntries?: AnnualPmCalendarEntry[]; scopeQuery: string; canManage: boolean; today: string }) {
+export function PmDayColumn({ date, plan, annualEntries = [], scopeQuery, canManage, canExecute = canManage, today }: { date: string; plan?: PmCalendarPlanItem; annualEntries?: AnnualPmCalendarEntry[]; scopeQuery: string; canManage: boolean; canExecute?: boolean; today: string }) {
   const href = (nextDate: string) => `/dashboardpm/calendar?${scopeQuery}&view=day&month=${nextDate.slice(0, 7)}&date=${nextDate}`;
   const groups = plan ? pmCalendarPlanGroups(plan) : [];
   return <section aria-label="ปฏิทิน PM รายวัน" className="min-w-0 overflow-hidden rounded-3xl border border-[var(--line)] bg-[var(--surface)] shadow-[var(--shadow)]">
@@ -30,10 +30,10 @@ export function PmDayColumn({ date, plan, annualEntries = [], scopeQuery, canMan
       <div className="relative min-w-0 p-4 sm:p-6">
         <div aria-hidden="true" className="pointer-events-none absolute inset-0 opacity-40 [background-image:repeating-linear-gradient(to_bottom,transparent_0,transparent_71px,var(--line)_72px)]" />
         {annualEntries.length ? <div className="relative mb-3 grid gap-2" aria-label="Annual PM ในวันนี้">
-          {annualEntries.map(item => <Link className="flex min-w-0 items-start justify-between gap-3 rounded-xl border-l-4 p-3 text-sm font-bold hover:brightness-95" href={annualPmCalendarHref(item, scopeQuery, canManage, "day")} key={item.id} scroll={false} style={pmTargetColor(item.targetId)}>
-            <span className="min-w-0 break-words">{item.targetName}<span className="ml-2 text-xs font-normal">{item.status === "RELEASED" ? "ดู Main Assets" : ["ACTIVE", "DRAFT"].includes(item.planStatus) && canManage ? "เริ่มดำเนินการ PM" : "Draft · เปิด Setup"}</span></span>
+          {annualEntries.map(item => { const complete=isAnnualEntryComplete(item); const canStart=(item.planStatus==="ACTIVE"&&(canManage||canExecute))||(item.planStatus==="DRAFT"&&canManage); return <Link className={`flex min-w-0 items-start justify-between gap-3 rounded-xl border-l-4 p-3 text-sm font-bold hover:brightness-95 ${complete?"border-emerald-400 bg-emerald-100 text-emerald-950":""}`} href={annualPmCalendarHref(item, scopeQuery, canManage, "day", canExecute)} key={item.id} scroll={false} style={complete?{background:"#dcfce7",color:"#166534",borderColor:"#34d399"}:pmTargetColor(item.targetId)}>
+            <span className="min-w-0 break-words">{item.targetName}<span className="ml-2 text-xs font-normal">{complete ? "Complete" : item.status === "RELEASED" ? "ดู Main Assets" : canStart ? "เริ่มดำเนินการ PM" : "รอเปิดงาน PM"}</span></span>
             <span aria-label={"Main Assets " + item.mainAssetCount} className="shrink-0 rounded-full border border-current/30 px-2 py-0.5 text-xs">{item.mainAssetCount}</span>
-          </Link>)}
+          </Link>})}
         </div> : null}
         {plan ? <Link className="relative block min-w-0 rounded-2xl border border-[var(--primary)]/30 bg-[var(--primary)]/10 p-4 shadow-sm transition-colors duration-200 hover:bg-[var(--primary)]/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]" href={`${href(date)}&planId=${plan.id}`}>
           <div className="flex flex-wrap items-start justify-between gap-3">

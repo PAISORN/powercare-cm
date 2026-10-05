@@ -92,14 +92,14 @@ export default async function AdminZonesPage({ searchParams }: { searchParams: P
 
   return (
     <>
-      <h1 className="text-3xl font-bold">Zones</h1>
-      <div className="mt-6">
+      <div className="mb-6">
         <AdminSiteScopeSelector
           scope={scope}
           title="Zone scope"
           description="Zone ถูกแยกตาม Site เพราะแต่ละโรงงาน/พื้นที่ใช้งานไม่เหมือนกัน"
         />
       </div>
+      <h1 className="text-3xl font-bold">Zones</h1>
       <form action={createZone} className="mt-6 flex flex-wrap gap-3">
         <AdminScopeHiddenFields scope={scope} />
         <input name="name" required placeholder="Zone name" className="rounded-md border p-3 text-black" />

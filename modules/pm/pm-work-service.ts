@@ -57,6 +57,31 @@ function resultInput(result: string, note?: string | null) {
   return { result: result as PmResultValue, resultNote: normalizedNote };
 }
 
+function worksheetDataInput(value?: string | null, requiredFieldNames: string[] = []) {
+  const normalized = value?.trim();
+  if (!normalized) return null;
+  if (normalized.length > 100_000) throw new Error("PM worksheet data is too large");
+  let values: Record<string, string>;
+  try {
+    const parsed = JSON.parse(normalized) as unknown;
+    if (!parsed || Array.isArray(parsed) || typeof parsed !== "object") throw new Error();
+    const entries = Object.entries(parsed);
+    if (entries.length > 1_000 || entries.some(([key, item]) => !key || typeof item !== "string" || item.length > 2_000)) throw new Error();
+    values = Object.fromEntries(entries) as Record<string, string>;
+  } catch {
+    throw new Error("PM worksheet data is invalid");
+  }
+  const requiredNames = Array.from(new Set(requiredFieldNames.map((name) => name.trim()).filter(Boolean)));
+  if (requiredNames.length > 1_000 || requiredNames.some((name) => !values[name]?.trim())) throw new Error("กรุณาใส่ข้อมูลให้ครบ");
+  return JSON.stringify(values);
+}
+
+function worksheetWorkIds(workId: string, workIds?: string[]) {
+  const ids = Array.from(new Set([workId, ...(workIds ?? [])].map((id) => id.trim()).filter(Boolean)));
+  if (!ids.length || ids.length > 1_000) throw new Error("PM worksheet work selection is invalid");
+  return ids;
+}
+
 async function serializable<T>(operation: (tx: Tx) => Promise<T>) {
   for (let attempt = 0; attempt < 3; attempt += 1) {
     try { return await db.$transaction(operation, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }); }
@@ -93,9 +118,10 @@ export async function listPmWorks(actor: PermissionUserContext, input: PmWorkSco
 
 export async function listEligiblePmAssignees(actor: PermissionUserContext, input: PmWorkScope) {
   const scope = { organizationId: input.organizationId, plantId: input.plantId };
-  authorizeManage(actor, scope);
+  if (canManagePmPlans(actor)) assertScope(actor, scope);
+  else authorizeExecute(actor, scope);
   const [users, rolePermissionOverrides] = await Promise.all([
-    db.user.findMany({ where: { organizationId: scope.organizationId, plantId: scope.plantId, active: true }, include: { siteAdminPermissions: true, userPermissionOverrides: true } }),
+    db.user.findMany({ where: { organizationId: scope.organizationId, plantId: scope.plantId, active: true }, include: { siteAdminPermissions: true, userPermissionOverrides: true, profilePhoto: { select: { updatedAt: true } } } }),
     db.rolePermissionOverride.findMany({ where: { OR: [{ scopeKey: "SYSTEM" }, { organizationId: scope.organizationId }] } }),
   ]);
   return users.filter(user => canExecutePmWork({ ...user, rolePermissionOverrides }));
@@ -148,7 +174,27 @@ export async function claimPmWork(actor: PermissionUserContext, input: PmWorkSco
 
 async function requirePerformer(tx: Tx, actor: PermissionUserContext, workId: string) {
   const assigned = await tx.pmWorkAssignee.count({ where: { pmWorkId: workId, userId: actorId(actor) } });
-  if (assigned !== 1) throw new Error("Only an assigned performer can execute this PM work");
+  if (assigned !== 1) throw new Error("Only an assigned performer can cancel this PM work");
+}
+
+async function ensurePmParticipant(
+  tx: Tx,
+  actor: PermissionUserContext,
+  workId: string,
+  assignedAt: Date,
+) {
+  const userId = actorId(actor);
+  await tx.pmWorkAssignee.upsert({
+    where: { pmWorkId_userId: { pmWorkId: workId, userId } },
+    create: {
+      pmWorkId: workId,
+      userId,
+      role: PmAssigneeRole.COLLABORATOR,
+      assignedAt,
+      assignedById: userId,
+    },
+    update: {},
+  });
 }
 
 export async function startPmWork(actor: PermissionUserContext, input: PmWorkScope & { workId: string; now?: Date }) {
@@ -157,9 +203,9 @@ export async function startPmWork(actor: PermissionUserContext, input: PmWorkSco
   return db.$transaction(async tx => {
     await activeScope(tx, scope);
     await tx.pmWork.findFirstOrThrow({ where: { id: input.workId, plantId: scope.plantId, pmPlan: { organizationId: scope.organizationId, status: PmPlanStatus.CONFIRMED } }, select: { id: true } });
-    await requirePerformer(tx, actor, input.workId);
     const now = input.now ?? new Date();
-    const changed = await tx.pmWork.updateMany({ where: { id: input.workId, plantId: scope.plantId, status: PmWorkStatus.PLANNED, assignees: { some: { userId: actorId(actor) } } }, data: { status: PmWorkStatus.IN_PROGRESS, startedAt: now } });
+    await ensurePmParticipant(tx, actor, input.workId, now);
+    const changed = await tx.pmWork.updateMany({ where: { id: input.workId, plantId: scope.plantId, status: PmWorkStatus.PLANNED }, data: { status: PmWorkStatus.IN_PROGRESS, startedAt: now } });
     if (changed.count !== 1) throw new Error("PM work was already started or changed");
     await audit(tx, actor, scope, "PmWork", input.workId, "START_PM_WORK", { status: PmWorkStatus.PLANNED }, { status: PmWorkStatus.IN_PROGRESS, startedAt: now });
     return { status: PmWorkStatus.IN_PROGRESS, startedAt: now };
@@ -173,12 +219,119 @@ export async function completePmWork(actor: PermissionUserContext, input: PmWork
   return db.$transaction(async tx => {
     await activeScope(tx, scope);
     await tx.pmWork.findFirstOrThrow({ where: { id: input.workId, plantId: scope.plantId, pmPlan: { organizationId: scope.organizationId, status: PmPlanStatus.CONFIRMED } }, select: { id: true } });
-    await requirePerformer(tx, actor, input.workId);
     const now = input.now ?? new Date();
-    const changed = await tx.pmWork.updateMany({ where: { id: input.workId, plantId: scope.plantId, status: PmWorkStatus.IN_PROGRESS, assignees: { some: { userId: actorId(actor) } } }, data: { status: PmWorkStatus.COMPLETED, ...result, completedAt: now, completedById: actorId(actor) } });
+    await ensurePmParticipant(tx, actor, input.workId, now);
+    const changed = await tx.pmWork.updateMany({ where: { id: input.workId, plantId: scope.plantId, status: PmWorkStatus.IN_PROGRESS }, data: { status: PmWorkStatus.COMPLETED, ...result, completedAt: now, completedById: actorId(actor) } });
     if (changed.count !== 1) throw new Error("Only In Progress PM work can be completed once");
     await audit(tx, actor, scope, "PmWork", input.workId, "COMPLETE_PM_WORK", { status: PmWorkStatus.IN_PROGRESS }, { status: PmWorkStatus.COMPLETED, ...result, completedAt: now, completedById: actorId(actor) });
     return { status: PmWorkStatus.COMPLETED, ...result, completedAt: now };
+  });
+}
+
+export async function completePmWorksheet(actor: PermissionUserContext, input: PmWorkScope & { workId: string; workIds?: string[]; result: string; note?: string | null; worksheetDataJson?: string | null; requiredFieldNames?: string[]; now?: Date }) {
+  const scope = { organizationId: input.organizationId, plantId: input.plantId };
+  authorizeExecute(actor, scope);
+  const result = resultInput(input.result, input.note);
+  const worksheetDataJson = worksheetDataInput(input.worksheetDataJson, input.requiredFieldNames);
+  const workIds = worksheetWorkIds(input.workId, input.workIds);
+  return db.$transaction(async tx => {
+    await activeScope(tx, scope);
+    const now = input.now ?? new Date();
+    let primaryStartedAt = now;
+    for (const workId of workIds) {
+      const before = await tx.pmWork.findFirstOrThrow({
+        where: {
+          id: workId,
+          plantId: scope.plantId,
+          status: { in: [PmWorkStatus.PLANNED, PmWorkStatus.IN_PROGRESS] },
+          pmPlan: { organizationId: scope.organizationId, status: PmPlanStatus.CONFIRMED },
+        },
+        select: { id: true, status: true, startedAt: true },
+      });
+      await ensurePmParticipant(tx, actor, before.id, now);
+      const startedAt = before.startedAt ?? now;
+      if (before.id === input.workId) primaryStartedAt = startedAt;
+      const changed = await tx.pmWork.updateMany({
+        where: { id: before.id, plantId: scope.plantId, status: before.status },
+        data: {
+          status: PmWorkStatus.COMPLETED,
+          ...result,
+          worksheetDataJson,
+          startedAt,
+          completedAt: now,
+          completedById: actorId(actor),
+        },
+      });
+      if (changed.count !== 1) throw new Error("PM work changed while submitting the worksheet; reload and try again");
+      await audit(
+        tx,
+        actor,
+        scope,
+        "PmWork",
+        before.id,
+        "COMPLETE_PM_WORKSHEET",
+        { status: before.status, startedAt: before.startedAt },
+        { status: PmWorkStatus.COMPLETED, ...result, worksheetDataJson, startedAt, completedAt: now, completedById: actorId(actor) },
+      );
+    }
+    return { status: PmWorkStatus.COMPLETED, ...result, worksheetDataJson, startedAt: primaryStartedAt, completedAt: now };
+  });
+}
+
+export async function reviseCompletedPmWorksheet(actor: PermissionUserContext, input: PmWorkScope & { workId: string; workIds?: string[]; result: string; note?: string | null; worksheetDataJson?: string | null; requiredFieldNames?: string[]; now?: Date }) {
+  const scope = { organizationId: input.organizationId, plantId: input.plantId };
+  const manager = canManagePmPlans(actor);
+  if (manager) assertScope(actor, scope);
+  else authorizeExecute(actor, scope);
+  const corrected = resultInput(input.result, input.note);
+  const worksheetDataJson = worksheetDataInput(input.worksheetDataJson, input.requiredFieldNames);
+  const workIds = worksheetWorkIds(input.workId, input.workIds);
+  return db.$transaction(async tx => {
+    await activeScope(tx, scope);
+    const now = input.now ?? new Date();
+    const correctionReason = "Worksheet edited after completion";
+    for (const workId of workIds) {
+      const before = await tx.pmWork.findFirstOrThrow({
+        where: {
+          id: workId,
+          plantId: scope.plantId,
+          status: PmWorkStatus.COMPLETED,
+          pmPlan: { organizationId: scope.organizationId, status: PmPlanStatus.CONFIRMED },
+        },
+        select: {
+          id: true,
+          status: true,
+          result: true,
+          resultNote: true,
+          worksheetDataJson: true,
+          correctedAt: true,
+          correctedById: true,
+          correctionReason: true,
+          updatedAt: true,
+        },
+      });
+      if (!manager) await ensurePmParticipant(tx, actor, before.id, now);
+      const changed = await tx.pmWork.updateMany({
+        where: { id: before.id, plantId: scope.plantId, status: PmWorkStatus.COMPLETED, updatedAt: before.updatedAt },
+        data: {
+          ...corrected,
+          worksheetDataJson,
+          correctedAt: now,
+          correctedById: actorId(actor),
+          correctionReason,
+        },
+      });
+      if (changed.count !== 1) throw new Error("PM worksheet changed while saving; reload and try again");
+      await audit(tx, actor, scope, "PmWork", before.id, "REVISE_COMPLETED_PM_WORKSHEET", before, {
+        status: PmWorkStatus.COMPLETED,
+        ...corrected,
+        worksheetDataJson,
+        correctedAt: now,
+        correctedById: actorId(actor),
+        correctionReason,
+      });
+    }
+    return { status: PmWorkStatus.COMPLETED, ...corrected, worksheetDataJson, correctedAt: now };
   });
 }
 

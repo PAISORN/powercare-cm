@@ -64,6 +64,12 @@ export default async function StoreReportsPage({
   return (
     <>
       <div className="space-y-6">
+        <AdminSiteScopeSelector
+          action="/dashboardstore/reports"
+          scope={scope}
+          title="Site สำหรับรายงาน Store"
+        />
+
         <section className="menu-heading-plain rounded-3xl border border-[var(--line)] bg-[var(--surface)] p-5 shadow-[var(--shadow)] sm:p-7">
           <p className="inline-flex items-center gap-2 rounded-full bg-[var(--soft)] px-3 py-1.5 text-sm font-bold text-[var(--primary)]">
             <FileSpreadsheet size={16} />
@@ -85,11 +91,33 @@ export default async function StoreReportsPage({
           </div>
         </section>
 
-        <AdminSiteScopeSelector
-          action="/dashboardstore/reports"
-          scope={scope}
-          title="Site สำหรับรายงาน Store"
-        />
+        <section aria-label="สรุปรายงาน Store" className="dashboard-kpi-carousel sm:grid-cols-2 xl:grid-cols-4">
+          <ReportCard
+            icon={<Boxes size={20} />}
+            label="Stock Balance"
+            value={`${formatQuantity(stockSummary.totalItems)} รายการ`}
+            detail={`รวม ${formatQuantity(stockSummary.totalQuantity)} หน่วย`}
+          />
+          <ReportCard
+            icon={<AlertTriangle size={20} />}
+            label="Low Stock"
+            value={`${formatQuantity(stockSummary.lowStockItems.length)} รายการ`}
+            detail="ต่ำกว่าหรือเท่ากับ Minimum Stock"
+            danger={stockSummary.lowStockItems.length > 0}
+          />
+          <ReportCard
+            icon={<ArrowDownToLine size={20} />}
+            label="Receive"
+            value={formatQuantity(movementSummary.receivedQuantity)}
+            detail="จำนวนรับเข้าในช่วงวันที่"
+          />
+          <ReportCard
+            icon={<ArrowUpFromLine size={20} />}
+            label="Issue"
+            value={formatQuantity(movementSummary.issuedQuantity)}
+            detail="จำนวนจ่ายออกในช่วงวันที่"
+          />
+        </section>
 
         <section className="rounded-3xl border border-[var(--line)] bg-[var(--surface)] p-5 shadow-[var(--shadow)]">
           <form
@@ -213,34 +241,6 @@ export default async function StoreReportsPage({
               </button>
             </div>
           </form>
-        </section>
-
-        <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          <ReportCard
-            icon={<Boxes size={20} />}
-            label="Stock Balance"
-            value={`${formatQuantity(stockSummary.totalItems)} รายการ`}
-            detail={`รวม ${formatQuantity(stockSummary.totalQuantity)} หน่วย`}
-          />
-          <ReportCard
-            icon={<AlertTriangle size={20} />}
-            label="Low Stock"
-            value={`${formatQuantity(stockSummary.lowStockItems.length)} รายการ`}
-            detail="ต่ำกว่าหรือเท่ากับ Minimum Stock"
-            danger={stockSummary.lowStockItems.length > 0}
-          />
-          <ReportCard
-            icon={<ArrowDownToLine size={20} />}
-            label="Receive"
-            value={formatQuantity(movementSummary.receivedQuantity)}
-            detail="จำนวนรับเข้าในช่วงวันที่"
-          />
-          <ReportCard
-            icon={<ArrowUpFromLine size={20} />}
-            label="Issue"
-            value={formatQuantity(movementSummary.issuedQuantity)}
-            detail="จำนวนจ่ายออกในช่วงวันที่"
-          />
         </section>
 
         <section className="grid gap-5 xl:grid-cols-[1.1fr_0.9fr]">

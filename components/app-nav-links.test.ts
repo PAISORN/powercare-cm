@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import React from "react";
 import { RoleName } from "../modules/cm-work/cm-work-types";
-import { getAppLinks, isActivePath } from "./app-nav-links";
+import { getAppLinks, isActivePath, isMostSpecificActiveLink } from "./app-nav-links";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { AppNavLinks } from "./app-nav-links";
 import {
@@ -69,6 +69,16 @@ describe("getAppLinks", () => {
       true,
     );
     expect(isActivePath("/dashboardpm/work", "/dashboardpm/work")).toBe(true);
+  });
+
+  it("highlights only Asset Master Data when its route is open", () => {
+    const links = getAppLinks(RoleName.ADMIN);
+    const assets = links.find((link) => link.href === "/assets")!;
+    const masterData = links.find((link) => link.href === "/assets/master-data")!;
+
+    expect(isMostSpecificActiveLink(links, assets, "/assets/master-data")).toBe(false);
+    expect(isMostSpecificActiveLink(links, masterData, "/assets/master-data")).toBe(true);
+    expect(isMostSpecificActiveLink(links, assets, "/assets/asset-1")).toBe(true);
   });
 
   it("orders and names the primary sidebar navigation as requested", () => {
@@ -580,7 +590,7 @@ describe("getAppLinks", () => {
     expect(links.some((link) => link.href === "/admin/users")).toBe(false);
   });
 
-  it("shows PM Setup under PM to viewers, while PM Groups requires management", () => {
+  it("keeps PM Setup for plan managers while technicians enter through Calendar and Work", () => {
     const technicianLinks = getAppLinks(RoleName.TECHNICIAN);
     const adminLinks = getAppLinks(RoleName.ADMIN);
     const deniedViewerLinks = getAppLinks(RoleName.TECHNICIAN, {
@@ -595,13 +605,8 @@ describe("getAppLinks", () => {
     });
 
     expect(
-      technicianLinks.some(
-        (link) =>
-          link.href === "/dashboardpm/setup" &&
-          link.nested &&
-          link.parentSectionId === "pm",
-      ),
-    ).toBe(true);
+      technicianLinks.some((link) => link.href === "/dashboardpm/setup"),
+    ).toBe(false);
     expect(technicianLinks.some((link) => link.href === "/dashboardpm")).toBe(
       true,
     );
@@ -626,9 +631,10 @@ describe("getAppLinks", () => {
     ).toBe(false);
     render(React.createElement(AppNavLinks, { role: RoleName.TECHNICIAN }));
     fireEvent.click(screen.getByRole("button", { name: /^PM$/i }));
+    expect(screen.queryByRole("link", { name: "PM Setup" })).toBeNull();
     expect(
-      screen.getByRole("link", { name: "PM Setup" }).getAttribute("href"),
-    ).toBe("/dashboardpm/setup");
+      screen.getByRole("link", { name: "PM Calendar" }).getAttribute("href"),
+    ).toBe("/dashboardpm/calendar");
   });
 
   it("opens the Assets section without turning future items into links", () => {

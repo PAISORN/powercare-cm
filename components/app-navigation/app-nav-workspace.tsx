@@ -9,6 +9,7 @@ import { LogoutMenuItem } from "../logout-menu-item";
 import {
   getAppLinks,
   isActivePath,
+  isMostSpecificActiveLink,
   type AppLink,
   type AppPermissionContext,
 } from "./app-navigation-model";
@@ -151,9 +152,7 @@ export function AppNavLinks({
 
         const Icon = item.icon;
         const active =
-          item.href && !item.disabled
-            ? isActivePath(pathname, item.href, searchParams)
-            : false;
+          isMostSpecificActiveLink(links, item, pathname, searchParams);
         const isDanger = item.accent === "danger";
         const isSubmenu = Boolean(item.nested);
         const indent =

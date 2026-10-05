@@ -18,7 +18,7 @@ const mocks = vi.hoisted(() => {
       delete: vi.fn(),
     },
     zone: { count: vi.fn() },
-    storeApplicableZone: { upsert: vi.fn() },
+    storeApplicableZone: { findMany: vi.fn(), upsert: vi.fn() },
   };
   return {
     tx,
@@ -42,6 +42,7 @@ describe("Store Site configuration persistence", () => {
     mocks.tx.auditEvent.create.mockResolvedValue({ id: "audit" });
     mocks.tx.storeCategory.findFirst.mockResolvedValue(null);
     mocks.tx.store.findFirst.mockResolvedValue(null);
+    mocks.tx.storeApplicableZone.findMany.mockResolvedValue([]);
   });
 
   it("normalizes the Site inventory code and audits it in one transaction", async () => {
@@ -129,5 +130,29 @@ describe("Store Site configuration persistence", () => {
       "Applicable Zone code must not be duplicated in the same Site.",
     );
     expect(mocks.db.$transaction).not.toHaveBeenCalled();
+  });
+
+  it("assigns the first free Site code when an enabled CM Zone has no Stock code", async () => {
+    mocks.tx.zone.count.mockResolvedValue(3);
+    mocks.tx.storeApplicableZone.findMany.mockResolvedValue([]);
+    mocks.tx.storeApplicableZone.upsert.mockResolvedValue({});
+    const { updateStoreApplicableZones } =
+      await import("./store-site-configuration-prisma");
+
+    await updateStoreApplicableZones(actor, scope, [
+      { zoneId: "zone-fuel", code: "01", active: true },
+      { zoneId: "zone-boiler", code: "02", active: true },
+      { zoneId: "zone-ash", code: "", active: true },
+    ]);
+
+    expect(mocks.tx.storeApplicableZone.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        create: expect.objectContaining({
+          zoneId: "zone-ash",
+          code: "03",
+          active: true,
+        }),
+      }),
+    );
   });
 });

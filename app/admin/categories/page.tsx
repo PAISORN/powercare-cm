@@ -92,14 +92,14 @@ export default async function AdminCategoriesPage({ searchParams }: { searchPara
 
   return (
     <>
-      <h1 className="text-3xl font-bold">Categories</h1>
-      <div className="mt-6">
+      <div className="mb-6">
         <AdminSiteScopeSelector
           scope={scope}
           title="Category scope"
           description="Category ถูกแยกตาม Site เพื่อรองรับองค์กรและธุรกิจที่มีหมวดงานไม่เหมือนกัน"
         />
       </div>
+      <h1 className="text-3xl font-bold">Categories</h1>
       <form action={createCategory} className="mt-6 flex flex-wrap gap-3">
         <AdminScopeHiddenFields scope={scope} />
         <input name="name" required placeholder="Category name" className="rounded-md border p-3 text-black" />

@@ -74,6 +74,7 @@ describe("PM calendar page data", () => {
       month: "2026-09-01",
       selectedDate: "2026-09-28",
       canManage: true,
+      canExecute: true,
     });
 
     const serviceScope = { organizationId: "org-a", plantId: "plant-a" };
@@ -113,10 +114,34 @@ describe("PM calendar page data", () => {
       month: "2026-09-01",
       selectedDate: "2026-09-27",
       canManage: false,
+      canExecute: false,
     });
 
     expect(mocks.pmGroupFindMany).not.toHaveBeenCalled();
     expect(mocks.assetFindMany).not.toHaveBeenCalled();
     expect(result.groups).toEqual([]);
+  });
+
+  it("loads an Active Annual PM release preview for a technician", async () => {
+    mocks.getPmPlanEditor.mockResolvedValue(null);
+    mocks.pmAnnualPlanFindFirst.mockResolvedValue({ id: "annual", status: "ACTIVE" });
+    mocks.pmAnnualScheduleCount.mockResolvedValue(1);
+    mocks.previewAnnualPmRelease.mockResolvedValue({ schedules: [{ id: "schedule-a" }] });
+
+    const result = await loadPmCalendarPageData({
+      user: { ...user, role: "TECHNICIAN" },
+      scope,
+      query: { release: "annual", scheduleId: "schedule-a", annualPlanId: "annual" },
+      month: "2026-09-01",
+      selectedDate: "2026-09-27",
+      canManage: false,
+      canExecute: true,
+    });
+
+    expect(mocks.previewAnnualPmRelease).toHaveBeenCalledWith(
+      expect.objectContaining({ role: "TECHNICIAN" }),
+      expect.objectContaining({ planId: "annual", scheduleIds: ["schedule-a"] }),
+    );
+    expect(result.annualPreview).toEqual({ schedules: [{ id: "schedule-a" }] });
   });
 });

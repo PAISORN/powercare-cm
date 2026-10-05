@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { PmAnnualBy, annualDateRange, datesInYearForWeekday, firstWeekMonday, isoWeekday, rotationWeekIndex, requireDateInPlanYear, targetSlotKey, validateAnnualYear, weeklyPatternKey } from "./pm-annual-types";
+import { PmAnnualBy, annualDateRange, datesInYearForWeekday, firstWeekMonday, isoWeekday, monthlyOccurrenceForDate, monthlyPatternKey, nthWeekdayOfMonth, rotationWeekIndex, requireDateInPlanYear, targetSlotKey, validateAnnualYear, weeklyPatternKey } from "./pm-annual-types";
 
 describe("Annual PM Setup domain rules", () => {
   it("accepts current and future years but rejects past and implausibly distant years", () => {
@@ -25,6 +25,19 @@ describe("Annual PM Setup domain rules", () => {
     expect(targetSlotKey("p1", "2027-01-04", PmAnnualBy.SYSTEM, "s1")).toBe("p1:2027-01-04:SYSTEM:s1");
     expect(weeklyPatternKey("p1", 1, PmAnnualBy.ZONE, "z1")).toBe("p1:1:ZONE:z1");
     expect(() => weeklyPatternKey("p1", 0, PmAnnualBy.ZONE, "z1")).toThrow(/Monday/);
+  });
+
+  it("maps Monthly Pattern occurrences to exact dates and omits a missing Week 5", () => {
+    expect(nthWeekdayOfMonth(2027, 1, 1, 1)).toBe("2027-01-04");
+    expect(nthWeekdayOfMonth(2027, 1, 1, 4)).toBe("2027-01-25");
+    expect(nthWeekdayOfMonth(2027, 1, 1, 5)).toBeNull();
+    expect(nthWeekdayOfMonth(2027, 3, 1, 5)).toBe("2027-03-29");
+    expect(monthlyOccurrenceForDate("2027-03-29")).toBe(5);
+  });
+
+  it("uses a unique Monthly Pattern key for occurrence, weekday, basis, and target", () => {
+    expect(monthlyPatternKey("p1", 2, 3, PmAnnualBy.SYSTEM, "sys")).toBe("p1:2:3:SYSTEM:sys");
+    expect(() => monthlyPatternKey("p1", 5, 3, PmAnnualBy.SYSTEM, "sys")).toThrow(/Week 1 through Week 4/);
   });
 
   it("alternates Week A and B on consecutive Wednesdays across the year boundary", () => {

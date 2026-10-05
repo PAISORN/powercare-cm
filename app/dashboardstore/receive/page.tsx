@@ -133,6 +133,13 @@ export default async function ReceivePage({ searchParams }: { searchParams: Prom
   return (
     <>
       <div className="space-y-6">
+        <AdminSiteScopeSelector
+          action="/dashboardstore/receive"
+          scope={scope}
+          title="Site สำหรับรับ Stock"
+          description="Store Officer จะถูกล็อกไว้เฉพาะ Site ของตัวเอง"
+        />
+
         <section className="menu-heading-plain rounded-3xl border border-[var(--line)] bg-[var(--surface)] p-5 shadow-[var(--shadow)] sm:p-7">
           <p className="inline-flex items-center gap-2 rounded-full bg-[var(--soft)] px-3 py-1.5 text-sm font-bold text-[var(--primary)]">
             <ArrowDownToLine size={16} />
@@ -143,13 +150,6 @@ export default async function ReceivePage({ searchParams }: { searchParams: Prom
             รับอะไหล่เข้าคลังได้หลายรายการ ยอดคงเหลือและราคาล่าสุดจะอัปเดตทันที
           </p>
         </section>
-
-        <AdminSiteScopeSelector
-          action="/dashboardstore/receive"
-          scope={scope}
-          title="Site สำหรับรับ Stock"
-          description="Store Officer จะถูกล็อกไว้เฉพาะ Site ของตัวเอง"
-        />
 
         {query.saved === "1" ? (
           <p className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm font-bold text-emerald-700 dark:text-emerald-300">

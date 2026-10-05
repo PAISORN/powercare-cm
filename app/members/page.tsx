@@ -55,6 +55,17 @@ export default async function MembersPage({
 
   return (
     <>
+      {adminScope ? (
+        <div className="mb-6">
+          <AdminSiteScopeSelector
+            action="/members"
+            scope={adminScope}
+            title="Member scope"
+            description="เลือก Organization และ Site ที่ต้องการดูรายชื่อสมาชิก"
+          />
+        </div>
+      ) : null}
+
       <section className="rounded-3xl border border-[var(--line)] bg-[var(--surface)] shadow-[var(--shadow)]">
         <div className="rounded-t-3xl bg-gradient-to-r from-blue-600 via-sky-500 to-cyan-400 px-5 py-7 text-white sm:px-7">
           <p className="inline-flex items-center gap-2 rounded-full bg-white/15 px-3 py-1.5 text-sm font-bold">
@@ -64,24 +75,18 @@ export default async function MembersPage({
           <h1 className="mt-4 text-2xl font-extrabold sm:text-3xl">สมาชิกทีมซ่อมบำรุง</h1>
           <p className="mt-2 text-sm text-white/85">รายชื่อทีมงาน แผนก และภาระงาน Corrective Maintenance</p>
         </div>
+      </section>
 
-        <div className={`grid gap-px border-b border-[var(--line)] bg-[var(--line)] ${canSeeMetrics ? "sm:grid-cols-3" : "sm:grid-cols-1"}`}>
-          <SummaryMetric icon={UsersRound} label="สมาชิกทั้งหมด" value={members.length} />
-          {canSeeMetrics ? <SummaryMetric icon={Wrench} label="กำลังรับผิดชอบ" value={activeTotal} /> : null}
-          {canSeeMetrics ? <SummaryMetric icon={CheckCircle2} label="ปิดในช่วงที่เลือก" value={closedTotal} /> : null}
-        </div>
+      <section
+        aria-label="สรุปสมาชิกทีมซ่อมบำรุง"
+        className={`dashboard-kpi-carousel mt-6 ${canSeeMetrics ? "sm:grid-cols-3" : "sm:grid-cols-1"}`}
+      >
+        <SummaryMetric icon={UsersRound} label="สมาชิกทั้งหมด" value={members.length} />
+        {canSeeMetrics ? <SummaryMetric icon={Wrench} label="กำลังรับผิดชอบ" value={activeTotal} /> : null}
+        {canSeeMetrics ? <SummaryMetric icon={CheckCircle2} label="ปิดในช่วงที่เลือก" value={closedTotal} /> : null}
+      </section>
 
-        <div className="p-4">
-          {adminScope ? (
-            <AdminSiteScopeSelector
-              action="/members"
-              scope={adminScope}
-              title="Member scope"
-              description="เลือก Organization และ Site ที่ต้องการดูรายชื่อสมาชิก"
-            />
-          ) : null}
-        </div>
-
+      <section className="mt-6 rounded-3xl border border-[var(--line)] bg-[var(--surface)] shadow-[var(--shadow)]">
         <form className="grid gap-3 p-4 md:grid-cols-2 xl:grid-cols-[1fr_1.7fr_auto_auto] xl:items-end" method="get">
           {adminScope ? (
             <>

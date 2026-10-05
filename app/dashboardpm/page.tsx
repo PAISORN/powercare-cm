@@ -14,6 +14,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { AdminSiteScopeSelector } from "../../components/admin-site-scope-selector";
 import { PmDashboardMonthlyTrend } from "../../components/pm/pm-dashboard-monthly-trend";
+import { PmDashboardStatusOverview } from "../../components/pm/pm-dashboard-status-overview";
 import { PmMetricCarousel } from "../../components/pm/pm-metric-carousel";
 import { getBangkokDateString } from "../../lib/date-time/bangkok-time";
 import { requireUser } from "../../lib/session";
@@ -21,7 +22,6 @@ import { canViewPm } from "../../modules/auth/permission";
 import {
   formatPmDashboardMonth as formatMonth,
   formatPmDashboardShortDate as formatShortDate,
-  formatPmDashboardWeekday as weekday,
   getPmDashboardSummary,
 } from "../../modules/pm/pm-dashboard-query";
 import { resolvePmPageScope } from "../../modules/pm/pm-page-scope";
@@ -158,46 +158,7 @@ export default async function PmDashboardPage({
       </PmMetricCarousel>
 
       <div className="grid min-w-0 gap-5 xl:grid-cols-[minmax(22rem,0.72fr)_minmax(0,1.28fr)] xl:items-stretch">
-        <section className="dashboard-content-surface pm-pastel-surface min-w-0 rounded-[2rem] border p-4 text-[#17213b] sm:p-5">
-          <div className="flex items-center justify-between gap-3">
-            <div className="flex items-center gap-2">
-              <span className="grid size-10 shrink-0 place-items-center rounded-full bg-white/70 text-emerald-700 shadow-sm">
-                <CalendarDays aria-hidden="true" size={20} />
-              </span>
-              <h2 className="text-lg font-black text-[var(--ink)]">แผน PM 7 วันข้างหน้า</h2>
-            </div>
-            <Link
-              aria-label="ดูแผนทั้งหมดใน PM Calendar"
-                className="grid size-11 shrink-0 place-items-center rounded-xl text-emerald-700 transition hover:bg-white/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
-              href={calendarHref}
-            >
-              <ArrowRight aria-hidden="true" size={18} />
-            </Link>
-          </div>
-          <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4 xl:grid-cols-2">
-            {dashboard.upcomingDays.map((day, index) => (
-              <Link
-                className={`min-h-28 rounded-[1.5rem] border p-3 shadow-sm transition hover:-translate-y-1 hover:scale-[1.01] hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 motion-reduce:transform-none ${
-                  index === 0
-                    ? "border-[#9fd6bd] bg-gradient-to-br from-[#effbf5] to-[#d9f1e5]"
-                    : "border-white/80 bg-white/55 backdrop-blur-sm"
-                }`}
-                href={`/dashboardpm/calendar?${scopeQuery}&view=day&month=${day.dateKey.slice(0, 7)}&date=${day.dateKey}`}
-                key={day.dateKey}
-              >
-                <span className="block text-xs font-bold text-[var(--muted)]">
-                  {index === 0 ? "วันนี้" : weekday(day.dateKey)}
-                </span>
-                <strong className="mt-1 grid size-10 place-items-center rounded-full border border-white/80 bg-white/80 text-xl font-black text-[#17213b] shadow-sm">
-                  {Number(day.dateKey.slice(-2))}
-                </strong>
-                <span className="mt-2 block text-xs font-bold text-emerald-700">
-                  {day.total} งาน
-                </span>
-              </Link>
-            ))}
-          </div>
-        </section>
+        <PmDashboardStatusOverview overview={dashboard.statusOverview} />
 
         <PmDashboardMonthlyTrend
           calendarHref={calendarHref}

@@ -112,6 +112,17 @@ export default async function DashboardPage({
   return (
     <>
       <div className="dashboard-glass-scope contents">
+        {ownerAdminScope ? (
+          <div className="mb-6">
+            <AdminSiteScopeSelector
+              action="/dashboardcm"
+              description="เลือก Organization และ Site สำหรับดู Dashboard CM"
+              scope={ownerAdminScope}
+              title="CM scope"
+            />
+          </div>
+        ) : null}
+
         <section className="menu-heading-plain dashboard-cm-heading cm-hero dashboard-hero relative overflow-hidden rounded-3xl px-6 py-7 text-white shadow-[var(--shadow)]">
           <div className="plant-skyline" aria-hidden="true">
             <span />
@@ -160,17 +171,6 @@ export default async function DashboardPage({
             </section>
           </div>
         </section>
-
-        {ownerAdminScope ? (
-          <div className="mt-6">
-            <AdminSiteScopeSelector
-              action="/dashboardcm"
-              description="เลือก Organization และ Site สำหรับดู Dashboard CM"
-              scope={ownerAdminScope}
-              title="CM scope"
-            />
-          </div>
-        ) : null}
 
         <section
           aria-label="สรุป KPI Dashboard CM"

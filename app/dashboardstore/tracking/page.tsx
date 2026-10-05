@@ -68,6 +68,8 @@ export default async function StoreTrackingPage({ searchParams }: { searchParams
   return (
     <>
       <div className="space-y-6">
+        <AdminSiteScopeSelector action="/dashboardstore/tracking" scope={scope} title="Site สำหรับติดตามใบเบิก" />
+
         <section className="menu-heading-plain rounded-3xl border border-[var(--line)] bg-[var(--surface)] p-5 shadow-[var(--shadow)] sm:p-7">
           <p className="inline-flex items-center gap-2 rounded-full bg-[var(--soft)] px-3 py-1.5 text-sm font-bold text-[var(--primary)]">
             <PackageSearch size={16} />
@@ -79,8 +81,6 @@ export default async function StoreTrackingPage({ searchParams }: { searchParams
             ค้นหาเลขที่ใบเบิก เพื่อดูสถานะล่าสุด รายละเอียดอะไหล่ และประวัติการดำเนินงานภายใน Site
           </p>
         </section>
-
-        <AdminSiteScopeSelector action="/dashboardstore/tracking" scope={scope} title="Site สำหรับติดตามใบเบิก" />
 
         <section className="rounded-3xl border border-[var(--line)] bg-[var(--surface)] p-5 shadow-[var(--shadow)]">
           <form action="/dashboardstore/tracking" className="flex flex-col gap-3 sm:flex-row">

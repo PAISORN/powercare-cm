@@ -137,6 +137,13 @@ export default async function AssetMasterDataPage({
         storageKey="asset-master:technical-fields"
         enabled
       />
+      <div className="mb-6">
+        <AdminSiteScopeSelector
+          scope={scope}
+          title="Asset master scope"
+          description="Master Data ทุกชุดแยกตาม Site"
+        />
+      </div>
       <header className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <p className="text-sm font-bold uppercase tracking-[.18em] text-emerald-600">
@@ -154,13 +161,6 @@ export default async function AssetMasterDataPage({
           กลับทะเบียน Assets
         </Link>
       </header>
-      <div className="mt-6">
-        <AdminSiteScopeSelector
-          scope={scope}
-          title="Asset master scope"
-          description="Master Data ทุกชุดแยกตาม Site"
-        />
-      </div>
       {query.saved ? (
         <Notice tone="success">บันทึกการเปลี่ยนแปลงเรียบร้อยแล้ว</Notice>
       ) : null}
@@ -196,7 +196,7 @@ export default async function AssetMasterDataPage({
           );
         })}
       </nav>
-      <section className="mt-5">
+      <section className="mt-5" data-asset-master-data-tabs>
         {tab === "systems" ? (
           <MasterPanel
             icon={Network}
@@ -488,6 +488,13 @@ function FieldCreate({
         name="helpText"
         placeholder="คำแนะนำ เช่น กรอกค่าตาม Nameplate"
       />
+      <textarea
+        aria-label="ดัชนีชี้วัด"
+        className={inputClass}
+        name="indicatorText"
+        placeholder="ดัชนีชี้วัด เช่น ค่ามาตรฐานหรือเกณฑ์ที่ต้องตรวจสอบ"
+        rows={2}
+      />
       <Check name="required" label="บังคับกรอก" />
       <button className={buttonClass}>
         <Plus size={16} />
@@ -730,6 +737,13 @@ function TechnicalFieldCreateDrawer({
             name="helpText"
             placeholder="คำแนะนำ เช่น กรอกค่าตาม Nameplate"
           />
+          <textarea
+            aria-label="ดัชนีชี้วัด"
+            className={inputClass}
+            name="indicatorText"
+            placeholder="ดัชนีชี้วัด เช่น ค่ามาตรฐานหรือเกณฑ์ที่ต้องตรวจสอบ"
+            rows={3}
+          />
           <Check name="required" label="บังคับกรอก" />
           <button className={buttonClass}>
             <Plus size={16} />
@@ -754,6 +768,7 @@ function TechnicalFieldEditDrawer({
     unit: string | null;
     optionsJson: string | null;
     helpText: string | null;
+    indicatorText: string | null;
     required: boolean;
     active: boolean;
     sortOrder: number;
@@ -831,6 +846,14 @@ function TechnicalFieldEditDrawer({
             name="helpText"
             defaultValue={field.helpText || ""}
             placeholder="คำแนะนำสำหรับผู้กรอกข้อมูล"
+          />
+          <textarea
+            aria-label="ดัชนีชี้วัด"
+            className={inputClass}
+            name="indicatorText"
+            defaultValue={field.indicatorText || ""}
+            placeholder="ดัชนีชี้วัด เช่น ค่ามาตรฐานหรือเกณฑ์ที่ต้องตรวจสอบ"
+            rows={3}
           />
           <Check
             name="required"

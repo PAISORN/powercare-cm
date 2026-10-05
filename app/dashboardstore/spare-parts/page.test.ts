@@ -24,12 +24,17 @@ describe("Spare parts page", () => {
     expect(source).toContain("saveStoreApplicableZones");
     expect(source).toContain("db.storeApplicableZone.findMany");
     expect(source).toContain("ใช้เฉพาะตอนเบิกอะไหล่");
+    expect(source).toContain("ใช้ Zone ชุดเดียวกับ CM ของ Site นี้");
+    expect(source).toContain('placeholder="อัตโนมัติ"');
+    expect(source).toContain("applicableZoneActionError(error)");
     expect(source).not.toContain("zoneAssignments:");
     expect(source).toContain("Spare Parts Master Data");
     expect(source).toContain("Home &gt; Inventory &gt; Spare Parts");
     expect(source).toContain("stock-page-hero stock-page-heading");
     expect(source).toContain("dashboard-kpi-carousel stock-summary-grid");
-    expect(source).toContain("dashboard-kpi dashboard-kpi-glow dashboard-kpi-slide");
+    expect(source).toContain(
+      "dashboard-kpi dashboard-kpi-glow dashboard-kpi-slide",
+    );
     expect(source).toContain('data-testid="spare-parts-filter-bar"');
     expect(source).toContain('data-testid="spare-parts-master-data-panel"');
     expect(source).toContain('aria-label="จัดการ Master Data"');

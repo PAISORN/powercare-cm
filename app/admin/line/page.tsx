@@ -231,6 +231,14 @@ export default async function AdminLineSettingsPage({
 
   return (
     <>
+      <div className="mb-6">
+        <AdminSiteScopeSelector
+          scope={scope}
+          title="LINE scope"
+          description="เลือก Organization และ Site ที่ต้องการตั้งค่ากลุ่ม LINE"
+        />
+      </div>
+
       <header>
         <p className="flex items-center gap-2 text-sm font-semibold text-[var(--primary)]">
           <MessageCircleMore aria-hidden="true" size={18} /> Admin Communication
@@ -240,14 +248,6 @@ export default async function AdminLineSettingsPage({
           กำหนดกลุ่มปลายทาง Category และเหตุการณ์ที่ต้องการแจ้งเตือนผ่าน LINE Messaging API
         </p>
       </header>
-
-      <div className="mt-6">
-        <AdminSiteScopeSelector
-          scope={scope}
-          title="LINE scope"
-          description="เลือก Organization และ Site ที่ต้องการตั้งค่ากลุ่ม LINE"
-        />
-      </div>
 
       <div className={`mt-5 flex items-start gap-3 rounded-lg border px-4 py-3 ${isLineServerConfigured() ? "border-green-500/35 bg-green-500/10" : "border-amber-500/40 bg-amber-500/10"}`}>
         <ShieldCheck aria-hidden="true" className="mt-0.5 shrink-0" size={19} />

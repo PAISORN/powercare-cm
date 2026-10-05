@@ -238,11 +238,15 @@ export async function saveStoreApplicableZones(formData: FormData) {
       active: formData.get(`zoneActive:${zoneId}`) === "on",
     };
   });
-  await updateStoreApplicableZones(
-    user,
-    await toStoreScope(scope),
-    assignments,
-  );
+  try {
+    await updateStoreApplicableZones(
+      user,
+      await toStoreScope(scope),
+      assignments,
+    );
+  } catch (error) {
+    redirect(pageErrorUrl(scope, applicableZoneActionError(error)));
+  }
   redirect(pageUrl(scope, "applicable-zones"));
 }
 
@@ -297,4 +301,15 @@ function materialGroupActionError(error: unknown) {
     return "รหัสหรือชื่อกลุ่มอะไหล่/วัสดุนี้มีอยู่แล้วในหมวดหมู่ที่เลือก";
   }
   return "บันทึกกลุ่มอะไหล่/วัสดุไม่สำเร็จ กรุณาตรวจสอบข้อมูลแล้วลองอีกครั้ง";
+}
+
+function applicableZoneActionError(error: unknown) {
+  const message = error instanceof Error ? error.message : "";
+  if (message.includes("must not be duplicated")) {
+    return "รหัส Applicable Zone ต้องไม่ซ้ำกันภายใน Site เดียวกัน";
+  }
+  if (message.includes("must belong to the selected Site")) {
+    return "พบ Zone ที่ไม่อยู่ใน Site ปัจจุบัน กรุณาโหลดหน้าใหม่แล้วลองอีกครั้ง";
+  }
+  return "บันทึก Applicable Zones ไม่สำเร็จ กรุณาตรวจสอบข้อมูลแล้วลองอีกครั้ง";
 }

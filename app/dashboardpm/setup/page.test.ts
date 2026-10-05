@@ -15,14 +15,22 @@ describe("Annual PM Setup route", () => {
   it("provides Year and Month views plus a blurred right-side daily editor", () => {
     expect(source).toContain('query.view === "year"');
     expect(source).toContain("<MonthCalendar");
-    expect(source).toContain('className="fixed inset-0 z-[80] bg-slate-950/30 backdrop-blur-sm"');
+    expect(source).toContain(
+      'className="fixed inset-0 z-[80] bg-slate-950/30 backdrop-blur-sm"',
+    );
     expect(source).toContain('className="fixed inset-y-0 right-0');
   });
 
   it("stacks dense month and daily-editor controls on narrow mobile screens", () => {
-    expect(source).toContain('className="flex w-full items-center gap-2 sm:w-auto"');
-    expect(source).toContain('className="min-w-0 flex-1 text-center sm:min-w-40 sm:flex-none"');
-    expect(source).toContain('className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(13rem,auto)]"');
+    expect(source).toContain(
+      'className="flex w-full items-center gap-2 sm:w-auto"',
+    );
+    expect(source).toContain(
+      'className="min-w-0 flex-1 text-center sm:min-w-40 sm:flex-none"',
+    );
+    expect(source).toContain(
+      'className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(13rem,auto)]"',
+    );
     expect(source).toContain('className="grid min-w-0 gap-2"');
     expect(source).not.toContain('className="grid min-w-52 gap-2"');
   });
@@ -39,10 +47,14 @@ describe("Annual PM Setup route", () => {
 
   it("groups Annual Setup, Site Calendar, plan settings, and Weekly Pattern in one card", () => {
     expect(source).toContain("data-pm-setup-unified-card");
-    expect(source).toContain('className="mt-5 border-t border-[var(--line)] pt-5"');
+    expect(source).toContain(
+      'className="mt-5 border-t border-[var(--line)] pt-5"',
+    );
     expect(source).toContain("data-pm-plan-settings");
     expect(source).toContain("data-pm-weekly-pattern");
-    expect(source).toContain("</>:null}</section>{plan ? <>");
+    expect(source.indexOf("data-pm-weekly-pattern")).toBeGreaterThan(
+      source.indexOf("data-pm-setup-unified-card"),
+    );
   });
 
   it("preserves scroll position for calendar links and mutations", () => {
@@ -52,10 +64,39 @@ describe("Annual PM Setup route", () => {
   });
 
   it("supports patterns, manual entries, No-PM exceptions, ranges and activation", () => {
-    for (const action of ["saveAnnualWeeklyPattern", "applyAnnualWeeklyPattern", "addAnnualPmSchedule", "cancelAnnualPmSchedule", "changeAnnualPmSchedule", "cancelAnnualPmRange", "activateAnnualPmPlan"]) expect(source).toContain(action);
+    for (const action of [
+      "saveAnnualWeeklyPattern",
+      "applyAnnualWeeklyPattern",
+      "addAnnualPmSchedule",
+      "cancelAnnualPmSchedule",
+      "changeAnnualPmSchedule",
+      "cancelAnnualPmRange",
+      "activateAnnualPmPlan",
+    ])
+      expect(source).toContain(action);
     expect(service).toContain('overrideAction: "NO_PM"');
     expect(service).toContain('overrideAction: "CHANGE"');
     expect(service).toContain("originalScheduleId: original.id");
     expect(service).toContain("activeKey: `${plan.plantId}:${plan.year}`");
+  });
+
+  it("adds Monthly Pattern as an additive mode with previewed generation and synchronization state", () => {
+    expect(source).toContain(
+      '<option value="MONTHLY_PATTERN">Monthly Pattern</option>',
+    );
+    for (const action of [
+      "saveAnnualMonthlyPattern",
+      "previewAnnualMonthlyPattern",
+      "applyAnnualMonthlyPattern",
+    ])
+      expect(source).toContain(action);
+    expect(source).toContain("PmMonthlyPatternBuilder");
+    expect(source).toContain("Regeneration Required");
+    expect(source).toContain("Confirm Generate");
+    expect(source).toContain("annualSummaries");
+    expect(source).toContain("Custom {summary.custom}");
+    expect(source).toContain("Override {summary.override}");
+    expect(source).toContain("เหตุผล Custom Assignment");
+    expect(source).toContain('plan.status === "ACTIVE"');
   });
 });

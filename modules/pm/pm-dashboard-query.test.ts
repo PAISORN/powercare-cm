@@ -97,6 +97,15 @@ describe("PM dashboard query", () => {
       todayCompleted: 0,
       todayCompletionPercent: 0,
     });
+    expect(result.statusOverview).toEqual({
+      total: 6,
+      rows: [
+        expect.objectContaining({ status: PmWorkStatus.PLANNED, value: 1 }),
+        expect.objectContaining({ status: PmWorkStatus.IN_PROGRESS, value: 1 }),
+        expect.objectContaining({ status: PmWorkStatus.COMPLETED, value: 2 }),
+        expect.objectContaining({ status: PmWorkStatus.CANCELED, value: 2 }),
+      ],
+    });
     expect(result.attentionWorks[0]).toMatchObject({ id: "work-2", overdue: true });
     expect(result.upcomingDays).toHaveLength(7);
     expect(result.upcomingDays[0]).toMatchObject({ dateKey: "2026-09-29", total: 1 });

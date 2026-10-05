@@ -88,6 +88,10 @@ export default async function AdminSystemSettingsPage({
 
   return (
     <>
+      <div className="mb-5">
+        <AdminSiteScopeSelector action="/admin/settings" scope={scope} />
+      </div>
+
       <header className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <p className="inline-flex items-center gap-2 text-sm font-semibold text-[var(--primary)]">
@@ -100,10 +104,6 @@ export default async function AdminSystemSettingsPage({
           </p>
         </div>
       </header>
-
-      <div className="mt-5">
-        <AdminSiteScopeSelector action="/admin/settings" scope={scope} />
-      </div>
 
       {query.saved === "1" ? (
         <p className="mt-5 rounded-lg border border-green-500/35 bg-green-500/10 px-4 py-3 font-semibold text-green-700 dark:text-green-300" role="status">

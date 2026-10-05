@@ -5,6 +5,7 @@ import {
   Boxes,
   CheckCircle2,
   Edit3,
+  History,
   MoreVertical,
   SlidersHorizontal,
 } from "lucide-react";
@@ -174,46 +175,57 @@ export function StockTableRows({
                 </PreserveListPositionLink>
               ) : null}
             </div>
-            {canManageParts ? (
-              <ExclusiveDetails className="group relative">
-                <summary
-                  aria-label={`จัดการ ${stock.sparePart.name}`}
-                  className="inline-flex size-7 shrink-0 cursor-pointer list-none items-center justify-center rounded-full text-[var(--muted)] transition hover:bg-[var(--soft)] hover:text-[var(--ink)] [&::-webkit-details-marker]:hidden"
+            <ExclusiveDetails className="group relative">
+              <summary
+                aria-label={`จัดการ ${stock.sparePart.name}`}
+                className="inline-flex size-7 shrink-0 cursor-pointer list-none items-center justify-center rounded-full text-[var(--muted)] transition hover:bg-[var(--soft)] hover:text-[var(--ink)] [&::-webkit-details-marker]:hidden"
+              >
+                <MoreVertical size={18} />
+              </summary>
+              <div className="grid w-36 gap-1 rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-2 text-sm font-bold shadow-xl">
+                <PreserveListPositionLink
+                  className="inline-flex min-h-9 items-center gap-2 rounded-xl px-3 text-[var(--ink)] transition hover:bg-[var(--soft)]"
+                  href={`${stockPageHref(currentPage)}&historyStockId=${encodeURIComponent(stock.id)}#stock-row-${stock.sparePart.id}`}
+                  storageKey={stockListPositionKey}
+                  targetId={`stock-row-${stock.sparePart.id}`}
                 >
-                  <MoreVertical size={18} />
-                </summary>
-                <div className="grid w-36 gap-1 rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-2 text-sm font-bold shadow-xl">
-                  <PreserveListPositionLink
-                    className="inline-flex min-h-9 items-center gap-2 rounded-xl px-3 text-[var(--ink)] transition hover:bg-[var(--soft)]"
-                    href={sparePartEditHref(stock.sparePart.id)}
-                    storageKey={stockListPositionKey}
-                    targetId={`stock-row-${stock.sparePart.id}`}
-                  >
-                    <Edit3 size={15} />
-                    แก้ไข
-                  </PreserveListPositionLink>
-                  <form action={deleteSparePartFromStockAction}>
-                    <AdminScopeHiddenFields scope={scope} />
-                    <input
-                      name="returnTo"
-                      type="hidden"
-                      value={stockPageHref(currentPage)}
-                    />
-                    <input
-                      name="sparePartId"
-                      type="hidden"
-                      value={stock.sparePart.id}
-                    />
-                    <ConfirmSubmitButton
-                      className="inline-flex min-h-9 w-full items-center gap-2 rounded-xl px-3 text-left text-red-600 transition hover:bg-red-500/10"
-                      message={`ต้องการลบอะไหล่ ${stock.sparePart.name} หรือไม่?`}
+                  <History size={15} />
+                  ประวัติ
+                </PreserveListPositionLink>
+                {canManageParts ? (
+                  <>
+                    <PreserveListPositionLink
+                      className="inline-flex min-h-9 items-center gap-2 rounded-xl px-3 text-[var(--ink)] transition hover:bg-[var(--soft)]"
+                      href={sparePartEditHref(stock.sparePart.id)}
+                      storageKey={stockListPositionKey}
+                      targetId={`stock-row-${stock.sparePart.id}`}
                     >
-                      ลบ
-                    </ConfirmSubmitButton>
-                  </form>
-                </div>
-              </ExclusiveDetails>
-            ) : null}
+                      <Edit3 size={15} />
+                      แก้ไข
+                    </PreserveListPositionLink>
+                    <form action={deleteSparePartFromStockAction}>
+                      <AdminScopeHiddenFields scope={scope} />
+                      <input
+                        name="returnTo"
+                        type="hidden"
+                        value={stockPageHref(currentPage)}
+                      />
+                      <input
+                        name="sparePartId"
+                        type="hidden"
+                        value={stock.sparePart.id}
+                      />
+                      <ConfirmSubmitButton
+                        className="inline-flex min-h-9 w-full items-center gap-2 rounded-xl px-3 text-left text-red-600 transition hover:bg-red-500/10"
+                        message={`ต้องการลบอะไหล่ ${stock.sparePart.name} หรือไม่?`}
+                      >
+                        ลบ
+                      </ConfirmSubmitButton>
+                    </form>
+                  </>
+                ) : null}
+              </div>
+            </ExclusiveDetails>
           </div>
         </td>
       </tr>

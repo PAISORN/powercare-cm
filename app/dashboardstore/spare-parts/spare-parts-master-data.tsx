@@ -425,7 +425,7 @@ export function SparePartsMasterData({
                   <MasterPanel
                     icon={<Flag size={18} />}
                     title="Applicable Zones"
-                    subtitle="ใช้เฉพาะตอนเบิกอะไหล่ เช่น 01, 02"
+                    subtitle="ใช้เฉพาะตอนเบิกอะไหล่ · ใช้ Zone ชุดเดียวกับ CM ของ Site นี้ และจัดรหัสว่างให้อัตโนมัติ"
                   >
                     <form
                       action={saveStoreApplicableZones}
@@ -460,7 +460,7 @@ export function SparePartsMasterData({
                               defaultValue={assignment?.code ?? ""}
                               maxLength={8}
                               name={`zoneCode:${zone.id}`}
-                              placeholder="01"
+                              placeholder="อัตโนมัติ"
                             />
                           </div>
                         );

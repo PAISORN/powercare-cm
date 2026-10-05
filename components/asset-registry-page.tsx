@@ -69,6 +69,15 @@ export function AssetRegistryPage({
   return (
     <>
       <RestoreListPosition storageKey="assets" enabled />
+      {scope.canSelectPlant || scope.canSelectOrganization ? (
+        <div className="mb-6">
+          <AdminSiteScopeSelector
+            scope={scope}
+            title="Asset scope"
+            description="ข้อมูลทะเบียนถูกแยกตาม Site"
+          />
+        </div>
+      ) : null}
       <header className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <p className="text-sm font-bold uppercase tracking-[.18em] text-emerald-600">
@@ -118,15 +127,6 @@ export function AssetRegistryPage({
           ) : null}
         </div>
       </header>
-      {scope.canSelectPlant || scope.canSelectOrganization ? (
-        <div className="mt-6">
-          <AdminSiteScopeSelector
-            scope={scope}
-            title="Asset scope"
-            description="ข้อมูลทะเบียนถูกแยกตาม Site"
-          />
-        </div>
-      ) : null}
       <section className="dashboard-kpi-carousel mt-6 sm:grid-cols-3" aria-label="Asset KPI strip">
         <Kpi icon={Boxes} label="Assets ทั้งหมด" value={total} tone="emerald" />
         <Kpi icon={Wrench} label="ปิดซ่อม" value={underRepair} tone="amber" />

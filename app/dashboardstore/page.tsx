@@ -117,6 +117,9 @@ export default async function StoreDashboardPage({ searchParams }: { searchParam
   return (
     <AppShell>
       <main className="dashboard-glass-scope w-full min-w-0 space-y-5 pb-4">
+        {(scope.canSelectOrganization || scope.canSelectPlant) ? <div className="dashboard-glass-host"><AdminSiteScopeSelector action="/dashboardstore" scope={scope} title="ขอบเขตคลังสินค้า" description="เลือก Organization และ Site ที่ต้องการดู Dashboard" /></div> : null}
+        <StoreDashboardFilter activeDateFilter={activeDateFilter} organizationId={scope.organization.id} plantId={scope.plant.id} />
+
         <header className="menu-heading-plain px-1 py-2">
           <div className="flex flex-wrap items-end justify-between gap-4">
             <div>
@@ -127,9 +130,6 @@ export default async function StoreDashboardPage({ searchParams }: { searchParam
             <span className="rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-xs font-bold text-white/90">ข้อมูลรายการ: {periodLabel}</span>
           </div>
         </header>
-
-        {(scope.canSelectOrganization || scope.canSelectPlant) ? <div className="dashboard-glass-host"><AdminSiteScopeSelector action="/dashboardstore" scope={scope} title="ขอบเขตคลังสินค้า" description="เลือก Organization และ Site ที่ต้องการดู Dashboard" /></div> : null}
-        <StoreDashboardFilter activeDateFilter={activeDateFilter} organizationId={scope.organization.id} plantId={scope.plant.id} />
 
         <section aria-label="สรุปข้อมูลคลังสินค้า" className="dashboard-kpi-carousel sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5">
           <MetricCard detail={canViewValue ? `${formatNumber(stocks.length)} รายการสินค้า` : `${formatNumber(totalQuantity)} หน่วยคงเหลือ`} href={canViewStock ? "/dashboardstore/stock" : undefined} icon={<Boxes size={21} />} label={canViewValue ? "มูลค่าสินค้าคงคลัง" : "รายการสินค้าคงคลัง"} tone="blue" value={canViewValue ? formatMoney(totalValue) : `${formatNumber(stocks.length)} รายการ`} />

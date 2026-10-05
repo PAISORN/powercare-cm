@@ -199,6 +199,39 @@ export async function getPmDashboardSummary(
   const todayCompleted = todayWorks.filter(
     (work) => work.status === PmWorkStatus.COMPLETED,
   ).length;
+  const annualStatusCounts = new Map<string, number>();
+  for (const work of annualWorks) {
+    annualStatusCounts.set(
+      work.status,
+      (annualStatusCounts.get(work.status) ?? 0) + 1,
+    );
+  }
+  const statusOverviewRows = [
+    {
+      status: PmWorkStatus.PLANNED,
+      label: "รอดำเนินการ",
+      value: annualStatusCounts.get(PmWorkStatus.PLANNED) ?? 0,
+      color: "#3b82f6",
+    },
+    {
+      status: PmWorkStatus.IN_PROGRESS,
+      label: "กำลังดำเนินการ",
+      value: annualStatusCounts.get(PmWorkStatus.IN_PROGRESS) ?? 0,
+      color: "#f59e0b",
+    },
+    {
+      status: PmWorkStatus.COMPLETED,
+      label: "เสร็จสิ้น",
+      value: annualStatusCounts.get(PmWorkStatus.COMPLETED) ?? 0,
+      color: "#22c55e",
+    },
+    {
+      status: PmWorkStatus.CANCELED,
+      label: "ยกเลิก",
+      value: annualStatusCounts.get(PmWorkStatus.CANCELED) ?? 0,
+      color: "#e11d48",
+    },
+  ];
 
   return {
     monthKey,
@@ -229,6 +262,10 @@ export async function getPmDashboardSummary(
       todayTotal: todayWorks.length,
       todayCompleted,
       todayCompletionPercent: percent(todayCompleted, todayWorks.length),
+    },
+    statusOverview: {
+      total: annualWorks.length,
+      rows: statusOverviewRows,
     },
     attentionWorks: attentionWorks.map((work) => ({
       ...work,

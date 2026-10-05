@@ -263,13 +263,6 @@ export function getAppLinks(
   if (canUse(PermissionKey.VIEW_PM)) {
     pmLinks.push(
       {
-        label: "PM Setup",
-        href: "/dashboardpm/setup",
-        icon: Settings,
-        nested: true,
-        parentSectionId: "pm",
-      },
-      {
         label: "PM Calendar",
         href: "/dashboardpm/calendar",
         icon: CalendarDays,
@@ -284,6 +277,15 @@ export function getAppLinks(
         parentSectionId: "pm",
       },
     );
+  }
+  if (canUse(PermissionKey.MANAGE_PM_PLANS)) {
+    pmLinks.unshift({
+      label: "PM Setup",
+      href: "/dashboardpm/setup",
+      icon: Settings,
+      nested: true,
+      parentSectionId: "pm",
+    });
   }
   if (canUse(PermissionKey.MANAGE_PM_GROUPS)) {
     const workIndex = pmLinks.findIndex(
@@ -679,4 +681,32 @@ export function isActivePath(
   return Array.from(expectedParams.entries()).every(
     ([key, value]) => searchParams?.get(key) === value,
   );
+}
+
+export function isMostSpecificActiveLink(
+  links: AppLink[],
+  candidate: AppLink,
+  pathname: string,
+  searchParams?: Pick<URLSearchParams, "get"> | null,
+) {
+  if (
+    !candidate.href ||
+    candidate.disabled ||
+    !isActivePath(pathname, candidate.href, searchParams)
+  )
+    return false;
+
+  const candidateLength = navigationPath(candidate.href).length;
+  return !links.some(
+    (link) =>
+      link !== candidate &&
+      link.href &&
+      !link.disabled &&
+      navigationPath(link.href).length > candidateLength &&
+      isActivePath(pathname, link.href, searchParams),
+  );
+}
+
+function navigationPath(href: string) {
+  return href.split("#")[0].split("?")[0];
 }

@@ -537,7 +537,12 @@ html[data-stock-header-replacement="active"] .stock-table-panel {
 
 .dashboard-content-surface {
   --dashboard-content-border: #c5d8e5;
-  --dashboard-content-background: linear-gradient(135deg, #f5faff 0%, #edf6fb 52%, #dceaf3 100%);
+  --dashboard-content-background: linear-gradient(
+    135deg,
+    #f5faff 0%,
+    #edf6fb 52%,
+    #dceaf3 100%
+  );
   --dashboard-content-shadow: 0 10px 28px rgb(103 151 181 / 0.2);
   border-color: var(--dashboard-content-border) !important;
   background: var(--dashboard-content-background) !important;
@@ -558,9 +563,18 @@ html[data-stock-header-replacement="active"] .stock-table-panel {
   color: var(--ink);
   border-color: var(--line) !important;
   background:
-    radial-gradient(circle at 82% 14%, rgb(var(--pm-jewel-glow) / 0.3), transparent 34%),
+    radial-gradient(
+      circle at 82% 14%,
+      rgb(var(--pm-jewel-glow) / 0.3),
+      transparent 34%
+    ),
     radial-gradient(circle at 6% 108%, rgb(14 165 164 / 0.18), transparent 42%),
-    linear-gradient(135deg, var(--pm-jewel-from) 0%, var(--pm-jewel-mid) 52%, var(--pm-jewel-to) 100%) !important;
+    linear-gradient(
+      135deg,
+      var(--pm-jewel-from) 0%,
+      var(--pm-jewel-mid) 52%,
+      var(--pm-jewel-to) 100%
+    ) !important;
   box-shadow:
     0 24px 56px -34px rgb(0 45 47 / 0.84),
     inset 0 1px 0 rgb(255 255 255 / 0.16),
@@ -576,9 +590,15 @@ html[data-stock-header-replacement="active"] .stock-table-panel {
   right: -4rem;
   top: -5rem;
   border-radius: 999px;
-  background: radial-gradient(circle, rgb(var(--pm-jewel-glow) / 0.32), transparent 68%);
+  background: radial-gradient(
+    circle,
+    rgb(var(--pm-jewel-glow) / 0.32),
+    transparent 68%
+  );
   opacity: 0.82;
-  transition: opacity 220ms ease, transform 260ms ease;
+  transition:
+    opacity 220ms ease,
+    transform 260ms ease;
   pointer-events: none;
 }
 
@@ -588,7 +608,12 @@ html[data-stock-header-replacement="active"] .stock-table-panel {
   z-index: -1;
   inset: 0;
   border-radius: inherit;
-  background: linear-gradient(118deg, rgb(255 255 255 / 0.09), transparent 32%, rgb(255 255 255 / 0.025) 70%);
+  background: linear-gradient(
+    118deg,
+    rgb(255 255 255 / 0.09),
+    transparent 32%,
+    rgb(255 255 255 / 0.025) 70%
+  );
   pointer-events: none;
 }
 
@@ -648,7 +673,11 @@ html[data-stock-header-replacement="active"] .stock-table-panel {
 .pm-jewel-icon {
   color: #8ff2e3;
   border: 1px solid rgb(255 255 255 / 0.13);
-  background: linear-gradient(145deg, rgb(255 255 255 / 0.18), rgb(255 255 255 / 0.08));
+  background: linear-gradient(
+    145deg,
+    rgb(255 255 255 / 0.18),
+    rgb(255 255 255 / 0.08)
+  );
   box-shadow:
     0 10px 24px -16px rgb(0 24 26 / 0.92),
     inset 0 1px 0 rgb(255 255 255 / 0.18);
@@ -714,7 +743,11 @@ html[data-stock-header-replacement="active"] .stock-table-panel {
   box-sizing: content-box;
   padding: 0.72rem;
   border-radius: 999px;
-  background: linear-gradient(145deg, rgb(255 255 255 / 0.22), rgb(255 255 255 / 0.1));
+  background: linear-gradient(
+    145deg,
+    rgb(255 255 255 / 0.22),
+    rgb(255 255 255 / 0.1)
+  );
   border: 1px solid rgb(255 255 255 / 0.16);
   box-shadow:
     0 12px 26px -16px rgb(0 15 30 / 0.86),
@@ -733,14 +766,22 @@ html[data-stock-header-replacement="active"] .stock-table-panel {
   isolation: isolate;
   color: var(--ink) !important;
   background:
-    radial-gradient(circle at 86% 8%, color-mix(in srgb, var(--kpi-color) 62%, transparent), transparent 36%),
+    radial-gradient(
+      circle at 86% 8%,
+      color-mix(in srgb, var(--kpi-color) 62%, transparent),
+      transparent 36%
+    ),
     linear-gradient(
       135deg,
       color-mix(in srgb, var(--kpi-color) 24%, #061c36),
       color-mix(in srgb, var(--kpi-color) 48%, #06353b) 58%,
       color-mix(in srgb, var(--kpi-color) 62%, #06464b)
     ) !important;
-  border-color: color-mix(in srgb, var(--kpi-color) 46%, rgb(255 255 255 / 26%)) !important;
+  border-color: color-mix(
+    in srgb,
+    var(--kpi-color) 46%,
+    rgb(255 255 255 / 26%)
+  ) !important;
   border-radius: 1.75rem !important;
   box-shadow:
     0 18px 42px -27px color-mix(in srgb, var(--kpi-color) 70%, #020617),
@@ -759,7 +800,9 @@ html[data-stock-header-replacement="active"] .stock-table-panel {
   opacity: 0.2;
   transform: rotate(24deg);
   filter: blur(1px);
-  transition: opacity 360ms ease, transform 420ms cubic-bezier(0.22, 1, 0.36, 1);
+  transition:
+    opacity 360ms ease,
+    transform 420ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .dashboard-kpi::after {
@@ -777,43 +820,78 @@ html[data-stock-header-replacement="active"] .stock-table-panel {
 .dashboard-panel:nth-child(even) {
   background:
     radial-gradient(circle at 92% 0%, rgb(255 255 255 / 0.84), transparent 32%),
-    linear-gradient(135deg, rgb(236 253 245 / 0.96), rgb(255 255 255 / 0.98) 48%, rgb(240 253 250 / 0.9)) !important;
+    linear-gradient(
+      135deg,
+      rgb(236 253 245 / 0.96),
+      rgb(255 255 255 / 0.98) 48%,
+      rgb(240 253 250 / 0.9)
+    ) !important;
 }
 
 .dashboard-panel.cm-panel-blue {
   background:
     radial-gradient(circle at 92% 0%, rgb(255 255 255 / 0.84), transparent 32%),
-    linear-gradient(135deg, rgb(239 246 255 / 0.98), rgb(255 255 255 / 0.98) 48%, rgb(224 242 254 / 0.9)) !important;
+    linear-gradient(
+      135deg,
+      rgb(239 246 255 / 0.98),
+      rgb(255 255 255 / 0.98) 48%,
+      rgb(224 242 254 / 0.9)
+    ) !important;
 }
 
 .dashboard-panel.cm-panel-mint {
   background:
     radial-gradient(circle at 92% 0%, rgb(255 255 255 / 0.84), transparent 32%),
-    linear-gradient(135deg, rgb(236 253 245 / 0.98), rgb(255 255 255 / 0.98) 48%, rgb(204 251 241 / 0.76)) !important;
+    linear-gradient(
+      135deg,
+      rgb(236 253 245 / 0.98),
+      rgb(255 255 255 / 0.98) 48%,
+      rgb(204 251 241 / 0.76)
+    ) !important;
 }
 
 .dashboard-panel.cm-panel-amber {
   background:
     radial-gradient(circle at 92% 0%, rgb(255 255 255 / 0.86), transparent 32%),
-    linear-gradient(135deg, rgb(255 251 235 / 0.98), rgb(255 255 255 / 0.98) 48%, rgb(254 243 199 / 0.78)) !important;
+    linear-gradient(
+      135deg,
+      rgb(255 251 235 / 0.98),
+      rgb(255 255 255 / 0.98) 48%,
+      rgb(254 243 199 / 0.78)
+    ) !important;
 }
 
 .dashboard-panel.cm-panel-rose {
   background:
     radial-gradient(circle at 92% 0%, rgb(255 255 255 / 0.86), transparent 32%),
-    linear-gradient(135deg, rgb(255 241 242 / 0.98), rgb(255 255 255 / 0.98) 48%, rgb(252 231 243 / 0.76)) !important;
+    linear-gradient(
+      135deg,
+      rgb(255 241 242 / 0.98),
+      rgb(255 255 255 / 0.98) 48%,
+      rgb(252 231 243 / 0.76)
+    ) !important;
 }
 
 .dashboard-panel.cm-panel-violet {
   background:
     radial-gradient(circle at 92% 0%, rgb(255 255 255 / 0.86), transparent 32%),
-    linear-gradient(135deg, rgb(245 243 255 / 0.98), rgb(255 255 255 / 0.98) 48%, rgb(237 233 254 / 0.8)) !important;
+    linear-gradient(
+      135deg,
+      rgb(245 243 255 / 0.98),
+      rgb(255 255 255 / 0.98) 48%,
+      rgb(237 233 254 / 0.8)
+    ) !important;
 }
 
 .dashboard-panel.cm-panel-slate {
   background:
     radial-gradient(circle at 92% 0%, rgb(255 255 255 / 0.86), transparent 32%),
-    linear-gradient(135deg, rgb(248 250 252 / 0.98), rgb(255 255 255 / 0.98) 48%, rgb(226 232 240 / 0.76)) !important;
+    linear-gradient(
+      135deg,
+      rgb(248 250 252 / 0.98),
+      rgb(255 255 255 / 0.98) 48%,
+      rgb(226 232 240 / 0.76)
+    ) !important;
 }
 
 .dashboard-panel > div:first-child h2 svg {
@@ -839,7 +917,10 @@ html[data-stock-header-replacement="active"] .stock-table-panel {
 }
 
 .dashboard-panel a:is(.rounded-xl, .rounded-2xl) {
-  transition: transform 180ms ease, box-shadow 180ms ease, background-color 180ms ease;
+  transition:
+    transform 180ms ease,
+    box-shadow 180ms ease,
+    background-color 180ms ease;
 }
 
 .dashboard-panel a:is(.rounded-xl, .rounded-2xl):hover {
@@ -858,7 +939,12 @@ html[data-stock-header-replacement="active"] .stock-table-panel {
   color: var(--ink) !important;
   background:
     radial-gradient(circle at 92% 0%, rgb(255 255 255 / 0.82), transparent 32%),
-    linear-gradient(135deg, rgb(239 246 255 / 0.96), rgb(255 255 255 / 0.98) 48%, rgb(236 254 255 / 0.88)) !important;
+    linear-gradient(
+      135deg,
+      rgb(239 246 255 / 0.96),
+      rgb(255 255 255 / 0.98) 48%,
+      rgb(236 254 255 / 0.88)
+    ) !important;
   border-color: rgb(255 255 255 / 0.82) !important;
   border-radius: 2rem !important;
   box-shadow: 0 22px 58px -38px rgb(15 23 42 / 0.58) !important;
@@ -1111,7 +1197,8 @@ html[data-stock-header-replacement="active"] .stock-table-panel {
   background: linear-gradient(90deg, var(--activity-color), transparent 72%);
 }
 
-.activity-board-card.dashboard-kpi :is(.activity-board-icon, .activity-board-arrow) {
+.activity-board-card.dashboard-kpi
+  :is(.activity-board-icon, .activity-board-arrow) {
   border-color: rgb(255 255 255 / 18%);
   background: linear-gradient(
     145deg,
@@ -1133,7 +1220,11 @@ html[data-stock-header-replacement="active"] .stock-table-panel {
 
 .activity-board-card.dashboard-kpi:hover .activity-board-arrow {
   border-color: color-mix(in srgb, var(--activity-color) 58%, white);
-  background: color-mix(in srgb, var(--activity-color) 34%, rgb(255 255 255 / 16%));
+  background: color-mix(
+    in srgb,
+    var(--activity-color) 34%,
+    rgb(255 255 255 / 16%)
+  );
 }
 
 .pm-main-asset-card {
@@ -3449,6 +3540,10 @@ body
 }
 
 @media (hover: hover) and (pointer: fine) {
+  [data-asset-master-data-tabs] :is(section, article, a, details):hover {
+    transform: none !important;
+  }
+
   :where(
     .dashboard-kpi,
     .dashboard-panel,
@@ -3499,24 +3594,38 @@ body
   }
 }
 
-[data-theme="night"] .dashboard-glass-scope .dashboard-kpi-carousel .dashboard-kpi {
+[data-theme="night"]
+  .dashboard-glass-scope
+  .dashboard-kpi-carousel
+  .dashboard-kpi {
   color: var(--ink) !important;
   background:
-    radial-gradient(circle at 86% 8%, color-mix(in srgb, var(--kpi-color) 62%, transparent), transparent 36%),
+    radial-gradient(
+      circle at 86% 8%,
+      color-mix(in srgb, var(--kpi-color) 62%, transparent),
+      transparent 36%
+    ),
     linear-gradient(
       135deg,
       color-mix(in srgb, var(--kpi-color) 24%, #061c36),
       color-mix(in srgb, var(--kpi-color) 48%, #06353b) 58%,
       color-mix(in srgb, var(--kpi-color) 62%, #06464b)
     ) !important;
-  border-color: color-mix(in srgb, var(--kpi-color) 46%, rgb(255 255 255 / 26%)) !important;
+  border-color: color-mix(
+    in srgb,
+    var(--kpi-color) 46%,
+    rgb(255 255 255 / 26%)
+  ) !important;
   box-shadow:
     0 18px 42px -27px color-mix(in srgb, var(--kpi-color) 70%, #020617),
     inset 0 1px 0 rgb(255 255 255 / 0.2) !important;
 }
 
 @media (hover: hover) and (pointer: fine) {
-  [data-theme="night"] .dashboard-glass-scope .dashboard-kpi-carousel .dashboard-kpi:hover {
+  [data-theme="night"]
+    .dashboard-glass-scope
+    .dashboard-kpi-carousel
+    .dashboard-kpi:hover {
     border-color: color-mix(in srgb, var(--kpi-color) 72%, white) !important;
     box-shadow: var(--kpi-glow-shadow) !important;
   }
@@ -3538,5 +3647,421 @@ body
     filter: none !important;
     transform: none !important;
     transition-duration: 0.01ms !important;
+  }
+}
+@keyframes pm-confetti-fall {
+  0% {
+    opacity: 0;
+    translate: 0 -18px;
+  }
+  14% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    translate: 0 180px;
+    rotate: 250deg;
+  }
+}
+
+@keyframes pm-success-pop {
+  0% {
+    opacity: 0;
+    scale: 0.35;
+  }
+  72% {
+    opacity: 1;
+    scale: 1.12;
+  }
+  100% {
+    opacity: 1;
+    scale: 1;
+  }
+}
+
+.pm-print-document {
+  display: none;
+}
+
+@page {
+  size: A4 portrait;
+  margin: 9mm 9mm 12mm;
+}
+
+@media print {
+  html,
+  body.pm-worksheet-printing {
+    background: #ffffff !important;
+    color: #102651 !important;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+  body.pm-worksheet-printing::before {
+    display: none !important;
+    content: none !important;
+  }
+
+  body.pm-worksheet-printing > div,
+  body.pm-worksheet-printing .app-workspace,
+  body.pm-worksheet-printing [data-pm-worksheet-page] {
+    width: auto !important;
+    min-height: 0 !important;
+    height: auto !important;
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  body.pm-worksheet-printing [data-pm-worksheet-page] {
+    display: block !important;
+  }
+
+  body.pm-worksheet-printing * {
+    visibility: hidden !important;
+  }
+
+  body.pm-worksheet-printing [data-pm-print-document],
+  body.pm-worksheet-printing [data-pm-print-document] * {
+    visibility: visible !important;
+  }
+
+  body.pm-worksheet-printing
+    [data-pm-worksheet-page]
+    > :not([data-pm-print-document]) {
+    display: none !important;
+  }
+
+  body.pm-worksheet-printing [data-pm-print-document] {
+    display: block !important;
+    position: absolute !important;
+    inset: 0 auto auto 0 !important;
+    width: 192mm !important;
+    color: #102651 !important;
+    font-family: Arial, "Noto Sans Thai", sans-serif !important;
+    font-size: 8.5pt !important;
+    line-height: 1.35 !important;
+  }
+
+  .pm-print-document :is(h1, h2, h3, p, dl, dd) {
+    margin: 0;
+  }
+
+  .pm-print-document-header {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: end;
+    gap: 8mm;
+    border-bottom: 2.5pt solid #1261b2;
+    padding-bottom: 3mm;
+  }
+
+  .pm-print-brand {
+    color: #1261b2;
+    font-size: 12pt;
+    font-weight: 900;
+    letter-spacing: 0.08em;
+  }
+
+  .pm-print-organization {
+    margin-top: 1mm !important;
+    color: #52627e;
+    font-size: 7.5pt;
+    font-weight: 700;
+  }
+
+  .pm-print-title-block {
+    text-align: right;
+  }
+
+  .pm-print-title-block h1 {
+    color: #102651;
+    font-size: 16pt;
+    font-weight: 900;
+  }
+
+  .pm-print-title-block p {
+    color: #1261b2;
+    font-size: 8pt;
+    font-weight: 900;
+    letter-spacing: 0.14em;
+  }
+
+  .pm-print-control-grid {
+    display: grid;
+    grid-template-columns: 1.25fr 1fr 0.85fr 0.9fr;
+    margin-top: 3mm;
+    border: 0.75pt solid #a9b8cd;
+  }
+
+  .pm-print-control-cell {
+    display: grid;
+    gap: 0.5mm;
+    min-height: 12mm;
+    padding: 2mm 2.5mm;
+    border-left: 0.75pt solid #c9d3e1;
+  }
+
+  .pm-print-control-cell:first-child {
+    border-left: 0;
+  }
+
+  .pm-print-control-cell > span {
+    color: #60708a;
+    font-size: 6.7pt;
+    font-weight: 700;
+  }
+
+  .pm-print-control-cell > strong {
+    align-self: center;
+    font-size: 8pt;
+  }
+
+  .pm-print-control-strong {
+    color: #1261b2;
+  }
+
+  .pm-print-status {
+    display: inline-flex;
+    width: fit-content;
+    align-items: center;
+    gap: 1mm;
+    border-radius: 999px;
+    background: #dcfce7;
+    color: #047857;
+    padding: 1mm 2mm;
+  }
+
+  .pm-print-section-title,
+  .pm-print-section-heading {
+    margin-top: 3mm !important;
+    background: #1261b2;
+    color: #ffffff !important;
+    padding: 1.5mm 2.5mm;
+  }
+
+  .pm-print-section-title {
+    font-size: 9pt;
+    font-weight: 900;
+  }
+
+  .pm-print-section-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 4mm;
+  }
+
+  .pm-print-section-heading h2 {
+    flex: none;
+    font-size: 9pt;
+    font-weight: 900;
+  }
+
+  .pm-print-section-heading p {
+    overflow-wrap: anywhere;
+    text-align: right;
+    font-size: 7pt;
+    font-weight: 700;
+  }
+
+  .pm-print-details-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    border: 0.75pt solid #c9d3e1;
+    border-top: 0;
+  }
+
+  .pm-print-details-grid dl {
+    padding: 2mm 3mm;
+  }
+
+  .pm-print-details-grid dl + dl {
+    border-left: 0.75pt solid #c9d3e1;
+  }
+
+  .pm-print-details-grid dl > div {
+    display: grid;
+    grid-template-columns: 31mm minmax(0, 1fr);
+    gap: 2mm;
+    padding: 0.8mm 0;
+  }
+
+  .pm-print-details-grid dt {
+    color: #60708a;
+    font-weight: 700;
+  }
+
+  .pm-print-details-grid dd {
+    overflow-wrap: anywhere;
+    font-weight: 800;
+  }
+
+  .pm-print-document table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+  }
+
+  .pm-print-document thead {
+    display: table-header-group;
+  }
+
+  .pm-print-document tr {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .pm-print-document th,
+  .pm-print-document td {
+    border: 0.75pt solid #c9d3e1;
+    padding: 1.7mm 2mm;
+    vertical-align: top;
+    overflow-wrap: anywhere;
+  }
+
+  .pm-print-document th {
+    background: #eaf2fb;
+    color: #28456e;
+    font-size: 7pt;
+    font-weight: 900;
+    text-align: left;
+  }
+
+  .pm-print-team-table th:first-child,
+  .pm-print-team-table td:first-child,
+  .pm-print-checklist th:first-child,
+  .pm-print-checklist td:first-child {
+    width: 10mm;
+    text-align: center;
+  }
+
+  .pm-print-team-table th:last-child,
+  .pm-print-team-table td:last-child {
+    width: 42mm;
+  }
+
+  .pm-print-checklist th:nth-child(2) {
+    width: 31%;
+  }
+  .pm-print-checklist th:nth-child(3) {
+    width: 24%;
+  }
+  .pm-print-checklist th:nth-child(4) {
+    width: 18%;
+  }
+  .pm-print-checklist th:nth-child(5) {
+    width: 23%;
+  }
+
+  .pm-print-checklist {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .pm-print-checklist td strong,
+  .pm-print-checklist td small {
+    display: block;
+  }
+
+  .pm-print-checklist td small {
+    margin-top: 0.5mm;
+    color: #60708a;
+    font-size: 6.5pt;
+  }
+
+  .pm-print-result-cell {
+    color: #047857;
+    font-weight: 900;
+  }
+
+  .pm-print-summary {
+    display: grid;
+    grid-template-columns: 0.9fr 1.35fr;
+    margin-top: 3mm;
+    border: 0.75pt solid #a9b8cd;
+    break-inside: avoid;
+  }
+
+  .pm-print-summary > div {
+    min-height: 24mm;
+    padding: 2.5mm 3mm;
+  }
+
+  .pm-print-summary > div + div {
+    border-left: 0.75pt solid #c9d3e1;
+  }
+
+  .pm-print-summary h2,
+  .pm-print-summary h3 {
+    margin-bottom: 1.5mm !important;
+    font-size: 8pt;
+    font-weight: 900;
+  }
+
+  .pm-print-summary-result {
+    display: inline-flex;
+    align-items: center;
+    gap: 1mm;
+    margin-bottom: 1mm !important;
+    border-radius: 999px;
+    padding: 1mm 2mm;
+    font-weight: 900;
+  }
+
+  .pm-print-summary-result.normal {
+    background: #dcfce7;
+    color: #047857;
+  }
+  .pm-print-summary-result.abnormal,
+  .pm-print-summary-result.unable {
+    background: #ffedd5;
+    color: #c2410c;
+  }
+
+  .pm-print-signatures {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    margin-top: 3mm;
+    border: 0.75pt solid #a9b8cd;
+    break-inside: avoid;
+    text-align: center;
+  }
+
+  .pm-print-signatures > div {
+    min-height: 31mm;
+    padding: 2.5mm;
+  }
+
+  .pm-print-signatures > div + div {
+    border-left: 0.75pt solid #c9d3e1;
+  }
+
+  .pm-print-signatures h3 {
+    font-size: 8pt;
+    font-weight: 900;
+  }
+
+  .pm-print-signature-line {
+    margin-top: 8mm !important;
+    border-bottom: 0.75pt solid #7a899e;
+    color: transparent;
+  }
+
+  .pm-print-signature-name {
+    margin: 1.3mm 0 !important;
+    font-weight: 700;
+  }
+
+  .pm-print-document-footer {
+    display: grid;
+    grid-template-columns: 1fr auto auto;
+    gap: 4mm;
+    margin-top: 3mm;
+    border-top: 0.75pt solid #a9b8cd;
+    padding-top: 1.5mm;
+    color: #60708a;
+    font-size: 6.5pt;
+    font-weight: 700;
   }
 }

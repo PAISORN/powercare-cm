@@ -238,18 +238,21 @@ export async function updateStoreApplicableZones(
 ) {
   requireStorePermission(actor, PermissionKey.MANAGE_SPARE_PARTS);
   assertActorStoreScope(actor, scope);
-  const normalized = assignments
-    .filter((assignment) => assignment.active || assignment.code.trim())
-    .map((assignment) => ({
-      zoneId: requiredText(assignment.zoneId, "Zone"),
-      code: normalizeMasterCode(assignment.code, "Applicable Zone code"),
-      active: assignment.active,
-    }));
-  const zoneIds = normalized.map((assignment) => assignment.zoneId);
-  const codes = normalized.map((assignment) => assignment.code);
+  const cleaned = assignments.map((assignment) => ({
+    zoneId: requiredText(assignment.zoneId, "Zone"),
+    code: assignment.code.trim(),
+    active: assignment.active,
+  }));
+  const zoneIds = cleaned.map((assignment) => assignment.zoneId);
   if (new Set(zoneIds).size !== zoneIds.length)
     throw new Error("Zone must not be duplicated.");
-  if (new Set(codes).size !== codes.length) {
+  const explicitCodes = cleaned
+    .filter((assignment) => assignment.active || assignment.code)
+    .filter((assignment) => assignment.code)
+    .map((assignment) =>
+      normalizeMasterCode(assignment.code, "Applicable Zone code"),
+    );
+  if (new Set(explicitCodes).size !== explicitCodes.length) {
     throw new Error(
       "Applicable Zone code must not be duplicated in the same Site.",
     );
@@ -262,6 +265,27 @@ export async function updateStoreApplicableZones(
     if (zoneCount !== zoneIds.length) {
       throw new Error("Applicable Zone must belong to the selected Site.");
     }
+    const reservedAssignments = await tx.storeApplicableZone.findMany({
+      where: {
+        plantId: scope.plantId,
+        ...(zoneIds.length ? { zoneId: { notIn: zoneIds } } : {}),
+      },
+      select: { code: true },
+    });
+    const usedCodes = new Set([
+      ...explicitCodes,
+      ...reservedAssignments.map((assignment) => assignment.code),
+    ]);
+    const normalized = cleaned
+      .filter((assignment) => assignment.active || assignment.code)
+      .map((assignment) => {
+        const code = assignment.code
+          ? normalizeMasterCode(assignment.code, "Applicable Zone code")
+          : nextAvailableApplicableZoneCode(usedCodes);
+        usedCodes.add(code);
+        return { ...assignment, code };
+      });
+
     for (const assignment of normalized) {
       await tx.storeApplicableZone.upsert({
         where: {
@@ -287,6 +311,12 @@ export async function updateStoreApplicableZones(
       },
     };
   });
+}
+
+function nextAvailableApplicableZoneCode(usedCodes: Set<string>) {
+  let sequence = 1;
+  while (usedCodes.has(String(sequence).padStart(2, "0"))) sequence += 1;
+  return String(sequence).padStart(2, "0");
 }
 
 async function assertUniqueStoreCategoryName(

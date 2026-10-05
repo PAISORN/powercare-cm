@@ -167,4 +167,28 @@ describe("Prisma schema parity", () => {
       expect(sql).toContain(`SET "sendTime" = '08:00'`);
     }
   });
+
+  it("adds the Technical Field indicator in both providers", () => {
+    const local = readFileSync("prisma/migrations/20261004000100_asset_technical_field_indicator/migration.sql", "utf8");
+    const production = readFileSync("prisma/supabase-migrations/20261004000100_asset_technical_field_indicator.sql", "utf8");
+    for (const sql of [local, production]) {
+      expect(sql).toContain('ALTER TABLE "AssetTechnicalField" ADD COLUMN "indicatorText" TEXT');
+    }
+  });
+
+  it("adds Monthly Pattern mode, versioning, and relational baseline tables in both providers", () => {
+    const local = readFileSync("prisma/migrations/20261001000100_annual_pm_monthly_pattern/migration.sql", "utf8");
+    const production = readFileSync("prisma/supabase-migrations/20261001000100_annual_pm_monthly_pattern.sql", "utf8");
+    for (const sql of [local, production]) {
+      expect(sql).toContain("MONTHLY_PATTERN");
+      expect(sql).toContain('"monthlyWeek5Rule"');
+      expect(sql).toContain('"monthlyPatternVersion"');
+      expect(sql).toContain('"monthlyGeneratedVersion"');
+      expect(sql).toContain('CREATE TABLE "PmAnnualMonthlyWeek"');
+      expect(sql).toContain('CREATE TABLE "PmAnnualMonthlyPattern"');
+      expect(sql).toContain('"PmAnnualMonthlyWeek_planId_weekNumber_key"');
+      expect(sql).toContain('"PmAnnualMonthlyPattern_patternKey_key"');
+      expect(sql).toContain("REPEAT_WEEK_1");
+    }
+  });
 });

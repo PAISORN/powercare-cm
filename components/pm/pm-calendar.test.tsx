@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import { annualPmCalendarHref, PmCalendar } from "./pm-calendar";
+import { annualPmCalendarHref, isAnnualEntryComplete, PmCalendar } from "./pm-calendar";
 import { PmAgendaList } from "./pm-agenda-list";
 import { PmCalendarViewSwitcher } from "./pm-calendar-view-switcher";
 import { PmDayColumn } from "./pm-day-column";
@@ -182,6 +182,12 @@ describe("PM calendar views", () => {
     expect(screen.getByText("75%")).toBeTruthy();
     expect(screen.getByText("15/08/2026")).toBeTruthy();
     expect(screen.getByText("พร้อมเริ่ม PM")).toBeTruthy();
+    const cardAction = screen.getByRole("link", {
+      name: "เปิดรายการ PM วันที่ 2026-08-15 Boiler & Combustion Processing System",
+    });
+    expect(cardAction.getAttribute("href")).toContain("scheduleId=s1&release=annual");
+    expect(cardAction.hasAttribute("data-pm-day-card-primary-action")).toBe(true);
+    expect(cardAction.closest('[role="gridcell"]')?.className).toContain("cursor-pointer");
     const overflowLink = screen.getByRole("link", {
       name: "ดูรายการ PM อีก 1 รายการในวันที่ 2026-08-15",
     });
@@ -249,6 +255,39 @@ describe("PM calendar views", () => {
     ).toContain("/dashboardpm/annual/released?");
   });
 
+  it("renders a completed Annual PM target and day block in pastel green", () => {
+    const completed = {
+      id: "complete",
+      planId: "annual",
+      planStatus: "ACTIVE",
+      scheduleDateKey: "2026-08-15",
+      status: "RELEASED",
+      targetId: "sys",
+      targetName: "Boiler Complete",
+      mainAssetCount: 2,
+      releasePmPlanId: "daily-plan",
+      workTotal: 2,
+      workCompleted: 2,
+    };
+    expect(isAnnualEntryComplete(completed)).toBe(true);
+    render(
+      <PmCalendar
+        annualEntries={[completed]}
+        canManage
+        month="2026-08-01"
+        plans={[]}
+        scopeQuery="organizationId=o&plantId=s"
+        today="2026-08-20"
+      />,
+    );
+    const target = screen.getByRole("link", {
+      name: "Boiler Complete 2 Main Assets Complete",
+    });
+    expect(target.getAttribute("style")).toContain("background: rgb(220, 252, 231)");
+    expect(screen.getAllByText("Complete").length).toBeGreaterThan(0);
+    expect(target.closest('[role="gridcell"]')?.className).toContain("from-[#dcfce7]");
+  });
+
   it("builds the start-PM popup route for a Draft Annual target", () => {
     const annualEntry = {
       id: "draft",
@@ -290,9 +329,61 @@ describe("PM calendar views", () => {
         today="2026-08-20"
       />,
     );
-    expect(
-      screen.getByRole("link", { name: /Boiler/ }).getAttribute("href"),
-    ).not.toContain("release=annual");
+    const href = screen.getByRole("link", { name: /Boiler/ }).getAttribute("href");
+    expect(href).toContain("/dashboardpm/calendar?");
+    expect(href).not.toContain("/dashboardpm/setup");
+    expect(href).not.toContain("release=annual");
+    expect(screen.getByText("รอเปิดงาน PM")).toBeTruthy();
+  });
+
+  it("opens the start-PM popup route for a technician with execution permission", () => {
+    const annualEntries = [
+      {
+        id: "active-tech",
+        planId: "annual",
+        planStatus: "ACTIVE",
+        scheduleDateKey: "2026-08-15",
+        status: "SCHEDULED",
+        targetId: "sys",
+        targetName: "Boiler",
+        mainAssetCount: 3,
+      },
+    ];
+    render(
+      <PmDayColumn
+        annualEntries={annualEntries}
+        canExecute
+        canManage={false}
+        date="2026-08-15"
+        scopeQuery="organizationId=o&plantId=s"
+        today="2026-08-20"
+      />,
+    );
+
+    const target = screen.getByRole("link", { name: /Boiler/ });
+    expect(target.getAttribute("href")).toContain("scheduleId=active-tech&release=annual");
+    expect(screen.getByText("เริ่มดำเนินการ PM")).toBeTruthy();
+  });
+
+  it("routes a technician from a released target to its Annual PM assets", () => {
+    const href = annualPmCalendarHref(
+      {
+        id: "released-tech",
+        planId: "annual",
+        planStatus: "ACTIVE",
+        scheduleDateKey: "2026-10-08",
+        status: "RELEASED",
+        targetId: "boiler",
+        targetName: "Boiler",
+        mainAssetCount: 12,
+        releasePmPlanId: "daily-plan",
+      },
+      "organizationId=o&plantId=s",
+      false,
+    );
+    expect(href).toBe(
+      "/dashboardpm/annual/released-tech?organizationId=o&plantId=s",
+    );
   });
 
   it("renders the mobile agenda as a separate labelled layout", () => {

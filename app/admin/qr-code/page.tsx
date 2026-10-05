@@ -40,6 +40,15 @@ export default async function AdminQrCodePage({
 
   return (
     <>
+      <div className="mb-5 print:hidden">
+        <AdminSiteScopeSelector
+          action="/admin/qr-code"
+          scope={scope}
+          title="QR scope"
+          description="เลือก Organization และ Site เพื่อดู QR Code แจ้งซ่อมของแต่ละ Site"
+        />
+      </div>
+
       <section className="menu-heading-plain rounded-3xl border border-[var(--line)] bg-[var(--surface)] p-6 shadow-[var(--shadow)] print:border-0 print:shadow-none">
         <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-start">
           <div>
@@ -55,15 +64,6 @@ export default async function AdminQrCodePage({
             <div className="mt-6 rounded-2xl border border-dashed border-[var(--line)] bg-[var(--soft)] p-5">
               <p className="text-sm font-semibold text-[var(--muted)]">Default Request URL</p>
               <code className="mt-2 block break-all rounded-xl bg-[var(--surface)] px-4 py-3 text-sm">{requestUrl}</code>
-            </div>
-
-            <div className="mt-5">
-              <AdminSiteScopeSelector
-                action="/admin/qr-code"
-                scope={scope}
-                title="QR scope"
-                description="เลือก Organization และ Site เพื่อดู QR Code แจ้งซ่อมของแต่ละ Site"
-              />
             </div>
 
             <div className="mt-5">

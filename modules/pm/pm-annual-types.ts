@@ -1,8 +1,10 @@
 export const PmAnnualPlanStatus = { DRAFT: "DRAFT", ACTIVE: "ACTIVE", SUPERSEDED: "SUPERSEDED", CANCELED: "CANCELED" } as const;
 export const PmAnnualBy = { SYSTEM: "SYSTEM", ZONE: "ZONE" } as const;
-export const PmAnnualScheduleMode = { MANUAL: "MANUAL", WEEKLY_PATTERN: "WEEKLY_PATTERN" } as const;
+export const PmAnnualScheduleMode = { MANUAL: "MANUAL", WEEKLY_PATTERN: "WEEKLY_PATTERN", MONTHLY_PATTERN: "MONTHLY_PATTERN" } as const;
 export const PmAnnualScheduleSource = { MANUAL: "MANUAL", PATTERN: "PATTERN", OVERRIDE: "OVERRIDE" } as const;
 export const PmAnnualScheduleStatus = { SCHEDULED: "SCHEDULED", MOVED: "MOVED", CANCELED: "CANCELED", RELEASED: "RELEASED" } as const;
+export const PmAnnualMonthlyWeekMode = { ASSIGNMENTS: "ASSIGNMENTS", NO_PM: "NO_PM" } as const;
+export const PmAnnualMonthlyWeek5Rule = { NO_PM: "NO_PM", REPEAT_WEEK_1: "REPEAT_WEEK_1" } as const;
 
 export type PmAnnualPlanStatus = typeof PmAnnualPlanStatus[keyof typeof PmAnnualPlanStatus];
 export type PmAnnualBy = typeof PmAnnualBy[keyof typeof PmAnnualBy];
@@ -95,4 +97,26 @@ export function annualDateRange(start: string, end: string, year: number) {
     cursor.setUTCDate(cursor.getUTCDate() + 1);
   }
   return result;
+}
+
+export function monthlyPatternKey(planId: string, weekNumber: number, dayOfWeek: number, pmBy: PmAnnualBy, targetId: string) {
+  if (!Number.isInteger(weekNumber) || weekNumber < 1 || weekNumber > 4) throw new Error("Monthly Pattern week must be Week 1 through Week 4");
+  if (!Number.isInteger(dayOfWeek) || dayOfWeek < 1 || dayOfWeek > 7) throw new Error("Monthly Pattern day must be Monday through Sunday");
+  return `${planId}:${weekNumber}:${dayOfWeek}:${pmBy}:${targetId}`;
+}
+
+export function nthWeekdayOfMonth(year: number, month: number, dayOfWeek: number, occurrence: number) {
+  if (!Number.isInteger(month) || month < 1 || month > 12) throw new Error("Month must be January through December");
+  if (!Number.isInteger(dayOfWeek) || dayOfWeek < 1 || dayOfWeek > 7) throw new Error("Weekday must be Monday through Sunday");
+  if (!Number.isInteger(occurrence) || occurrence < 1 || occurrence > 5) throw new Error("Occurrence must be Week 1 through Week 5");
+  const first = new Date(Date.UTC(year, month - 1, 1, 12));
+  const firstIsoDay = first.getUTCDay() === 0 ? 7 : first.getUTCDay();
+  const day = 1 + ((dayOfWeek - firstIsoDay + 7) % 7) + (occurrence - 1) * 7;
+  const result = new Date(Date.UTC(year, month - 1, day, 12));
+  return result.getUTCMonth() === month - 1 ? result.toISOString().slice(0, 10) : null;
+}
+
+export function monthlyOccurrenceForDate(dateKey: string) {
+  requireDateInPlanYear(dateKey, Number(dateKey.slice(0, 4)));
+  return Math.ceil(Number(dateKey.slice(8, 10)) / 7);
 }

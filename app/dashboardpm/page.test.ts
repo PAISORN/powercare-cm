@@ -28,6 +28,10 @@ describe("PM route authorization", () => {
 
   it("keeps the PM dashboard distinct from the calendar and links the operational drill-downs", () => {
     const dashboard = readFileSync("app/dashboardpm/page.tsx", "utf8");
+    const statusOverview = readFileSync(
+      "components/pm/pm-dashboard-status-overview.tsx",
+      "utf8",
+    );
     const metricCarousel = readFileSync("components/pm/pm-metric-carousel.tsx", "utf8");
     const calendar = readFileSync("app/dashboardpm/calendar/page.tsx", "utf8");
     expect(dashboard).toContain("getPmDashboardSummary");
@@ -35,7 +39,12 @@ describe("PM route authorization", () => {
     expect(dashboard).toContain("PmDashboardMonthlyTrend");
     expect(dashboard).toContain("dashboard.monthlyTrend");
     expect(dashboard).toContain("งานที่ต้องติดตาม");
-    expect(dashboard).toContain("แผน PM 7 วันข้างหน้า");
+    expect(dashboard).toContain("PmDashboardStatusOverview");
+    expect(dashboard).toContain("dashboard.statusOverview");
+    expect(statusOverview).toContain("Status Overview");
+    expect(statusOverview).toContain("Current year");
+    expect(statusOverview).toContain("Total PM");
+    expect(statusOverview).not.toContain("Active Work");
     expect(dashboard).toContain('title="Comments PM"');
     expect(dashboard).toContain('label="งานทั้งปี"');
     expect(dashboard).toContain('label="ดำเนินการแล้วตลอดปี"');
@@ -61,13 +70,15 @@ describe("PM route authorization", () => {
     expect(metricCarousel).toContain("sm:grid sm:grid-cols-2");
     const globalCss = readFileSync("app/globals.css", "utf8");
     expect(dashboard.match(/tone="/g)).toHaveLength(5);
-    expect(dashboard.match(/dashboard-content-surface/g)).toHaveLength(4);
+    expect(dashboard.match(/dashboard-content-surface/g)).toHaveLength(3);
+    expect(statusOverview).toContain("dashboard-content-surface");
     expect(readFileSync("components/pm/pm-dashboard-monthly-trend.tsx", "utf8")).toContain(
       "dashboard-content-surface",
     );
-    expect(globalCss).toContain("linear-gradient(135deg, #f5faff 0%, #edf6fb 52%, #dceaf3 100%)");
+    expect(globalCss).toContain("--dashboard-content-background: linear-gradient(");
+    expect(globalCss).toContain("#edf6fb 52%");
     expect(globalCss).toContain(".pm-jewel-metric:hover::before");
-    expect(dashboard.indexOf("แผน PM 7 วันข้างหน้า")).toBeLessThan(
+    expect(dashboard.indexOf("<PmDashboardStatusOverview")).toBeLessThan(
       dashboard.indexOf("<PmDashboardMonthlyTrend"),
     );
     expect(dashboard.indexOf('title="งานที่ต้องติดตาม"')).toBeLessThan(
@@ -163,14 +174,15 @@ describe("PM route authorization", () => {
     expect(calendar).toContain("data-pm-annual-release-dialog");
     expect(calendar).toContain("bg-red-500");
     expect(calendar).toContain("annualPlanId?: string");
-    expect(calendar).toMatch(/scheduleIds:\s*\[scheduleId\]/);
+    expect(calendar).toContain('data.getAll("releaseScheduleIds")');
+    expect(calendar).toMatch(/scheduleIds,\s*\n/);
     expect(calendar).toContain("activateAnnualPmPlan");
     expect(calendar).toMatch(/annualPlan\.status\s*===\s*"DRAFT"/);
     expect(calendar).toContain("/dashboardpm/annual/");
     expect(setup).toContain("Canceled plan");
     expect(setup).toContain("Superseded plan");
-    expect(setup).toContain(
-      "!plans.some(item=>item.status===PmAnnualPlanStatus.DRAFT||item.status===PmAnnualPlanStatus.ACTIVE)",
+    expect(setup).toMatch(
+      /!plans\.some\([\s\S]*?item\.status\s*===\s*PmAnnualPlanStatus\.DRAFT[\s\S]*?\|\|[\s\S]*?item\.status\s*===\s*PmAnnualPlanStatus\.ACTIVE[\s\S]*?\)/,
     );
   });
 

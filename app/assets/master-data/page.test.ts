@@ -20,6 +20,10 @@ const assetTechnicalInputSource = fs.readFileSync(
   path.join(process.cwd(), "components/asset-technical-field-input.tsx"),
   "utf8",
 );
+const globalSource = fs.readFileSync(
+  path.join(process.cwd(), "app/globals.css"),
+  "utf8",
+);
 
 describe("Asset Master Data simplified names", () => {
   it("uses one bilingual name or label input instead of translated pairs", () => {
@@ -52,6 +56,9 @@ describe("Asset Master Data simplified names", () => {
     );
     expect(source).toContain('name="unit"');
     expect(source).toContain('name="helpText"');
+    expect(source).toContain('name="indicatorText"');
+    expect(source).toContain("indicatorText: optional(formData, \"indicatorText\")");
+    expect(source).toContain('aria-label="ดัชนีชี้วัด"');
     expect(source).not.toContain('name="sortOrder"');
     expect(source).toContain("sortOrder: (lastField._max.sortOrder ?? -1) + 1");
   });
@@ -88,5 +95,11 @@ describe("Asset Master Data simplified names", () => {
     );
     expect(source).toContain('className="fixed inset-y-0 right-0 z-50');
     expect(source).toContain('aria-label="ปิด Technical Field"');
+  });
+
+  it("keeps every submenu inside the tabs stationary on hover", () => {
+    expect(source).toContain("data-asset-master-data-tabs");
+    expect(globalSource).toContain("[data-asset-master-data-tabs] :is(section, article, a, details):hover");
+    expect(globalSource).toContain("transform: none !important;");
   });
 });

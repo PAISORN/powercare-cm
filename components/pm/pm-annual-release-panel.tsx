@@ -1,4 +1,5 @@
 import { PreserveListPositionForm } from "../preserve-list-position";
+import { PmAnnualTeamPicker } from "./pm-annual-team-picker";
 
 type ReleasePreview = {
   scheduleDateKey: string;
@@ -19,6 +20,7 @@ export function PmAnnualReleasePanel({
   positionKey,
   calendarView = "month",
   activatesDraft = false,
+  users = [],
 }: {
   action: (data: FormData) => void | Promise<void>;
   organizationId: string;
@@ -28,6 +30,7 @@ export function PmAnnualReleasePanel({
   positionKey: string;
   calendarView?: "month" | "day";
   activatesDraft?: boolean;
+  users?: Array<{ id: string; fullName: string; role: string; hasPhoto?: boolean; photoVersion?: number }>;
 }) {
   const primaryTarget = targetLabel(preview.schedules[0]);
   const extraTargetCount = Math.max(0, preview.schedules.length - 1);
@@ -35,15 +38,15 @@ export function PmAnnualReleasePanel({
   return (
     <section data-pm-annual-release-card>
       <div
-        className="flex min-h-16 items-center justify-between gap-3 rounded-full bg-[#ff6a1a] pl-6 text-slate-950 shadow-[0_12px_28px_rgba(249,115,22,0.24)]"
+        className="flex min-h-14 items-center justify-between gap-3 rounded-full bg-[#ff6a1a] pl-5 text-slate-950 shadow-[0_10px_24px_rgba(249,115,22,0.22)]"
         data-pm-release-target-bar
       >
-        <strong className="min-w-0 truncate text-xl font-medium sm:text-2xl">
+        <strong className="min-w-0 truncate text-lg font-medium sm:text-xl">
           {primaryTarget}
           {extraTargetCount ? ` +${extraTargetCount}` : ""}
         </strong>
         <span
-          className={`grid min-h-16 min-w-16 shrink-0 place-items-center rounded-full px-3 text-lg font-extrabold ${preview.workload.warning ? "bg-amber-200 text-amber-950" : "bg-[#ffd9c2] text-slate-950"}`}
+          className={`grid min-h-14 min-w-14 shrink-0 place-items-center rounded-full px-3 text-base font-extrabold ${preview.workload.warning ? "bg-amber-200 text-amber-950" : "bg-[#ffd9c2] text-slate-950"}`}
         >
           {preview.workload.count}
         </span>
@@ -51,7 +54,7 @@ export function PmAnnualReleasePanel({
 
       <PreserveListPositionForm
         action={action}
-        className="mt-5 grid gap-4"
+        className="mt-4 grid gap-3"
         storageKey={positionKey}
         targetId={`pm-release-${preview.scheduleDateKey}`}
       >
@@ -67,30 +70,11 @@ export function PmAnnualReleasePanel({
           </p>
         ) : null}
 
-        <div className="flex items-center justify-between gap-4 px-2">
-          <div className="flex min-w-0 items-center" aria-label="เป้าหมาย Annual PM">
-            {preview.schedules.slice(0, 3).map((row, index) => (
-              <span
-                className={`${index ? "-ml-3" : ""} grid size-12 shrink-0 place-items-center rounded-full border-4 border-white bg-gradient-to-br from-sky-100 to-blue-300 text-sm font-black text-blue-950 shadow-md`}
-                key={row.id}
-                title={targetLabel(row)}
-              >
-                {targetInitial(row)}
-              </span>
-            ))}
-            {preview.schedules.length > 3 ? (
-              <span className="-ml-3 grid size-12 shrink-0 place-items-center rounded-full border-4 border-white bg-blue-200 text-sm font-black text-blue-950 shadow-md">
-                +{preview.schedules.length - 3}
-              </span>
-            ) : null}
-          </div>
-          <time
-            className="shrink-0 text-lg font-semibold tabular-nums sm:text-xl"
-            dateTime={preview.scheduleDateKey}
-          >
-            {formatDateKey(preview.scheduleDateKey)}
-          </time>
-        </div>
+        <PmAnnualTeamPicker
+          dateLabel={formatDateKey(preview.scheduleDateKey)}
+          dateTime={preview.scheduleDateKey}
+          users={users}
+        />
 
         <div className="flex flex-wrap gap-2 px-2">
           {preview.schedules.map((row) => (
@@ -104,7 +88,7 @@ export function PmAnnualReleasePanel({
         <p className="sr-only">สร้าง PM Work สำหรับ Main Assets ทั้งหมดในรายการ</p>
 
         <button
-          className="mx-auto mt-1 min-h-16 w-full rounded-full bg-emerald-500 px-7 text-2xl font-black text-slate-950 shadow-[0_12px_28px_rgba(16,185,129,0.22)] transition hover:-translate-y-0.5 hover:bg-emerald-400 focus:outline-none focus:ring-4 focus:ring-emerald-200 sm:w-3/4 sm:text-3xl"
+          className="mx-auto mt-1 min-h-14 w-full rounded-full bg-emerald-500 px-6 text-xl font-black text-slate-950 shadow-[0_10px_24px_rgba(16,185,129,0.20)] transition hover:-translate-y-0.5 hover:bg-emerald-400 focus:outline-none focus:ring-4 focus:ring-emerald-200 sm:w-3/4 sm:text-2xl"
           type="submit"
         >
           เริ่ม PM
@@ -119,11 +103,6 @@ function targetLabel(row: ReleasePreview["schedules"][number] | undefined) {
   return row.assetSystem
     ? `${row.assetSystem.code} · ${row.assetSystem.nameTh}`
     : row.zone?.name ?? "Annual PM";
-}
-
-function targetInitial(row: ReleasePreview["schedules"][number]) {
-  const value = row.assetSystem?.code ?? row.zone?.name ?? "PM";
-  return value.trim().slice(0, 2).toUpperCase();
 }
 
 function formatDateKey(dateKey: string) {

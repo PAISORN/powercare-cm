@@ -53,6 +53,13 @@ export default async function PublicIssueManagementPage({ searchParams }: { sear
   return (
     <>
       <div className="space-y-5">
+        <AdminSiteScopeSelector
+          action="/dashboardstore/public-issue"
+          description="QR และลิงก์ถูกล็อกตาม Site ข้อมูลอะไหล่และเลข CM จะไม่ข้าม Site"
+          scope={scope}
+          title="Issue Public site scope"
+        />
+
         <header className="flex flex-wrap items-start justify-between gap-4 print:hidden">
           <div>
             <p className="inline-flex items-center gap-2 text-sm font-bold text-[var(--primary)]"><QrCode aria-hidden="true" size={18} /> Inventory</p>
@@ -63,13 +70,6 @@ export default async function PublicIssueManagementPage({ searchParams }: { sear
             <ExternalLink aria-hidden="true" size={17} /> ดูตัวอย่างหน้าเบิก
           </Link>
         </header>
-
-        <AdminSiteScopeSelector
-          action="/dashboardstore/public-issue"
-          description="QR และลิงก์ถูกล็อกตาม Site ข้อมูลอะไหล่และเลข CM จะไม่ข้าม Site"
-          scope={scope}
-          title="Issue Public site scope"
-        />
 
         {!ready ? (
           <section className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-800 dark:text-amber-200">

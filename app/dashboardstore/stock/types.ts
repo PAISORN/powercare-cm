@@ -18,4 +18,5 @@ export type StockPageQuery = {
   imported?: string;
   importError?: string;
   editPartId?: string;
+  historyStockId?: string;
 };

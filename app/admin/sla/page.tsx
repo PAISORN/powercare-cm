@@ -54,6 +54,10 @@ export default async function AdminSlaPage({
 
   return (
     <>
+      <div className="mb-5">
+        <AdminSiteScopeSelector action="/admin/sla" scope={scope} />
+      </div>
+
       <header>
         <p className="inline-flex items-center gap-2 rounded-full bg-[var(--soft)] px-4 py-2 text-sm font-bold text-[var(--primary)]">
           <Clock aria-hidden="true" size={17} />
@@ -64,10 +68,6 @@ export default async function AdminSlaPage({
           กำหนดจำนวนวันแจ้งเตือนงานค้างตาม Site เพื่อให้แต่ละหน่วยงานมี SLA ที่เหมาะกับงานของตัวเอง
         </p>
       </header>
-
-      <div className="mt-5">
-        <AdminSiteScopeSelector action="/admin/sla" scope={scope} />
-      </div>
 
       {query.saved === "1" ? (
         <p className="mt-5 rounded-lg border border-green-500/35 bg-green-500/10 px-4 py-3 font-semibold text-green-700 dark:text-green-300">

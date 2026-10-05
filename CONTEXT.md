@@ -437,12 +437,45 @@ A Site-scoped calendar marker classified as a Public Holiday, Site Holiday, or S
 _Avoid_: automatic PM cancellation, global plant calendar, Weekly Pattern exception
 
 **Previous-Year PM Plan Copy**:
-A new Draft Annual PM Setup Plan copied from the prior year's baseline settings and schedules. Weekly Patterns regenerate by weekday and saved one- or two-week rotation, Manual schedules retain month and day, leap-day gaps are warned and skipped, and overrides, cancellations, event reasons, release state, and PM Work never carry forward.
+A new Draft Annual PM Setup Plan copied from the prior year's baseline settings and schedules. Weekly Patterns regenerate by weekday and saved rotation; Monthly Patterns copy Week 1–4 Assignments, weekdays, display order, PM basis, and the Plan-level Week 5 rule before regenerating the destination year's dates; Manual schedules retain month and day, while month-specific Overrides, Custom Week 5, cancellations, calendar exceptions, event reasons, release state, and PM Work never carry forward.
 _Avoid_: copying PM history, copying shutdown exceptions, date-number mapping for Weekly Pattern
 
 **Alternating Weekly Pattern**:
 An Annual PM Plan can use the same target set every week or alternate Week A and Week B. Week A is the baseline for every weekday; Week B replaces targets only on weekdays explicitly selected for alternation, while all other weekdays inherit Week A. Each day may have multiple System or Zone/Area targets. A chosen Monday anchors Week A; every following or preceding calendar week alternates by seven-day intervals, including across year boundaries. Existing one-week plans remain Week A by default, and copying a plan keeps its anchor so the rotation continues into the next year.
 _Avoid_: ISO week-number parity, losing the anchor at year boundaries, mixing System and Zone targets, changing released work
+
+**Monthly PM Pattern**:
+An Annual PM planning pattern that assigns each System or Zone/Area target to a weekday occurrence within every month: Week 1 through Week 5 mean the first through fifth occurrence of that selected weekday. Week 1 through Week 4 form the repeating baseline; the Plan's fifth-occurrence rule defaults to No PM, supports No PM, Repeat Week 1, or Custom Assignment, and may be overridden for an individual month without changing the baseline.
+_Avoid_: calendar-row week, week-only assignment without a weekday, ISO week number, Carry Forward without a source assignment
+
+**Monthly Pattern Assignment**:
+One Annual PM Target placed on a selected weekday occurrence in the Monthly PM Pattern. Its user-defined order controls presentation only; it defines neither execution priority nor time and is not a PM checklist, job instruction, or Asset-level PM Work.
+_Avoid_: generic PM Assignment field, checklist, work instruction, PM Work, execution sequence, scheduled time
+
+**Monthly Pattern Assignment Uniqueness**:
+The same Annual PM Target may appear in different weekday occurrences but only once within one occurrence and weekday. The effective Annual PM calendar retains one Schedule Entry per date and target; generation previews and merges collisions instead of producing duplicate work.
+_Avoid_: duplicate assignment in one slot, duplicate date-and-target schedule, duplicate PM Work
+
+**Monthly Pattern Assignment Movement**:
+Moving an Assignment between occurrences or weekdays changes its planning slot, while moving it within one slot changes presentation order only. Copying is an explicit Duplicate action; touch interfaces use an explicit Move command rather than requiring drag and drop.
+_Avoid_: drag-to-copy, implicit duplication, touch-only drag interaction, treating reorder as execution priority
+
+**Monthly Pattern Completeness**:
+A Monthly PM Pattern is ready to generate only when each of Week 1 through Week 4 contains at least one Assignment or is explicitly marked No PM. An unresolved empty Week is Not Configured and blocks generation, while an explicit No-PM Week is an intentional valid baseline choice.
+_Avoid_: treating every empty Week as No PM, generating an incomplete baseline, requiring work in every Week
+
+**Week 5 No-PM Rule**:
+The default fifth-occurrence rule that creates no Schedule Entry when a selected weekday occurs five times in a month. Preview identifies the intentional absence, while Canceled status is reserved for a real Schedule later removed through an audited Override.
+_Avoid_: generated canceled placeholder, missing-data warning, silent schedule cancellation
+
+**Week 5 Repeat-Week-1 Rule**:
+A fifth-occurrence rule that copies Week 1 baseline Assignments onto their fifth selected weekday occurrence when that occurrence exists. It never inherits a month-specific Week 1 Override; a different Week 5 result is an explicit Custom Assignment for that month.
+_Avoid_: copying effective Overrides, creating a nonexistent fifth weekday, implicit Custom Assignment
+
+**Monthly Pattern Override**:
+A target-level exception for one generated month and weekday occurrence that preserves the Monthly PM Pattern source and records an ADD, REPLACE, CANCEL, or MOVE operation. Draft exceptions may omit a reason; Active-plan exceptions require a reason, actor, time, and before-and-after history, released Schedules are immutable, and Calendar views label ADD as Custom and the other operations as Override.
+_Avoid_: separate Custom source, replacing an entire monthly slot, editing the baseline, deleting the source schedule, boolean-only override
+
 **Weekly PM Display Slots**:
 The Annual PM Setup Week view uses a planning-time convention when no persisted time fields exist: the first PM target of a day is shown from 09:00 to 12:00 and the second from 14:00 to 17:00. Additional same-day targets remain visible in the afternoon block. These slots are a visual planning convention and do not create or change execution timestamps.
 _Avoid_: inventing stored start times, hiding additional targets, treating the visual slot as actual work history
@@ -450,6 +483,30 @@ _Avoid_: inventing stored start times, hiding additional targets, treating the v
 **Weekly Pattern Regeneration**:
 An idempotent, previewed transaction that rebuilds eligible Pattern schedules after a Weekly Pattern change. It changes only unreleased, non-overridden dates, preserves No-PM and other overrides, never alters past dates in an Active plan, and rolls back as one unit on failure.
 _Avoid_: duplicate pattern schedules, overwriting overrides, partial year generation
+
+**Monthly Pattern Regeneration**:
+An idempotent, previewed synchronization that adds, changes, or removes eligible Monthly Pattern schedules after the baseline changes. It changes only unreleased, non-overridden Pattern schedules, preserves No-PM, moves, Custom Assignments, released work, and past dates in an Active plan, and succeeds or rolls back as one unit; on an Active Plan it requires a reason and audited before-and-after Pattern versions, takes effect immediately, and does not require reactivation.
+_Avoid_: append-only generation, overwriting monthly exceptions, changing released work, partial annual synchronization
+
+**Monthly Pattern Generation**:
+A two-step operation that first previews the annual Schedule differences without changing stored planning data, then persists the confirmed result to the Draft Annual PM Plan as one transaction. Generated Draft Schedules are resumable planning data and have no operational effect until Plan activation.
+_Avoid_: browser-only annual draft, immediate activation, unreviewed generation, partial persistence
+
+**Monthly Pattern Synchronization State**:
+A Monthly Pattern Plan is In Sync when its generated Annual PM Schedules reflect the latest saved baseline, and Regeneration Required after that baseline changes. Regeneration Required blocks Plan activation until generation is confirmed again, while month-specific Overrides do not make the baseline stale.
+_Avoid_: activating stale schedules, treating an Override as a baseline change, silent background regeneration
+
+**Monthly Pattern Effective Range**:
+A future-year Monthly Pattern covers January through December, while a current-year Plan begins on its Effective Start Date, defaulting to today. Earlier dates are Outside Plan Effective Range and create neither Schedule Entries nor Overdue or No-PM results; historical planning uses the separate import path.
+_Avoid_: automatic retrospective schedules, labeling pre-effective dates overdue, backfilling through ordinary PM Setup
+
+**Annual PM Year Preview**:
+A twelve-month summary of planned dates, Annual PM Targets, estimated Main Assets, Custom / Override and No-PM counts, synchronization state, and planning warnings. It links each month to the date-level Month View rather than listing every target in the yearly surface.
+_Avoid_: dense all-target year list, week-row calendar, replacing the date-level Month View
+
+**Monthly Pattern Planning Validation**:
+Generation or activation is blocked by an incomplete baseline, stale generated schedules, unresolved inactive targets, scope or PM-basis violations, dates outside the Plan's effective range, or failed data integrity. Workload thresholds, overlapping Asset coverage, Site Calendar markers, mergeable date-and-target collisions, and targets without active Assets remain visible non-blocking warnings.
+_Avoid_: hiding warnings, blocking on estimated workload alone, partial generation after a validation failure
 
 **Annual PM Plan Year Eligibility**:
 An Annual PM Setup Plan may cover the current or a future calendar year. Past-year planning belongs to a separate Owner Admin historical import and is never created through ordinary PM Setup.
@@ -460,8 +517,12 @@ A confirmed reset that changes a Draft Annual PM Setup Plan between System and Z
 _Avoid_: Active basis change, System-to-Zone inference, silent data removal
 
 **Draft Schedule Mode Change**:
-A confirmed reset that changes a Draft Annual PM Setup Plan between Manual Calendar and Weekly Pattern. If planning data exists, the reset reports and clears all schedules, patterns, and overrides without attempting automatic conversion, and records the change in Audit History.
+A confirmed reset that changes a Draft Annual PM Setup Plan among Manual Calendar, Weekly Pattern, and Monthly Pattern. If planning data exists, the reset reports and clears all schedules, patterns, and overrides without attempting automatic conversion, and records the change in Audit History.
 _Avoid_: Active mode change, automatic mode conversion, silent data removal
+
+**Monthly Pattern Migration Compatibility**:
+Monthly Pattern is an additive Schedule Mode that leaves existing Manual Calendar and Weekly Pattern Plans unchanged. It is available to new Drafts or a confirmed Draft mode reset; an Active Plan adopts it only through a Replacement Draft and the existing activation process.
+_Avoid_: automatic Plan conversion, rewriting Active schedules, inferring Monthly Pattern from existing dates
 
 **Annual PM Plan Activation**:
 The confirmation that makes a Draft Annual PM Setup Plan operational after showing its schedule, override, cancellation, and warning summary. Any User with PM Plan Management Permission may activate their own plan, and the action is recorded in Audit History without a separate approver.

@@ -13,13 +13,14 @@ import { PmDayColumn } from "../../../components/pm/pm-day-column";
 import { PmPlanEditor } from "../../../components/pm/pm-plan-editor";
 import { getBangkokDateString } from "../../../lib/date-time/bangkok-time";
 import { requireUser } from "../../../lib/session";
-import { canManagePmPlans, canViewPm } from "../../../modules/auth/permission";
+import { canExecutePmWork, canManagePmPlans, canViewPm } from "../../../modules/auth/permission";
 import { loadPmCalendarPageData } from "../../../modules/pm/pm-calendar-page-data";
 import {
   resolvePmCalendarPageState,
   type PmCalendarQuery,
 } from "../../../modules/pm/pm-calendar-page-model";
 import { resolvePmPageScope } from "../../../modules/pm/pm-page-scope";
+import { listEligiblePmAssignees } from "../../../modules/pm/pm-work-service";
 import {
   addConfirmedAsset,
   addGroup,
@@ -48,6 +49,7 @@ export default async function PmCalendarPage({
     today,
   );
   const canManage = canManagePmPlans(user);
+  const canExecute = canExecutePmWork(user);
   const {
     serviceScope,
     scopeQuery,
@@ -69,7 +71,12 @@ export default async function PmCalendarPage({
     month,
     selectedDate,
     canManage,
+    canExecute,
   });
+  const eligibleAssignees =
+    annualPreview && (canManage || canExecute)
+      ? await listEligiblePmAssignees(user, serviceScope)
+      : [];
   return (
     <>
       <div className="mx-auto grid w-full max-w-[1680px] gap-5">
@@ -99,7 +106,7 @@ export default async function PmCalendarPage({
             </p>
           ) : null}
           {(annualPreview || annualPreviewError) &&
-          canManage &&
+          (canManage || canExecute) &&
           query.release === "annual" ? (
             <>
               <Link
@@ -127,12 +134,12 @@ export default async function PmCalendarPage({
                 style={{
                   height: "fit-content",
                   maxHeight: "90dvh",
-                  width: "min(calc(100vw - 2rem), 520px)",
+                  width: "min(calc(100vw - 2rem), 460px)",
                 }}
               >
                 <Link
                   aria-label="ปิดหน้าต่างเริ่มดำเนินการ PM"
-                  className="absolute -right-2 -top-4 z-10 inline-flex size-14 items-center justify-center rounded-full bg-red-500 text-[2.75rem] font-black leading-none text-white shadow-xl transition hover:scale-105 hover:bg-red-600 focus:outline-none focus:ring-4 focus:ring-red-200 sm:-right-4 sm:-top-5 sm:size-16"
+                  className="absolute right-4 top-4 z-10 inline-flex size-10 items-center justify-center text-3xl font-black leading-none text-slate-500 transition hover:scale-110 hover:text-red-500 focus:outline-none focus:ring-2 focus:ring-red-200 sm:right-5 sm:top-5"
                   href={
                     "/dashboardpm/calendar?" +
                     scopeQuery +
@@ -145,14 +152,14 @@ export default async function PmCalendarPage({
                   }
                   scroll={false}
                 >
-                  <span aria-hidden="true" className="-mt-1">×</span>
+                  <span aria-hidden="true">×</span>
                 </Link>
-                <header className="px-7 pb-2 pt-8 sm:px-10 sm:pt-9">
-                  <h2 className="text-4xl font-medium tracking-tight sm:text-5xl">
+                <header className="px-6 pb-1 pr-16 pt-7 sm:px-8 sm:pr-20 sm:pt-8">
+                  <h2 className="text-3xl font-medium tracking-tight sm:text-4xl">
                     Annual PM
                   </h2>
                 </header>
-                <div className="min-h-0 flex-1 overflow-y-auto rounded-b-[2.75rem] px-7 pb-7 pt-2 sm:px-10 sm:pb-9">
+                <div className="min-h-0 flex-1 overflow-y-auto rounded-b-[2.75rem] px-6 pb-6 pt-2 sm:px-8 sm:pb-7">
                   {query.error ? (
                     <p
                       className="mb-4 rounded-xl bg-red-50 p-3 text-sm font-bold text-red-700"
@@ -180,6 +187,13 @@ export default async function PmCalendarPage({
                         "pm-release:" + scope.plant.id + ":" + selectedDate
                       }
                       preview={annualPreview}
+                      users={eligibleAssignees.map((assignee) => ({
+                        id: assignee.id,
+                        fullName: assignee.fullName,
+                        role: assignee.role,
+                        hasPhoto: Boolean(assignee.profilePhoto),
+                        photoVersion: assignee.profilePhoto?.updatedAt.getTime(),
+                      }))}
                     />
                   ) : null}
                 </div>
@@ -199,6 +213,7 @@ export default async function PmCalendarPage({
                 <PmCalendar
                   annualEntries={annualEntries}
                   canManage={canManage}
+                  canExecute={canExecute}
                   month={month}
                   plans={plans}
                   scopeQuery={scopeQuery}
@@ -215,6 +230,7 @@ export default async function PmCalendarPage({
                     (item) => item.scheduleDateKey === selectedDate,
                   )}
                   canManage={canManage}
+                  canExecute={canExecute}
                   date={selectedDate}
                   plan={plans.find(
                     (item) => item.plannedDateKey === selectedDate,

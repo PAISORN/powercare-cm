@@ -55,6 +55,7 @@ model User {
   pmWorkAssignments           PmWorkAssignee[]         @relation("PmWorkAssigneeUser")
   assignedPmWorks             PmWorkAssignee[]         @relation("PmWorkAssignedBy")
   createdAnnualPmPlans        PmAnnualPlan[]           @relation("PmAnnualPlanCreatedBy")
+  updatedAnnualPmPlans        PmAnnualPlan[]           @relation("PmAnnualPlanUpdatedBy")
   activatedAnnualPmPlans      PmAnnualPlan[]           @relation("PmAnnualPlanActivatedBy")
   supersededAnnualPmPlans     PmAnnualPlan[]           @relation("PmAnnualPlanSupersededBy")
   canceledAnnualPmPlans       PmAnnualPlan[]           @relation("PmAnnualPlanCanceledBy")
@@ -298,12 +299,13 @@ model Zone {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  works                CmWork[]
-  storeApplicableZones StoreApplicableZone[]
-  sparePartIssueItems  SparePartIssueItem[]
-  assets               Asset[]
-  annualPmPatterns     PmAnnualWeeklyPattern[]
-  annualPmSchedules    PmAnnualSchedule[]
+  works                   CmWork[]
+  storeApplicableZones    StoreApplicableZone[]
+  sparePartIssueItems     SparePartIssueItem[]
+  assets                  Asset[]
+  annualPmPatterns        PmAnnualWeeklyPattern[]
+  annualPmMonthlyPatterns PmAnnualMonthlyPattern[]
+  annualPmSchedules       PmAnnualSchedule[]
 
   @@unique([plantId, name])
   @@unique([id, plantId])
@@ -464,41 +466,48 @@ model PmPlan {
 }
 
 model PmAnnualPlan {
-  id                 String                  @id @default(cuid())
-  organizationId     String
-  organization       Organization            @relation(fields: [organizationId], references: [id], onDelete: Restrict)
-  plantId            String
-  plant              Plant                   @relation(fields: [plantId, organizationId], references: [id, organizationId], onDelete: Restrict)
-  name               String
-  year               Int
-  pmBy               String
-  scheduleMode       String
-  patternCycleWeeks  Int                     @default(1)
-  rotationAnchorDateKey String?
-  status             String                  @default("DRAFT")
-  activeKey          String?                 @unique
-  effectiveDateKey   String?
-  createdById        String
-  createdBy          User                    @relation("PmAnnualPlanCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
-  activatedAt        DateTime?
-  activatedById      String?
-  activatedBy        User?                   @relation("PmAnnualPlanActivatedBy", fields: [activatedById], references: [id], onDelete: Restrict)
-  supersededAt       DateTime?
-  supersededById     String?
-  supersededBy       User?                   @relation("PmAnnualPlanSupersededBy", fields: [supersededById], references: [id], onDelete: Restrict)
-  replacementPlanId  String?                 @unique
-  replacementPlan    PmAnnualPlan?           @relation("PmAnnualPlanReplacement", fields: [replacementPlanId], references: [id], onDelete: Restrict)
-  replacedPlan       PmAnnualPlan?           @relation("PmAnnualPlanReplacement")
-  canceledAt         DateTime?
-  canceledById       String?
-  canceledBy         User?                   @relation("PmAnnualPlanCanceledBy", fields: [canceledById], references: [id], onDelete: Restrict)
-  cancellationReason String?
-  createdAt          DateTime                @default(now())
-  updatedAt          DateTime                @updatedAt
-  weeklyPatterns     PmAnnualWeeklyPattern[]
-  schedules          PmAnnualSchedule[]
-  dayNotes           PmAnnualDayNote[]
-  releaseBatches     PmAnnualReleaseBatch[]
+  id                      String                   @id @default(cuid())
+  organizationId          String
+  organization            Organization             @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  plantId                 String
+  plant                   Plant                    @relation(fields: [plantId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  name                    String
+  year                    Int
+  pmBy                    String
+  scheduleMode            String
+  patternCycleWeeks       Int                      @default(1)
+  rotationAnchorDateKey   String?
+  monthlyWeek5Rule        String                   @default("NO_PM")
+  monthlyPatternVersion   Int                      @default(0)
+  monthlyGeneratedVersion Int                      @default(0)
+  status                  String                   @default("DRAFT")
+  activeKey               String?                  @unique
+  effectiveDateKey        String?
+  createdById             String
+  createdBy               User                     @relation("PmAnnualPlanCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  updatedById             String?
+  updatedBy               User?                    @relation("PmAnnualPlanUpdatedBy", fields: [updatedById], references: [id], onDelete: Restrict)
+  activatedAt             DateTime?
+  activatedById           String?
+  activatedBy             User?                    @relation("PmAnnualPlanActivatedBy", fields: [activatedById], references: [id], onDelete: Restrict)
+  supersededAt            DateTime?
+  supersededById          String?
+  supersededBy            User?                    @relation("PmAnnualPlanSupersededBy", fields: [supersededById], references: [id], onDelete: Restrict)
+  replacementPlanId       String?                  @unique
+  replacementPlan         PmAnnualPlan?            @relation("PmAnnualPlanReplacement", fields: [replacementPlanId], references: [id], onDelete: Restrict)
+  replacedPlan            PmAnnualPlan?            @relation("PmAnnualPlanReplacement")
+  canceledAt              DateTime?
+  canceledById            String?
+  canceledBy              User?                    @relation("PmAnnualPlanCanceledBy", fields: [canceledById], references: [id], onDelete: Restrict)
+  cancellationReason      String?
+  createdAt               DateTime                 @default(now())
+  updatedAt               DateTime                 @updatedAt
+  weeklyPatterns          PmAnnualWeeklyPattern[]
+  monthlyWeeks            PmAnnualMonthlyWeek[]
+  monthlyPatterns         PmAnnualMonthlyPattern[]
+  schedules               PmAnnualSchedule[]
+  dayNotes                PmAnnualDayNote[]
+  releaseBatches          PmAnnualReleaseBatch[]
 
   @@unique([id, plantId])
   @@index([organizationId, plantId, year])
@@ -521,6 +530,41 @@ model PmAnnualWeeklyPattern {
   updatedAt     DateTime     @updatedAt
 
   @@index([planId, dayOfWeek])
+  @@index([assetSystemId])
+  @@index([zoneId])
+}
+
+model PmAnnualMonthlyWeek {
+  id         String       @id @default(cuid())
+  plantId    String
+  planId     String
+  plan       PmAnnualPlan @relation(fields: [planId, plantId], references: [id, plantId], onDelete: Cascade)
+  weekNumber Int
+  mode       String
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+
+  @@unique([planId, weekNumber])
+  @@index([planId])
+}
+
+model PmAnnualMonthlyPattern {
+  id            String       @id @default(cuid())
+  plantId       String
+  planId        String
+  plan          PmAnnualPlan @relation(fields: [planId, plantId], references: [id, plantId], onDelete: Cascade)
+  weekNumber    Int
+  dayOfWeek     Int
+  displayOrder  Int
+  assetSystemId String?
+  assetSystem   AssetSystem? @relation(fields: [assetSystemId, plantId], references: [id, plantId], onDelete: Restrict)
+  zoneId        String?
+  zone          Zone?        @relation(fields: [zoneId, plantId], references: [id, plantId], onDelete: Restrict)
+  patternKey    String       @unique
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  @@index([planId, weekNumber, displayOrder])
   @@index([assetSystemId])
   @@index([zoneId])
 }
@@ -694,6 +738,7 @@ model PmWork {
   status                 String               @default("PLANNED")
   result                 String?
   resultNote             String?
+  worksheetDataJson      String?
   startedAt              DateTime?
   completedAt            DateTime?
   completedById          String?
@@ -1370,19 +1415,20 @@ model AssetCodeSequence {
 }
 
 model AssetSystem {
-  id                String                  @id @default(cuid())
-  plantId           String
-  plant             Plant                   @relation(fields: [plantId], references: [id], onDelete: Cascade)
-  code              String
-  nameTh            String
-  nameEn            String?
-  active            Boolean                 @default(true)
-  sortOrder         Int                     @default(0)
-  createdAt         DateTime                @default(now())
-  updatedAt         DateTime                @updatedAt
-  assets            Asset[]
-  annualPmPatterns  PmAnnualWeeklyPattern[]
-  annualPmSchedules PmAnnualSchedule[]
+  id                      String                   @id @default(cuid())
+  plantId                 String
+  plant                   Plant                    @relation(fields: [plantId], references: [id], onDelete: Cascade)
+  code                    String
+  nameTh                  String
+  nameEn                  String?
+  active                  Boolean                  @default(true)
+  sortOrder               Int                      @default(0)
+  createdAt               DateTime                 @default(now())
+  updatedAt               DateTime                 @updatedAt
+  assets                  Asset[]
+  annualPmPatterns        PmAnnualWeeklyPattern[]
+  annualPmMonthlyPatterns PmAnnualMonthlyPattern[]
+  annualPmSchedules       PmAnnualSchedule[]
 
   @@unique([plantId, code])
   @@unique([id, plantId])
@@ -1437,6 +1483,7 @@ model AssetTechnicalField {
   dataType    String                @default("TEXT")
   unit        String?
   helpText    String?
+  indicatorText String?
   optionsJson String?
   required    Boolean               @default(false)
   active      Boolean               @default(true)

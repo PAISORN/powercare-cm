@@ -8,7 +8,7 @@ type StoredDraft = {
   savedAt: string;
 };
 
-export function PmSubAssetDraftButton({ draftKey }: { draftKey: string }) {
+export function PmSubAssetDraftButton({ draftKey, readOnly = false }: { draftKey: string; readOnly?: boolean }) {
   const buttonRef = useRef<HTMLButtonElement>(null);
   const [savedAt, setSavedAt] = useState<string | null>(null);
 
@@ -46,10 +46,11 @@ export function PmSubAssetDraftButton({ draftKey }: { draftKey: string }) {
     setSavedAt(savedAtValue);
   }
 
-  return <div className="flex flex-col items-end gap-1">
+  return <div className={readOnly ? "hidden" : "flex flex-col items-end gap-1"}>
     <button
       className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-emerald-600 px-4 text-sm font-extrabold text-white shadow-sm transition hover:bg-emerald-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2"
       data-pm-draft-save
+      disabled={readOnly}
       onClick={saveDraft}
       ref={buttonRef}
       type="button"

@@ -55,8 +55,19 @@ export function ActivitiesWorkspace({
   return (
     <>
       <div className="page-enter">
+        {scope.canSelectOrganization || scope.canSelectPlant ? (
+          <div className="mb-6">
+            <AdminSiteScopeSelector
+              action="/activities"
+              scope={scope}
+              title="Site สำหรับกิจกรรมที่ต้องทำ"
+              description="เลือก Organization และ Site เพื่อดูงานถัดไปที่ต้องดำเนินการของแต่ละบทบาท"
+            />
+          </div>
+        ) : null}
+
         <header className="menu-heading-plain activities-page-hero relative overflow-hidden rounded-3xl border p-5 shadow-[var(--shadow)] sm:p-6">
-          <div className="relative z-10 flex flex-wrap items-start justify-between gap-4">
+          <div className="relative z-10">
             <div>
               <p className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1 text-sm font-bold text-white">
                 <ClipboardCheck size={16} /> My Activities
@@ -69,28 +80,25 @@ export function ActivitiesWorkspace({
                 และคิวงาน Store
               </p>
             </div>
-            <div
-              className="dashboard-kpi dashboard-kpi-glow relative min-w-40 overflow-hidden rounded-2xl border px-5 py-4 text-right"
-              style={{ "--kpi-color": "#3b82f6" } as CSSProperties}
-            >
-              <p className="text-sm font-semibold text-white/70">
-                Total Activities
-              </p>
-              <p className="text-3xl font-extrabold text-white">
-                {totalActivities}
-              </p>
-            </div>
           </div>
         </header>
 
-        <div className="hidden">
-          <AdminSiteScopeSelector
-            action="/activities"
-            scope={scope}
-            title="Site สำหรับกิจกรรมที่ต้องทำ"
-            description="เลือก Organization และ Site เพื่อดูงานถัดไปที่ต้องดำเนินการของแต่ละบทบาท"
-          />
-        </div>
+        <section
+          aria-label="สรุป My Activities"
+          className="dashboard-kpi-carousel mt-6 sm:grid-cols-1"
+        >
+          <div
+            className="dashboard-kpi dashboard-kpi-glow relative min-h-28 overflow-hidden rounded-2xl border px-5 py-4"
+            style={{ "--kpi-color": "#3b82f6" } as CSSProperties}
+          >
+            <p className="text-sm font-semibold text-[var(--muted)]">
+              Total Activities
+            </p>
+            <p className="mt-2 text-3xl font-extrabold text-[var(--ink)]">
+              {totalActivities}
+            </p>
+          </div>
+        </section>
 
         {query.storeSaved ? (
           <p className="mt-4 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm font-bold text-emerald-700 dark:text-emerald-300">
