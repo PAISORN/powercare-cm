@@ -281,7 +281,11 @@ describe("Store stock page", () => {
     expect(source).toContain('role="dialog"');
     expect(source).toContain('aria-modal="true"');
     expect(source).toContain("bg-slate-950/45 backdrop-blur-md");
-    expect(source).toContain("movements.map");
+    expect(source).toContain("chronologicalMovements.map");
+    expect(source).toContain("<ActivityTimelineRow");
+    expect(source).toContain('data-testid="stock-activity-timeline"');
+    expect(source).toContain("index === chronologicalMovements.length - 1");
+    expect(source).toContain("ประวัติกิจกรรม");
     expect(page).toContain("loadStockMovementHistory({");
     expect(page).toContain("<StockHistoryModal");
     expect(page).toContain("stockHistory.stock.sparePartId");
@@ -392,7 +396,7 @@ describe("Store stock page", () => {
     expect(source).toContain("นำเข้าอะไหล่จาก Excel สำเร็จ");
     expect(source).not.toContain("Stock Movement ล่าสุด");
     expect(source).not.toContain("db.stockMovement.findMany");
-    expect(source).toContain("movements.map");
+    expect(source).toContain("chronologicalMovements.map");
     expect(source).not.toContain("Ã Â¸");
   });
 });

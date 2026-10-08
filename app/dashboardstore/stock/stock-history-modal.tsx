@@ -1,13 +1,6 @@
-import {
-  ArrowDownToLine,
-  ArrowUpFromLine,
-  History,
-  PackageSearch,
-  Scale,
-  X,
-} from "lucide-react";
+import { History, PackageSearch, X } from "lucide-react";
 import Link from "next/link";
-import { formatThaiMediumDateTime } from "../../../lib/date-time/bangkok-time";
+import { ActivityTimelineRow } from "../../../components/activity-timeline-row";
 import type { StockMovementHistory } from "../../../modules/store/stock-movement-history";
 import { StockMovementType } from "../../../modules/store/store-types";
 
@@ -19,6 +12,7 @@ export function StockHistoryModal({
   history: StockMovementHistory;
 }) {
   const { movements, stock } = history;
+  const chronologicalMovements = [...movements].reverse();
 
   return (
     <div className="fixed inset-0 z-[210] grid place-items-center p-3 sm:p-6">
@@ -64,73 +58,64 @@ export function StockHistoryModal({
           </Link>
         </header>
 
-        <div className="overflow-y-auto px-4 py-4 sm:px-7 sm:py-5">
+        <div className="overflow-y-auto px-5 py-5 sm:px-7 sm:py-6">
           {movements.length ? (
-            <ol className="grid gap-3">
-              {movements.map((movement) => {
+            <section aria-labelledby="stock-activity-history-heading">
+              <h3
+                className="mb-5 inline-flex items-center gap-2 text-xl font-extrabold"
+                id="stock-activity-history-heading"
+              >
+                <History className="text-[var(--primary)]" size={22} />
+                ประวัติกิจกรรม
+              </h3>
+              <ol className="grid gap-0" data-testid="stock-activity-timeline">
+              {chronologicalMovements.map((movement, index) => {
                 const presentation = movementPresentation(
                   movement.movementType,
                   Number(movement.quantityChange),
                 );
                 return (
-                  <li
-                    className="grid grid-cols-[auto_minmax(0,1fr)] gap-3 rounded-2xl border border-[var(--line)] bg-[var(--soft)]/65 p-4 sm:grid-cols-[auto_minmax(0,1fr)_auto]"
-                    key={movement.id}
-                  >
-                    <span
-                      className={`grid size-10 place-items-center rounded-xl ${presentation.iconClass}`}
-                    >
-                      {presentation.icon}
-                    </span>
-                    <div className="min-w-0">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span
-                          className={`rounded-full px-2.5 py-1 text-xs font-extrabold ${presentation.badgeClass}`}
-                        >
-                          {presentation.label}
-                        </span>
-                        <span className="text-xs font-semibold text-[var(--muted)]">
-                          {formatThaiMediumDateTime(movement.occurredAt)}
-                        </span>
+                  <ActivityTimelineRow
+                    active={index === chronologicalMovements.length - 1}
+                    actor={movement.actor?.fullName ?? "ไม่ระบุ"}
+                    detail={
+                      <div className="flex flex-wrap items-end justify-between gap-x-4 gap-y-2 rounded-xl bg-[var(--soft)] px-3 py-2 text-sm">
+                        <div className="min-w-0">
+                          {movement.note ? (
+                            <p className="break-words">{movement.note}</p>
+                          ) : null}
+                          {movement.refType || movement.refId ? (
+                            <p className="mt-1 truncate font-mono text-[11px] text-[var(--muted)]">
+                              {[movement.refType, movement.refId]
+                                .filter(Boolean)
+                                .join(" · ")}
+                            </p>
+                          ) : null}
+                        </div>
+                        <div className="shrink-0 text-right">
+                          <p className={`font-black ${presentation.quantityClass}`}>
+                            {formatSignedQuantity(Number(movement.quantityChange))}{" "}
+                            {stock.sparePart.unit}
+                          </p>
+                          <p className="text-xs font-semibold text-[var(--muted)]">
+                            คงเหลือ {formatQuantity(Number(movement.balanceAfter ?? 0))}
+                          </p>
+                          {movement.unitPrice != null ? (
+                            <p className="text-xs text-[var(--muted)]">
+                              {formatMoney(Number(movement.unitPrice))} / {stock.sparePart.unit}
+                            </p>
+                          ) : null}
+                        </div>
                       </div>
-                      <p className="mt-2 text-sm font-semibold">
-                        ผู้ดำเนินการ: {movement.actor?.fullName ?? "ไม่ระบุ"}
-                      </p>
-                      {movement.note ? (
-                        <p className="mt-1 break-words text-sm text-[var(--muted)]">
-                          {movement.note}
-                        </p>
-                      ) : null}
-                      {movement.refType || movement.refId ? (
-                        <p className="mt-1 truncate font-mono text-[11px] text-[var(--muted)]">
-                          {[movement.refType, movement.refId]
-                            .filter(Boolean)
-                            .join(" · ")}
-                        </p>
-                      ) : null}
-                    </div>
-                    <div className="col-start-2 text-left sm:col-start-auto sm:text-right">
-                      <p
-                        className={`text-lg font-black ${presentation.quantityClass}`}
-                      >
-                        {formatSignedQuantity(Number(movement.quantityChange))}{" "}
-                        {stock.sparePart.unit}
-                      </p>
-                      <p className="mt-1 text-xs font-semibold text-[var(--muted)]">
-                        คงเหลือ{" "}
-                        {formatQuantity(Number(movement.balanceAfter ?? 0))}
-                      </p>
-                      {movement.unitPrice != null ? (
-                        <p className="mt-1 text-xs text-[var(--muted)]">
-                          {formatMoney(Number(movement.unitPrice))} /{" "}
-                          {stock.sparePart.unit}
-                        </p>
-                      ) : null}
-                    </div>
-                  </li>
+                    }
+                    key={movement.id}
+                    time={movement.occurredAt}
+                    title={presentation.label}
+                  />
                 );
               })}
-            </ol>
+              </ol>
+            </section>
           ) : (
             <div className="grid min-h-56 place-items-center rounded-2xl border border-dashed border-[var(--line)] p-8 text-center">
               <div>
@@ -158,26 +143,17 @@ function movementPresentation(type: string, quantity: number) {
   if (type === StockMovementType.RECEIVE) {
     return {
       label: "รับเข้า",
-      icon: <ArrowDownToLine size={19} />,
-      iconClass: "bg-emerald-500/12 text-emerald-600",
-      badgeClass: "bg-emerald-500/12 text-emerald-700",
       quantityClass: "text-emerald-600",
     };
   }
   if (type === StockMovementType.ISSUE) {
     return {
       label: "เบิกจ่าย",
-      icon: <ArrowUpFromLine size={19} />,
-      iconClass: "bg-rose-500/12 text-rose-600",
-      badgeClass: "bg-rose-500/12 text-rose-700",
       quantityClass: "text-rose-600",
     };
   }
   return {
     label: quantity >= 0 ? "ปรับเพิ่ม" : "ปรับลด",
-    icon: <Scale size={19} />,
-    iconClass: "bg-violet-500/12 text-violet-600",
-    badgeClass: "bg-violet-500/12 text-violet-700",
     quantityClass: "text-violet-600",
   };
 }

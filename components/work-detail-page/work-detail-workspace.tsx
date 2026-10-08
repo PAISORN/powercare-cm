@@ -360,7 +360,7 @@ export function WorkDetailWorkspace({ data }: { data: WorkDetailPageData }) {
               <History className="text-[var(--primary)]" size={22} />
               ประวัติสถานะ
             </h2>
-            <div className="mt-5 grid gap-0">
+            <ol className="mt-5 grid gap-0">
               {work.statusHistory.map((event, index) => (
                 <WorkStatusTimelineRow
                   active={index === work.statusHistory.length - 1}
@@ -375,7 +375,7 @@ export function WorkDetailWorkspace({ data }: { data: WorkDetailPageData }) {
                   title={statusLabels[event.toStatus as WorkStatus] ?? event.toStatus}
                 />
               ))}
-            </div>
+            </ol>
           </section>
 
         </section>

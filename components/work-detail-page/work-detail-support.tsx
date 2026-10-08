@@ -3,6 +3,7 @@ import type { LucideIcon } from "lucide-react";
 import { formatThaiDateTime } from "../../lib/date-time/bangkok-time";
 import { WorkStatus } from "../../modules/cm-work/cm-work-types";
 import { StoreIssueStatus } from "../../modules/store/store-types";
+import { ActivityTimelineRow } from "../activity-timeline-row";
 export function WorkMetaItem({
   icon: Icon,
   label,
@@ -60,20 +61,13 @@ export function WorkStatusTimelineRow({
   title: string;
 }) {
   return (
-    <div className="grid grid-cols-[28px_1fr] gap-3">
-      <div className="grid justify-center">
-        <span className={active ? "mt-1 h-4 w-4 rounded-full bg-emerald-500" : "mt-1 h-4 w-4 rounded-full border-2 border-emerald-500 bg-[var(--surface)]"} />
-        <span className="mx-auto h-full min-h-10 w-0.5 bg-emerald-500/45" />
-      </div>
-      <div className="pb-5">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <strong>{title}</strong>
-          <span className="text-sm text-[var(--muted)]">{formatThaiDateTime(time)}</span>
-        </div>
-        <p className="mt-1 text-sm text-[var(--muted)]">โดย {actor}</p>
-        {note ? <p className="mt-2 whitespace-pre-wrap rounded-xl bg-[var(--soft)] px-3 py-2 text-sm">{note}</p> : null}
-      </div>
-    </div>
+    <ActivityTimelineRow
+      active={active}
+      actor={actor}
+      note={note}
+      time={time}
+      title={title}
+    />
   );
 }
 
