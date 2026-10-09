@@ -263,7 +263,7 @@ describe("IssueRequestForm", () => {
     expect(removeButton.parentElement?.className).toContain("col-span-3");
   });
 
-  it("renders stock suggestions in a portal above the form", () => {
+  it("keeps stock suggestions below the search field like the repair request selector", () => {
     const { container } = render(
       <IssueRequestForm
         action={vi.fn()}
@@ -278,8 +278,11 @@ describe("IssueRequestForm", () => {
 
     fireEvent.focus(screen.getByLabelText("ค้นหาและเลือกอะไหล่ รายการ 1"));
     const listbox = screen.getByRole("listbox");
-    expect(container.contains(listbox)).toBe(false);
-    expect(listbox.className).toContain("z-[200]");
+    expect(container.contains(listbox)).toBe(true);
+    expect(listbox.className).toContain("absolute");
+    expect(listbox.className).toContain("max-h-72");
+    expect(listbox.className).toContain("overflow-y-auto");
+    expect(listbox.className).not.toContain("fixed");
   });
 
   it("collects public requester identity and exposes barcode scanning", () => {

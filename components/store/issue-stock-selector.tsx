@@ -1,8 +1,7 @@
 "use client";
 
 import { FilterX, Package, Search } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
-import { createPortal } from "react-dom";
+import { useMemo, useState } from "react";
 
 type StockStatus = "ENOUGH" | "LOW" | "OUT";
 
@@ -145,13 +144,6 @@ export function SearchableStockSelect({
 }) {
   const [open, setOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
-  const inputRef = useRef<HTMLInputElement>(null);
-  const [menuPosition, setMenuPosition] = useState({
-    left: 0,
-    top: 0,
-    width: 0,
-    maxHeight: 288,
-  });
   const options = useMemo(
     () =>
       stocks
@@ -160,41 +152,6 @@ export function SearchableStockSelect({
     [line.stockSearch, stocks],
   );
   const selectedStock = stockForKey(stocks, line.stockKey);
-
-  useEffect(() => {
-    if (!open) return;
-
-    function updateMenuPosition() {
-      const input = inputRef.current;
-      if (!input) return;
-      const rect = input.getBoundingClientRect();
-      const viewportHeight = window.innerHeight;
-      const spaceBelow = viewportHeight - rect.bottom - 12;
-      const spaceAbove = rect.top - 12;
-      const placeAbove = spaceBelow < 180 && spaceAbove > spaceBelow;
-      const availableHeight = Math.max(
-        120,
-        Math.min(288, placeAbove ? spaceAbove : spaceBelow),
-      );
-
-      setMenuPosition({
-        left: rect.left,
-        top: placeAbove
-          ? Math.max(8, rect.top - availableHeight - 4)
-          : rect.bottom + 4,
-        width: rect.width,
-        maxHeight: availableHeight,
-      });
-    }
-
-    updateMenuPosition();
-    window.addEventListener("resize", updateMenuPosition);
-    window.addEventListener("scroll", updateMenuPosition, true);
-    return () => {
-      window.removeEventListener("resize", updateMenuPosition);
-      window.removeEventListener("scroll", updateMenuPosition, true);
-    };
-  }, [open]);
 
   function selectStock(stock: StockOption) {
     onChange({
@@ -289,72 +246,62 @@ export function SearchableStockSelect({
           }
         }}
         placeholder="พิมพ์ชื่อ รหัส หรือ Item code"
-        ref={inputRef}
         required
         role="combobox"
         value={line.stockSearch}
       />
-      {open && typeof document !== "undefined"
-        ? createPortal(
-            <div
-              className="fixed z-[200] overflow-y-auto rounded-xl border border-[var(--line)] bg-[var(--surface)] p-1 shadow-2xl"
-              id={"stock-options-" + line.id}
-              role="listbox"
-              style={{
-                left: menuPosition.left,
-                top: menuPosition.top,
-                width: menuPosition.width,
-                maxHeight: menuPosition.maxHeight,
-              }}
-            >
-              {options.length ? (
-                options.map((stock, index) => {
-                  const stockKey = stock.storeId + ":" + stock.sparePartId;
-                  const codes =
-                    [stock.sparePartCode, stock.itemCode]
-                      .filter(Boolean)
-                      .join(" · ") || "-";
-                  return (
-                    <button
-                      aria-selected={line.stockKey === stockKey}
-                      className={
-                        "flex w-full items-start justify-between gap-3 rounded-lg px-3 py-2 text-left text-sm hover:bg-[var(--soft)] " +
-                        (activeIndex === index ? "bg-[var(--soft)]" : "")
-                      }
-                      id={"stock-option-" + line.id + "-" + index}
-                      key={stockKey}
-                      onClick={() => selectStock(stock)}
-                      onMouseDown={(event) => event.preventDefault()}
-                      role="option"
-                      type="button"
-                    >
-                      <span className="min-w-0">
-                        <span className="block truncate font-bold">
-                          {stock.sparePartName ?? stock.label}
-                        </span>
-                        <span className="block truncate text-xs text-[var(--muted)]">
-                          {codes} · {stock.storeName ?? "-"}
-                        </span>
-                        <span className="block truncate text-xs text-[var(--muted)]">
-                          {stock.sparePartTypeName ?? "-"} ·{" "}
-                          {stock.sparePartCategoryName ?? "-"}
-                        </span>
-                      </span>
-                      <span className="shrink-0 font-bold text-[var(--primary)]">
-                        {stock.available} {stock.unit}
-                      </span>
-                    </button>
-                  );
-                })
-              ) : (
-                <p className="px-3 py-4 text-center text-sm text-[var(--muted)]">
-                  ไม่พบอะไหล่
-                </p>
-              )}
-            </div>,
-            document.body,
-          )
-        : null}
+      {open ? (
+        <div
+          className="absolute z-50 mt-1 max-h-72 w-full overflow-y-auto overscroll-contain rounded-xl border border-[var(--line)] bg-[var(--surface)] p-1 shadow-2xl"
+          id={"stock-options-" + line.id}
+          role="listbox"
+        >
+          {options.length ? (
+            options.map((stock, index) => {
+              const stockKey = stock.storeId + ":" + stock.sparePartId;
+              const codes =
+                [stock.sparePartCode, stock.itemCode]
+                  .filter(Boolean)
+                  .join(" · ") || "-";
+              return (
+                <button
+                  aria-selected={line.stockKey === stockKey}
+                  className={
+                    "flex w-full items-start justify-between gap-3 rounded-lg px-3 py-2 text-left text-sm hover:bg-[var(--soft)] " +
+                    (activeIndex === index ? "bg-[var(--soft)]" : "")
+                  }
+                  id={"stock-option-" + line.id + "-" + index}
+                  key={stockKey}
+                  onClick={() => selectStock(stock)}
+                  onMouseDown={(event) => event.preventDefault()}
+                  role="option"
+                  type="button"
+                >
+                  <span className="min-w-0">
+                    <span className="block truncate font-bold">
+                      {stock.sparePartName ?? stock.label}
+                    </span>
+                    <span className="block truncate text-xs text-[var(--muted)]">
+                      {codes} · {stock.storeName ?? "-"}
+                    </span>
+                    <span className="block truncate text-xs text-[var(--muted)]">
+                      {stock.sparePartTypeName ?? "-"} ·{" "}
+                      {stock.sparePartCategoryName ?? "-"}
+                    </span>
+                  </span>
+                  <span className="shrink-0 font-bold text-[var(--primary)]">
+                    {stock.available} {stock.unit}
+                  </span>
+                </button>
+              );
+            })
+          ) : (
+            <p className="px-3 py-4 text-center text-sm text-[var(--muted)]">
+              ไม่พบอะไหล่
+            </p>
+          )}
+        </div>
+      ) : null}
     </div>
   );
 }
