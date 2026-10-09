@@ -90,11 +90,17 @@ describe("Asset Master Data simplified names", () => {
     expect(source).toContain("PreserveListPositionLink");
     expect(source).toContain("PreserveListPositionForm");
     expect(source).toContain("RestoreListPosition");
-    expect(source).toContain(
-      'className="fixed inset-0 z-40 bg-black/35 backdrop-blur-sm"',
-    );
-    expect(source).toContain('className="fixed inset-y-0 right-0 z-50');
+    expect(source.match(/data-technical-field-drawer-backdrop/g)?.length).toBe(2);
+    expect(source.match(/data-body-scroll-lock="true"/g)?.length).toBe(2);
+    expect(source).toContain("bg-slate-950/30 backdrop-blur-md");
+    expect(source).toContain('className="fixed inset-y-0 right-0 z-[300]');
+    expect(source.match(/aria-modal="true"/g)?.length).toBeGreaterThanOrEqual(2);
+    expect(source.match(/role="dialog"/g)?.length).toBeGreaterThanOrEqual(2);
+    expect(source.match(/data-reveal-ignore/g)?.length).toBeGreaterThanOrEqual(2);
     expect(source).toContain('aria-label="ปิด Technical Field"');
+    expect(source).toContain("const openCreateFieldType");
+    expect(source).toContain("const openEditField");
+    expect(source).not.toContain("drawers:");
   });
 
   it("keeps every submenu inside the tabs stationary on hover", () => {

@@ -333,8 +333,24 @@ An active PM Group saved without Asset members for future preparation. It create
 _Avoid_: invalid PM Group, placeholder Asset, empty confirmed work
 
 **PM Work**:
-A Preventive Maintenance record for a selected Asset on a planned occurrence. When completed, it becomes part of that Asset's PM history; detailed checklists and discipline-specific data are outside the current scope.
+A Preventive Maintenance record for a selected Asset on a planned occurrence. When completed, it becomes part of that Asset's PM history and preserves the Check Sheet used to record its inspection results.
 _Avoid_: PM Group, inherited Parent or Child work, CM Work
+
+**PM Check Sheet**:
+The Asset-specific definition of inspection items used to prepare future PM Work. It combines live Default Check Items from the Asset Type Template with Custom Check Items owned by that Asset, and it records no inspection result.
+_Avoid_: completed worksheet, Technical Field value, PM result
+
+**Default Check Item**:
+An inspection item referenced live from the Asset Type Template for an Asset. It is read-only in PM Check Sheet and changes only through Technical Field Templates.
+_Avoid_: copied template item, Asset Custom Field, editable PM Check Sheet row
+
+**Custom Check Item**:
+An inspection item defined for one Asset in PM Check Sheet. It does not alter the Asset Type Template or any other Asset's Check Sheet.
+_Avoid_: Technical Field Template item, shared checklist item, inspection result
+
+**PM Worksheet Snapshot**:
+The immutable Check Sheet definition and recorded values retained by PM Work so later Template or Custom Check Item changes cannot rewrite maintenance history.
+_Avoid_: live PM Check Sheet, current Asset Type Template, mutable completed form
 
 **PM Work Status**:
 The lifecycle state of PM Work: Planned, In Progress, Completed, or Canceled. Cancellation requires a reason, and a Daily PM Plan is complete when every PM Work is either Completed or Canceled.
@@ -345,7 +361,7 @@ A Planned or In Progress PM Work whose plan date has passed without completion o
 _Avoid_: automatic cancellation, automatic reschedule, separate work status
 
 **PM Result**:
-The completion outcome of PM Work, recorded as Normal or Abnormal together with the completing User and completion time. An Abnormal result requires a note; attachments, checklists, measurements, and discipline-specific fields are outside the initial scope.
+The completion outcome of PM Work, recorded as Normal or Abnormal together with the completing User and completion time. An Abnormal result requires a note, while detailed inspection values belong to the PM Worksheet Snapshot.
 _Avoid_: PM Work Status, CM diagnosis, inspection checklist
 
 **PM Result Correction**:

@@ -30,7 +30,7 @@ if (-not $resolvedE2eDatabase.StartsWith($resolvedDatabaseDir, [System.StringCom
 $previousDatabaseUrl = $env:DATABASE_URL
 $env:DATABASE_URL = "file:./$e2eDatabaseName"
 New-Item -ItemType File -Path $resolvedE2eDatabase -Force | Out-Null
-npx.cmd prisma db push --skip-generate
+npx.cmd prisma db push
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 npx.cmd prisma db seed
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

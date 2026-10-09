@@ -2,7 +2,7 @@ import { CalendarDays } from "lucide-react";
 import type { AdminSiteScope } from "../../modules/admin/admin-site-scope";
 import { AdminSiteScopeSelector } from "../admin-site-scope-selector";
 
-export type PmPage = "setup" | "calendar" | "groups" | "work";
+export type PmPage = "setup" | "check-sheets" | "calendar" | "groups" | "work";
 
 type PmRouteShellProps = {
   title: string;
@@ -10,7 +10,7 @@ type PmRouteShellProps = {
   scope: AdminSiteScope;
   currentPage: PmPage;
   canManageGroups: boolean;
-  scopeAction: "/dashboardpm/setup" | "/dashboardpm" | "/dashboardpm/calendar" | "/dashboardpm/groups" | "/dashboardpm/work";
+  scopeAction: "/dashboardpm/setup" | "/dashboardpm/check-sheets" | "/dashboardpm" | "/dashboardpm/calendar" | "/dashboardpm/groups" | "/dashboardpm/work";
 };
 
 export function PmRouteShell({

@@ -1,5 +1,6 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { cacheTags, revalidateCmData } from "../../../lib/query-cache";
 import { requireUser } from "../../../lib/session";
@@ -27,6 +28,7 @@ export async function createUser(formData: FormData) {
     redirect(adminUsersCreateFailureHref(issue));
   }
   revalidateCmData([cacheTags.usersActive, cacheTags.dashboardSummary]);
+  revalidatePath("/admin/users");
   redirect("/admin/users");
 }
 
@@ -49,6 +51,7 @@ export async function updateUserProfile(formData: FormData) {
     redirect(adminUsersUpdateFailureHref(issue));
   }
   revalidateCmData([cacheTags.usersActive, cacheTags.dashboardSummary]);
+  revalidatePath("/admin/users");
   redirect(`${returnTo}#user-${encodeURIComponent(userId)}`);
 }
 
@@ -66,6 +69,7 @@ export async function deleteUser(formData: FormData) {
     redirect("/admin/users");
   }
   revalidateCmData([cacheTags.usersActive, cacheTags.dashboardSummary]);
+  revalidatePath("/admin/users");
   redirect("/admin/users?deleteStatus=success");
 }
 

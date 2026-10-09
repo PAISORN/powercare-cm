@@ -607,6 +607,9 @@ describe("getAppLinks", () => {
     expect(
       technicianLinks.some((link) => link.href === "/dashboardpm/setup"),
     ).toBe(false);
+    expect(
+      technicianLinks.some((link) => link.href === "/dashboardpm/check-sheets"),
+    ).toBe(false);
     expect(technicianLinks.some((link) => link.href === "/dashboardpm")).toBe(
       true,
     );
@@ -622,6 +625,7 @@ describe("getAppLinks", () => {
         .map((link) => link.href),
     ).toEqual([
       "/dashboardpm/setup",
+      "/dashboardpm/check-sheets",
       "/dashboardpm/calendar",
       "/dashboardpm/groups",
       "/dashboardpm/work",

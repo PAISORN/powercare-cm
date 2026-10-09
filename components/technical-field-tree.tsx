@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, type ReactNode } from "react";
+import { useMemo, useState } from "react";
 import { ChevronDown, ChevronRight, CircleDot, CircuitBoard, PanelLeftClose, PanelLeftOpen, Plus } from "lucide-react";
 import { PreserveListPositionLink } from "./preserve-list-position";
 
@@ -20,7 +20,6 @@ export type TechnicalFieldTreeType = {
   name: string;
   addHref: string;
   fields: TechnicalFieldTreeField[];
-  drawers?: ReactNode;
 };
 
 const gridClass = "grid min-w-[900px] grid-cols-[minmax(390px,2fr)_minmax(150px,.8fr)_minmax(130px,.65fr)_minmax(190px,.9fr)]";
@@ -40,7 +39,7 @@ export function TechnicalFieldTree({ types }: { types: TechnicalFieldTreeType[] 
   }
 
   return (
-    <section aria-label="Technical Field Templates tree" className="overflow-hidden rounded-2xl border border-slate-200 bg-white text-slate-900 shadow-sm" style={{ colorScheme: "light" }}>
+    <section aria-label="Technical Field Templates tree" className="overflow-hidden text-slate-900" style={{ colorScheme: "light" }}>
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-5 py-4">
         <p className="text-xs font-semibold text-slate-500">Asset Types {types.length} รายการ · Technical Fields {types.reduce((sum, type) => sum + type.fields.length, 0)} รายการ</p>
         <div className="flex gap-2" role="toolbar" aria-label="ควบคุม Technical Field Templates tree">
@@ -99,7 +98,6 @@ export function TechnicalFieldTree({ types }: { types: TechnicalFieldTreeType[] 
                   </div>;
                 })}
               </div> : null}
-              {type.drawers}
             </section>;
           })}
           {!types.length ? <div className="min-w-[900px] px-6 py-16 text-center text-slate-500"><CircuitBoard className="mx-auto" size={30}/><h2 className="mt-3 font-black text-slate-900">ยังไม่มี Asset Type</h2></div> : null}

@@ -296,7 +296,7 @@ export async function saveAssetFile(assetId: string, file: File, kind: "image" |
   const allowed = kind === "image" ? allowedProfilePhotoMimeTypes : allowedAssetDocumentMimeTypes;
   const maxBytes = kind === "image" ? 5 * 1024 * 1024 : maxAssetDocumentBytes;
   if (!allowed.includes(file.type)) throw new Error(kind === "image" ? "Asset image must be PNG, JPG, or WebP" : "Unsupported Asset document type");
-  if (file.size > maxBytes) throw new Error(`Asset ${kind} is too large`);
+  if (file.size > maxBytes) throw new Error(kind === "image" ? "Asset image must be 5 MB or smaller" : "Asset document must be 20 MB or smaller");
   const bytes = Buffer.from(await file.arrayBuffer());
   const version = randomUUID();
   const extension = file.name.split(".").pop()?.replace(/[^a-zA-Z0-9]/g, "").toLowerCase() || extensionForMimeType(file.type);

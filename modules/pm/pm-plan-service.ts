@@ -4,6 +4,7 @@ import { bangkokDayWindow, getBangkokDateString } from "../../lib/date-time/bang
 import { canManagePmPlans, canViewPm } from "../auth/permission";
 import type { PermissionUserContext } from "../auth/site-admin-permissions";
 import { RoleName } from "../cm-work/cm-work-types";
+import { loadPmCheckSheetSnapshots, serializePmCheckSheetSnapshot } from "./pm-check-sheet";
 import { PmPlanStatus } from "./pm-types";
 import { reservePmPlanSequence } from "./pm-sequence-service";
 
@@ -175,6 +176,7 @@ export async function confirmPmPlan(actor: PermissionUserContext, input: PmPlanS
 
       const orderedAssets = [...assets.values()].sort((left, right) =>
         (left.code ?? "").localeCompare(right.code ?? "") || left.id.localeCompare(right.id));
+      const checkSheetSnapshots = await loadPmCheckSheetSnapshots(tx, orderedAssets.map((asset) => asset.id));
       for (const [index, asset] of orderedAssets.entries()) {
         const work = await tx.pmWork.create({
           data: {
@@ -183,6 +185,7 @@ export async function confirmPmPlan(actor: PermissionUserContext, input: PmPlanS
             assetId: asset.id,
             assetCodeSnapshot: asset.code,
             assetNameSnapshot: asset.name,
+            checkSheetSnapshotJson: serializePmCheckSheetSnapshot(checkSheetSnapshots.get(asset.id)),
             number: reserved.workNumber(index + 1),
             status: "PLANNED",
           },

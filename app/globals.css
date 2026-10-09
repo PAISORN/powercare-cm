@@ -3559,6 +3559,7 @@ body
 }
 
 @media (hover: hover) and (pointer: fine) {
+  [data-asset-registry-list]:hover,
   [data-asset-master-data-tabs] :is(section, article, a, details):hover {
     transform: none !important;
   }

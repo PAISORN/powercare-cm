@@ -109,12 +109,12 @@ describe("Annual PM Main Asset worksheet", () => {
     expect(source).toContain("startedAt: true");
     expect(source).toContain("completedAt: true");
     expect(source).toContain("completedBy: { select: { fullName: true } }");
-    expect(source).toContain("const printChecklists = checklistAssets.map");
+    expect(source).toContain("const printChecklists = checklists.map");
     expect(source).toContain(
-      "result: worksheetValues[`result_${checklistAsset.id}_${field.id}`]",
+      "result: worksheetValues[pmCheckSheetResultName(checklist.assetId, field)]",
     );
     expect(source).toContain(
-      "other: worksheetValues[`other_${checklistAsset.id}_${field.id}`]",
+      "other: worksheetValues[pmCheckSheetOtherName(checklist.assetId, field)]",
     );
     expect(printDocumentSource).toContain("data-pm-print-document");
     expect(printDocumentSource).toContain("ใบงานบำรุงรักษาเชิงป้องกัน");
@@ -132,27 +132,24 @@ describe("Annual PM Main Asset worksheet", () => {
     );
   });
 
-  it("renders the Technical Field Templates as the PM check sheet", () => {
-    expect(source).toContain("checklistAssets.map");
-    expect(source).toContain("checklistAsset.assetType?.fields");
+  it("renders the snapshotted Default and Custom items as the PM check sheet", () => {
+    expect(source).toContain("checklists.map");
+    expect(source).toContain("checklist.items");
+    expect(source).toContain('field.source === "CUSTOM"');
   });
 
-  it("groups check sheets by active Sub Assets from the Main Asset hierarchy", () => {
-    expect(source).toContain(
-      'where: { assetLevel: "SUB_ASSET", registrationStatus: "ACTIVE" }',
-    );
-    expect(source).toContain(
-      "const checklistAssets = asset.children.length ? asset.children : [asset]",
-    );
+  it("groups check sheets by the Asset-level PM Work snapshots under the Main Asset", () => {
+    expect(source).toContain("parsePmCheckSheetSnapshot(work.checkSheetSnapshotJson)");
+    expect(source).toContain("legacySnapshots.get(work.assetId)");
     expect(source).toContain('{isSubAsset ? "Sub Asset" : "Main Asset"}');
-    expect(source).toContain("result_${checklistAsset.id}_${field.id}");
+    expect(source).toContain("pmCheckSheetResultName(checklist.assetId, field)");
   });
 
   it("centers the result heading and saves a recoverable local draft per Sub Asset", () => {
     expect(source).toContain('className="w-80 px-4 py-3 text-center"');
     expect(source).toContain("ผลตรวจสอบ");
     expect(source).toContain(
-      "pm-worksheet:${schedule.id}:${checklistAsset.id}",
+      "pm-worksheet:${schedule.id}:${checklist.assetId}",
     );
     expect(source).toContain("<PmSubAssetDraftButton");
     expect(draftSource).toContain("window.localStorage.setItem");
@@ -203,13 +200,13 @@ describe("Annual PM Main Asset worksheet", () => {
     expect(source).toContain("peer-checked:bg-red-500");
     expect(source).toContain("grid-flow-col auto-cols-fr");
     expect(source).toContain(
-      "ผลตรวจสอบ ${checklistAsset.nameTh} ${field.labelTh}",
+      "ผลตรวจสอบ ${checklist.assetName} ${field.labelTh}",
     );
   });
 
   it("renders a typed result input with the Technical Field Template unit when choices are absent", () => {
     expect(source).toContain(
-      "กรอกผลตรวจสอบ ${checklistAsset.nameTh} ${field.labelTh}",
+      "กรอกผลตรวจสอบ ${checklist.assetName} ${field.labelTh}",
     );
     expect(source).toContain('field.dataType === "NUMBER"');
     expect(source).toContain('? "number"');
@@ -228,10 +225,10 @@ describe("Annual PM Main Asset worksheet", () => {
     expect(source).toContain('{field.indicatorText || "—"}');
     expect(source).not.toContain(">ค่าที่ตั้งไว้</th>");
     expect(source).toContain(
-      "const otherName = `other_${checklistAsset.id}_${field.id}`",
+      "const otherName = pmCheckSheetOtherName(checklist.assetId, field)",
     );
     expect(source).toContain(
-      "ข้อมูลอื่นๆ ${checklistAsset.nameTh} ${field.labelTh}",
+      "ข้อมูลอื่นๆ ${checklist.assetName} ${field.labelTh}",
     );
     expect(source).toContain('placeholder="ระบุข้อมูลเพิ่มเติม (ถ้ามี)"');
     expect(source).toContain("worksheetValues[otherName] ??");

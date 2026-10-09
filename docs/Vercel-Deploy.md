@@ -29,6 +29,7 @@ SUPABASE_URL
 SUPABASE_SERVICE_ROLE_KEY
 SUPABASE_PROFILE_PHOTOS_BUCKET
 SUPABASE_SIGNATURES_BUCKET
+SUPABASE_ASSET_FILES_BUCKET
 ```
 
 ค่าที่แนะนำ:
@@ -37,6 +38,7 @@ SUPABASE_SIGNATURES_BUCKET
 FILE_STORAGE_DRIVER=supabase
 SUPABASE_PROFILE_PHOTOS_BUCKET=powercare-profile-photos
 SUPABASE_SIGNATURES_BUCKET=powercare-signatures
+SUPABASE_ASSET_FILES_BUCKET=powercare-asset-files
 ```
 
 ข้อควรระวัง:
@@ -65,9 +67,10 @@ npm run db:push:supabase
 ```text
 powercare-profile-photos
 powercare-signatures
+powercare-asset-files
 ```
 
-ทั้งสอง bucket ควรเป็น private bucket เพราะระบบอ่านไฟล์ผ่าน server route ของแอป ไม่เปิด public URL โดยตรง
+ทุก bucket ควรเป็น private bucket เพราะระบบอ่านไฟล์ผ่าน server route ของแอป ไม่เปิด public URL โดยตรง โดย `powercare-asset-files` ต้องรองรับไฟล์สูงสุด 20 MB สำหรับเอกสาร Asset และรูปภาพ PNG/JPG/WebP
 
 ## 5. Deploy
 
@@ -81,9 +84,10 @@ powercare-signatures
 4. เปิด CM Work List
 5. Upload รูปโปรไฟล์
 6. Upload ลายเซ็น
-7. แจ้งซ่อมใหม่
-8. ติดตามสถานะด้วยเลข CM
-9. พิมพ์เอกสารปิดงาน
+7. Upload รูปประจำเครื่องจักร
+8. แจ้งซ่อมใหม่
+9. ติดตามสถานะด้วยเลข CM
+10. พิมพ์เอกสารปิดงาน
 
 ## 6. หลัง Deploy สำเร็จ
 

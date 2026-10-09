@@ -7,6 +7,7 @@ import {
   Boxes,
   Building2,
   CalendarDays,
+  ClipboardCheck,
   ClipboardList,
   FileSpreadsheet,
   Factory,
@@ -279,13 +280,22 @@ export function getAppLinks(
     );
   }
   if (canUse(PermissionKey.MANAGE_PM_PLANS)) {
-    pmLinks.unshift({
-      label: "PM Setup",
-      href: "/dashboardpm/setup",
-      icon: Settings,
-      nested: true,
-      parentSectionId: "pm",
-    });
+    pmLinks.unshift(
+      {
+        label: "PM Setup",
+        href: "/dashboardpm/setup",
+        icon: Settings,
+        nested: true,
+        parentSectionId: "pm",
+      },
+      {
+        label: "PM Check Sheet",
+        href: "/dashboardpm/check-sheets",
+        icon: ClipboardCheck,
+        nested: true,
+        parentSectionId: "pm",
+      },
+    );
   }
   if (canUse(PermissionKey.MANAGE_PM_GROUPS)) {
     const workIndex = pmLinks.findIndex(

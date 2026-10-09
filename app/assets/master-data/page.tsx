@@ -100,6 +100,19 @@ export default async function AssetMasterDataPage({
   const scopeQuery = `organizationId=${scope.organization.id}&plantId=${scope.plant.id}`;
   const fieldDrawerHref = (editFieldId?: string, newFieldTypeId?: string) =>
     `/assets/master-data?${scopeQuery}&tab=fields${editFieldId ? `&editFieldId=${encodeURIComponent(editFieldId)}` : ""}${newFieldTypeId ? `&newFieldTypeId=${encodeURIComponent(newFieldTypeId)}` : ""}`;
+  const openCreateFieldType = query.newFieldTypeId
+    ? technicalFieldTypes.find((type) => type.id === query.newFieldTypeId)
+    : undefined;
+  const openEditField = query.editFieldId
+    ? technicalFieldTypes
+        .flatMap((type) => type.fields)
+        .find((field) => field.id === query.editFieldId)
+    : undefined;
+  const openEditFieldType = openEditField
+    ? technicalFieldTypes.find((type) =>
+        type.fields.some((field) => field.id === openEditField.id),
+      )
+    : undefined;
   const tabs: {
     id: MasterTab;
     label: string;
@@ -322,32 +335,28 @@ export default async function AssetMasterDataPage({
                   valuesCount: field._count.values,
                   editHref: fieldDrawerHref(field.id),
                 })),
-                drawers: (
-                  <>
-                    <TechnicalFieldCreateDrawer
-                      scope={scope}
-                      assetType={type}
-                      isOpen={query.newFieldTypeId === type.id}
-                      closeHref={fieldDrawerHref()}
-                      targetId={`technical-type-${type.id}`}
-                    />
-                    {type.fields
-                      .filter((field) => query.editFieldId === field.id)
-                      .map((field) => (
-                        <TechnicalFieldEditDrawer
-                          key={field.id}
-                          scope={scope}
-                          field={field}
-                          closeHref={fieldDrawerHref()}
-                        />
-                      ))}
-                  </>
-                ),
               }))}
             />
           </MasterPanel>
         ) : null}
       </section>
+      {openCreateFieldType ? (
+        <TechnicalFieldCreateDrawer
+          scope={scope}
+          assetType={openCreateFieldType}
+          isOpen
+          closeHref={fieldDrawerHref()}
+          targetId={`technical-type-${openCreateFieldType.id}`}
+        />
+      ) : null}
+      {openEditField ? (
+        <TechnicalFieldEditDrawer
+          scope={scope}
+          field={openEditField}
+          impactedAssetCount={openEditFieldType?._count.assets ?? 0}
+          closeHref={fieldDrawerHref()}
+        />
+      ) : null}
     </>
   );
 }
@@ -681,11 +690,15 @@ function TechnicalFieldCreateDrawer({
         href={closeHref}
         storageKey={positionKey}
         targetId={targetId}
-        className="fixed inset-0 z-40 bg-black/35 backdrop-blur-sm"
+        className="fixed inset-0 z-[290] cursor-default bg-slate-950/30 backdrop-blur-md supports-[backdrop-filter]:bg-slate-950/25"
+        data-technical-field-drawer-backdrop
       />
       <aside
         aria-labelledby={`technical-field-create-title-${assetType.id}`}
-        className="fixed inset-y-0 right-0 z-50 w-full max-w-xl overflow-y-auto border-l border-[var(--line)] bg-[var(--surface)] p-5 shadow-2xl sm:p-7"
+        aria-modal="true"
+        className="fixed inset-y-0 right-0 z-[300] w-full max-w-xl overflow-y-auto overscroll-contain border-l border-[var(--line)] bg-[var(--surface)] p-5 shadow-[-20px_0_60px_rgb(15_23_42_/_22%)] sm:p-7"
+        data-body-scroll-lock="true"
+        role="dialog"
       >
         <div className="flex items-start justify-between gap-4 border-b border-[var(--line)] pb-4">
           <div className="min-w-0">
@@ -713,6 +726,7 @@ function TechnicalFieldCreateDrawer({
         </div>
         <PreserveListPositionForm
           action={createTechnicalField}
+          data-reveal-ignore
           storageKey={positionKey}
           targetId={targetId}
           className="mt-5 grid gap-3"
@@ -757,6 +771,7 @@ function TechnicalFieldCreateDrawer({
 function TechnicalFieldEditDrawer({
   scope,
   field,
+  impactedAssetCount,
   closeHref,
 }: {
   scope: Awaited<ReturnType<typeof resolveAdminSiteScope>>;
@@ -774,6 +789,7 @@ function TechnicalFieldEditDrawer({
     sortOrder: number;
     _count: { values: number };
   };
+  impactedAssetCount: number;
   closeHref: string;
 }) {
   const title = preferredName(field.labelTh, field.labelEn) || "Untitled field";
@@ -786,11 +802,15 @@ function TechnicalFieldEditDrawer({
         href={closeHref}
         storageKey={positionKey}
         targetId={targetId}
-        className="fixed inset-0 z-40 bg-black/35 backdrop-blur-sm"
+        className="fixed inset-0 z-[290] cursor-default bg-slate-950/30 backdrop-blur-md supports-[backdrop-filter]:bg-slate-950/25"
+        data-technical-field-drawer-backdrop
       />
       <aside
         aria-labelledby={`technical-field-drawer-title-${field.id}`}
-        className="fixed inset-y-0 right-0 z-50 w-full max-w-xl overflow-y-auto border-l border-[var(--line)] bg-[var(--surface)] p-5 shadow-2xl sm:p-7"
+        aria-modal="true"
+        className="fixed inset-y-0 right-0 z-[300] w-full max-w-xl overflow-y-auto overscroll-contain border-l border-[var(--line)] bg-[var(--surface)] p-5 shadow-[-20px_0_60px_rgb(15_23_42_/_22%)] sm:p-7"
+        data-body-scroll-lock="true"
+        role="dialog"
       >
         <div className="flex items-start justify-between gap-4 border-b border-[var(--line)] pb-4">
           <div className="min-w-0">
@@ -818,6 +838,7 @@ function TechnicalFieldEditDrawer({
         </div>
         <PreserveListPositionForm
           action={updateTechnicalField}
+          data-reveal-ignore
           storageKey={positionKey}
           targetId={targetId}
           className="mt-5 grid gap-3"
@@ -878,7 +899,10 @@ function TechnicalFieldEditDrawer({
         >
           <ScopeFields scope={scope} />
           <Hidden kind="field" tab="fields" id={field.id} />
-          <ConfirmDeleteButton label={title} />
+          <ConfirmDeleteButton
+            label={title}
+            message={`ยืนยันลบ ${title}? รายการนี้เป็น Default Checklist ของ Asset Type และอาจกระทบ PM Check Sheet ของเครื่องจักร ${impactedAssetCount} รายการ งาน PM ที่สร้าง Snapshot แล้วจะไม่เปลี่ยนย้อนหลัง`}
+          />
         </PreserveListPositionForm>
       </aside>
     </>

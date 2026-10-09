@@ -1,6 +1,8 @@
 param(
   [string]$EnvFile = ".env.local",
   [string]$OutputRoot = "backups",
+  [ValidateSet("DIRECT_URL", "DATABASE_URL")]
+  [string]$DatabaseUrlVariable = "DIRECT_URL",
   [switch]$DryRun
 )
 
@@ -160,7 +162,7 @@ Read-DotEnv -Path $EnvFile
 
 $script:SupabaseUrl = (Require-Env "SUPABASE_URL").TrimEnd("/")
 $script:ServiceKey = Require-Env "SUPABASE_SERVICE_ROLE_KEY"
-$databaseUrl = [Environment]::GetEnvironmentVariable("DIRECT_URL", "Process")
+$databaseUrl = [Environment]::GetEnvironmentVariable($DatabaseUrlVariable, "Process")
 if ([string]::IsNullOrWhiteSpace($databaseUrl)) {
   $databaseUrl = Require-Env "DATABASE_URL"
 }
@@ -170,6 +172,9 @@ if ([string]::IsNullOrWhiteSpace($profileBucket)) { $profileBucket = "powercare-
 
 $signatureBucket = [Environment]::GetEnvironmentVariable("SUPABASE_SIGNATURES_BUCKET", "Process")
 if ([string]::IsNullOrWhiteSpace($signatureBucket)) { $signatureBucket = "powercare-signatures" }
+
+$assetFilesBucket = [Environment]::GetEnvironmentVariable("SUPABASE_ASSET_FILES_BUCKET", "Process")
+if ([string]::IsNullOrWhiteSpace($assetFilesBucket)) { $assetFilesBucket = "powercare-asset-files" }
 
 $timestamp = Get-Date -Format "yyyyMMdd-HHmmss"
 $backupRoot = Join-Path $OutputRoot $timestamp
@@ -181,6 +186,8 @@ if ($DryRun) {
   Write-Host "Supabase URL: $script:SupabaseUrl"
   Write-Host "Profile bucket: $profileBucket"
   Write-Host "Signature bucket: $signatureBucket"
+  Write-Host "Asset files bucket: $assetFilesBucket"
+  Write-Host "Database connection variable: $DatabaseUrlVariable"
   Write-Host "Output: $backupRoot"
   exit 0
 }
@@ -212,7 +219,7 @@ $pgDump = Find-CommandPath "pg_dump" @(
 if ($pgDump) {
   $dumpFile = Join-Path $databaseRoot "powercare-public.dump"
   Write-Host "Backing up database with pg_dump..."
-  & $pgDump "--dbname=$databaseUrl" "--schema=public" "--format=custom" "--no-owner" "--no-privileges" "--file=$dumpFile"
+  & $pgDump "--dbname=$databaseUrl" "--schema=public" "--format=custom" "--no-owner" "--no-privileges" "--no-password" "--file=$dumpFile"
   if ($LASTEXITCODE -ne 0) { throw "pg_dump failed with exit code $LASTEXITCODE" }
   $manifest.database.dumpFile = "database/powercare-public.dump"
   $manifest.database.fullDumpCreated = $true
@@ -250,12 +257,12 @@ Promise.all(tables.map(async ([name, fn]) => ({ table: name, count: await fn() }
 '@ | node - | Set-Content -LiteralPath $countsFile -Encoding UTF8
 $manifest.database.tableCountsFile = "database/table-counts.json"
 
-foreach ($bucket in @($profileBucket, $signatureBucket)) {
+foreach ($bucket in @($profileBucket, $signatureBucket, $assetFilesBucket)) {
   Write-Host "Queueing storage bucket: $bucket"
 }
 
 $storageManifestFile = Join-Path $backupRoot "storage-manifest.json"
-& node "scripts/backup-supabase-storage.mjs" "--output" $storageRoot "--manifest" $storageManifestFile "--buckets" "$profileBucket,$signatureBucket"
+& node "scripts/backup-supabase-storage.mjs" "--output" $storageRoot "--manifest" $storageManifestFile "--buckets" "$profileBucket,$signatureBucket,$assetFilesBucket"
 if ($LASTEXITCODE -ne 0) { throw "Storage backup failed with exit code $LASTEXITCODE" }
 $storageManifest = Get-Content -LiteralPath $storageManifestFile -Raw | ConvertFrom-Json
 $manifest.storage.buckets = $storageManifest.buckets

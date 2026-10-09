@@ -18,6 +18,7 @@ export default function TechnicalFieldConfig({ initialDataType = "TEXT", initial
         <option value="TEXT">ข้อความ</option>
         <option value="NUMBER">ตัวเลข</option>
         <option value="DATE">วันที่</option>
+        <option value="BOOLEAN">ใช่ / ไม่ใช่</option>
         <option value="SELECT">ตัวเลือกกำหนดเอง</option>
       </select>
       {dataType === "SELECT" ? (

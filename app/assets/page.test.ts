@@ -6,6 +6,8 @@ const routeSource = read("app/assets/page.tsx");
 const actionSource = read("app/assets/actions.ts");
 const componentSource = read("components/asset-registry-page.tsx");
 const tableSource = read("components/asset-list-table.tsx");
+const treeSource = read("components/asset-tree-workspace.tsx");
+const globalSource = read("app/globals.css");
 const querySource = read("modules/assets/asset-list-query.ts");
 const dataSource = read("modules/assets/asset-list-page-data.ts");
 const modelSource = read("modules/assets/asset-list-page-model.ts");
@@ -130,5 +132,12 @@ describe("Assets registry architecture", () => {
     expect(tableSource).toContain("`/asset-images/${asset.id}`");
     expect(tableSource).toContain('loading="lazy"');
     expect(tableSource).toContain('className="h-full w-full object-cover"');
+  });
+
+  it("keeps the Asset Tree and List result blocks stationary on hover", () => {
+    expect(treeSource).toContain("data-asset-registry-list");
+    expect(tableSource).toContain("data-asset-registry-list");
+    expect(globalSource).toContain("[data-asset-registry-list]:hover");
+    expect(globalSource).toContain("transform: none !important;");
   });
 });

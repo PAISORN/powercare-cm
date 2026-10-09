@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { RoleName } from "../cm-work/cm-work-types";
 
 const tx = {
-  plant: { findFirstOrThrow: vi.fn() }, user: { findMany: vi.fn() }, rolePermissionOverride: { findMany: vi.fn() }, asset: { findFirstOrThrow: vi.fn() },
+  plant: { findFirstOrThrow: vi.fn() }, user: { findMany: vi.fn() }, rolePermissionOverride: { findMany: vi.fn() }, asset: { findFirstOrThrow: vi.fn(), findMany: vi.fn() },
   pmPlan: { findFirstOrThrow: vi.fn(), updateMany: vi.fn(), update: vi.fn() },
   pmWork: { findFirstOrThrow: vi.fn(), updateMany: vi.fn(), update: vi.fn(), count: vi.fn(), findUnique: vi.fn(), create: vi.fn() },
   pmWorkAssignee: { count: vi.fn(), create: vi.fn(), upsert: vi.fn(), deleteMany: vi.fn() }, auditEvent: { create: vi.fn() },
@@ -18,7 +18,7 @@ const manager = { id: "manager", role: RoleName.SITE_ADMIN, ...scope };
 
 describe("PM work lifecycle service", () => {
   beforeEach(() => {
-    vi.clearAllMocks(); transaction.mockImplementation(async fn => fn(tx)); tx.plant.findFirstOrThrow.mockResolvedValue({ id: "site" }); tx.auditEvent.create.mockResolvedValue({}); tx.pmWorkAssignee.count.mockResolvedValue(1); tx.pmWork.updateMany.mockResolvedValue({ count: 1 });
+    vi.clearAllMocks(); transaction.mockImplementation(async fn => fn(tx)); tx.plant.findFirstOrThrow.mockResolvedValue({ id: "site" }); tx.asset.findMany.mockResolvedValue([]); tx.auditEvent.create.mockResolvedValue({}); tx.pmWorkAssignee.count.mockResolvedValue(1); tx.pmWork.updateMany.mockResolvedValue({ count: 1 });
   });
   it("lets any Site PM executor start Planned work and joins them as a collaborator", async () => {
     tx.pmWork.findFirstOrThrow.mockResolvedValue({ id: "work" });

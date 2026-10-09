@@ -2,7 +2,7 @@ import { Prisma } from "@prisma/client";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { RoleName } from "../cm-work/cm-work-types";
 
-const tx = { plant: { findFirstOrThrow: vi.fn() }, pmPlan: { create: vi.fn(), findFirstOrThrow: vi.fn(), updateMany: vi.fn(), update: vi.fn(), deleteMany: vi.fn() }, pmGroup: { findFirstOrThrow: vi.fn(), updateMany: vi.fn() }, pmPlanDraftGroup: { findMany: vi.fn(), create: vi.fn(), deleteMany: vi.fn() }, pmPlanSequence: { upsert: vi.fn() }, pmPlanGroupSnapshot: { create: vi.fn() }, pmWork: { create: vi.fn() }, pmWorkSourceGroup: { create: vi.fn() }, auditEvent: { create: vi.fn() } };
+const tx = { plant: { findFirstOrThrow: vi.fn() }, asset: { findMany: vi.fn() }, pmPlan: { create: vi.fn(), findFirstOrThrow: vi.fn(), updateMany: vi.fn(), update: vi.fn(), deleteMany: vi.fn() }, pmGroup: { findFirstOrThrow: vi.fn(), updateMany: vi.fn() }, pmPlanDraftGroup: { findMany: vi.fn(), create: vi.fn(), deleteMany: vi.fn() }, pmPlanSequence: { upsert: vi.fn() }, pmPlanGroupSnapshot: { create: vi.fn() }, pmWork: { create: vi.fn() }, pmWorkSourceGroup: { create: vi.fn() }, auditEvent: { create: vi.fn() } };
 const transaction = vi.fn(async (fn: (client: typeof tx) => unknown) => fn(tx));
 const db = { pmPlan: { findUnique: vi.fn(), findFirst: vi.fn(), findFirstOrThrow: vi.fn() }, $transaction: transaction };
 vi.mock("../../lib/db", () => ({ db }));
@@ -10,7 +10,7 @@ const admin = { id: "admin", role: RoleName.SITE_ADMIN, organizationId: "org", p
 const scope = { organizationId: "org", plantId: "site" };
 
 describe("PM Draft plan service", () => {
-  beforeEach(() => { vi.clearAllMocks(); transaction.mockImplementation(async (fn: (client: typeof tx) => unknown) => fn(tx)); tx.plant.findFirstOrThrow.mockResolvedValue({ id: "site" }); tx.auditEvent.create.mockResolvedValue({}); tx.pmPlanDraftGroup.findMany.mockResolvedValue([]); db.pmPlan.findUnique.mockResolvedValue(null); });
+  beforeEach(() => { vi.clearAllMocks(); transaction.mockImplementation(async (fn: (client: typeof tx) => unknown) => fn(tx)); tx.plant.findFirstOrThrow.mockResolvedValue({ id: "site" }); tx.asset.findMany.mockResolvedValue([]); tx.auditEvent.create.mockResolvedValue({}); tx.pmPlanDraftGroup.findMany.mockResolvedValue([]); db.pmPlan.findUnique.mockResolvedValue(null); });
   it("creates an unnumbered Draft with no PM Work and audits it", async () => {
     tx.pmPlan.create.mockResolvedValue({ id: "plan", ...scope, plannedDateKey: "2026-08-15", status: "DRAFT", number: null, submissionKey: "once" });
     const { createOrGetDraftPmPlan } = await import("./pm-plan-service");
@@ -116,6 +116,7 @@ describe("PM plan confirmation", () => {
     vi.clearAllMocks();
     transaction.mockImplementation(async (fn: (client: typeof tx) => unknown) => fn(tx));
     tx.plant.findFirstOrThrow.mockResolvedValue({ id: "site", code: "RT-B" });
+    tx.asset.findMany.mockResolvedValue([]);
     tx.pmPlan.findFirstOrThrow
       .mockResolvedValueOnce({ id: "plan", ...scope, plannedDateKey: "2026-09-01", status: "DRAFT", submissionKey: "confirm-once", number: null })
       .mockResolvedValue({ id: "plan", status: "CONFIRMED", number: "PMP-RTB-20260901-001", works: [], groupSnapshots: [] });

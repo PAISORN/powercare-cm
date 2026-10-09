@@ -27,6 +27,12 @@ import {
 } from "../../../../../../modules/auth/permission";
 import { resolvePmPageScope } from "../../../../../../modules/pm/pm-page-scope";
 import {
+  loadPmCheckSheetSnapshots,
+  parsePmCheckSheetSnapshot,
+  pmCheckSheetOtherName,
+  pmCheckSheetResultName,
+} from "../../../../../../modules/pm/pm-check-sheet";
+import {
   completePmWorksheet,
   reviseCompletedPmWorksheet,
 } from "../../../../../../modules/pm/pm-work-service";
@@ -224,6 +230,7 @@ export default async function AnnualPmAssetWorksheetPage({
         result: true,
         resultNote: true,
         worksheetDataJson: true,
+        checkSheetSnapshotJson: true,
         startedAt: true,
         completedAt: true,
         completedBy: { select: { fullName: true } },
@@ -260,7 +267,6 @@ export default async function AnnualPmAssetWorksheetPage({
   };
   const works = annualWorks.filter((work) => rootId(work.assetId) === asset.id);
   const mainWork = works.find((work) => work.assetId === asset.id) ?? works[0];
-  const checklistAssets = asset.children.length ? asset.children : [asset];
   const scopeQuery = new URLSearchParams(serviceScope).toString();
   const targetName =
     schedule.assetSystem?.nameTh ?? schedule.zone?.name ?? "System / Zone";
@@ -271,27 +277,33 @@ export default async function AnnualPmAssetWorksheetPage({
   const editing = Boolean(completed && canEditCompleted && query.edit === "1");
   const readOnly = Boolean(completed && !editing);
   const worksheetValues = parseWorksheetValues(mainWork?.worksheetDataJson);
-  const printChecklists = checklistAssets.map((checklistAsset) => ({
-    id: checklistAsset.id,
-    code: checklistAsset.code,
-    name: checklistAsset.nameTh,
-    typeName: checklistAsset.assetType
-      ? `${checklistAsset.assetType.code} · ${checklistAsset.assetType.nameTh}`
-      : "ยังไม่ได้ระบุ Asset Type",
-    fields: (checklistAsset.assetType?.fields ?? []).map((field) => ({
+  const legacySnapshots = await loadPmCheckSheetSnapshots(
+    db,
+    works.filter((work) => !parsePmCheckSheetSnapshot(work.checkSheetSnapshotJson)).map((work) => work.assetId),
+  );
+  const checklists = works.flatMap((work) => {
+    const snapshot = parsePmCheckSheetSnapshot(work.checkSheetSnapshotJson) ?? legacySnapshots.get(work.assetId);
+    return snapshot ? [snapshot] : [];
+  });
+  const printChecklists = checklists.map((checklist) => ({
+    id: checklist.assetId,
+    code: checklist.assetCode,
+    name: checklist.assetName,
+    typeName: checklist.assetTypeName ?? "ยังไม่ได้ระบุ Asset Type",
+    fields: checklist.items.map((field) => ({
       id: field.id,
       labelTh: field.labelTh,
       labelEn: field.labelEn,
       indicatorText: field.indicatorText,
       unit: field.unit,
-      result: worksheetValues[`result_${checklistAsset.id}_${field.id}`] ?? "",
-      other: worksheetValues[`other_${checklistAsset.id}_${field.id}`] ?? "",
+      result: worksheetValues[pmCheckSheetResultName(checklist.assetId, field)] ?? "",
+      other: worksheetValues[pmCheckSheetOtherName(checklist.assetId, field)] ?? "",
     })),
   }));
-  const requiredFieldNames = checklistAssets.flatMap((checklistAsset) =>
-    (checklistAsset.assetType?.fields ?? [])
+  const requiredFieldNames = checklists.flatMap((checklist) =>
+    checklist.items
       .filter((field) => field.required)
-      .map((field) => `result_${checklistAsset.id}_${field.id}`),
+      .map((field) => pmCheckSheetResultName(checklist.assetId, field)),
   );
   const mainAssetsHref = `/dashboardpm/annual/${schedule.id}?${scopeQuery}`;
 
@@ -558,14 +570,14 @@ export default async function AnnualPmAssetWorksheetPage({
         </section>
 
         <div className="grid gap-5">
-          {checklistAssets.map((checklistAsset) => {
-            const fields = checklistAsset.assetType?.fields ?? [];
-            const isSubAsset = asset.children.length > 0;
+          {checklists.map((checklist) => {
+            const fields = checklist.items;
+            const isSubAsset = checklist.assetId !== asset.id;
             return (
               <form
                 className={`overflow-hidden rounded-3xl border border-[var(--line)] bg-[var(--surface)] shadow-sm ${readOnly ? "opacity-80" : ""}`}
                 data-pm-checklist-form
-                key={checklistAsset.id}
+                key={checklist.assetId}
               >
                 <fieldset className="min-w-0" disabled={readOnly}>
                   <header className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--line)] p-5">
@@ -578,13 +590,10 @@ export default async function AnnualPmAssetWorksheetPage({
                           className="shrink-0 text-[var(--primary)]"
                           size={23}
                         />
-                        {checklistAsset.code ?? "—"} · {checklistAsset.nameTh}
+                        {checklist.assetCode ?? "—"} · {checklist.assetName}
                       </h2>
                       <p className="mt-1 text-sm text-[var(--muted)]">
-                        {checklistAsset.assetType
-                          ? `${checklistAsset.assetType.code} · ${checklistAsset.assetType.nameTh}`
-                          : "ยังไม่ได้ระบุ Asset Type"}{" "}
-                        · Technical Field Templates
+                        {checklist.assetTypeName ?? "ยังไม่ได้ระบุ Asset Type"} · PM Check Sheet Snapshot
                       </p>
                     </div>
                     <div className="flex items-start gap-3">
@@ -592,7 +601,7 @@ export default async function AnnualPmAssetWorksheetPage({
                         {fields.length} รายการ
                       </span>
                       <PmSubAssetDraftButton
-                        draftKey={`pm-worksheet:${schedule.id}:${checklistAsset.id}`}
+                        draftKey={`pm-worksheet:${schedule.id}:${checklist.assetId}`}
                         readOnly={readOnly}
                       />
                     </div>
@@ -619,8 +628,8 @@ export default async function AnnualPmAssetWorksheetPage({
                               field.optionsJson,
                               field.dataType,
                             );
-                            const resultName = `result_${checklistAsset.id}_${field.id}`;
-                            const otherName = `other_${checklistAsset.id}_${field.id}`;
+                            const resultName = pmCheckSheetResultName(checklist.assetId, field);
+                            const otherName = pmCheckSheetOtherName(checklist.assetId, field);
                             return (
                               <tr
                                 className="border-t border-[var(--line)]"
@@ -637,6 +646,7 @@ export default async function AnnualPmAssetWorksheetPage({
                                         *
                                       </span>
                                     ) : null}
+                                    <span className={`ml-2 rounded-full px-2 py-0.5 text-[10px] font-black uppercase ${field.source === "CUSTOM" ? "bg-blue-100 text-blue-700" : "bg-slate-200 text-slate-600"}`}>{field.source === "CUSTOM" ? "Custom" : "Default"}</span>
                                   </p>
                                   {field.labelEn ? (
                                     <p className="mt-0.5 text-xs text-[var(--muted)]">
@@ -650,7 +660,7 @@ export default async function AnnualPmAssetWorksheetPage({
                                 <td className="w-80 px-4 py-3">
                                   {resultOptions.length ? (
                                     <fieldset
-                                      aria-label={`ผลตรวจสอบ ${checklistAsset.nameTh} ${field.labelTh}`}
+                                      aria-label={`ผลตรวจสอบ ${checklist.assetName} ${field.labelTh}`}
                                       className="grid min-h-11 w-full grid-flow-col auto-cols-fr items-center gap-2 whitespace-nowrap"
                                     >
                                       {resultOptions.map((option) => {
@@ -690,7 +700,7 @@ export default async function AnnualPmAssetWorksheetPage({
                                   ) : (
                                     <label className="flex min-h-11 w-full items-stretch overflow-hidden rounded-xl border border-[var(--line)] bg-[var(--surface)] focus-within:ring-2 focus-within:ring-[var(--primary)]">
                                       <input
-                                        aria-label={`กรอกผลตรวจสอบ ${checklistAsset.nameTh} ${field.labelTh}`}
+                                        aria-label={`กรอกผลตรวจสอบ ${checklist.assetName} ${field.labelTh}`}
                                         className="min-w-0 flex-1 bg-transparent px-3 outline-none"
                                         defaultValue={
                                           worksheetValues[resultName] ?? ""
@@ -718,7 +728,7 @@ export default async function AnnualPmAssetWorksheetPage({
                                 </td>
                                 <td className="w-72 px-4 py-3">
                                   <textarea
-                                    aria-label={`ข้อมูลอื่นๆ ${checklistAsset.nameTh} ${field.labelTh}`}
+                                    aria-label={`ข้อมูลอื่นๆ ${checklist.assetName} ${field.labelTh}`}
                                     className="min-h-11 w-full resize-y rounded-xl border border-[var(--line)] bg-[var(--surface)] px-3 py-2 outline-none focus:ring-2 focus:ring-[var(--primary)]"
                                     defaultValue={
                                       worksheetValues[otherName] ?? ""
@@ -738,7 +748,7 @@ export default async function AnnualPmAssetWorksheetPage({
                     <div className="grid place-items-center p-10 text-center text-[var(--muted)]">
                       <FileText size={38} />
                       <p className="mt-3 font-bold">
-                        Sub Asset นี้ยังไม่มี Technical Field Templates
+                        Asset นี้ยังไม่มีรายการใน PM Check Sheet Snapshot
                       </p>
                     </div>
                   )}

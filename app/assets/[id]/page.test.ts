@@ -8,6 +8,11 @@ describe("Asset image upload", () => {
     expect(source).toContain('type="submit"');
     expect(source).toContain('aria-label="เลือกรูปภาพ Asset"');
     expect(source).toContain("form action={uploadAssetImage}");
+    expect(source).toContain("บันทึกรูปประจำเครื่องเรียบร้อยแล้ว");
+    expect(source).toContain("assetImageErrorMessage(query.imageError)");
+    expect(source).toContain("await deleteStoredFile(saved?.storagePath)");
+    expect(source).toContain("await deleteStoredFile(asset.imageStoragePath)");
+    expect(source).toContain("?v=${hierarchyParent.updatedAt.getTime()}");
   });
 
   it("separates Parent and Children into responsive hierarchy tabs", () => {

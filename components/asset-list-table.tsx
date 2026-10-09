@@ -21,7 +21,7 @@ export function AssetListTable({
   listUrl: string;
 }) {
   return (
-    <section className="mt-3 overflow-hidden rounded-2xl border border-[var(--line)] bg-[var(--surface)] shadow-sm">
+    <section className="mt-3 overflow-hidden rounded-2xl border border-[var(--line)] bg-[var(--surface)] shadow-sm" data-asset-registry-list>
       <div className="overflow-x-auto">
         <div
           className={`${listGrid} sticky top-0 z-20 border-b border-slate-300 bg-slate-100 px-5 py-3.5 text-xs font-black uppercase tracking-[.08em] text-slate-700`}

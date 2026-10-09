@@ -4,6 +4,7 @@ import { getBangkokDateString } from "../../lib/date-time/bangkok-time";
 import { canExecutePmWork, canManagePmPlans, canViewPm } from "../auth/permission";
 import type { PermissionUserContext } from "../auth/site-admin-permissions";
 import { RoleName } from "../cm-work/cm-work-types";
+import { loadPmCheckSheetSnapshots, serializePmCheckSheetSnapshot } from "./pm-check-sheet";
 import { PmAssigneeRole, PmPlanStatus, PmResult, PmWorkStatus, type PmResult as PmResultValue } from "./pm-types";
 import { notifyPmAssignment } from "./pm-notification-service";
 
@@ -246,10 +247,12 @@ export async function completePmWorksheet(actor: PermissionUserContext, input: P
           status: { in: [PmWorkStatus.PLANNED, PmWorkStatus.IN_PROGRESS] },
           pmPlan: { organizationId: scope.organizationId, status: PmPlanStatus.CONFIRMED },
         },
-        select: { id: true, status: true, startedAt: true },
+        select: { id: true, assetId: true, status: true, startedAt: true, checkSheetSnapshotJson: true },
       });
       await ensurePmParticipant(tx, actor, before.id, now);
       const startedAt = before.startedAt ?? now;
+      const snapshots = before.checkSheetSnapshotJson ? null : await loadPmCheckSheetSnapshots(tx, [before.assetId]);
+      const checkSheetSnapshotJson = before.checkSheetSnapshotJson ?? serializePmCheckSheetSnapshot(snapshots?.get(before.assetId));
       if (before.id === input.workId) primaryStartedAt = startedAt;
       const changed = await tx.pmWork.updateMany({
         where: { id: before.id, plantId: scope.plantId, status: before.status },
@@ -257,6 +260,7 @@ export async function completePmWorksheet(actor: PermissionUserContext, input: P
           status: PmWorkStatus.COMPLETED,
           ...result,
           worksheetDataJson,
+          checkSheetSnapshotJson,
           startedAt,
           completedAt: now,
           completedById: actorId(actor),
@@ -271,7 +275,7 @@ export async function completePmWorksheet(actor: PermissionUserContext, input: P
         before.id,
         "COMPLETE_PM_WORKSHEET",
         { status: before.status, startedAt: before.startedAt },
-        { status: PmWorkStatus.COMPLETED, ...result, worksheetDataJson, startedAt, completedAt: now, completedById: actorId(actor) },
+        { status: PmWorkStatus.COMPLETED, ...result, worksheetDataJson, checkSheetSnapshotJson, startedAt, completedAt: now, completedById: actorId(actor) },
       );
     }
     return { status: PmWorkStatus.COMPLETED, ...result, worksheetDataJson, startedAt: primaryStartedAt, completedAt: now };
@@ -304,6 +308,8 @@ export async function reviseCompletedPmWorksheet(actor: PermissionUserContext, i
           result: true,
           resultNote: true,
           worksheetDataJson: true,
+          checkSheetSnapshotJson: true,
+          assetId: true,
           correctedAt: true,
           correctedById: true,
           correctionReason: true,
@@ -311,11 +317,14 @@ export async function reviseCompletedPmWorksheet(actor: PermissionUserContext, i
         },
       });
       if (!manager) await ensurePmParticipant(tx, actor, before.id, now);
+      const snapshots = before.checkSheetSnapshotJson ? null : await loadPmCheckSheetSnapshots(tx, [before.assetId]);
+      const checkSheetSnapshotJson = before.checkSheetSnapshotJson ?? serializePmCheckSheetSnapshot(snapshots?.get(before.assetId));
       const changed = await tx.pmWork.updateMany({
         where: { id: before.id, plantId: scope.plantId, status: PmWorkStatus.COMPLETED, updatedAt: before.updatedAt },
         data: {
           ...corrected,
           worksheetDataJson,
+          checkSheetSnapshotJson,
           correctedAt: now,
           correctedById: actorId(actor),
           correctionReason,
@@ -326,6 +335,7 @@ export async function reviseCompletedPmWorksheet(actor: PermissionUserContext, i
         status: PmWorkStatus.COMPLETED,
         ...corrected,
         worksheetDataJson,
+        checkSheetSnapshotJson,
         correctedAt: now,
         correctedById: actorId(actor),
         correctionReason,
@@ -413,7 +423,8 @@ export async function addAssetToConfirmedPmPlan(actor: PermissionUserContext, in
       if (existing) throw new Error("This Asset already has PM work in the plan");
       const reserved = await tx.pmPlan.update({ where: { id: plan.id }, data: { lastWorkSequence: { increment: 1 } }, select: { lastWorkSequence: true } });
       const number = `${plan.number.replace(/^PMP-/, "PM-")}-${String(reserved.lastWorkSequence).padStart(3, "0")}`;
-      const work = await tx.pmWork.create({ data: { plantId: scope.plantId, pmPlanId: plan.id, assetId: asset.id, assetCodeSnapshot: asset.code, assetNameSnapshot: asset.nameTh, number, status: PmWorkStatus.PLANNED, addedAfterConfirmation: true }, select: { id: true, number: true } });
+      const snapshots = await loadPmCheckSheetSnapshots(tx, [asset.id]);
+      const work = await tx.pmWork.create({ data: { plantId: scope.plantId, pmPlanId: plan.id, assetId: asset.id, assetCodeSnapshot: asset.code, assetNameSnapshot: asset.nameTh, checkSheetSnapshotJson: serializePmCheckSheetSnapshot(snapshots.get(asset.id)), number, status: PmWorkStatus.PLANNED, addedAfterConfirmation: true }, select: { id: true, number: true } });
       await audit(tx, actor, scope, "PmWork", work.id, "ADD_PM_WORK_AFTER_CONFIRMATION", null, { assetId: asset.id, number, workSequence: reserved.lastWorkSequence, addedAfterConfirmation: true, reason: additionReason });
       return work;
     });

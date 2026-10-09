@@ -3,6 +3,7 @@ import {
   deleteStoredFile,
   readStoredFile,
   saveAnnouncementImageFile,
+  saveAssetFile,
   saveOrganizationLogoFile,
   saveProfilePhotoFile,
   saveSignatureFile,
@@ -112,6 +113,29 @@ describe("Supabase file storage", () => {
   test("rejects announcement images larger than 2 MB", async () => {
     const file = new File([new Uint8Array(2 * 1024 * 1024 + 1)], "large.jpg", { type: "image/jpeg" });
     await expect(saveAnnouncementImageFile("announcement-1", file)).rejects.toThrow("2 MB or smaller");
+  });
+
+  test("uploads Asset images to the private Asset files bucket", async () => {
+    const fetchMock = vi.fn(async () => new Response(JSON.stringify({ Key: "ok" }), { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+    const file = new File([new Uint8Array([1, 2, 3])], "machine.webp", { type: "image/webp" });
+
+    const saved = await saveAssetFile("asset-123", file, "image");
+
+    expect(saved.storagePath).toMatch(
+      /^supabase:\/\/powercare-asset-files\/assets\/asset-123\/image\/[0-9a-f-]+\.webp$/,
+    );
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringMatching(
+        /^https:\/\/project-ref\.supabase\.co\/storage\/v1\/object\/powercare-asset-files\/assets\/asset-123\/image\/[0-9a-f-]+\.webp$/,
+      ),
+      expect.objectContaining({ method: "POST" }),
+    );
+  });
+
+  test("rejects Asset images larger than 5 MB with an actionable message", async () => {
+    const file = new File([new Uint8Array(5 * 1024 * 1024 + 1)], "large.jpg", { type: "image/jpeg" });
+    await expect(saveAssetFile("asset-123", file, "image")).rejects.toThrow("5 MB or smaller");
   });
 
   test("uploads organization logos to a versioned storage path", async () => {

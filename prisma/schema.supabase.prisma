@@ -739,6 +739,7 @@ model PmWork {
   result                 String?
   resultNote             String?
   worksheetDataJson      String?
+  checkSheetSnapshotJson String?
   startedAt              DateTime?
   completedAt            DateTime?
   completedById          String?
@@ -1474,23 +1475,23 @@ model AssetType {
 }
 
 model AssetTechnicalField {
-  id          String                @id @default(cuid())
-  assetTypeId String
-  assetType   AssetType             @relation(fields: [assetTypeId], references: [id], onDelete: Cascade)
-  key         String
-  labelTh     String
-  labelEn     String?
-  dataType    String                @default("TEXT")
-  unit        String?
-  helpText    String?
+  id            String                @id @default(cuid())
+  assetTypeId   String
+  assetType     AssetType             @relation(fields: [assetTypeId], references: [id], onDelete: Cascade)
+  key           String
+  labelTh       String
+  labelEn       String?
+  dataType      String                @default("TEXT")
+  unit          String?
+  helpText      String?
   indicatorText String?
-  optionsJson String?
-  required    Boolean               @default(false)
-  active      Boolean               @default(true)
-  sortOrder   Int                   @default(0)
-  createdAt   DateTime              @default(now())
-  updatedAt   DateTime              @updatedAt
-  values      AssetTechnicalValue[]
+  optionsJson   String?
+  required      Boolean               @default(false)
+  active        Boolean               @default(true)
+  sortOrder     Int                   @default(0)
+  createdAt     DateTime              @default(now())
+  updatedAt     DateTime              @updatedAt
+  values        AssetTechnicalValue[]
 
   @@unique([assetTypeId, key])
   @@index([assetTypeId, active, sortOrder])
@@ -1578,6 +1579,7 @@ model Asset {
   cmWorks                   CmWork[]
   pmGroups                  PmGroupAsset[]
   pmWorks                   PmWork[]
+  pmCheckSheetItems         PmCheckSheetItem[]
   annualPmReleaseExclusions PmAnnualReleaseExclusion[]
 
   @@unique([parentId, componentCode])
@@ -1592,6 +1594,25 @@ model Asset {
   @@index([tagKks])
   @@index([plantId, assetLevel])
   @@index([plantId, migrationStatus])
+}
+
+model PmCheckSheetItem {
+  id            String   @id @default(cuid())
+  assetId       String
+  asset         Asset    @relation(fields: [assetId], references: [id], onDelete: Restrict)
+  labelTh       String
+  dataType      String   @default("TEXT")
+  unit          String?
+  optionsJson   String?
+  helpText      String?
+  indicatorText String?
+  required      Boolean  @default(false)
+  sortOrder     Int      @default(0)
+  active        Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([assetId, active, sortOrder])
 }
 
 model AssetTechnicalValue {

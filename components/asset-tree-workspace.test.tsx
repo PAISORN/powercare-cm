@@ -91,7 +91,10 @@ describe("AssetTreeWorkspace", () => {
     };
     render(<AssetTreeWorkspace canCreateAssets createAction={createAction} createOptions={createOptions} siteCode="RTB" systems={systems} review={[]}/>);
 
-    fireEvent.click(screen.getByRole("button", { name: "เมนูเพิ่มเติม Turbine" }));
+    const systemMenuButton = screen.getByRole("button", { name: "เมนูเพิ่มเติม Turbine" });
+    fireEvent.click(systemMenuButton);
+    expect(systemMenuButton).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByRole("menu").parentElement).toBe(document.body);
     fireEvent.click(screen.getByRole("menuitem", { name: "เพิ่มรายการ" }));
     expect(screen.getByRole("dialog", { name: "เพิ่ม Asset ใน Tree" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "ปิดแถบเพิ่ม Asset" })).toHaveClass("backdrop-blur-sm");

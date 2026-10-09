@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import { BookOpen, ChevronDown, ChevronRight, CircleDot, CirclePlus, Globe2, MoreVertical, PanelLeftClose, PanelLeftOpen, Pencil, Trash2 } from "lucide-react";
 import { AssetTreeCreateDrawer, type TreeAssetCreateAction, type TreeAssetCreateContext, type TreeAssetCreateOptions, type TreeAssetLevel } from "./asset-tree-create-drawer";
 import { AssetTreeDeleteDialog, type TreeAssetDeleteAction } from "./asset-tree-delete-dialog";
@@ -48,17 +49,17 @@ export function AssetTreeWorkspace({ siteCode, systems, review, canCreateAssets 
     ...allItems.filter(item => item.children.length).map(item => assetKey(item.id)),
   ]), [systems, allItems]);
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
-  const [menu, setMenu] = useState<{ context: TreeAssetCreateContext; asset: AssetTreeItem | null; top: number; left: number } | null>(null);
+  const [menu, setMenu] = useState<{ context: TreeAssetCreateContext; asset: AssetTreeItem | null; top: number; left: number; triggerKey: string } | null>(null);
   const [drawer, setDrawer] = useState<TreeAssetCreateContext | null>(null);
   const [detail, setDetail] = useState<AssetTreeItem | null>(null);
   const [editing, setEditing] = useState<AssetTreeItem | null>(null);
   const [deleting, setDeleting] = useState<AssetTreeItem | null>(null);
   const closeDrawer = useCallback(() => setDrawer(null), []);
 
-  function openMenu(button: HTMLButtonElement, context: TreeAssetCreateContext, asset: AssetTreeItem | null = null) {
+  const openMenu = useCallback((button: HTMLButtonElement, context: TreeAssetCreateContext, asset: AssetTreeItem | null = null) => {
     const rect = button.getBoundingClientRect();
-    setMenu({ context, asset, top: Math.min(rect.bottom + 6, window.innerHeight - 178), left: Math.max(12, rect.right - 220) });
-  }
+    setMenu({ context, asset, top: Math.min(rect.bottom + 6, window.innerHeight - 178), left: Math.max(12, rect.right - 220), triggerKey: `${context.sourceKind}:${context.sourceId}` });
+  }, []);
 
   function toggle(key: string) {
     setExpanded(current => {
@@ -68,7 +69,7 @@ export function AssetTreeWorkspace({ siteCode, systems, review, canCreateAssets 
     });
   }
 
-  return <section aria-label="Tree Assets" className="overflow-hidden rounded-2xl border border-slate-200 bg-white text-slate-900 shadow-sm" style={{ colorScheme: "light" }}>
+  return <section aria-label="Tree Assets" className="overflow-hidden rounded-2xl border border-slate-200 bg-white text-slate-900 shadow-sm" data-asset-registry-list style={{ colorScheme: "light" }}>
     <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-5 py-4">
       <p className="text-xs font-semibold text-slate-500">Site {siteCode} · {allItems.length} รายการ</p>
       <div className="flex gap-2" role="toolbar" aria-label="ควบคุม Tree Assets">
@@ -108,9 +109,9 @@ export function AssetTreeWorkspace({ siteCode, systems, review, canCreateAssets 
               <span className="text-sm text-slate-500">—</span>
               <span className="text-sm text-slate-500">—</span>
               <span aria-hidden="true"/>
-              <AssetActionButton label={system.name} onClick={button => openMenu(button, { sourceKind: "system", sourceId: system.id, systemName: system.name, parentCode: null, parentName: null, allowedLevels: ["MAIN_ASSET", "SUB_ASSET", "PART"] })}/>
+              <AssetActionButton active={menu?.triggerKey === `system:${system.id}`} label={system.name} onClick={button => openMenu(button, { sourceKind: "system", sourceId: system.id, systemName: system.name, parentCode: null, parentName: null, allowedLevels: ["MAIN_ASSET", "SUB_ASSET", "PART"] })}/>
             </div>
-            {open ? <TreeRows branches={system.branches} depth={1} expanded={expanded} onToggle={toggle} onOpenMenu={openMenu} onOpenDetail={setDetail} ancestorContinues={[]}/> : null}
+            {open ? <TreeRows activeMenuKey={menu?.triggerKey ?? null} branches={system.branches} depth={1} expanded={expanded} onToggle={toggle} onOpenMenu={openMenu} onOpenDetail={setDetail} ancestorContinues={[]}/> : null}
           </section>;
         })}
 
@@ -123,13 +124,13 @@ export function AssetTreeWorkspace({ siteCode, systems, review, canCreateAssets 
             </div>
             <span className="text-sm text-slate-500">—</span><span className="text-sm text-slate-500">—</span><span className="text-sm text-slate-500">—</span><span className="text-sm text-slate-500">—</span><span className="text-sm text-slate-500">—</span><span aria-hidden="true"/><span aria-hidden="true"/>
           </div>
-          <TreeRows branches={review} depth={1} expanded={expanded} onToggle={toggle} onOpenMenu={openMenu} onOpenDetail={setDetail} ancestorContinues={[]}/>
+          <TreeRows activeMenuKey={menu?.triggerKey ?? null} branches={review} depth={1} expanded={expanded} onToggle={toggle} onOpenMenu={openMenu} onOpenDetail={setDetail} ancestorContinues={[]}/>
         </section> : null}
 
         {!systems.length && !review.length ? <div className="min-w-[1260px] px-6 py-16 text-center text-slate-500"><CircleDot className="mx-auto" size={30}/><h2 className="mt-3 font-black text-slate-900">ยังไม่พบ Asset</h2><p className="mt-1 text-sm">ลองเปลี่ยนตัวกรองเพื่อแสดงโครงสร้าง</p></div> : null}
       </div>
     </div>
-    {menu ? <>
+    {menu ? createPortal(<>
       <button aria-label="ปิดเมนูเพิ่มเติม" className="fixed inset-0 z-[50] cursor-default" onClick={() => setMenu(null)} type="button"/>
       <div className="fixed z-[60] w-52 rounded-xl border border-slate-200 bg-white p-1.5 shadow-xl" role="menu" style={{ left: menu.left, top: menu.top }}>
         {canCreateAssets && menu.context.allowedLevels.length && createAction && createOptions ? <button className="flex min-h-11 w-full items-center gap-2 rounded-lg px-3 text-left text-sm font-bold text-slate-700 hover:bg-emerald-50 hover:text-emerald-700" onClick={() => { setDrawer(menu.context); setMenu(null); }} role="menuitem" type="button"><CirclePlus size={17}/>เพิ่มรายการ</button> : null}
@@ -139,7 +140,7 @@ export function AssetTreeWorkspace({ siteCode, systems, review, canCreateAssets 
         </> : null}
         {!canCreateAssets ? <span className="block px-3 py-2 text-xs font-semibold text-slate-500">ไม่มีสิทธิ์จัดการ Asset</span> : null}
       </div>
-    </> : null}
+    </>, document.body) : null}
     {drawer && createAction && createOptions ? <AssetTreeCreateDrawer action={createAction} context={drawer} onClose={closeDrawer} options={createOptions}/> : null}
     {detail ? <AssetTreeDetailDialog asset={detail} onClose={() => setDetail(null)}/> : null}
     {editing && editAction && createOptions ? <AssetTreeEditDrawer action={editAction} asset={editing} canRecode={canRecodeAssets} onClose={() => setEditing(null)} options={createOptions}/> : null}
@@ -148,6 +149,7 @@ export function AssetTreeWorkspace({ siteCode, systems, review, canCreateAssets 
 }
 
 function TreeRows({
+  activeMenuKey,
   branches,
   depth,
   expanded,
@@ -156,6 +158,7 @@ function TreeRows({
   onOpenDetail,
   ancestorContinues,
 }: {
+  activeMenuKey: string | null;
   branches: AssetTreeItem[];
   depth: number;
   expanded: Set<string>;
@@ -201,9 +204,9 @@ function TreeRows({
         <MaintenanceStatus item={branch}/>
         <span className="truncate pr-3 text-sm font-semibold text-slate-700" title={branch.assetType || "ยังไม่ระบุ"}>{branch.assetType || "ยังไม่ระบุ"}</span>
         <AssetDetailButton asset={branch} onClick={() => onOpenDetail(branch)}/>
-        <AssetActionButton label={branch.code} onClick={button => onOpenMenu(button, { sourceKind: "asset", sourceId: branch.id, systemName: branch.systemName, parentCode: branch.code, parentName: branch.name, allowedLevels: allowedChildLevels(branch.assetLevel) }, branch)}/>
+        <AssetActionButton active={activeMenuKey === `asset:${branch.id}`} label={branch.code} onClick={button => onOpenMenu(button, { sourceKind: "asset", sourceId: branch.id, systemName: branch.systemName, parentCode: branch.code, parentName: branch.name, allowedLevels: allowedChildLevels(branch.assetLevel) }, branch)}/>
       </div>
-      {branch.children.length && open ? <TreeRows branches={branch.children} depth={depth + 1} expanded={expanded} onToggle={onToggle} onOpenMenu={onOpenMenu} onOpenDetail={onOpenDetail} ancestorContinues={[...ancestorContinues, !isLast]}/> : null}
+      {branch.children.length && open ? <TreeRows activeMenuKey={activeMenuKey} branches={branch.children} depth={depth + 1} expanded={expanded} onToggle={onToggle} onOpenMenu={onOpenMenu} onOpenDetail={onOpenDetail} ancestorContinues={[...ancestorContinues, !isLast]}/> : null}
     </div>;
   })}</>;
 }
@@ -212,8 +215,8 @@ function AssetDetailButton({ asset, onClick }: { asset: AssetTreeItem; onClick: 
   return <button aria-label={`ดูรายละเอียด ${asset.code}`} className="mx-auto grid h-11 w-11 place-items-center rounded-xl text-emerald-700 transition hover:bg-emerald-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-600" onClick={onClick} title="ดูรายละเอียด Asset" type="button"><BookOpen aria-hidden="true" size={18}/></button>;
 }
 
-function AssetActionButton({ label, onClick }: { label: string; onClick: (button: HTMLButtonElement) => void }) {
-  return <button aria-label={`เมนูเพิ่มเติม ${label}`} className="mx-auto grid h-11 w-11 place-items-center rounded-lg text-slate-500 transition hover:bg-slate-100 hover:text-slate-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-600" onClick={event => onClick(event.currentTarget)} title="เมนูเพิ่มเติม" type="button"><MoreVertical aria-hidden="true" size={18}/></button>;
+function AssetActionButton({ active = false, label, onClick }: { active?: boolean; label: string; onClick: (button: HTMLButtonElement) => void }) {
+  return <button aria-expanded={active} aria-haspopup="menu" aria-label={`เมนูเพิ่มเติม ${label}`} className={`mx-auto grid h-11 w-11 place-items-center rounded-lg transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-600 ${active ? "bg-slate-100 text-slate-900" : "text-slate-500 hover:bg-slate-100 hover:text-slate-900"}`} onClick={event => onClick(event.currentTarget)} title="เมนูเพิ่มเติม" type="button"><MoreVertical aria-hidden="true" size={18}/></button>;
 }
 
 function allowedChildLevels(level: TreeAssetLevel): TreeAssetLevel[] {

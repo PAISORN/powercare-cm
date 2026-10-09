@@ -16,6 +16,7 @@ Back up both parts every time:
 2. Supabase Storage
    - `powercare-profile-photos`
    - `powercare-signatures`
+   - `powercare-asset-files`
 
 Supabase database backups do not restore Storage objects. The database only keeps file metadata, so Storage files must be backed up separately.
 
@@ -46,7 +47,10 @@ SUPABASE_URL="https://fbpwiwbrxongamzdnmcx.supabase.co"
 SUPABASE_SERVICE_ROLE_KEY="..."
 SUPABASE_PROFILE_PHOTOS_BUCKET="powercare-profile-photos"
 SUPABASE_SIGNATURES_BUCKET="powercare-signatures"
+SUPABASE_ASSET_FILES_BUCKET="powercare-asset-files"
 ```
+
+หากเครื่องที่ทำ Backup ใช้เครือข่าย IPv4 และ `DIRECT_URL` ของ Supabase เชื่อมต่อไม่ได้ ให้ใช้ connection pooler ที่กำหนดใน `DATABASE_URL` โดยเรียก `scripts/backup-supabase.ps1 -DatabaseUrlVariable DATABASE_URL` แทน โดยต้องตรวจว่า URL นั้นชี้ Production project เดียวกันก่อนทุกครั้ง
 
 Then run:
 
@@ -67,6 +71,7 @@ The folder contains:
 - `database/table-counts.json`
 - `storage/powercare-profile-photos/...`
 - `storage/powercare-signatures/...`
+- `storage/powercare-asset-files/...`
 - `manifest.json`
 
 If `pg_dump` is not installed, the script still exports a schema snapshot and table counts, but this is not a full restore-ready database backup. Install PostgreSQL client tools before relying on it.
@@ -81,6 +86,7 @@ Preferred production restore:
 4. Re-create Storage buckets if needed:
    - `powercare-profile-photos`, private, max 1 MB, `image/png,image/jpeg,image/webp`
    - `powercare-signatures`, private, max 500 KB, `image/png,image/jpeg`
+   - `powercare-asset-files`, private, max 20 MB, Asset images and documents
 5. Upload Storage files from the backup folder.
 6. Set application environment variables for the restored project.
 7. Run the restore checklist in `scripts/restore-checklist.md`.

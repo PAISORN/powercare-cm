@@ -34,6 +34,11 @@ describe("Admin users plant scope", () => {
     expect(source).toContain("plantId: updated.plantId");
   });
 
+  it("invalidates the Admin Users route after every successful mutation", () => {
+    expect(source).toContain('import { revalidatePath } from "next/cache"');
+    expect(source.match(/revalidatePath\("\/admin\/users"\)/g)).toHaveLength(3);
+  });
+
   it("renders plant selectors and current plant information", () => {
 
     expect(source).toContain('select name="plantId"');

@@ -9,6 +9,7 @@ Use this checklist when testing a restore or recovering a production incident.
 - [ ] Confirm storage folders exist:
   - [ ] `storage/powercare-profile-photos`
   - [ ] `storage/powercare-signatures`
+  - [ ] `storage/powercare-asset-files`
 - [ ] Confirm target Supabase project is correct.
 - [ ] Confirm downtime window with users.
 - [ ] Save current target `.env.production` or deployment environment variables.
@@ -30,12 +31,15 @@ npm run db:generate:supabase
 
 - [ ] Re-create private bucket `powercare-profile-photos`.
 - [ ] Re-create private bucket `powercare-signatures`.
+- [ ] Re-create private bucket `powercare-asset-files`.
 - [ ] Confirm bucket file limits and MIME types:
   - profile photos: 1 MB, PNG/JPG/WebP
   - signatures: 500 KB, PNG/JPG
+  - Asset files: 20 MB, PNG/JPG/WebP/PDF/DOCX/XLSX
 - [ ] Upload objects back to the same paths from the backup folder.
 - [ ] Confirm random profile photo can be opened through `/profile-photo/[userId]`.
 - [ ] Confirm random signature can be opened through `/signatures/[userId]`.
+- [ ] Confirm random Asset image can be opened through `/asset-images/[assetId]`.
 
 ## Application Verification
 
@@ -48,6 +52,7 @@ npm run db:generate:supabase
 - [ ] Track Work works.
 - [ ] Upload profile photo.
 - [ ] Upload signature.
+- [ ] Upload Asset image.
 - [ ] Print completion document shows signatures.
 - [ ] Admin Users page can edit user data.
 - [ ] Audit Trail page loads.

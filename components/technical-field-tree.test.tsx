@@ -24,7 +24,9 @@ describe("TechnicalFieldTree", () => {
   it("starts collapsed and renders Asset-style tree controls", () => {
     render(<TechnicalFieldTree types={types}/>);
 
-    expect(screen.getByRole("region", { name: "Technical Field Templates tree" })).toBeInTheDocument();
+    const tree = screen.getByRole("region", { name: "Technical Field Templates tree" });
+    expect(tree).toBeInTheDocument();
+    expect(tree).not.toHaveClass("rounded-2xl", "border", "bg-white", "shadow-sm");
     expect(screen.getByRole("columnheader", { name: "Technical Field Templates" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "ขยาย Motor" })).toHaveAttribute("aria-expanded", "false");
     expect(screen.queryByRole("link", { name: "กำลังไฟฟ้า" })).not.toBeInTheDocument();
