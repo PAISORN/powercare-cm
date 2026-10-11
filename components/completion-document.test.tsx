@@ -10,6 +10,7 @@ const work: CompletionDocumentProps["work"] = {
   closedAt: "17/6/2569 06:57:59",
   requesterName: "ผู้แจ้งซ่อม",
   requesterDepartment: "Operations",
+  workTypeLabel: "งานซ่อม",
   categoryName: "งานไฟฟ้า",
   zoneName: "Water Treatment Plant",
   machineName: "ระบบแสงสว่าง",

@@ -6,7 +6,7 @@ import { canUseUserPermission, PermissionKey, type PermissionUserContext } from 
 import { recordAudit } from "../audit/audit-service";
 import { canEnterBacklogShutdown, canTransition } from "./cm-work-state-machine";
 import { reserveCmWorkNumber } from "./cm-work-sequence";
-import { RoleName, statusLabels, urgencyLabels, WorkStatus, type Actor, type Urgency } from "./cm-work-types";
+import { RoleName, statusLabels, urgencyLabels, WorkStatus, WorkType, workTypeLabels, type Actor, type Urgency } from "./cm-work-types";
 import { createCmNotifications } from "../notifications/notification-service";
 import { NotificationEventType } from "../notifications/notification-types";
 import { dispatchLineWorkEvent } from "../line/line-service";
@@ -117,6 +117,7 @@ export async function createRepairRequest(input: {
   submissionKey: string;
   requesterName: string;
   requesterDepartment: string;
+  workType?: WorkType;
   categoryId: string;
   zoneId: string;
   machineName: string;
@@ -135,7 +136,7 @@ export async function createRepairRequest(input: {
   };
 }) {
   const now = new Date();
-  const { plantCode, submissionKey, internalPmOrigin, ...workInput } = input;
+  const { plantCode, submissionKey, internalPmOrigin, workType = WorkType.REPAIR, ...workInput } = input;
   if (!submissionKey.trim()) throw new Error("Repair request submission key is required");
 
   let transactionResult: { created: boolean; work: CmWork };
@@ -197,6 +198,7 @@ export async function createRepairRequest(input: {
       const work = await tx.cmWork.create({
         data: {
           ...workInput,
+          workType,
           assetId: selectedAsset?.id ?? null,
           assetCodeSnapshot: selectedAsset?.code ?? null,
           assetNameSnapshot: selectedAssetName,
@@ -308,6 +310,7 @@ export async function claimWork(actor: Actor, cmWorkId: string) {
 export type EditableWorkRequestInput = {
   requesterName: string;
   requesterDepartment: string;
+  workType: WorkType;
   categoryId: string;
   zoneId: string;
   assetId?: string | null;
@@ -334,6 +337,7 @@ export async function updateWorkRequest(
     throw new Error("Repair request field is too long");
   }
   if (!(Object.keys(urgencyLabels) as string[]).includes(input.urgency)) throw new Error("Invalid urgency");
+  if (!(Object.keys(workTypeLabels) as string[]).includes(input.workType)) throw new Error("Invalid work type");
   if (!canUseUserPermission(actor, PermissionKey.EDIT_WORK_REQUEST)) throw new Error("You cannot edit this repair request");
 
   const work = await db.cmWork.findUniqueOrThrow({ where: { id: cmWorkId } });
@@ -353,6 +357,7 @@ export async function updateWorkRequest(
   const before = {
     requesterName: work.requesterName,
     requesterDepartment: work.requesterDepartment,
+    workType: work.workType,
     categoryId: work.categoryId,
     zoneId: work.zoneId,
     assetId: work.assetId,
@@ -363,6 +368,7 @@ export async function updateWorkRequest(
   };
   const data = {
     ...normalized,
+    workType: input.workType,
     categoryId: category.id,
     zoneId: zone.id,
     assetId: asset?.id ?? null,

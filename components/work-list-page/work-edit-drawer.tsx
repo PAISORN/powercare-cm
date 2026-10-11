@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { updateWorkFromListAction } from "../../app/work/actions";
-import { urgencyLabels } from "../../modules/cm-work/cm-work-types";
+import { urgencyLabels, workTypeLabels } from "../../modules/cm-work/cm-work-types";
 import type { WorkListPageData } from "../../modules/cm-work/work-list-page-data";
 
 const labelClass = "grid gap-1.5 text-sm font-bold text-[var(--ink)]";
@@ -51,6 +51,7 @@ export function WorkEditDrawer({
             <Field label="หน่วยงาน / แผนก"><input className={inputClass} defaultValue={editWork.requesterDepartment} maxLength={120} name="requesterDepartment" required /></Field>
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
+            <Field label="ประเภทงานที่แจ้ง"><select className={inputClass} defaultValue={editWork.workType} name="workType" required>{Object.entries(workTypeLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></Field>
             <Field label="Category"><select className={inputClass} defaultValue={editWork.categoryId} name="categoryId" required>{editCategories.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></Field>
             <Field label="Zone"><select className={inputClass} defaultValue={editWork.zoneId} name="zoneId" required>{editZones.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></Field>
           </div>

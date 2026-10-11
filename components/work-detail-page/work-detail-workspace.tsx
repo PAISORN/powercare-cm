@@ -35,7 +35,9 @@ import {
   WorkStatus,
   statusLabels,
   urgencyLabels,
+  workTypeLabels,
   type Urgency,
+  type WorkType,
 } from "../../modules/cm-work/cm-work-types";
 import { StatusBadge } from "../status-badge";
 import { IssueRequestForm } from "../store/issue-request-form";
@@ -96,7 +98,7 @@ export function WorkDetailWorkspace({ data }: { data: WorkDetailPageData }) {
             <div className="min-w-0">
               <h1 className="truncate text-3xl font-extrabold tracking-tight text-[var(--ink)]">{work.number}</h1>
               <p className="mt-1 text-sm font-semibold text-[var(--muted)]">
-                {work.machineName} <span className="mx-2 text-[var(--muted)]/60">•</span> {work.category.name} <span className="mx-2 text-[var(--muted)]/60">•</span> {work.zone.name}
+                {work.machineName} <span className="mx-2 text-[var(--muted)]/60">•</span> {workTypeLabels[work.workType as WorkType]} <span className="mx-2 text-[var(--muted)]/60">•</span> {work.category.name} <span className="mx-2 text-[var(--muted)]/60">•</span> {work.zone.name}
               </p>
             </div>
           </div>
@@ -106,6 +108,7 @@ export function WorkDetailWorkspace({ data }: { data: WorkDetailPageData }) {
         <section className="work-detail-grid work-meta-strip mt-5 grid overflow-hidden rounded-2xl border border-[var(--line)] bg-[var(--soft)]/45 text-sm sm:grid-cols-2 xl:grid-cols-3">
           <WorkMetaItem icon={UserRound} label="ผู้แจ้ง" value={work.requesterName} />
           <WorkMetaItem icon={Building2} label="หน่วยงาน" value={work.requesterDepartment} />
+          <WorkMetaItem icon={ClipboardList} label="ประเภทงานที่แจ้ง" value={workTypeLabels[work.workType as WorkType]} />
           <WorkMetaItem icon={Zap} label="ความเร่งด่วน" value={urgencyLabels[work.urgency as Urgency]} />
           <WorkMetaItem icon={UserRound} label="ผู้รับงาน" value={work.claimant?.fullName ?? "-"} />
           <WorkMetaItem icon={ClipboardList} label="หัวข้อ" value={work.problemTitle} />

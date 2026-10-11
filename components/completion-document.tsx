@@ -16,6 +16,7 @@ export type CompletionDocumentProps = {
     closedAt: string;
     requesterName: string;
     requesterDepartment: string;
+    workTypeLabel: string;
     categoryName: string;
     zoneName: string;
     machineName: string;
@@ -119,6 +120,7 @@ export function CompletionDocument({ organization, work }: CompletionDocumentPro
         <Section number={2} title="รายละเอียดงานซ่อม">
           <Field label="ผู้แจ้ง" value={work.requesterName} />
           <Field label="หน่วยงาน" value={work.requesterDepartment} />
+          <Field label="ประเภทงานที่แจ้ง" value={work.workTypeLabel} />
           <Field label="Category" value={work.categoryName} />
           <Field label="Zone" value={work.zoneName} />
           <Field label="ชื่อเครื่องจักร" value={work.machineName} />

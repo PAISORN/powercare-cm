@@ -7,6 +7,7 @@ import { useFormStatus } from "react-dom";
 type RequestReview = {
   requesterName: string;
   requesterDepartment: string;
+  workType: string;
   category: string;
   zone: string;
   machineName: string;
@@ -28,6 +29,7 @@ export function RequestSubmitButton() {
     setReview({
       requesterName: formValue(formData, "requesterName"),
       requesterDepartment: formValue(formData, "requesterDepartment"),
+      workType: selectedOptionText(form, "workType"),
       category: selectedOptionText(form, "categoryId"),
       zone: selectedOptionText(form, "zoneId"),
       machineName: formValue(formData, "machineName"),
@@ -113,6 +115,7 @@ export function RequestSubmitButton() {
             <div className="grid gap-3 p-5 sm:grid-cols-2 sm:p-6">
               <ReviewItem label="ผู้แจ้ง" value={review.requesterName} />
               <ReviewItem label="หน่วยงาน / แผนก" value={review.requesterDepartment} />
+              <ReviewItem label="ประเภทงานที่แจ้ง" value={review.workType} />
               <ReviewItem label="Category" value={review.category} />
               <ReviewItem label="Zone" value={review.zone} />
               <ReviewItem label="ชื่อเครื่องจักร" value={review.machineName} />

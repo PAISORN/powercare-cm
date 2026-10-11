@@ -1,9 +1,10 @@
 import { z } from "zod";
-import { Urgency } from "../modules/cm-work/cm-work-types";
+import { Urgency, WorkType } from "../modules/cm-work/cm-work-types";
 
 export const repairRequestSchema = z.object({
   requesterName: z.string().trim().min(1, "กรุณาระบุชื่อผู้แจ้ง"),
   requesterDepartment: z.string().trim().min(1, "กรุณาระบุหน่วยงาน"),
+  workType: z.enum([WorkType.REPAIR, WorkType.CREATE, WorkType.IMPROVEMENT]),
   categoryId: z.string().min(1, "กรุณาเลือกหมวดหมู่"),
   zoneId: z.string().min(1, "กรุณาเลือก Zone"),
   machineName: z.string().trim().min(1, "กรุณาระบุชื่อเครื่องจักร"),

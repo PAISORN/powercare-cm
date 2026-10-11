@@ -4,17 +4,34 @@ test("requester submits repair request and sees tracking number", async ({ page 
   await page.goto("/request");
   await page.getByPlaceholder("ชื่อผู้แจ้ง").fill("Requester A");
   await page.getByPlaceholder("หน่วยงาน/แผนก").fill("Operations");
-  await page.locator("select[name='categoryId']").selectOption({ index: 1 });
+  const workType = page.locator("select[name='workType']");
+  const category = page.locator("select[name='categoryId']");
+  await expect(workType).toHaveValue("REPAIR");
+  await expect(page.locator("select[name='workType'], select[name='categoryId']")).toHaveCount(2);
+  expect(
+    await page.locator("select[name='workType'], select[name='categoryId']").evaluateAll((elements) =>
+      elements.map((element) => element.getAttribute("name")),
+    ),
+  ).toEqual(["workType", "categoryId"]);
+  await workType.selectOption("IMPROVEMENT");
+  await category.selectOption({ index: 1 });
   await page.locator("select[name='zoneId']").selectOption({ index: 1 });
   await page.locator('input[name="machineName"]').fill("Feed Pump");
   await page.getByPlaceholder("หัวข้อปัญหา").fill("Pump vibration");
   await page.getByPlaceholder("รายละเอียดปัญหา").fill("Vibration detected during operation");
   await page.locator("select[name='urgency']").selectOption("URGENT");
   await page.getByRole("button", { name: "ตรวจสอบก่อนส่งแจ้งซ่อม" }).click();
+  const reviewDialog = page.getByRole("dialog");
+  await expect(reviewDialog.getByText("ประเภทงานที่แจ้ง", { exact: true })).toBeVisible();
+  await expect(reviewDialog.getByText("งานปรับปรุง", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "ยืนยันส่งแจ้งซ่อม" }).click();
   await expect(page).toHaveURL(/\/request\/success\/CM-[A-Z]+-\d{4}-\d{2}-\d{4}/);
   await expect(page.getByText(/CM-[A-Z]+-\d{4}-\d{2}-\d{4}/)).toBeVisible();
   await expect(page.getByLabel("request-success-icon")).toBeVisible();
+  const requestNumber = page.url().match(/\/request\/success\/(CM-[A-Z]+-\d{4}-\d{2}-\d{4})/)?.[1];
+  expect(requestNumber).toBeTruthy();
+  await page.goto(`/p/rtb/tracking?number=${requestNumber}`);
+  await expect(page.getByText(/ประเภทงาน:\s*งานปรับปรุง/)).toBeVisible();
 });
 
 test("request success page shows failure state for an unknown CM number", async ({ page }) => {

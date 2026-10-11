@@ -8,6 +8,7 @@ import { canRenderCompletionDocument } from "../../../../modules/documents/compl
 import { readOrganizationProfile } from "../../../../modules/organization/organization-service";
 import { readPlantProfile } from "../../../../modules/organization/plant-profile-service";
 import { buildUserOperationalScope, type OperationalScope } from "../../../../modules/organization/user-plant-scope";
+import { workTypeLabels, type WorkType } from "../../../../modules/cm-work/cm-work-types";
 
 export default async function PrintCompletionPage({ params }: { params: Promise<{ id: string }> }) {
   const user = await requireUser();
@@ -75,6 +76,7 @@ export default async function PrintCompletionPage({ params }: { params: Promise<
           closedAt: work.closedAt ? formatThaiDateTime(work.closedAt) : "-",
           requesterName: work.requesterName,
           requesterDepartment: work.requesterDepartment,
+          workTypeLabel: workTypeLabels[work.workType as WorkType],
           categoryName: work.category.name,
           zoneName: work.zone.name,
           machineName: work.machineName,

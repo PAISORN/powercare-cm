@@ -31,6 +31,14 @@ export const WorkStatus = {
 
 export type WorkStatus = (typeof WorkStatus)[keyof typeof WorkStatus];
 
+export const WorkType = {
+  REPAIR: "REPAIR",
+  CREATE: "CREATE",
+  IMPROVEMENT: "IMPROVEMENT",
+} as const;
+
+export type WorkType = (typeof WorkType)[keyof typeof WorkType];
+
 export const Urgency = {
   NORMAL: "NORMAL",
   URGENT: "URGENT",
@@ -65,6 +73,12 @@ export const urgencyLabels: Record<Urgency, string> = {
   NORMAL: "ปกติ",
   URGENT: "เร่งด่วน",
   CRITICAL: "วิกฤต",
+};
+
+export const workTypeLabels: Record<WorkType, string> = {
+  REPAIR: "งานซ่อม",
+  CREATE: "งานสร้าง",
+  IMPROVEMENT: "งานปรับปรุง",
 };
 
 export const statusLabels: Record<WorkStatus, string> = {

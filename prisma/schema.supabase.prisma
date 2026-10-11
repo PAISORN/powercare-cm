@@ -319,6 +319,7 @@ model CmWork {
   submissionKey       String?       @unique
   requesterName       String
   requesterDepartment String
+  workType            String        @default("REPAIR")
   organizationId      String?
   organization        Organization? @relation(fields: [organizationId], references: [id])
   plantId             String?

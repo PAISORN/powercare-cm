@@ -16,6 +16,7 @@ import { formatThaiDateTime } from "../../lib/date-time/bangkok-time";
 import { PreserveListPositionLink } from "../preserve-list-position";
 import { StatusBadge } from "../status-badge";
 import { UserAvatar } from "../user-avatar";
+import { workTypeLabels, type WorkType } from "../../modules/cm-work/cm-work-types";
 
 type WorkResultsProps = Pick<
   WorkListPageData,
@@ -75,7 +76,7 @@ export function WorkResults(props: WorkResultsProps) {
                   ) : null}
                   <strong className="block text-lg">{work.number}</strong>
                   <span className="mt-1 block text-sm font-semibold text-[var(--ink)]">
-                    Category: {work.category.name} · Zone: {work.zone.name}
+                    ประเภทงาน: {workTypeLabels[work.workType as WorkType]} · Category: {work.category.name} · Zone: {work.zone.name}
                   </span>
                   <span className="mt-2 flex items-center gap-2 text-sm text-[var(--muted)]">
                     {work.claimant ? (

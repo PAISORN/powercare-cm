@@ -176,6 +176,14 @@ describe("Prisma schema parity", () => {
     }
   });
 
+  it("adds the CM work type with a backward-compatible default in both providers", () => {
+    const local = readFileSync("prisma/migrations/20261012000100_add_cm_work_type/migration.sql", "utf8");
+    const production = readFileSync("prisma/supabase-migrations/20261012000100_add_cm_work_type.sql", "utf8");
+    for (const sql of [local, production]) {
+      expect(sql).toContain('"workType" TEXT NOT NULL DEFAULT \'REPAIR\'');
+    }
+  });
+
   it("adds Monthly Pattern mode, versioning, and relational baseline tables in both providers", () => {
     const local = readFileSync("prisma/migrations/20261001000100_annual_pm_monthly_pattern/migration.sql", "utf8");
     const production = readFileSync("prisma/supabase-migrations/20261001000100_annual_pm_monthly_pattern.sql", "utf8");

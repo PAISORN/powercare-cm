@@ -17,7 +17,7 @@ describe("All Work repair-request editing", () => {
     expect(pageSource).toMatch(/canUseUserPermission\(\s*user,\s*PermissionKey\.EDIT_WORK_REQUEST/);
     expect(pageSource).toContain('id="edit-work-drawer"');
     expect(pageSource).toContain("fixed inset-y-0 right-0");
-    for (const name of ["requesterName", "requesterDepartment", "categoryId", "zoneId", "assetId", "machineName", "problemTitle", "problemDetail", "urgency"]) {
+    for (const name of ["requesterName", "requesterDepartment", "workType", "categoryId", "zoneId", "assetId", "machineName", "problemTitle", "problemDetail", "urgency"]) {
       expect(pageSource).toContain(`name="${name}"`);
     }
   });

@@ -8,7 +8,7 @@ import { getCurrentUser } from "../../lib/session";
 import { db } from "../../lib/db";
 import { repairRequestSchema } from "../../lib/validation";
 import { createRepairRequest } from "../../modules/cm-work/cm-work-service";
-import { RoleName } from "../../modules/cm-work/cm-work-types";
+import { RoleName, workTypeLabels } from "../../modules/cm-work/cm-work-types";
 import { readRequestPlantScope } from "../../modules/organization/plant-request-scope";
 
 async function submitRepairRequest(formData: FormData) {
@@ -18,6 +18,7 @@ async function submitRepairRequest(formData: FormData) {
   const parsed = repairRequestSchema.parse({
     requesterName: formData.get("requesterName"),
     requesterDepartment: formData.get("requesterDepartment"),
+    workType: formData.get("workType"),
     categoryId: formData.get("categoryId"),
     zoneId: formData.get("zoneId"),
     machineName: formData.get("machineName") || (formData.get("assetId") ? "Selected asset" : ""),
@@ -96,6 +97,11 @@ export async function RequestPageContent({ error, plantCode }: { error?: string 
         </h1>
         <input name="requesterName" required placeholder="ชื่อผู้แจ้ง" className="rounded-2xl border p-3 text-black" />
         <input name="requesterDepartment" required placeholder="หน่วยงาน/แผนก" className="rounded-2xl border p-3 text-black" />
+        <label className="grid gap-1 text-sm font-bold text-[var(--ink)]">ประเภทงานที่แจ้ง
+          <select name="workType" required className="min-h-12 cursor-pointer rounded-2xl border bg-white p-3 text-black">
+            {Object.entries(workTypeLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+          </select>
+        </label>
         <label className="grid gap-1 text-sm font-bold text-[var(--ink)]">Category
           <select name="categoryId" required className="min-h-12 cursor-pointer rounded-2xl border bg-white p-3 text-black disabled:cursor-not-allowed disabled:opacity-60" disabled={!categories.length}>
             <option value="">{categories.length?"เลือก Category":"ยังไม่มี Category สำหรับ Site นี้"}</option>

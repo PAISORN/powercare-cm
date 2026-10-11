@@ -7,7 +7,7 @@ import {
   claimWork,
   updateWorkRequest,
 } from "../../modules/cm-work/cm-work-service";
-import type { Actor, Urgency } from "../../modules/cm-work/cm-work-types";
+import type { Actor, Urgency, WorkType } from "../../modules/cm-work/cm-work-types";
 import { buildWorkScopeWhere } from "../../modules/cm-work/work-list-query";
 import {
   markStatusGroupRead,
@@ -66,6 +66,7 @@ export async function updateWorkFromListAction(formData: FormData) {
     {
       requesterName: String(formData.get("requesterName") ?? ""),
       requesterDepartment: String(formData.get("requesterDepartment") ?? ""),
+      workType: String(formData.get("workType") ?? "") as WorkType,
       categoryId: String(formData.get("categoryId") ?? ""),
       zoneId: String(formData.get("zoneId") ?? ""),
       assetId: String(formData.get("assetId") ?? "") || null,

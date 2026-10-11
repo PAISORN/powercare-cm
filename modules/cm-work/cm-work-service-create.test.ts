@@ -40,6 +40,13 @@ describe("trusted PM repair request creation", () => {
     }));
     expect(tx.category.findFirst).toHaveBeenCalledWith(expect.objectContaining({ where: { id: "cat", organizationId: "org-a", plantId: "site-a", active: true } }));
     expect(tx.zone.findFirst).toHaveBeenCalledWith(expect.objectContaining({ where: { id: "zone", plantId: "site-a", active: true } }));
+    expect(tx.cmWork.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ workType: "REPAIR" }) }));
+  });
+
+  it("persists an explicitly selected work type", async () => {
+    const { createRepairRequest } = await import("./cm-work-service");
+    await createRepairRequest({ ...input, workType: "IMPROVEMENT" });
+    expect(tx.cmWork.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ workType: "IMPROVEMENT" }) }));
   });
 
   it("retries P2034 with all validation reads and refuses when PM changed to Normal", async () => {

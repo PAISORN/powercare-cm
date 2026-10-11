@@ -6,7 +6,7 @@ import { StatusBadge } from "../../components/status-badge";
 import { db } from "../../lib/db";
 import { formatThaiDateTime as formatThaiDate } from "../../lib/date-time/bangkok-time";
 import { getCurrentUser } from "../../lib/session";
-import { RoleName, WorkStatus, statusLabels, urgencyLabels, type Urgency } from "../../modules/cm-work/cm-work-types";
+import { RoleName, WorkStatus, statusLabels, urgencyLabels, workTypeLabels, type Urgency, type WorkType } from "../../modules/cm-work/cm-work-types";
 import { readPlantProfile } from "../../modules/organization/plant-profile-service";
 import { readRequestPlantScope } from "../../modules/organization/plant-request-scope";
 
@@ -112,6 +112,9 @@ export async function TrackingPageContent({
               </div>
               <div className="grid gap-1 text-sm xl:text-right">
                 <p>
+                  <strong>ประเภทงาน:</strong> {workTypeLabels[work.workType as WorkType]}
+                </p>
+                <p>
                   <strong>Category:</strong> {work.category.name}
                 </p>
                 <p>
@@ -134,6 +137,7 @@ export async function TrackingPageContent({
                 <dl className="mt-4 grid gap-3 text-sm">
                   <InfoRow label="ผู้แจ้ง" value={`${work.requesterName} · ${work.requesterDepartment}`} />
                   <InfoRow label="วันที่แจ้ง" value={formatThaiDate(work.createdAt)} />
+                  <InfoRow label="ประเภทงานที่แจ้ง" value={workTypeLabels[work.workType as WorkType]} />
                   <InfoRow label="ชื่อเครื่องจักร" value={work.machineName} />
                   <InfoRow label="รายละเอียด" value={work.problemDetail} />
                 </dl>
