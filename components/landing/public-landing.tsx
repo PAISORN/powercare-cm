@@ -1,7 +1,6 @@
 import {
   ArrowRight,
   BarChart3,
-  Bell,
   Boxes,
   Building2,
   CalendarCheck2,
@@ -11,6 +10,7 @@ import {
   Database,
   Factory,
   Gauge,
+  Monitor,
   PackageCheck,
   Play,
   ShieldCheck,
@@ -44,10 +44,7 @@ const modules = [
     icon: Wrench,
     tone: "blue",
     available: true,
-    media: [
-      { src: "/landing/modules/cm-laptop.png", alt: "PowerCare CM dashboard on laptop", width: 2000, height: 1414 },
-      { src: "/landing/modules/cm-mobile.png", alt: "PowerCare CM dashboard on mobile", width: 1414, height: 2000 },
-    ],
+    screenshot: { src: "/landing/modules/cm-current.webp", caption: "CM Dashboard", alt: "หน้าจอ CM Dashboard ปัจจุบัน แสดงสถานะงานซ่อมและแนวโน้มรายเดือน" },
   },
   {
     id: "store",
@@ -58,10 +55,7 @@ const modules = [
     icon: Boxes,
     tone: "teal",
     available: true,
-    media: [
-      { src: "/landing/modules/store-tablet.png", alt: "PowerCare spare parts stock on tablet", width: 2000, height: 1414 },
-      { src: "/landing/modules/store-mobile.png", alt: "PowerCare maintenance tracking on mobile", width: 1414, height: 2000 },
-    ],
+    screenshot: { src: "/landing/modules/store-current.webp", caption: "Stock Inventory", alt: "หน้าจอ Stock ปัจจุบัน แสดงยอดคงเหลือและสถานะอะไหล่" },
   },
   {
     id: "pm",
@@ -72,9 +66,7 @@ const modules = [
     icon: CalendarCheck2,
     tone: "amber",
     available: false,
-    media: [
-      { src: "/landing/modules/pm-desktop.png", alt: "PowerCare maintenance dashboard on desktop", width: 2000, height: 1414 },
-    ],
+    screenshot: { src: "/landing/modules/pm-current.webp", caption: "PM Calendar", alt: "หน้าจอ PM Calendar ปัจจุบัน แสดงปฏิทินแผนบำรุงรักษา" },
   },
   {
     id: "asset",
@@ -85,20 +77,11 @@ const modules = [
     icon: Factory,
     tone: "green",
     available: false,
-    media: [
-      { src: "/landing/modules/asset-desktop.png", alt: "PowerCare asset report on desktop", width: 2000, height: 1414 },
-    ],
+    screenshot: { src: "/landing/modules/asset-current.webp", caption: "Assets Tree", alt: "หน้าจอ Assets Tree ปัจจุบัน แสดงโครงสร้างเครื่องจักรและอุปกรณ์" },
   },
 ] as const;
 
 const overviewModules = [modules[2], modules[0], modules[1], modules[3]];
-
-const orbitComets = [
-  { id: "blue", color: "#2563eb", duration: 38, phase: 7, radiusX: 302, radiusY: 174, rotation: -12 },
-  { id: "green", color: "#16a34a", duration: 34, phase: 17, radiusX: 258, radiusY: 148, rotation: -12 },
-  { id: "yellow", color: "#f59e0b", duration: 29, phase: 24, radiusX: 214, radiusY: 122, rotation: -12 },
-  { id: "red", color: "#ef4444", duration: 24, phase: 11, radiusX: 170, radiusY: 96, rotation: -12 },
-] as const;
 
 const faqs = [
   ["PowerCare รองรับหลายโรงงานหรือไม่", "รองรับโครงสร้าง Owner Admin → Organization → Site → User โดยแยกข้อมูลและสิทธิ์ตามขอบเขตที่ผู้ใช้รับผิดชอบ"],
@@ -119,6 +102,7 @@ export function PublicLanding({ announcements, feedbackAction, feedbackStatus }:
       <Benefits />
       <Faq />
       <section className="landing-band" id="announcements">
+        <LandingSectionPhoto scene="campus" />
         <div className="landing-container">
           <SectionHeading eyebrow="Platform updates" title="ประกาศจาก PowerCare" description="ข่าวสารการให้บริการและการอัปเดตจากผู้ดูแลระบบ PowerCare" />
           <PublicAnnouncements announcements={announcements} />
@@ -140,30 +124,11 @@ export function PublicLanding({ announcements, feedbackAction, feedbackStatus }:
 function Hero() {
   return (
     <section className="landing-hero" data-reveal-ignore id="top">
-      <div className="landing-orbit" aria-hidden="true">
-        <OrbitCometSystem />
-        {modules.map((module, index) => {
-          const Icon = module.icon;
-          return (
-            <span className={`orbit-node orbit-node-${index + 1} orbit-${module.tone}`} key={module.id}>
-              <Icon size={22} />
-              <b>{module.shortTitle}</b>
-            </span>
-          );
-        })}
-        <span className="orbit-node orbit-node-5 orbit-blue"><BarChart3 size={22} /><b>วิเคราะห์</b></span>
-        <span className="orbit-node orbit-node-6 orbit-teal"><Users size={22} /><b>ทีมช่าง</b></span>
-        <span className="orbit-node orbit-node-7 orbit-blue"><Bell size={22} /><b>แจ้งเตือน</b></span>
-        <span className="orbit-core">
-          <img alt="" aria-hidden="true" src="/brand/powercare-mark.png" />
-        </span>
+      <div className="landing-hero-background" aria-hidden="true">
+        <Image alt="" src="/landing/powercare-maintenance-hero.webp" fill sizes="(max-width: 1023px) 100vw, 70vw" priority />
       </div>
-      <div className="landing-container landing-hero-inner relative z-10 flex items-center">
-        <div className="landing-hero-content max-w-3xl">
-          <div className="landing-cmms-label">
-            <b>CMMS</b>
-            <span>Computerized Maintenance Management System</span>
-          </div>
+      <div className="landing-container landing-hero-inner relative z-10">
+        <div className="landing-hero-content">
           <h1><span>Power</span><strong>Care</strong></h1>
           <p className="landing-hero-lead">บริหารงานซ่อมบำรุง<br />ง่าย ครบ จบในที่เดียว</p>
           <p className="landing-hero-copy">เชื่อมงานซ่อมบำรุง อะไหล่ บุคลากร และข้อมูลทุก Site ให้การทำงานอยู่บนระบบเดียวกัน ใช้งานง่าย ปลอดภัย และเชื่อถือได้</p>
@@ -177,67 +142,34 @@ function Hero() {
             <span><Building2 size={18} /><b>รองรับหลายองค์กร</b><small>และหลาย Site</small></span>
           </div>
         </div>
+        <div className="landing-hero-product" role="img" aria-label="ตัวอย่างหน้าจอ PowerCare CM บน Laptop และ Mobile">
+          <Image alt="" className="landing-hero-laptop" src="/landing/modules/cm-laptop.png" width={2000} height={1414} sizes="(max-width: 1023px) 90vw, 52vw" priority />
+          <Image alt="" className="landing-hero-phone" src="/landing/modules/cm-mobile.png" width={1414} height={2000} sizes="(max-width: 1023px) 22vw, 13vw" loading="eager" />
+        </div>
       </div>
       <a className="landing-next-hint" href="#modules" aria-label="ดูโมดูล"><span /></a>
     </section>
   );
 }
 
-function OrbitCometSystem() {
-  const trailSegments = Array.from({ length: 22 }, (_, index) => index + 1);
+const landingSectionPhotos = {
+  maintenance: "/landing/powercare-maintenance-hero.webp",
+  campus: "/landing/powercare-industrial-campus.webp",
+  store: "/landing/powercare-spare-parts-store.webp",
+} as const;
 
+function LandingSectionPhoto({ scene, reverse = false }: { scene: keyof typeof landingSectionPhotos; reverse?: boolean }) {
   return (
-    <svg className="orbit-comet-system" viewBox="0 0 720 720" preserveAspectRatio="xMidYMid meet">
-      {orbitComets.map((comet) => {
-        const pathId = `landing-orbit-${comet.id}`;
-        const path = `M ${360 - comet.radiusX} 360 A ${comet.radiusX} ${comet.radiusY} 0 1 0 ${360 + comet.radiusX} 360 A ${comet.radiusX} ${comet.radiusY} 0 1 0 ${360 - comet.radiusX} 360`;
-
-        return (
-          <g
-            className={`orbit-comet-group orbit-comet-${comet.id}`}
-            key={comet.id}
-            style={{ color: comet.color }}
-            transform={`rotate(${comet.rotation} 360 360)`}
-          >
-            <path className="orbit-svg-track" d={path} id={pathId} />
-            {[...trailSegments].reverse().map((segment) => {
-              const progress = segment / trailSegments.length;
-              const radius = 6.2 - progress * 4.8;
-              const opacity = 0.72 - progress * 0.67;
-              const delay = comet.phase - segment * 0.105;
-
-              return (
-                <circle
-                  className="orbit-comet-particle orbit-comet-trail"
-                  fill="currentColor"
-                  key={segment}
-                  opacity={opacity}
-                  r={radius}
-                >
-                  <animateMotion begin={`-${delay}s`} calcMode="linear" dur={`${comet.duration}s`} repeatCount="indefinite">
-                    <mpath href={`#${pathId}`} />
-                  </animateMotion>
-                </circle>
-              );
-            })}
-            <g className="orbit-comet-particle orbit-comet-head">
-              <animateMotion begin={`-${comet.phase}s`} calcMode="linear" dur={`${comet.duration}s`} repeatCount="indefinite">
-                <mpath href={`#${pathId}`} />
-              </animateMotion>
-              <circle fill="currentColor" r="8.5" />
-              <circle fill="white" opacity="0.94" r="2.6" />
-            </g>
-            <circle className="orbit-static-comet" cx={360 + comet.radiusX} cy="360" fill="currentColor" r="7" />
-          </g>
-        );
-      })}
-    </svg>
+    <div className={`landing-section-photo${reverse ? " landing-section-photo-reverse" : ""}`} aria-hidden="true" data-reveal-ignore>
+      <Image alt="" src={landingSectionPhotos[scene]} fill sizes="100vw" loading="lazy" />
+    </div>
   );
 }
 
 function ModuleOverview() {
   return (
     <section className="landing-band" id="modules">
+      <LandingSectionPhoto scene="campus" />
       <div className="landing-container">
         <SectionHeading eyebrow="One connected platform" title="ระบบ CMMS ที่ครอบคลุมทุกงานซ่อมบำรุง" description="เชื่อมข้อมูล บุคลากร อะไหล่ และทุก Site บนแพลตฟอร์มเดียว พร้อมขยายสู่ PM และ Asset อย่างเป็นระบบ" centered />
         <div className="landing-module-showcase">
@@ -248,27 +180,23 @@ function ModuleOverview() {
                 <div className="landing-module-copy">
                   <div className="landing-module-heading">
                     <span className="landing-module-icon"><Icon size={21} /></span>
+                    <div className="landing-module-titles">
+                      <p className="landing-module-short-title">{module.shortTitle}</p>
+                      <h3>{module.title}</h3>
+                    </div>
                     <span className={module.available ? "landing-available" : "landing-soon"}>{module.eyebrow}</span>
                   </div>
-                  <p className="landing-module-short-title">{module.shortTitle}</p>
-                  <h3>{module.title}</h3>
                   <p className="landing-module-description">{module.description}</p>
-                  <a className="landing-module-link" href={`#${module.id}-details`} aria-label={`ดูรายละเอียด ${module.title}`}>
-                    <ArrowRight size={15} />
+                </div>
+                <div className="landing-module-screen">
+                  <div className="landing-module-screen-toolbar" aria-hidden="true"><span /><span /><span /><b>{module.screenshot.caption}</b></div>
+                  <a className="landing-module-screen-link" href={module.screenshot.src} target="_blank" rel="noopener noreferrer" aria-label={`ดูภาพหน้าจอ ${module.shortTitle} ขนาดเต็ม (เปิดแท็บใหม่)`}>
+                    <Image alt={module.screenshot.alt} src={module.screenshot.src} width={1073} height={730} sizes="(max-width: 1023px) 90vw, 44vw" className="landing-module-screenshot" />
                   </a>
                 </div>
-                <div className={`landing-module-media landing-module-media-${module.id}`} aria-hidden="true">
-                  {module.media.map((media, index) => (
-                    <Image
-                      alt={media.alt}
-                      className={`landing-module-device landing-module-device-${index + 1}`}
-                      height={media.height}
-                      key={media.src}
-                      sizes="(max-width: 767px) 62vw, (max-width: 1279px) 34vw, 18vw"
-                      src={media.src}
-                      width={media.width}
-                    />
-                  ))}
+                <div className="landing-module-footer">
+                  <span><Monitor size={16} aria-hidden="true" />ภาพจากระบบจริง</span>
+                  <a className="landing-module-link" href={`#${module.id}-details`} aria-label={`ดูรายละเอียด ${module.title}`}>ดูรายละเอียด<ArrowRight size={17} aria-hidden="true" /></a>
                 </div>
               </article>
             );
@@ -301,6 +229,7 @@ function ModuleDetails() {
 function ProductBand({ id, module, title, description, icon, reverse = false, children }: { id: string; module: string; title: string; description: string; icon: ReactNode; reverse?: boolean; children: ReactNode }) {
   return (
     <section className="landing-product-band" id={id}>
+      <LandingSectionPhoto scene={id === "store-details" ? "store" : id === "asset-details" ? "campus" : "maintenance"} reverse={reverse} />
       <div className={`landing-container grid items-center gap-12 lg:grid-cols-2 ${reverse ? "lg:[&>*:first-child]:order-2" : ""}`}>
         <div>
           <p className="landing-kicker">{icon} {module}</p>
@@ -381,6 +310,7 @@ function WhyAndHow() {
   const steps = [["01", "รับข้อมูลจากหน้างาน"], ["02", "ส่งต่อผู้รับผิดชอบ"], ["03", "ดำเนินงานและอนุมัติ"], ["04", "สรุปผลและตรวจสอบย้อนหลัง"]];
   return (
     <section className="landing-band landing-band-contrast">
+      <LandingSectionPhoto scene="maintenance" />
       <div className="landing-container grid gap-14 lg:grid-cols-[0.85fr_1.15fr]">
         <div>
           <SectionHeading eyebrow="Why PowerCare" title="ระบบเดียวที่เข้าใจลำดับงานจริง" description="ออกแบบจาก workflow งานซ่อมและคลังอะไหล่ ไม่ได้หยุดแค่การบันทึกรายการ แต่ช่วยส่งต่องานให้คนถัดไปอย่างชัดเจน" />
@@ -402,6 +332,7 @@ function PlatformCapabilities() {
   ] as const;
   return (
     <section className="landing-product-band" id="platform">
+      <LandingSectionPhoto scene="campus" />
       <div className="landing-container">
         <SectionHeading eyebrow="Platform capabilities" title="พร้อมขยายจากหนึ่ง Site สู่หลายองค์กร" description="โครงสร้างข้อมูลและสิทธิ์ถูกวางไว้สำหรับการเติบโต โดยยังรักษาความชัดเจนของผู้รับผิดชอบในแต่ละระดับ" centered />
         <div className="mt-10 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -416,9 +347,10 @@ function Benefits() {
   const benefits = [[Gauge, "เห็นสถานะงานเร็วขึ้น"], [ClipboardCheck, "ลดงานตกหล่นระหว่างทีม"], [PackageCheck, "ตรวจสอบการใช้อะไหล่ได้"], [Database, "เก็บข้อมูลพร้อมวิเคราะห์ต่อ"]] as const;
   return (
     <section className="landing-band" id="benefits">
+      <LandingSectionPhoto scene="maintenance" />
       <div className="landing-container">
         <SectionHeading eyebrow="Operational benefits" title="เปลี่ยนข้อมูลหน้างานให้ใช้ตัดสินใจได้" description="หน้าจอที่เงียบ ชัด และเหมาะกับการใช้งานซ้ำทุกวัน ช่วยให้ทีมโฟกัสกับงานที่ต้องทำต่อ" />
-        <div className="mt-10 grid gap-px overflow-hidden rounded-lg border border-[var(--line)] bg-[var(--line)] md:grid-cols-2 xl:grid-cols-4">
+        <div className="landing-benefits-grid mt-10 grid gap-px overflow-hidden rounded-lg border border-[var(--line)] bg-[var(--line)] md:grid-cols-2 xl:grid-cols-4">
           {benefits.map(([Icon, title]) => <div className="landing-benefit" key={title}><Icon size={24} /><b>{title}</b></div>)}
         </div>
       </div>
@@ -429,6 +361,7 @@ function Benefits() {
 function Faq() {
   return (
     <section className="landing-product-band" id="faq">
+      <LandingSectionPhoto scene="store" />
       <div className="landing-container grid gap-10 lg:grid-cols-[0.72fr_1.28fr]">
         <SectionHeading eyebrow="FAQ" title="คำถามที่พบบ่อย" description="ข้อมูลเบื้องต้นสำหรับองค์กรที่กำลังพิจารณา PowerCare" />
         <div className="divide-y divide-[var(--line)] border-y border-[var(--line)]">
@@ -442,6 +375,7 @@ function Faq() {
 function Feedback({ action, status }: { action: PublicLandingProps["feedbackAction"]; status?: string }) {
   return (
     <section className="landing-product-band" id="feedback">
+      <LandingSectionPhoto scene="maintenance" />
       <div className="landing-container grid gap-10 lg:grid-cols-[0.75fr_1.25fr]">
         <SectionHeading eyebrow="Platform feedback" title="ช่วยให้ PowerCare ดีขึ้น" description="ส่งความคิดเห็นเกี่ยวกับแพลตฟอร์มถึง Owner Admin โดยตรง ข้อมูลนี้ไม่ผูกกับ Organization หรือ Site ใด" />
         <form action={action} className="landing-feedback-form">
@@ -466,6 +400,7 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
 function SoonCta() {
   return (
     <section className="landing-cta-band">
+      <LandingSectionPhoto scene="campus" />
       <div className="landing-container flex flex-col items-start justify-between gap-6 py-14 md:flex-row md:items-center">
         <div><p className="landing-kicker text-white/75">Next step</p><h2 className="mt-3 text-3xl font-extrabold text-white">เตรียม PowerCare ให้พร้อมกับองค์กรของคุณ</h2><p className="mt-3 text-white/70">ช่องทางติดต่อและเริ่มต้นใช้งานกำลังจัดเตรียม</p></div>
         <button aria-disabled="true" className="landing-disabled-cta" disabled title="ช่องทางติดต่อกำลังจัดเตรียม"><span>Soon</span> ติดต่อ PowerCare</button>

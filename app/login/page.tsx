@@ -1,5 +1,10 @@
 import { redirect } from "next/navigation";
-import { PublicHeader } from "../../components/public-header";
+import Image from "next/image";
+import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
+import { AppBrand } from "../../components/app-brand";
+import { ThemeToggle } from "../../components/theme-toggle";
+import { LoginForm } from "../../components/login-form";
 import { getCurrentUser, setSession } from "../../lib/session";
 import { authenticate } from "../../modules/auth/auth-service";
 import { defaultHomeHref } from "../../modules/auth/default-home-route";
@@ -9,42 +14,40 @@ async function login(formData: FormData) {
   const username = String(formData.get("username") ?? "");
   const password = String(formData.get("password") ?? "");
   const user = await authenticate(username, password);
-  if (!user) redirect("/login?error=1");
+  if (!user) redirect("/login?loginError=1");
   await setSession(user.id);
   const currentUser = await getCurrentUser();
   redirect(currentUser ? defaultHomeHref(currentUser) : "/dashboardcm");
 }
 
-export default async function LoginPage({ searchParams }: { searchParams: Promise<{ error?: string; loggedOut?: string }> }) {
-  const { error, loggedOut } = await searchParams;
+export const metadata = { title: "เข้าสู่ระบบ | PowerCare" };
+
+export default async function LoginPage({ searchParams }: { searchParams: Promise<{ error?: string; loginError?: string; loggedOut?: string }> }) {
+  const { error, loginError, loggedOut } = await searchParams;
+  if (error) redirect("/login?loginError=1");
 
   return (
-    <main>
-      <PublicHeader />
-      <section className="grid min-h-[calc(100vh-73px)] items-center px-5 py-10 lg:grid-cols-[1fr_420px] lg:px-12">
-        <div className="cm-hero relative hidden min-h-[520px] overflow-hidden rounded-3xl p-10 text-white shadow-[var(--shadow)] lg:block">
-          <div className="plant-skyline" aria-hidden="true">
-            <span />
-            <span />
-            <span />
-            <span />
-            <span />
-          </div>
-          <div className="relative z-10 max-w-2xl">
-            <p className="inline-flex rounded-full bg-white/15 px-4 py-2 text-sm font-semibold">Staff Workspace</p>
-            <h1 className="mt-6 text-5xl font-extrabold leading-tight">Control every CM job from one secure dashboard</h1>
-            <p className="mt-5 text-white/85">Role based access for admin, engineer, and technician workflows.</p>
+    <main className="login-page">
+      <header className="login-header">
+        <div className="login-header-inner">
+          <Link href="/" className="login-brand" aria-label="PowerCare หน้าแรก"><AppBrand className="flex-nowrap" versionClassName="hidden" /></Link>
+          <nav aria-label="เมนูหน้าเข้าสู่ระบบ">
+            <Link href="/" className="login-home-link"><ArrowLeft size={17} aria-hidden="true" /><span>กลับหน้าแรก</span></Link>
+            <ThemeToggle />
+          </nav>
+        </div>
+      </header>
+      <section className="login-workspace" aria-label="เข้าสู่ระบบ PowerCare">
+        <div className="login-photo-panel" data-reveal-ignore>
+          <Image alt="" src="/landing/powercare-maintenance-hero.webp" fill sizes="(max-width: 767px) 100vw, 55vw" priority className="login-photo" />
+          <div className="login-photo-copy">
+            <h2>ทุกงานซ่อมบำรุง<br />เชื่อมต่อในระบบเดียว</h2>
+            <p>จัดการงานซ่อม อะไหล่ และข้อมูลหน้างาน<br className="hidden lg:block" /> ด้วยสิทธิ์ที่เหมาะกับแต่ละทีม</p>
           </div>
         </div>
-        <form action={login} className="mx-auto grid w-full max-w-sm gap-4 rounded-3xl border border-[var(--line)] bg-[var(--surface)] p-6 shadow-[var(--shadow)]">
-          <h1 className="text-3xl font-bold">Login</h1>
-          {loggedOut ? <p className="rounded-xl bg-green-50 px-3 py-2 text-green-700">Logged out successfully.</p> : null}
-          {error ? <p className="rounded-xl bg-red-50 px-3 py-2 text-red-700">Username หรือ password ไม่ถูกต้อง</p> : null}
-          <input name="username" required placeholder="Username" className="rounded-2xl border border-[var(--line)] bg-[var(--soft)] p-3 text-[var(--ink)]" />
-          <input name="password" required placeholder="Password" type="password" className="rounded-2xl border border-[var(--line)] bg-[var(--soft)] p-3 text-[var(--ink)]" />
-          <button className="rounded-2xl bg-[var(--primary)] px-4 py-3 font-bold text-white shadow-sm">เข้าสู่ระบบ</button>
-        </form>
+        <div className="login-form-panel"><LoginForm action={login} hasError={Boolean(loginError)} loggedOut={Boolean(loggedOut)} /></div>
       </section>
+      <footer className="login-footer"><b>PowerCare</b><span>Maintenance operations platform</span></footer>
     </main>
   );
 }
