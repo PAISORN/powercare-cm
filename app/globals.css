@@ -39,7 +39,7 @@ html {
   --card-hover-shadow:
     0 8px 20px rgb(15 23 42 / 9%), 0 26px 64px rgb(35 65 95 / 20%),
     0 0 28px rgb(45 180 255 / 8%), inset 0 1px 0 rgb(255 255 255 / 72%);
-  --background-blur: 2px;
+  --background-blur: 0px;
   --background-brightness: 100%;
 }
 

@@ -20,7 +20,7 @@ test("saves website photo backgrounds and preserves them across reload and navig
   const maintenance = page.getByRole("radio", { name: /ช่างซ่อมบำรุง/ });
   const campus = page.getByRole("radio", { name: /โรงงานอุตสาหกรรม/ });
   await maintenance.check();
-  await expect(page.getByRole("slider", { name: "ความเบลอของภาพพื้นหลัง" })).toHaveValue("2");
+  await expect(page.getByRole("slider", { name: "ความเบลอของภาพพื้นหลัง" })).toHaveValue("0");
   await page.getByRole("button", { name: "บันทึกการตั้งค่า", exact: true }).click();
   await expect(page.locator("html")).toHaveAttribute("data-background", "image-maintenance");
   await expect(page.getByRole("status").filter({ hasText: "บันทึกการตั้งค่าเรียบร้อยแล้ว" })).toBeVisible();

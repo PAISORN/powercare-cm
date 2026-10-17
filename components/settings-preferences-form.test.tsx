@@ -105,7 +105,7 @@ describe("SettingsPreferencesForm", () => {
 
     expect((screen.getByRole("radio", { name: /อัตโนมัติ/ }) as HTMLInputElement).checked).toBe(true);
     expect((screen.getByRole("radio", { name: /ช่างซ่อมบำรุง/ }) as HTMLInputElement).checked).toBe(true);
-    expect((screen.getByRole("slider", { name: "ความเบลอของภาพพื้นหลัง" }) as HTMLInputElement).value).toBe("2");
+    expect((screen.getByRole("slider", { name: "ความเบลอของภาพพื้นหลัง" }) as HTMLInputElement).value).toBe("0");
     expect((screen.getByRole("slider", { name: "ความสว่างของภาพพื้นหลัง" }) as HTMLInputElement).value).toBe("100");
     expect((screen.getByRole("radio", { name: /ภาษาไทย/ }) as HTMLInputElement).checked).toBe(true);
   });

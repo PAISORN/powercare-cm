@@ -6,7 +6,7 @@ This context defines the language for a power plant Corrective Maintenance web a
 
 **Personal Display Settings**:
 Theme, background, image blur/brightness, and language are stored in the authenticated User's nullable `displayPreferences` JSON text. Server Actions derive the destination owner from the session; submitted IDs never select the destination. An expected-owner guard only rejects stale forms after another tab switches accounts. The navbar theme toggle merges only theme and preserves the account's other settings; its state stays synchronized with Settings. Root rendering loads the authenticated account's settings; anonymous pages use defaults. Legacy shared display cookies are deliberately ignored because their owner is unknown. A first explicit save initializes an account, and values follow that account across devices. Apply the additive User-column migration before deploying this code; no CM/PM history is migrated or removed.
-The default for an unsaved account or an explicit reset is the Maintenance Technician photo (`image-maintenance`), 2px blur and 100% brightness. Explicitly saved backgrounds and image controls remain unchanged.
+The default for an unsaved account or an explicit reset is the Maintenance Technician photo (`image-maintenance`), 0px blur and 100% brightness. Explicitly saved backgrounds and image controls remain unchanged.
 _Avoid_: browser-wide shared preferences, copying an old cookie into the next logged-in account, trusting a client-supplied owner
 
 **PowerCare**:

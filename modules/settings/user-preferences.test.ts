@@ -17,7 +17,7 @@ describe("user preferences", () => {
     }
   });
   it("defaults malformed saved data and validates newly generated photo choices", () => {
-    for (const input of [undefined, "{broken", "null", "[]"]) expect(parseDisplayPreferences(input)).toMatchObject({ background: "image-maintenance", backgroundBlur: 2 });
+    for (const input of [undefined, "{broken", "null", "[]"]) expect(parseDisplayPreferences(input)).toMatchObject({ background: "image-maintenance", backgroundBlur: 0 });
     for (const background of ["image-control-room", "image-plant-dawn", "image-mechanical-hall"]) {
       expect(parseDisplayPreferences(JSON.stringify({ background })).background).toBe(background);
     }
@@ -50,7 +50,8 @@ describe("user preferences", () => {
   });
 
   it("bounds background blur and brightness values", () => {
-    expect(parseBackgroundBlur(undefined)).toBe(2);
+    expect(parseBackgroundBlur(undefined)).toBe(0);
+    expect(parseBackgroundBlur("2")).toBe(2);
     expect(parseBackgroundBlur("-10")).toBe(0);
     expect(parseBackgroundBlur("24")).toBe(24);
     expect(parseBackgroundBlur("999")).toBe(40);

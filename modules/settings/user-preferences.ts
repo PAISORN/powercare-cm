@@ -26,7 +26,7 @@ export const backgroundPreferences = [
 ] as const;
 export const languagePreferences = ["th"] as const;
 export const DEFAULT_BACKGROUND: BackgroundPreference = "image-maintenance";
-export const DEFAULT_BACKGROUND_BLUR = 2;
+export const DEFAULT_BACKGROUND_BLUR = 0;
 export const MIN_BACKGROUND_BLUR = 0;
 export const MAX_BACKGROUND_BLUR = 40;
 export const DEFAULT_BACKGROUND_BRIGHTNESS = 100;
