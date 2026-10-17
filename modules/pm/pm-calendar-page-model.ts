@@ -25,7 +25,7 @@ export function resolvePmCalendarPageState(
   const month =
     view === "day"
       ? `${selectedDate.slice(0, 7)}-01`
-      : validPmMonth(query.month, `${today.slice(0, 7)}-01`);
+      : validPmMonth(query.month, `${selectedDate.slice(0, 7)}-01`);
 
   return { selectedDate, view, month };
 }

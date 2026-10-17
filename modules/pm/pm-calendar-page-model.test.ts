@@ -5,6 +5,11 @@ import {
 } from "./pm-calendar-page-model";
 
 describe("PM calendar page model", () => {
+  it("opens the schedule's month when a Setup link supplies a date without a month", () => {
+    expect(resolvePmCalendarPageState({ date: "2027-03-29" }, "2026-10-17")).toEqual({
+      selectedDate: "2027-03-29", view: "month", month: "2027-03-01",
+    });
+  });
   it("uses the selected day month when day view crosses month boundaries", () => {
     expect(
       resolvePmCalendarPageState(

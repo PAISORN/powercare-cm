@@ -4,6 +4,11 @@ This context defines the language for a power plant Corrective Maintenance web a
 
 ## Language
 
+**Personal Display Settings**:
+Theme, background, image blur/brightness, and language are stored in the authenticated User's nullable `displayPreferences` JSON text. Server Actions derive the destination owner from the session; submitted IDs never select the destination. An expected-owner guard only rejects stale forms after another tab switches accounts. The navbar theme toggle merges only theme and preserves the account's other settings; its state stays synchronized with Settings. Root rendering loads the authenticated account's settings; anonymous pages use defaults. Legacy shared display cookies are deliberately ignored because their owner is unknown. A first explicit save initializes an account, and values follow that account across devices. Apply the additive User-column migration before deploying this code; no CM/PM history is migrated or removed.
+The default for an unsaved account or an explicit reset is the Maintenance Technician photo (`image-maintenance`), 2px blur and 100% brightness. Explicitly saved backgrounds and image controls remain unchanged.
+_Avoid_: browser-wide shared preferences, copying an old cookie into the next logged-in account, trusting a client-supplied owner
+
 **PowerCare**:
 The CMMS product umbrella for maintenance operations, covering Corrective Maintenance, spare-parts management, Preventive Maintenance, and asset management as product modules.
 _Avoid_: CM dashboard, repair-request website, Store-only system
@@ -453,7 +458,7 @@ A Site-scoped calendar marker classified as a Public Holiday, Site Holiday, or S
 _Avoid_: automatic PM cancellation, global plant calendar, Weekly Pattern exception
 
 **Previous-Year PM Plan Copy**:
-A new Draft Annual PM Setup Plan copied from the prior year's baseline settings and schedules. Weekly Patterns regenerate by weekday and saved rotation; Monthly Patterns copy Week 1–4 Assignments, weekdays, display order, PM basis, and the Plan-level Week 5 rule before regenerating the destination year's dates; Manual schedules retain month and day, while month-specific Overrides, Custom Week 5, cancellations, calendar exceptions, event reasons, release state, and PM Work never carry forward.
+A new Draft Annual PM Setup Plan copied from the prior year's baseline settings and schedules. Weekly Patterns regenerate by weekday and saved rotation; Monthly Patterns copy Week 1–5 baseline Assignments, weekdays, display order, PM basis, and the Plan-level Week 5 rule before regenerating the destination year's dates; an explicit Week 5 suppresses the legacy Repeat rule. Manual schedules retain month and day, while month-specific Overrides, Custom Week 5 exceptions, cancellations, calendar exceptions, event reasons, release state, and PM Work never carry forward.
 _Avoid_: copying PM history, copying shutdown exceptions, date-number mapping for Weekly Pattern
 
 **Alternating Weekly Pattern**:
@@ -461,7 +466,7 @@ An Annual PM Plan can use the same target set every week or alternate Week A and
 _Avoid_: ISO week-number parity, losing the anchor at year boundaries, mixing System and Zone targets, changing released work
 
 **Monthly PM Pattern**:
-An Annual PM planning pattern that assigns each System or Zone/Area target to a weekday occurrence within every month: Week 1 through Week 5 mean the first through fifth occurrence of that selected weekday. Week 1 through Week 4 form the repeating baseline; the Plan's fifth-occurrence rule defaults to No PM, supports No PM, Repeat Week 1, or Custom Assignment, and may be overridden for an individual month without changing the baseline.
+An Annual PM planning pattern that assigns each System or Zone/Area target to a weekday occurrence within every month: Week 1 through Week 5 mean the first through fifth occurrence of that selected weekday. Week 1 through Week 4 form the required repeating baseline. Week 5 has its own editable Pattern card and may define explicit repeating Assignments, No PM, or Repeat Week 1. An explicit stored Week 5 takes precedence over the legacy Plan-level fifth-occurrence rule; when omitted, existing No-PM/Repeat-Week-1 behavior is preserved. Month-specific Overrides remain separate from this baseline.
 _Avoid_: calendar-row week, week-only assignment without a weekday, ISO week number, Carry Forward without a source assignment
 
 **Monthly Pattern Assignment**:
@@ -477,8 +482,12 @@ Moving an Assignment between occurrences or weekdays changes its planning slot, 
 _Avoid_: drag-to-copy, implicit duplication, touch-only drag interaction, treating reorder as execution priority
 
 **Monthly Pattern Completeness**:
-A Monthly PM Pattern is ready to generate only when each of Week 1 through Week 4 contains at least one Assignment or is explicitly marked No PM. An unresolved empty Week is Not Configured and blocks generation, while an explicit No-PM Week is an intentional valid baseline choice.
+A Monthly PM Pattern is ready to generate only when each of Week 1 through Week 4 contains at least one Assignment or is explicitly marked No PM. Week 5 defaults to No PM; if configured as Assignments it must contain at least one Assignment. Repeat Week 1 inherits the saved baseline rather than storing duplicate Week 5 Assignments. An unresolved empty Week is Not Configured and blocks generation, while an explicit No-PM Week is an intentional valid baseline choice.
 _Avoid_: treating every empty Week as No PM, generating an incomplete baseline, requiring work in every Week
+
+**Annual PM Setup Workspace**:
+One task-focused workspace separates Pattern baseline editing, Calendar/month-specific Overrides, and plan settings. Week 1–5 baseline rows expand independently; direct per-Week entry is primary and bulk assignment is optional. Switching tasks retains unsaved form state. Server actions retain the selected workspace; dated Week/date links open Calendar. Site settings and copy controls remain in an advanced disclosure. Saving a baseline still requires Preview and Confirm Generate before Calendar synchronization; this presentation change does not alter permissions, release locks, or PM history.
+_Avoid_: stacking every form on one screen, confusing recurring baseline edits with dated Overrides, discarding edits on task switches
 
 **Week 5 No-PM Rule**:
 The default fifth-occurrence rule that creates no Schedule Entry when a selected weekday occurs five times in a month. Preview identifies the intentional absence, while Canceled status is reserved for a real Schedule later removed through an audited Override.
@@ -491,6 +500,9 @@ _Avoid_: copying effective Overrides, creating a nonexistent fifth weekday, impl
 **Monthly Pattern Override**:
 A target-level exception for one generated month and weekday occurrence that preserves the Monthly PM Pattern source and records an ADD, REPLACE, CANCEL, or MOVE operation. Draft exceptions may omit a reason; Active-plan exceptions require a reason, actor, time, and before-and-after history, released Schedules are immutable, and Calendar views label ADD as Custom and the other operations as Override.
 _Avoid_: separate Custom source, replacing an entire monthly slot, editing the baseline, deleting the source schedule, boolean-only override
+
+**Month-specific Week Editing**:
+The Setup calendar exposes Week 1–5 for its selected month, using weekday occurrences rather than calendar rows. Each Week edits persisted dated Schedules directly through audited target-level Overrides without changing the Monthly Pattern baseline or its synchronization version. Week 5 permits Custom Assignments only on real fifth-occurrence dates. Released work, past Active dates, and dates before the effective start remain protected; stale submissions are rejected and a Week save is atomic. Removed or moved source slots retain No-PM Overrides so regeneration cannot restore them. Search, target/status filters, selected month and expanded Week remain in place after saving. Saving the baseline alone does not generate Calendar Schedules; Preview and Confirm Generate remain explicit steps.
 
 **Weekly PM Display Slots**:
 The Annual PM Setup Week view uses a planning-time convention when no persisted time fields exist: the first PM target of a day is shown from 09:00 to 12:00 and the second from 14:00 to 17:00. Additional same-day targets remain visible in the afternoon block. These slots are a visual planning convention and do not create or change execution timestamps.

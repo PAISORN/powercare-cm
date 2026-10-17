@@ -1,8 +1,12 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { renderToStaticMarkup } from "react-dom/server";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import RootLayout from "./layout";
+const { currentUser, preferences } = vi.hoisted(() => ({ currentUser: vi.fn(), preferences: vi.fn() }));
+vi.mock("../lib/session", () => ({ getCurrentUser: currentUser }));
+vi.mock("../modules/settings/display-preferences-service", () => ({ getUserDisplayPreferences: preferences }));
+beforeEach(() => { vi.clearAllMocks(); currentUser.mockResolvedValue(null); });
 
 vi.mock("next/headers", () => ({
   cookies: vi.fn(async () => ({ get: vi.fn(() => undefined) })),
@@ -13,13 +17,22 @@ vi.mock("next/navigation", () => ({
 }));
 
 describe("RootLayout theme initialization", () => {
+  it("renders only the signed-in account preferences and exposes its owner for the theme toggle", async () => {
+    currentUser.mockResolvedValue({ id: "account-A" });
+    preferences.mockResolvedValue({ theme: "night", background: "image-control-room", backgroundBlur: 3, backgroundBrightness: 82, language: "th" });
+    const markup = renderToStaticMarkup(await RootLayout({ children: <main>content</main> }));
+    expect(preferences).toHaveBeenCalledWith("account-A");
+    expect(markup).toContain('data-background="image-control-room"');
+    expect(markup).toContain('data-preference-user="account-A"');
+    expect(markup).toContain('data-theme="night"');
+  });
   it("renders server-selected preferences without an inline script", async () => {
     const layout = await RootLayout({ children: <main>content</main> });
     const markup = renderToStaticMarkup(layout);
 
     expect(markup).toMatch(/<html[^>]+data-theme="(?:day|night)"/);
     expect(markup).toContain('data-theme-preference="auto"');
-    expect(markup).toContain('data-background="original"');
+    expect(markup).toContain('data-background="image-maintenance"');
     expect(markup).not.toContain("theme-boot");
     expect(markup).not.toContain("<script");
     expect(markup).toContain("<body>");

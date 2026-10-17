@@ -17,3 +17,7 @@ Annual PM Setup adds Monthly Pattern beside Manual Calendar and Weekly Pattern i
 ## Consequences
 
 Generation is a previewed, atomic synchronization of editable Pattern Schedules; month-specific ADD, REPLACE, CANCEL, and MOVE Overrides preserve their source and released work remains immutable. Week 5 defaults to creating no Schedule and may Repeat the Week 1 baseline or use a month-specific Custom Assignment. Existing Manual and Weekly Plans are never converted automatically, current-year generation starts at the Plan's Effective Start Date, and a changed baseline must be regenerated before activation.
+
+## Amendment — 2026-10-17: explicit Week 5 Pattern card
+
+The requested Week 5 card now supports its own repeating Assignments alongside No PM and Repeat Week 1. An explicit Week 5 row governs fifth occurrences; plans without that row retain the legacy Plan-level rule. Generators and previous-year copying use only real fifth weekdays and never apply both the explicit assignments and the legacy Repeat rule. Existing overrides and released work remain protected. Deploy the additive constraint-widening migration before application code; no schedule or PM Work backfill is performed.

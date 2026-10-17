@@ -12,6 +12,11 @@ export const backgroundPreferences = [
   "original",
   "blue-gray",
   "plain",
+  "image-maintenance",
+  "image-industrial-campus",
+  "image-control-room",
+  "image-plant-dawn",
+  "image-mechanical-hall",
   "image-blue-mist",
   "image-aurora-flow",
   "image-soft-sunset",
@@ -20,7 +25,8 @@ export const backgroundPreferences = [
   "image-prism-cloud",
 ] as const;
 export const languagePreferences = ["th"] as const;
-export const DEFAULT_BACKGROUND_BLUR = 12;
+export const DEFAULT_BACKGROUND: BackgroundPreference = "image-maintenance";
+export const DEFAULT_BACKGROUND_BLUR = 2;
 export const MIN_BACKGROUND_BLUR = 0;
 export const MAX_BACKGROUND_BLUR = 40;
 export const DEFAULT_BACKGROUND_BRIGHTNESS = 100;
@@ -31,12 +37,35 @@ export type ThemePreference = (typeof themePreferences)[number];
 export type BackgroundPreference = (typeof backgroundPreferences)[number];
 export type LanguagePreference = (typeof languagePreferences)[number];
 
+export type DisplayPreferences = {
+  theme: ThemePreference;
+  background: BackgroundPreference;
+  backgroundBlur: number;
+  backgroundBrightness: number;
+  language: LanguagePreference;
+};
+
+export function parseDisplayPreferences(serialized?: string | null): DisplayPreferences {
+  let value: Record<string, unknown> = {};
+  try {
+    const parsed: unknown = JSON.parse(serialized ?? "{}");
+    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) value = parsed as Record<string, unknown>;
+  } catch { /* Malformed legacy values fall back to safe defaults. */ }
+  return {
+    theme: parseThemePreference(typeof value.theme === "string" ? value.theme : undefined),
+    background: parseBackgroundPreference(typeof value.background === "string" ? value.background : undefined),
+    backgroundBlur: parseBackgroundBlur(typeof value.backgroundBlur === "number" ? String(value.backgroundBlur) : undefined),
+    backgroundBrightness: parseBackgroundBrightness(typeof value.backgroundBrightness === "number" ? String(value.backgroundBrightness) : undefined),
+    language: parseLanguagePreference(typeof value.language === "string" ? value.language : undefined),
+  };
+}
+
 export function parseThemePreference(value: string | undefined): ThemePreference {
   return themePreferences.includes(value as ThemePreference) ? (value as ThemePreference) : "auto";
 }
 
 export function parseBackgroundPreference(value: string | undefined): BackgroundPreference {
-  return backgroundPreferences.includes(value as BackgroundPreference) ? (value as BackgroundPreference) : "original";
+  return backgroundPreferences.includes(value as BackgroundPreference) ? (value as BackgroundPreference) : DEFAULT_BACKGROUND;
 }
 
 export function parseBackgroundBlur(value: string | undefined) {

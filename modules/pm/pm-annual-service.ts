@@ -4,6 +4,7 @@ import { getBangkokDateString } from "../../lib/date-time/bangkok-time";
 import { canManagePmPlans, canViewPm } from "../auth/permission";
 import type { PermissionUserContext } from "../auth/site-admin-permissions";
 import { RoleName } from "../cm-work/cm-work-types";
+import { pmMonthWeekDates, pmMonthWeekRevision } from "./pm-month-week";
 import {
   annualDateRange, datesInYearForWeekday, effectivePatternWeekIndex, monthlyPatternKey, normalizeAnnualPlanName, nthWeekdayOfMonth, rotationWeekIndex, PmAnnualBy,
   PmAnnualMonthlyWeek5Rule, PmAnnualMonthlyWeekMode,
@@ -227,7 +228,7 @@ function monthlyEffectiveStart(plan: { year: number; status: string }, requested
 
 async function monthlyGenerationState(tx: Prisma.TransactionClient, plan: Awaited<ReturnType<typeof getPlan>>, effectiveDateKey: string) {
   const weeks = await tx.pmAnnualMonthlyWeek.findMany({ where: { planId: plan.id }, orderBy: { weekNumber: "asc" } });
-  if (weeks.length !== 4 || weeks.some((week, index) => week.weekNumber !== index + 1)) throw new Error("Configure Week 1 through Week 4 before Generate Annual PM Plan");
+  if ((weeks.length !== 4 && weeks.length !== 5) || weeks.some((week, index) => week.weekNumber !== index + 1)) throw new Error("Configure Week 1 through Week 4, with optional Week 5, before Generate Annual PM Plan");
   const patterns = await tx.pmAnnualMonthlyPattern.findMany({ where: { planId: plan.id }, include: { assetSystem: { select: { active: true } }, zone: { select: { active: true } } }, orderBy: [{ weekNumber: "asc" }, { displayOrder: "asc" }] });
   if (patterns.some(pattern => pattern.assetSystem?.active === false || pattern.zone?.active === false)) throw new Error("Monthly Pattern contains an inactive target; replace or remove it before Generate");
   for (const week of weeks) {
@@ -243,7 +244,7 @@ async function monthlyGenerationState(tx: Prisma.TransactionClient, plan: Awaite
       const targetId = (pattern.assetSystemId ?? pattern.zoneId)!;
       desired.set(targetSlotKey(plan.id, dateKey, plan.pmBy as PmAnnualBy, targetId), { dateKey, assetSystemId: pattern.assetSystemId, zoneId: pattern.zoneId });
     }
-    if (plan.monthlyWeek5Rule === PmAnnualMonthlyWeek5Rule.REPEAT_WEEK_1) {
+    if (!weeks.some(week => week.weekNumber === 5) && plan.monthlyWeek5Rule === PmAnnualMonthlyWeek5Rule.REPEAT_WEEK_1) {
       for (const pattern of patterns.filter(item => item.weekNumber === 1)) {
         const dateKey = nthWeekdayOfMonth(plan.year, month, pattern.dayOfWeek, 5);
         if (!dateKey || dateKey < effectiveDateKey) continue;
@@ -270,14 +271,15 @@ export async function saveAnnualMonthlyPattern(actor: PermissionUserContext, inp
     const week5Rule = validateAnnualPlanChoice(input.week5Rule, PmAnnualMonthlyWeek5Rule, "Week 5 rule");
     const weekMap = new Map<number, string>();
     for (const week of input.weeks) {
-      if (!Number.isInteger(week.weekNumber) || week.weekNumber < 1 || week.weekNumber > 4 || weekMap.has(week.weekNumber)) throw new Error("Monthly Pattern must define Week 1 through Week 4 exactly once");
+      if (!Number.isInteger(week.weekNumber) || week.weekNumber < 1 || week.weekNumber > 5 || weekMap.has(week.weekNumber)) throw new Error("Monthly Pattern must define Week 1 through Week 5 at most once");
       weekMap.set(week.weekNumber, validateAnnualPlanChoice(week.mode, PmAnnualMonthlyWeekMode, `Week ${week.weekNumber} mode`));
     }
-    if (weekMap.size !== 4) throw new Error("Monthly Pattern must define Week 1 through Week 4");
+    if (![1, 2, 3, 4].every(week => weekMap.has(week))) throw new Error("Monthly Pattern must define Week 1 through Week 4");
     const checked: Array<MonthlyPatternEntry & { data: { assetSystemId: string | null; zoneId: string | null }; patternKey: string }> = [];
     const keys = new Set<string>();
     for (const entry of input.entries) {
       const mode = weekMap.get(entry.weekNumber);
+      if (!mode) throw new Error(`Week ${entry.weekNumber} is Not Configured`);
       if (mode === PmAnnualMonthlyWeekMode.NO_PM) throw new Error(`Week ${entry.weekNumber} is marked No PM`);
       if (!Number.isInteger(entry.displayOrder) || entry.displayOrder < 0) throw new Error("Monthly Pattern display order is invalid");
       const target = await verifyTarget(tx, plan, entry);
@@ -357,6 +359,77 @@ export async function resetDraftAnnualPmPlanSettings(actor: PermissionUserContex
     return updated;
   });
 }
+export async function saveAnnualPmMonthWeek(actor: PermissionUserContext, input: PmAnnualScope & {
+  planId: string; month: number; weekNumber: number; revision: string; reason?: string;
+  entries: Array<{ scheduleId?: string; dayOfWeek: number; targetId: string }>;
+}) {
+  authorize(actor, input, true);
+  return db.$transaction(async tx => {
+    const plan = await getPlan(tx, input, input.planId);
+    editable(plan);
+    if (plan.scheduleMode !== PmAnnualScheduleMode.MONTHLY_PATTERN) throw new Error("This plan is not in Monthly Pattern mode");
+    const days = pmMonthWeekDates(plan.year, input.month, input.weekNumber);
+    const dates = days.map(day => day.date);
+    const current = await tx.pmAnnualSchedule.findMany({ where: { planId: plan.id, scheduleDateKey: { in: dates }, slotKey: { not: null } } });
+    if (pmMonthWeekRevision(current) !== input.revision) throw new Error("รายการ Week นี้เปลี่ยนแล้ว กรุณาโหลดหน้าใหม่ก่อนบันทึก");
+    const reason = input.reason?.trim() || "ปรับรายการเฉพาะ Week ของเดือน";
+    if (plan.status === PmAnnualPlanStatus.ACTIVE && !input.reason?.trim()) throw new Error("กรุณาระบุเหตุผลที่แก้ไข Week ของแผน Active");
+    const today = getBangkokDateString();
+    const locked = (row: typeof current[number]) => Boolean(row.releasedAt) || row.status === PmAnnualScheduleStatus.RELEASED || (plan.status === PmAnnualPlanStatus.ACTIVE && row.scheduleDateKey < today);
+    if (input.entries.length > 1000) throw new Error("Too many Week entries");
+    const seenIds = new Set<string>();
+    const desired = new Map<string, { date: string; targetId: string; data: { assetSystemId: string | null; zoneId: string | null }; original?: typeof current[number] }>();
+    for (const entry of input.entries) {
+      const date = days.find(day => day.dayOfWeek === entry.dayOfWeek)?.date;
+      if (!date) throw new Error("วันดังกล่าวไม่มีใน Week นี้ของเดือน");
+      if (plan.effectiveDateKey && date < plan.effectiveDateKey) throw new Error("วันที่อยู่นอกช่วงเริ่มต้นแผน");
+      const original = entry.scheduleId ? current.find(row => row.id === entry.scheduleId && (row.status === PmAnnualScheduleStatus.SCHEDULED || row.status === PmAnnualScheduleStatus.RELEASED)) : undefined;
+      if (entry.scheduleId && (!original || seenIds.has(entry.scheduleId))) throw new Error("Invalid or duplicate Week schedule");
+      if (original) seenIds.add(original.id);
+      const unchanged = original?.scheduleDateKey === date && (original.assetSystemId ?? original.zoneId) === entry.targetId;
+      if (original && locked(original) && !unchanged) throw new Error("รายการที่ออก PM Work แล้วหรือเป็นอดีตแก้ไขไม่ได้");
+      if (!unchanged) editable(plan, date);
+      const target = unchanged && original
+        ? { id: entry.targetId, data: { assetSystemId: original.assetSystemId, zoneId: original.zoneId } }
+        : await verifyTarget(tx, plan, plan.pmBy === PmAnnualBy.SYSTEM ? { assetSystemId: entry.targetId } : { zoneId: entry.targetId });
+      const key = targetSlotKey(plan.id, date, plan.pmBy as PmAnnualBy, target.id);
+      if (desired.has(key)) throw new Error("เป้าหมายซ้ำในวันเดียวกัน");
+      desired.set(key, { date, targetId: target.id, data: target.data, original });
+    }
+    const removed = current.filter(row => row.status !== PmAnnualScheduleStatus.CANCELED &&
+      ![...desired.values()].some(item => item.original?.id === row.id && item.date === row.scheduleDateKey && item.targetId === (row.assetSystemId ?? row.zoneId)));
+    if (removed.some(locked)) throw new Error("รายการที่ออก PM Work แล้วหรือเป็นอดีตแก้ไขไม่ได้");
+    const additions = [...desired.entries()].filter(([key, item]) => item.original?.slotKey !== key);
+    // Free old slots first, allowing two editable targets to exchange dates atomically.
+    for (const row of removed) await tx.pmAnnualSchedule.update({ where: { id: row.id }, data: { slotKey: null,
+      status: [...desired.values()].some(item => item.original?.id === row.id) ? PmAnnualScheduleStatus.MOVED : PmAnnualScheduleStatus.CANCELED, reason } });
+    for (const [key] of additions) {
+      const canceled = current.find(row => row.slotKey === key && row.status === PmAnnualScheduleStatus.CANCELED);
+      if (canceled) {
+        if (locked(canceled)) throw new Error("Past Active schedules must be retained");
+        await tx.pmAnnualSchedule.update({ where: { id: canceled.id }, data: { slotKey: null } });
+      }
+    }
+    for (const row of removed) {
+      if (desired.has(row.slotKey!)) continue;
+      // Keep a No-PM tombstone at the original slot so regeneration cannot undo a move/removal.
+      await tx.pmAnnualSchedule.create({ data: { plantId: plan.plantId, planId: plan.id,
+        scheduleDateKey: row.scheduleDateKey, assetSystemId: row.assetSystemId, zoneId: row.zoneId,
+        source: PmAnnualScheduleSource.OVERRIDE, status: PmAnnualScheduleStatus.CANCELED, overrideAction: "NO_PM",
+        originalScheduleId: row.id, slotKey: row.slotKey, reason, recordedById: actorId(actor) } });
+    }
+    for (const [key, item] of additions) await tx.pmAnnualSchedule.create({ data: {
+      plantId: plan.plantId, planId: plan.id, scheduleDateKey: item.date, ...item.data,
+      source: PmAnnualScheduleSource.OVERRIDE, status: PmAnnualScheduleStatus.SCHEDULED,
+      overrideAction: item.original ? "CHANGE" : "ADD", originalScheduleId: item.original?.id ?? current.find(row => row.slotKey === key)?.id ?? null,
+      slotKey: key, reason, recordedById: actorId(actor),
+    } });
+    const result = { month: input.month, weekNumber: input.weekNumber, added: additions.length, removed: removed.length };
+    await audit(tx, actor, input, plan.id, "ANNUAL_PM_MONTH_WEEK_SAVED", current, { ...result, entries: input.entries, reason });
+    return result;
+  }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+}
+
 export async function saveAnnualPmDayNote(actor: PermissionUserContext, input: PmAnnualScope & { planId: string; scheduleDateKey: string; note: string }) {
   authorize(actor, input, true); return db.$transaction(async tx => { const plan = await getPlan(tx, input, input.planId); editable(plan); requireDateInPlanYear(input.scheduleDateKey, plan.year); const note = input.note.trim(); if (!note) { await tx.pmAnnualDayNote.deleteMany({ where: { planId: plan.id, scheduleDateKey: input.scheduleDateKey } }); return null; } return tx.pmAnnualDayNote.upsert({ where: { planId_scheduleDateKey: { planId: plan.id, scheduleDateKey: input.scheduleDateKey } }, update: { note, updatedById: actorId(actor) }, create: { plantId: plan.plantId, planId: plan.id, scheduleDateKey: input.scheduleDateKey, note, updatedById: actorId(actor) } }); });
 }

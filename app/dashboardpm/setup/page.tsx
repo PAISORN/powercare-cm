@@ -8,13 +8,18 @@ import {
   X,
 } from "lucide-react";
 import Link from "next/link";
+import type { CSSProperties } from "react";
 import { redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
 import { AdminScopeHiddenFields } from "../../../components/admin-site-scope-selector";
 import { ConfirmSubmitButton } from "../../../components/confirm-submit-button";
 import { PmRouteShell } from "../../../components/pm/pm-route-shell";
 import { PmAnnualRangeCancel } from "../../../components/pm/pm-annual-range-cancel";
 import { PmAnnualWeekBoard } from "../../../components/pm/pm-annual-week-board";
 import { PmMonthlyPatternBuilder } from "../../../components/pm/pm-monthly-pattern-builder";
+import { PmMonthWeekEditor } from "../../../components/pm/pm-month-week-editor";
+import { PmSetupWorkspace, PmSetupNavigation, PmSetupPanel, PmSetupTaskLink, PmSetupWorkspaceField } from "../../../components/pm/pm-setup-workspace";
+import { pmMonthWeekDates, pmMonthWeekRevision } from "../../../modules/pm/pm-month-week";
 import { PmWeeklyPatternFields } from "../../../components/pm/pm-weekly-pattern-fields";
 import {
   PreserveListPositionForm,
@@ -45,6 +50,7 @@ import {
   saveAnnualMonthlyPattern,
   updateAnnualPmPlanName,
   resetDraftAnnualPmPlanSettings,
+  saveAnnualPmMonthWeek,
 } from "../../../modules/pm/pm-annual-service";
 import {
   PmAnnualBy,
@@ -80,6 +86,8 @@ type Query = {
   error?: string;
   monthlyPreview?: string;
   effectiveDateKey?: string;
+  editWeek?: string;
+  workspace?: string;
 };
 const weekdays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const calendarWeekdays = [
@@ -118,6 +126,10 @@ function message(error: unknown) {
   return error instanceof Error
     ? error.message
     : "Unable to save Annual PM Setup";
+}
+function refreshPmCalendars() {
+  revalidatePath("/dashboardpm/setup");
+  revalidatePath("/dashboardpm/calendar");
 }
 function validYear(value: string | undefined) {
   const current = Number(getBangkokDateString().slice(0, 4));
@@ -158,6 +170,7 @@ async function context(data: FormData) {
     month: String(data.get("month") ?? ""),
     date: String(data.get("date") ?? ""),
     view: String(data.get("view") ?? "month"),
+    workspace: String(data.get("workspace") ?? ""),
   };
 }
 function returnValues(
@@ -170,6 +183,7 @@ function returnValues(
     view: ctx.view,
     month: ctx.month,
     date: ctx.date,
+    workspace: ctx.workspace,
     ...extra,
   };
 }
@@ -221,6 +235,7 @@ async function addSchedule(data: FormData) {
   } catch (error) {
     redirect(setupUrl(ctx.scope, returnValues(ctx, { error: message(error) })));
   }
+  refreshPmCalendars();
   redirect(setupUrl(ctx.scope, returnValues(ctx, { saved: "schedule-added" })));
 }
 async function changeSchedule(data: FormData) {
@@ -241,6 +256,7 @@ async function changeSchedule(data: FormData) {
   } catch (error) {
     redirect(setupUrl(ctx.scope, returnValues(ctx, { error: message(error) })));
   }
+  refreshPmCalendars();
   redirect(
     setupUrl(ctx.scope, returnValues(ctx, { saved: "schedule-changed" })),
   );
@@ -258,6 +274,7 @@ async function cancelSchedule(data: FormData) {
   } catch (error) {
     redirect(setupUrl(ctx.scope, returnValues(ctx, { error: message(error) })));
   }
+  refreshPmCalendars();
   redirect(
     setupUrl(ctx.scope, returnValues(ctx, { saved: "schedule-canceled" })),
   );
@@ -319,6 +336,7 @@ async function applyPattern(data: FormData) {
   } catch (error) {
     redirect(setupUrl(ctx.scope, returnValues(ctx, { error: message(error) })));
   }
+  refreshPmCalendars();
   redirect(
     setupUrl(ctx.scope, returnValues(ctx, { saved: "pattern-applied" })),
   );
@@ -364,6 +382,25 @@ async function saveMonthlyPattern(data: FormData) {
   redirect(
     setupUrl(ctx.scope, returnValues(ctx, { saved: "monthly-pattern" })),
   );
+}
+async function saveMonthWeek(data: FormData) {
+  "use server";
+  const ctx = await context(data);
+  const state = {
+    q: String(data.get("q") ?? ""), target: String(data.get("target") ?? ""),
+    status: String(data.get("status") ?? ""), editWeek: String(data.get("weekNumber") ?? ""),
+  };
+  try {
+    await saveAnnualPmMonthWeek(ctx.user, {
+      ...ctx.serviceScope, planId: ctx.planId, month: Number(ctx.month),
+      weekNumber: Number(data.get("weekNumber")), revision: String(data.get("revision") ?? ""),
+      reason: String(data.get("reason") ?? ""), entries: JSON.parse(String(data.get("weekEntries") ?? "[]")),
+    });
+  } catch (error) {
+    redirect(setupUrl(ctx.scope, returnValues(ctx, { ...state, date: undefined, error: message(error) })));
+  }
+  refreshPmCalendars();
+  redirect(setupUrl(ctx.scope, returnValues(ctx, { ...state, date: undefined, saved: "month-week" })));
 }
 async function previewMonthlyPattern(data: FormData) {
   "use server";
@@ -413,6 +450,7 @@ async function generateMonthlyPattern(data: FormData) {
       ),
     );
   }
+  refreshPmCalendars();
   redirect(
     setupUrl(
       ctx.scope,
@@ -464,6 +502,7 @@ async function activatePlan(data: FormData) {
       planId: ctx.planId,
       effectiveDateKey: String(data.get("effectiveDateKey") ?? ""),
     });
+    refreshPmCalendars();
   } catch (error) {
     redirect(setupUrl(ctx.scope, returnValues(ctx, { error: message(error) })));
   }
@@ -483,6 +522,7 @@ async function cancelPlan(data: FormData) {
       planId: ctx.planId,
       reason: String(data.get("reason") ?? ""),
     });
+    refreshPmCalendars();
   } catch (error) {
     redirect(setupUrl(ctx.scope, returnValues(ctx, { error: message(error) })));
   }
@@ -501,6 +541,7 @@ async function deletePlan(data: FormData) {
       ...ctx.serviceScope,
       planId: ctx.planId,
     });
+    refreshPmCalendars();
   } catch (error) {
     redirect(setupUrl(ctx.scope, returnValues(ctx, { error: message(error) })));
   }
@@ -520,6 +561,7 @@ async function cancelRange(data: FormData) {
       reason: String(data.get("reason") ?? ""),
       excludedScheduleIds: affected.filter((id) => !included.has(id)),
     });
+    refreshPmCalendars();
   } catch (error) {
     redirect(setupUrl(ctx.scope, returnValues(ctx, { error: message(error) })));
   }
@@ -542,6 +584,7 @@ async function moveScheduleDate(data: FormData) {
       destinationDateKey: String(data.get("destinationDateKey")),
       reason: String(data.get("reason") ?? ""),
     });
+    refreshPmCalendars();
   } catch (error) {
     redirect(setupUrl(ctx.scope, returnValues(ctx, { error: message(error) })));
   }
@@ -751,16 +794,23 @@ export default async function PmSetupPage({
     (year === Number(getBangkokDateString().slice(0, 4))
       ? getBangkokDateString()
       : `${year}-01-01`);
+  const hasEditablePattern = Boolean(plan && plan.scheduleMode !== PmAnnualScheduleMode.MANUAL && canManage && (plan.status === "DRAFT" || plan.status === "ACTIVE"));
+  const patternResult = ["monthly-pattern", "monthly-generated", "pattern", "pattern-applied", "created"].includes(query.saved ?? "") || Boolean(query.monthlyPreview);
+  const initialTask = !plan ? "settings" : query.workspace === "settings" ? "settings"
+    : query.workspace === "pattern" && hasEditablePattern ? "pattern"
+    : query.workspace === "calendar" || query.editWeek || query.date || (query.view && !patternResult) || !hasEditablePattern ? "calendar" : "pattern";
   return (
-    <>
+    <div className="min-h-screen rounded-2xl bg-slate-50 p-3 text-slate-900 sm:p-5" style={{ "--surface": "#ffffff", "--soft": "#f1f5f9", "--line": "#e2e8f0", "--muted": "#475569", "--ink": "#0f172a" } as CSSProperties}>
       <RestoreListPosition
+        key={query.saved === "month-week" ? `${query.editWeek}:${plan?.schedules.map(row => row.id).join(":")}` : "setup"}
         enabled={Boolean(query.saved || query.error)}
         storageKey={positionKey}
       />
       <PmRouteShell
+        compact
         canManageGroups={false}
         currentPage="setup"
-        description="กำหนดแผน PM รายปีด้วย System หรือ Zone / Area ก่อนนำไปปล่อยงานใน PM Schedule"
+        description="วางแผน PM รายปี และจัดการรายการรายสัปดาห์"
         scope={scope}
         scopeAction="/dashboardpm/setup"
         title="Annual PM Setup"
@@ -775,6 +825,7 @@ export default async function PmSetupPage({
             role="status"
           >
             บันทึก Annual PM Setup แล้ว
+            {query.saved === "monthly-pattern" ? " — บันทึกต้นแบบแล้ว แต่ยังไม่อัปเดต PM Calendar กรุณา Preview แล้ว Confirm Generate" : query.saved === "month-week" ? " — อัปเดตเฉพาะ Week ของเดือนนี้ใน PM Calendar แล้ว ไม่เปลี่ยนต้นแบบ" : ""}
           </p>
         ) : null}
         {query.error ? (
@@ -794,16 +845,18 @@ export default async function PmSetupPage({
             รายการ กรุณาเปลี่ยนหรือ No-PM ก่อน Activate/Apply Pattern
           </p>
         ) : null}
+        <PmSetupWorkspace
+          key={`${plan?.id ?? year}:${initialTask}:${query.workspace ?? ""}:${query.saved ?? ""}:${query.monthlyPreview ?? ""}`}
+          hasPattern={hasEditablePattern}
+          initialTask={initialTask}
+        >
         <section
-          className="min-w-0 overflow-hidden rounded-3xl border border-[var(--line)] bg-[var(--surface)] p-5 shadow-sm"
+          className="min-w-0 overflow-hidden rounded-xl border border-[var(--line)] bg-[var(--surface)] p-4 sm:p-5"
           data-pm-setup-unified-card
         >
           <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_auto]">
             <div>
-              <p className="text-xs font-extrabold uppercase tracking-[0.14em] text-emerald-700">
-                Plan Year {year}
-              </p>
-              <h2 className="mt-1 text-2xl font-extrabold">
+              <h2 className="text-lg font-extrabold">
                 {plan?.name ?? "ยังไม่มี Annual PM Plan"}
               </h2>
               {plan ? (
@@ -814,7 +867,7 @@ export default async function PmSetupPage({
                     : plan.scheduleMode === PmAnnualScheduleMode.MONTHLY_PATTERN
                       ? "Monthly Pattern"
                       : "Weekly Pattern"}{" "}
-                  · {plan.status}
+                  · {plan.status} · ปี {year}
                 </p>
               ) : null}
             </div>
@@ -833,9 +886,11 @@ export default async function PmSetupPage({
               </Link>
             </div>
           </div>
+          {plan ? <PmSetupNavigation /> : null}
+          <PmSetupPanel task="settings">
           <details className="mt-5 border-t border-[var(--line)] pt-5">
-            <summary className="cursor-pointer text-lg font-extrabold">
-              Site PM Settings & Calendar
+            <summary className="cursor-pointer text-base font-bold">
+              ตั้งค่าขั้นสูง · Site PM Settings & Calendar
             </summary>
             <div className="mt-4 grid gap-5 xl:grid-cols-2">
               <PreserveListPositionForm
@@ -1004,7 +1059,8 @@ export default async function PmSetupPage({
                 </ConfirmSubmitButton>
               </PreserveListPositionForm>
             ) : null}
-          </details>{" "}
+          </details>
+          </PmSetupPanel>
           {!plans.some(
             (item) =>
               item.status === PmAnnualPlanStatus.DRAFT ||
@@ -1044,7 +1100,7 @@ export default async function PmSetupPage({
               </form>
             </section>
           ) : null}
-          {plans.length ? (
+          {plans.length > 1 ? (
             <section className="mt-5 flex gap-2 overflow-x-auto">
               {plans.map((item) => (
                 <Link
@@ -1072,7 +1128,7 @@ export default async function PmSetupPage({
               {canManage &&
               (plan.status === PmAnnualPlanStatus.DRAFT ||
                 plan.status === PmAnnualPlanStatus.ACTIVE) ? (
-                <div
+                <PmSetupPanel task="settings"><div
                   className="mt-5 grid gap-4 border-t border-[var(--line)] pt-5 lg:grid-cols-2"
                   data-pm-plan-settings
                 >
@@ -1151,13 +1207,13 @@ export default async function PmSetupPage({
                       แต่ยังแก้ชื่อและตารางอนาคตที่ยังไม่ปล่อยงานได้
                     </div>
                   )}
-                </div>
+                </div></PmSetupPanel>
               ) : null}{" "}
               {plan.scheduleMode === PmAnnualScheduleMode.WEEKLY_PATTERN &&
               canManage &&
               (plan.status === PmAnnualPlanStatus.DRAFT ||
                 plan.status === PmAnnualPlanStatus.ACTIVE) ? (
-                <div
+                <PmSetupPanel task="pattern"><div
                   className="mt-5 border-t border-[var(--line)] pt-5"
                   data-pm-weekly-pattern
                 >
@@ -1221,7 +1277,7 @@ export default async function PmSetupPage({
                       Apply Pattern
                     </ConfirmSubmitButton>
                   </PreserveListPositionForm>
-                </div>
+                </div></PmSetupPanel>
               ) : null}
             </>
           ) : null}
@@ -1231,7 +1287,7 @@ export default async function PmSetupPage({
             {canManage &&
             plan.status === PmAnnualPlanStatus.DRAFT &&
             plan.scheduleMode !== PmAnnualScheduleMode.MONTHLY_PATTERN ? (
-              <PreserveListPositionForm
+              <PmSetupPanel task="settings"><PreserveListPositionForm
                 action={resetSettings}
                 className="mt-5 border-t border-[var(--line)] pt-5"
                 storageKey={positionKey}
@@ -1251,29 +1307,31 @@ export default async function PmSetupPage({
                 >
                   เปลี่ยน Draft เป็น Monthly Pattern
                 </ConfirmSubmitButton>
-              </PreserveListPositionForm>
+              </PreserveListPositionForm></PmSetupPanel>
             ) : null}
             {plan.scheduleMode === PmAnnualScheduleMode.MONTHLY_PATTERN &&
             canManage &&
             (plan.status === PmAnnualPlanStatus.DRAFT ||
               plan.status === PmAnnualPlanStatus.ACTIVE) ? (
-              <div
-                className="mt-5 border-t border-[var(--line)] pt-5"
+              <PmSetupPanel task="pattern"><div
+                className="min-w-0 rounded-xl border border-[var(--line)] bg-white p-4 text-slate-900 sm:p-5"
                 data-pm-monthly-pattern
               >
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div className="flex items-center gap-2">
                     <Settings2 className="text-slate-950" size={19} />
                     <h2 className="text-lg font-extrabold text-slate-950">
-                      Annual PM Plan – Monthly Pattern
+                      Pattern ต้นแบบ
                     </h2>
                   </div>
+                  <PmSetupTaskLink task="calendar">แก้เฉพาะเดือน</PmSetupTaskLink>
                   <span
                     className={`rounded-full px-3 py-1 text-xs font-extrabold ${monthlyInSync ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-800"}`}
                   >
                     {monthlyInSync ? "In Sync" : "Regeneration Required"}
                   </span>
                 </div>
+                <p className="mt-1 text-sm text-slate-600">ใช้ซ้ำทุกเดือน · แก้รายการได้ในแต่ละ Week</p>
                 <PreserveListPositionForm
                   action={saveMonthlyPattern}
                   className="mt-4 grid gap-3"
@@ -1302,11 +1360,12 @@ export default async function PmSetupPage({
                       required
                     />
                   ) : null}
-                  <button className="min-h-11 rounded-xl bg-emerald-600 px-4 font-bold text-white">
+                  <button className="min-h-11 rounded-lg bg-emerald-600 px-5 text-sm font-bold text-white sm:justify-self-end">
                     Save Monthly Pattern
                   </button>
+                  <p className="text-sm text-slate-600">บันทึกต้นแบบ แล้ว Preview ก่อนสร้างลงปฏิทิน · หากแก้เฉพาะเดือน ให้เลือก “ปฏิทินและรายเดือน”</p>
                 </PreserveListPositionForm>
-                <div className="mt-4 grid gap-3 rounded-2xl border border-dashed border-emerald-500 p-4 lg:grid-cols-[1fr_auto]">
+                <div className="mt-4 grid gap-3 border-t border-slate-200 pt-4 lg:grid-cols-[1fr_auto]">
                   <PreserveListPositionForm
                     action={previewMonthlyPattern}
                     className="grid gap-3 sm:grid-cols-[1fr_auto]"
@@ -1376,9 +1435,10 @@ export default async function PmSetupPage({
                     </div>
                   ) : null}
                 </div>
-              </div>
+              </div></PmSetupPanel>
             ) : null}
-            <section className="rounded-3xl border border-[var(--line)] bg-[var(--surface)] p-4 shadow-sm">
+            <PmSetupPanel task="calendar">
+            <section className="rounded-xl border border-[var(--line)] bg-[var(--surface)] p-4">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="inline-flex rounded-2xl bg-[var(--soft)] p-1">
                   <Link
@@ -1548,11 +1608,33 @@ export default async function PmSetupPage({
                   positionKey={positionKey}
                 />
               )}
+              <Link className="mt-4 inline-flex min-h-11 items-center rounded-xl border border-emerald-600 px-4 text-sm font-bold text-emerald-700" href={`/dashboardpm/calendar?organizationId=${encodeURIComponent(scope.organization.id)}&plantId=${encodeURIComponent(scope.plant.id)}&view=month&month=${year}-${String(month).padStart(2, "0")}&date=${year}-${String(month).padStart(2, "0")}-01`}>เปิดเดือนนี้ใน PM Calendar</Link>
             </section>
+            {canManage && plan.scheduleMode === PmAnnualScheduleMode.MONTHLY_PATTERN && (plan.status === "DRAFT" || plan.status === "ACTIVE") ? (
+              <section id="pm-month-weeks" className="mt-4 grid min-w-0 gap-3 rounded-xl border border-[var(--line)] bg-[var(--surface)] p-4" aria-label="แก้ไข PM เฉพาะ Week ของเดือน">
+                <h2 className="text-lg font-extrabold">รายการราย Week · {monthNames[month - 1]} {year}</h2>
+                <p className="text-sm text-[var(--muted)]">เพิ่ม ลด เปลี่ยนเป้าหมายหรือวันได้โดยตรง มีผลเฉพาะ Week ของเดือนนี้ ไม่เปลี่ยน Pattern ต้นแบบ</p>
+                <div className="grid min-w-0 gap-3 xl:grid-cols-2">
+                  {[1, 2, 3, 4, 5].map(weekNumber => {
+                    const dates = new Set(pmMonthWeekDates(year, month, weekNumber).map(day => day.date));
+                    const rows = plan.schedules.filter(row => dates.has(row.scheduleDateKey));
+                    const revision = pmMonthWeekRevision(rows);
+                    return <PmMonthWeekEditor key={`${plan.id}:${month}:${weekNumber}:${revision}`} action={saveMonthWeek}
+                      year={year} month={month} weekNumber={weekNumber} revision={revision} open={query.editWeek === String(weekNumber)}
+                      today={getBangkokDateString()} effectiveDate={plan.effectiveDateKey} active={plan.status === "ACTIVE"} positionKey={positionKey}
+                      hidden={{ organizationId: scope.organization.id, plantId: scope.plant.id, planId: plan.id, year: String(year), month: String(month), view, q: query.q ?? "", target: query.target ?? "", status: query.status ?? "" }}
+                      targets={targets.map(target => ({ id: target.id, label: targetLabel(target), active: target.active }))}
+                      rows={rows.filter(row => row.status === "SCHEDULED" || row.status === "RELEASED").map(row => ({ id: row.id, scheduleDateKey: row.scheduleDateKey, targetId: row.assetSystemId ?? row.zoneId ?? "", label: row.assetSystem?.nameTh ?? row.zone?.name ?? "", source: row.source,
+                        locked: Boolean(row.releasedAt) || row.status === "RELEASED" || (plan.status === "ACTIVE" && row.scheduleDateKey < getBangkokDateString()) }))} />;
+                  })}
+                </div>
+              </section>
+            ) : null}
+            </PmSetupPanel>
             {canManage &&
             (plan.status === PmAnnualPlanStatus.DRAFT ||
               plan.status === PmAnnualPlanStatus.ACTIVE) ? (
-              <section className="grid gap-3 rounded-3xl border border-[var(--line)] bg-[var(--surface)] p-5 lg:grid-cols-3">
+              <PmSetupPanel task="settings"><section className="grid gap-3 rounded-xl border border-[var(--line)] bg-[var(--surface)] p-5 lg:grid-cols-3">
                 {plan.status === PmAnnualPlanStatus.DRAFT ? (
                   <PreserveListPositionForm
                     action={activatePlan}
@@ -1648,10 +1730,11 @@ export default async function PmSetupPage({
                       : "Cancel Plan"}
                   </ConfirmSubmitButton>
                 </PreserveListPositionForm>
-              </section>
+              </section></PmSetupPanel>
             ) : null}
           </>
         ) : null}
+        </PmSetupWorkspace>
       </main>
       {plan && selectedDate ? (
         <>
@@ -1923,7 +2006,7 @@ export default async function PmSetupPage({
           </aside>
         </>
       ) : null}
-    </>
+    </div>
   );
 }
 function Hidden({
@@ -1942,6 +2025,7 @@ function Hidden({
   return (
     <>
       <AdminScopeHiddenFields scope={scope as never} />
+      <PmSetupWorkspaceField />
       <input name="planId" type="hidden" value={plan.id} />
       <input name="year" type="hidden" value={plan.year} />
       <input name="view" type="hidden" value={view} />

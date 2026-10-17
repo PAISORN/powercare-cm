@@ -8,6 +8,8 @@ $portProbe.Stop()
 $url = "http://127.0.0.1:$port"
 $runId = "$PID-$([DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds())-$([Guid]::NewGuid().ToString('N').Substring(0, 8))"
 $env:E2E_BASE_URL = $url
+$previousNextDistDir = $env:POWERCARE_NEXT_DIST_DIR
+$env:POWERCARE_NEXT_DIST_DIR = ".next-e2e/$runId/app"
 $nextBin = Join-Path (Get-Location) "node_modules\next\dist\bin\next"
 $logDir = Join-Path (Join-Path (Get-Location) ".next-e2e") $runId
 $resultDir = Join-Path (Join-Path (Get-Location) "test-results") "e2e-$runId"
@@ -22,6 +24,7 @@ New-Item -ItemType Directory -Force -Path $logDir | Out-Null
 $workspaceLockPath = Join-Path (Join-Path (Get-Location) ".next-e2e") "workspace.lock"
 $workspaceLock = $null
 $nextEnvPath = Join-Path (Get-Location) "next-env.d.ts"
+$tsConfigPath = Join-Path (Get-Location) "tsconfig.json"
 $nextEnvExisted = $false
 $nextEnvBytes = $null
 if (-not $resolvedE2eDatabase.StartsWith($resolvedDatabaseDir, [System.StringComparison]::OrdinalIgnoreCase)) {
@@ -41,6 +44,7 @@ while (-not $workspaceLock) {
 }
 $nextEnvExisted = Test-Path -LiteralPath $nextEnvPath
 if ($nextEnvExisted) { $nextEnvBytes = [System.IO.File]::ReadAllBytes($nextEnvPath) }
+$tsConfigBytes = [System.IO.File]::ReadAllBytes($tsConfigPath)
 
 $server = Start-Process `
   -FilePath "node" `
@@ -74,12 +78,14 @@ try {
   $testExitCode = $LASTEXITCODE
 }
 finally {
+  if ($null -eq $previousNextDistDir) { Remove-Item Env:POWERCARE_NEXT_DIST_DIR -ErrorAction SilentlyContinue } else { $env:POWERCARE_NEXT_DIST_DIR = $previousNextDistDir }
   if ($server -and -not $server.HasExited) {
     Stop-Process -Id $server.Id -Force
   }
   if ($null -eq $previousDatabaseUrl) { Remove-Item Env:DATABASE_URL -ErrorAction SilentlyContinue } else { $env:DATABASE_URL = $previousDatabaseUrl }
   if ($nextEnvExisted) { [System.IO.File]::WriteAllBytes($nextEnvPath, $nextEnvBytes) }
   elseif (Test-Path -LiteralPath $nextEnvPath) { Remove-Item -LiteralPath $nextEnvPath -Force }
+  [System.IO.File]::WriteAllBytes($tsConfigPath, $tsConfigBytes)
   if ($workspaceLock) { $workspaceLock.Dispose() }
   if ($testExitCode -eq 0 -and (Test-Path -LiteralPath $resolvedE2eDatabase)) {
     $removed = $false

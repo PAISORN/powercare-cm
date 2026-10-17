@@ -1,7 +1,7 @@
 "use client";
 
-import { ArrowDown, ArrowUp, Check, Plus, Search, Trash2 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { ArrowDown, ArrowUp, ChevronDown, Plus, Search, Trash2 } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 
 type Target = { id: string; label: string; active: boolean };
 type Pattern = {
@@ -19,7 +19,7 @@ type Item = {
   targetId: string;
 };
 
-const weekNumbers = [1, 2, 3, 4] as const;
+const weekNumbers = [1, 2, 3, 4, 5] as const;
 const weekdays = [
   { value: 1, label: "Monday" },
   { value: 2, label: "Tuesday" },
@@ -62,7 +62,7 @@ export function PmMonthlyPatternBuilder({
     Object.fromEntries(
       weekNumbers.map((weekNumber) => [
         weekNumber,
-        weeks.find((week) => week.weekNumber === weekNumber)?.mode ?? "ASSIGNMENTS",
+        weeks.find((week) => week.weekNumber === weekNumber)?.mode ?? (weekNumber === 5 ? (initialWeek5Rule === "REPEAT_WEEK_1" ? "REPEAT_WEEK_1" : "NO_PM") : "ASSIGNMENTS"),
       ]),
     ),
   );
@@ -90,7 +90,7 @@ export function PmMonthlyPatternBuilder({
   const targetType = pmBy === "SYSTEM" ? "System" : "Zone / Area";
   const configuredWeeks = weekNumbers.filter(
     (weekNumber) =>
-      modes[weekNumber] === "NO_PM" ||
+      modes[weekNumber] === "NO_PM" || modes[weekNumber] === "REPEAT_WEEK_1" ||
       items.some((item) => item.weekNumber === weekNumber),
   ).length;
 
@@ -114,25 +114,30 @@ export function PmMonthlyPatternBuilder({
 
   function addTargets() {
     if (!pendingTargets.length) return;
-    setModes((current) => ({ ...current, [pendingWeek]: "ASSIGNMENTS" }));
+    appendTargets(pendingWeek, pendingDay, pendingTargets);
+    setPendingTargets([]);
+    setQuery("");
+  }
+
+  function appendTargets(weekNumber: number, dayOfWeek: number, targetIds: string[]) {
+    const allowedIds = new Set(activeTargets.map(target => target.id));
+    setModes((current) => ({ ...current, [weekNumber]: "ASSIGNMENTS" }));
     setItems((current) => {
       const keys = new Set(
         current.map((item) =>
           itemKey(item.weekNumber, item.dayOfWeek, item.targetId),
         ),
       );
-      const additions = pendingTargets
-        .filter((targetId) => !keys.has(itemKey(pendingWeek, pendingDay, targetId)))
+      const additions = [...new Set(targetIds)]
+        .filter((targetId) => allowedIds.has(targetId) && !keys.has(itemKey(weekNumber, dayOfWeek, targetId)))
         .map((targetId) => ({
-          key: itemKey(pendingWeek, pendingDay, targetId),
-          weekNumber: pendingWeek,
-          dayOfWeek: pendingDay,
+          key: itemKey(weekNumber, dayOfWeek, targetId),
+          weekNumber,
+          dayOfWeek,
           targetId,
         }));
       return [...current, ...additions];
     });
-    setPendingTargets([]);
-    setQuery("");
   }
 
   function setNoPm(weekNumber: number, noPm: boolean) {
@@ -149,7 +154,7 @@ export function PmMonthlyPatternBuilder({
 
   function updateItem(
     key: string,
-    values: Partial<Pick<Item, "weekNumber" | "dayOfWeek">>,
+    values: Partial<Pick<Item, "weekNumber" | "dayOfWeek" | "targetId">>,
   ) {
     setItems((current) =>
       current.map((item) => {
@@ -189,46 +194,30 @@ export function PmMonthlyPatternBuilder({
   }
 
   return (
-    <div className="grid gap-5">
-      <section className="overflow-hidden rounded-2xl border border-[var(--line)] bg-white text-slate-900 shadow-sm">
+    <div className="grid gap-3">
+      <details className="border-b border-slate-200 pb-4 text-slate-900">
+        <summary className="cursor-pointer py-2 text-sm font-bold text-slate-600">เพิ่มหลายรายการพร้อมกัน · ตัวเลือกขั้นสูง</summary>
         <div className="grid gap-4 border-b border-[var(--line)] bg-slate-50/80 p-4 lg:grid-cols-[minmax(0,1fr)_18rem] lg:items-end">
           <div>
             <p className="text-base font-extrabold">ตั้งค่า Pattern ต้นแบบ</p>
             <p className="mt-1 text-sm text-slate-600">
               เลือกหลาย {targetType} จากจุดเดียว แล้วส่งไปยัง Week ที่ต้องการ
             </p>
-            <div aria-label="Pattern progress" className="mt-3 flex flex-wrap gap-2">
-              {weekNumbers.map((weekNumber) => {
-                const count = items.filter(
-                  (item) => item.weekNumber === weekNumber,
-                ).length;
-                const noPm = modes[weekNumber] === "NO_PM";
-                const configured = noPm || count > 0;
-                return (
-                  <span
-                    className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-bold ${
-                      configured
-                        ? "border-emerald-200 bg-emerald-50 text-emerald-800"
-                        : "border-slate-200 bg-white text-slate-500"
-                    }`}
-                    key={weekNumber}
-                  >
-                    {configured ? <Check aria-hidden="true" size={14} /> : null}
-                    Week {weekNumber} · {noPm ? "No PM" : `${count} รายการ`}
-                  </span>
-                );
-              })}
-            </div>
           </div>
           <label className="grid gap-1.5 text-sm font-bold">
             กรณีเดือนมี Week 5
             <select
               className="min-h-11 rounded-xl border border-slate-300 bg-white px-3 text-slate-900"
-              defaultValue={initialWeek5Rule}
-              name="monthlyWeek5Rule"
+              value={modes[5] === "REPEAT_WEEK_1" ? "REPEAT_WEEK_1" : modes[5] === "ASSIGNMENTS" ? "CUSTOM" : "NO_PM"}
+              onChange={event => {
+                const mode = event.target.value === "CUSTOM" ? "ASSIGNMENTS" : event.target.value;
+                setModes(current => ({ ...current, 5: mode }));
+                if (mode !== "ASSIGNMENTS") setItems(current => current.filter(item => item.weekNumber !== 5));
+              }}
             >
               <option value="NO_PM">No PM</option>
               <option value="REPEAT_WEEK_1">Repeat Week 1</option>
+              <option value="CUSTOM">กำหนดรายการ Week 5 เอง</option>
             </select>
           </label>
         </div>
@@ -358,32 +347,30 @@ export function PmMonthlyPatternBuilder({
             </div>
           </div>
         </div>
-      </section>
+      </details>
 
-      <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-[var(--line)] bg-white/95 p-4 text-slate-900 shadow-sm">
-        <div>
-          <p className="font-extrabold text-slate-950">ตรวจสอบรายการรายสัปดาห์</p>
-          <p className="text-sm text-slate-600">
-            ปรับวัน ย้ายสัปดาห์ หรือลำดับรายการได้ก่อนบันทึก Pattern
-          </p>
-        </div>
+      <div className="flex flex-wrap items-center justify-between gap-2 text-slate-900">
+        <p className="text-sm text-slate-600">เลือก Week เพื่อเพิ่ม ลบ หรือแก้รายการ</p>
         <p className="text-sm font-bold text-slate-700">
-          ตั้งค่าแล้ว {configuredWeeks} / 4 Weeks
+          ตั้งค่าแล้ว {configuredWeeks} / 5 Weeks
         </p>
       </div>
 
-      <div className="grid gap-4 2xl:grid-cols-2">
+      <div className="divide-y divide-slate-200 overflow-hidden rounded-xl border border-slate-200" data-pm-pattern-week-grid>
         {weekNumbers.map((weekNumber) => (
           <WeekCard
             items={items}
             key={weekNumber}
             modes={modes}
-            onFocusComposer={setPendingWeek}
+            onAdd={appendTargets}
+            targets={targets}
+            targetType={targetType}
             onRemove={(key) =>
               setItems((current) => current.filter((item) => item.key !== key))
             }
             onReorder={reorder}
             onSetNoPm={setNoPm}
+            onRepeatWeekOne={() => { setModes(current => ({ ...current, 5: "REPEAT_WEEK_1" })); setItems(current => current.filter(item => item.weekNumber !== 5)); }}
             onUpdate={updateItem}
             targetLabels={targetLabels}
             weekNumber={weekNumber}
@@ -391,6 +378,7 @@ export function PmMonthlyPatternBuilder({
         ))}
       </div>
 
+      <input type="hidden" name="monthlyWeek5Rule" value={modes[5] === "REPEAT_WEEK_1" ? "REPEAT_WEEK_1" : "NO_PM"} />
       {items.map((item, index) => (
         <input
           key={`hidden:${item.key}`}
@@ -406,79 +394,86 @@ export function PmMonthlyPatternBuilder({
 function WeekCard({
   items,
   modes,
-  onFocusComposer,
+  onAdd,
+  targets,
+  targetType,
   onRemove,
   onReorder,
   onSetNoPm,
+  onRepeatWeekOne,
   onUpdate,
   targetLabels,
   weekNumber,
 }: {
   items: Item[];
   modes: Record<number, string>;
-  onFocusComposer: (weekNumber: number) => void;
+  onAdd: (weekNumber: number, dayOfWeek: number, targetIds: string[]) => void;
+  targets: Target[];
+  targetType: string;
   onRemove: (key: string) => void;
   onReorder: (key: string, direction: -1 | 1) => void;
   onSetNoPm: (weekNumber: number, noPm: boolean) => void;
+  onRepeatWeekOne: () => void;
   onUpdate: (
     key: string,
-    values: Partial<Pick<Item, "weekNumber" | "dayOfWeek">>,
+    values: Partial<Pick<Item, "weekNumber" | "dayOfWeek" | "targetId">>,
   ) => void;
   targetLabels: Map<string, string>;
   weekNumber: number;
 }) {
   const weekItems = items.filter((item) => item.weekNumber === weekNumber);
   const noPm = modes[weekNumber] === "NO_PM";
-  const configured = noPm || weekItems.length > 0;
+  const repeat = modes[weekNumber] === "REPEAT_WEEK_1";
+  const [adding, setAdding] = useState(false);
+  const [expanded, setExpanded] = useState(weekNumber === 1);
+  // A reload can display server HTML before React attaches the accordion handler.
+  // Keep its trigger disabled until hydration so the first click is not lost.
+  const [hydrated, setHydrated] = useState(false);
+  useEffect(() => { setHydrated(true); }, []);
 
   return (
-    <section className="overflow-hidden rounded-2xl border border-[var(--line)] bg-white text-slate-900 shadow-sm">
-      <input
+    <section aria-label={`Pattern Week ${weekNumber}`} data-pm-pattern-week={weekNumber} className="min-w-0 overflow-hidden bg-white text-slate-900">
+      {!repeat ? <input
         name="monthlyWeekMode"
         type="hidden"
         value={`${weekNumber}:${modes[weekNumber]}`}
-      />
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 bg-slate-50/80 p-4">
-        <div className="flex items-center gap-3">
-          <span
-            className={`grid size-10 place-items-center rounded-xl text-sm font-black ${
-              configured ? "bg-emerald-600 text-white" : "bg-slate-200 text-slate-600"
-            }`}
-          >
-            W{weekNumber}
-          </span>
+      /> : null}
+      <div className={`flex flex-wrap items-center justify-between gap-2 px-4 py-2 ${expanded ? "border-b border-slate-200 bg-slate-50/60" : ""}`}>
+        <button type="button" disabled={!hydrated} aria-expanded={expanded} aria-controls={`pm-pattern-week-body-${weekNumber}`} aria-label={`รายการ Week ${weekNumber}`} onClick={() => setExpanded(current => !current)} className="flex min-h-11 flex-1 items-center gap-3 rounded-lg text-left focus-visible:outline-2 focus-visible:outline-emerald-600">
+          <ChevronDown aria-hidden="true" size={18} className={expanded ? "text-emerald-700" : "-rotate-90 text-slate-500"} />
           <div>
             <p className="font-extrabold">Week {weekNumber}</p>
             <p className="text-xs text-slate-500">
-              {noPm
+              {repeat ? "ตามรายการ Week 1" : noPm
                 ? "กำหนดเป็น No PM"
                 : weekItems.length
                   ? `${weekItems.length} PM Assignment`
                   : "ยังไม่ได้ตั้งค่า"}
             </p>
           </div>
-        </div>
+        </button>
         <div
           aria-label={`Week ${weekNumber} mode`}
-          className="grid grid-cols-2 rounded-xl border border-slate-200 bg-white p-1 text-sm font-bold"
+          className={`grid max-w-full ${weekNumber === 5 ? "grid-cols-[1fr_auto_1fr]" : "grid-cols-2"} rounded-xl border border-slate-200 bg-white p-1 text-xs font-bold sm:text-sm`}
           role="group"
         >
           <button
-            aria-pressed={!noPm}
-            className={`min-h-9 rounded-lg px-3 ${
-              !noPm ? "bg-slate-900 text-white" : "text-slate-600 hover:bg-slate-100"
+            aria-pressed={!noPm && !repeat}
+            className={`min-h-11 rounded-lg px-2 sm:px-3 ${
+              !noPm && !repeat ? "bg-slate-900 text-white" : "text-slate-600 hover:bg-slate-100"
             }`}
-            onClick={() => onSetNoPm(weekNumber, false)}
+            onClick={() => { onSetNoPm(weekNumber, false); setExpanded(true); }}
             type="button"
           >
             มี PM
           </button>
+          {weekNumber === 5 ? <button type="button" aria-pressed={repeat} className={`min-h-11 rounded-lg px-2 sm:px-3 ${repeat ? "bg-slate-900 text-white" : "text-slate-600 hover:bg-slate-100"}`} onClick={onRepeatWeekOne}>ตาม Week 1</button> : null}
           <button
             aria-pressed={noPm}
-            className={`min-h-9 rounded-lg px-3 ${
+            className={`min-h-11 rounded-lg px-2 sm:px-3 ${
               noPm ? "bg-slate-900 text-white" : "text-slate-600 hover:bg-slate-100"
             }`}
-            onClick={() => onSetNoPm(weekNumber, true)}
+            onClick={() => { onSetNoPm(weekNumber, true); setExpanded(true); }}
             type="button"
           >
             No PM
@@ -486,20 +481,19 @@ function WeekCard({
         </div>
       </div>
 
-      <div className="grid gap-2 p-4">
+      <div id={`pm-pattern-week-body-${weekNumber}`} className={expanded ? "grid gap-2 p-3 sm:p-4" : "hidden"}>
         {!noPm
           ? weekItems.map((item, index) => (
               <article
-                className="grid gap-3 rounded-xl border border-slate-200 p-3 sm:grid-cols-[minmax(0,1fr)_9rem_8rem_auto] sm:items-center"
+                className="grid min-w-0 gap-3 border-b border-slate-100 py-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] sm:items-center xl:grid-cols-[minmax(0,1fr)_10rem_8rem_auto]"
                 key={item.key}
               >
-                <div className="min-w-0">
-                  <p
-                    className="truncate font-bold"
-                    title={targetLabels.get(item.targetId)}
-                  >
-                    {targetLabels.get(item.targetId) ?? item.targetId}
-                  </p>
+                <div className="min-w-0 sm:col-span-full xl:col-span-1">
+                  <select aria-label={`เปลี่ยนเป้าหมาย ${targetLabels.get(item.targetId)} Week ${weekNumber} ลำดับ ${index + 1}`}
+                    className="min-h-10 w-full min-w-0 rounded-lg border border-slate-300 bg-white px-2 font-bold text-slate-900"
+                    value={item.targetId} onChange={event => onUpdate(item.key, { targetId: event.target.value })}>
+                    {targets.filter(target => target.active || target.id === item.targetId).map(target => <option key={target.id} value={target.id}>{target.label}</option>)}
+                  </select>
                   <p className="mt-0.5 text-xs text-slate-500">ลำดับ {index + 1}</p>
                 </div>
                 <select
@@ -526,7 +520,7 @@ function WeekCard({
                 >
                   {weekNumbers.map((value) => (
                     <option
-                      disabled={modes[value] === "NO_PM"}
+                      disabled={modes[value] === "NO_PM" || modes[value] === "REPEAT_WEEK_1"}
                       key={value}
                       value={value}
                     >
@@ -548,15 +542,9 @@ function WeekCard({
               </article>
             ))
           : null}
-        {!noPm && !weekItems.length ? (
-          <button
-            className="min-h-24 rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 text-center text-sm text-slate-600 hover:border-emerald-400 hover:bg-emerald-50"
-            onClick={() => onFocusComposer(weekNumber)}
-            type="button"
-          >
-            <Plus aria-hidden="true" className="mx-auto mb-1" size={18} />
-            ยังไม่มีรายการ — เลือก Week {weekNumber} ในกล่องด้านบนเพื่อเพิ่ม PM
-          </button>
+        {repeat ? <p className="rounded-xl bg-slate-50 p-4 text-sm text-slate-600">ใช้รายการต้นแบบ Week 1 เฉพาะวันที่มีครั้งที่ 5 จริง หรือกดเพิ่ม PM เพื่อกำหนด Week 5 เอง</p> : null}
+        {!noPm && !repeat && !weekItems.length ? (
+          <p className="px-4 py-2 text-sm text-slate-600">ยังไม่มีรายการ PM — เพิ่มได้ใน Week นี้</p>
         ) : null}
         {noPm ? (
           <div className="grid min-h-24 place-items-center rounded-xl bg-slate-50 px-4 text-center">
@@ -568,9 +556,41 @@ function WeekCard({
             </div>
           </div>
         ) : null}
+        <>
+          <button type="button" aria-expanded={adding && !noPm && !repeat} aria-controls={`pattern-week-add-${weekNumber}`}
+            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-dashed border-emerald-500 px-4 text-sm font-bold text-emerald-700 hover:bg-emerald-50"
+            onClick={() => { if (noPm || repeat) { onSetNoPm(weekNumber, false); setAdding(true); } else setAdding(current => !current); }}><Plus size={17} aria-hidden="true" />{adding && !noPm && !repeat ? "ปิดช่องเพิ่ม" : `เพิ่ม PM ใน Week ${weekNumber}`}</button>
+          {adding && !noPm && !repeat ? <WeekInlineComposer weekNumber={weekNumber} targetType={targetType} targets={targets} items={weekItems} onAdd={onAdd} /> : null}
+        </>
       </div>
     </section>
   );
+}
+
+function WeekInlineComposer({ weekNumber, targetType, targets, items, onAdd }: {
+  weekNumber: number; targetType: string; targets: Target[]; items: Item[];
+  onAdd: (weekNumber: number, dayOfWeek: number, targetIds: string[]) => void;
+}) {
+  const [day, setDay] = useState(1);
+  const [search, setSearch] = useState("");
+  const [selected, setSelected] = useState<string[]>([]);
+  const available = targets.filter(target => target.active && !items.some(item => item.dayOfWeek === day && item.targetId === target.id));
+  const visible = available.filter(target => target.label.toLocaleLowerCase().includes(search.trim().toLocaleLowerCase()));
+  const selectedIds = selected.filter(id => available.some(target => target.id === id));
+  const allVisible = visible.length > 0 && visible.every(target => selectedIds.includes(target.id));
+  return <div id={`pattern-week-add-${weekNumber}`} className="grid min-w-0 gap-3 rounded-xl border border-emerald-200 bg-emerald-50/40 p-3">
+    <p className="text-sm font-extrabold">เพิ่มรายการใน Week {weekNumber}</p>
+    <label className="grid gap-1 text-sm font-bold">วันที่ดำเนินการ<select aria-label={`วันเพิ่ม PM Week ${weekNumber}`} className="min-h-11 min-w-0 rounded-xl border border-slate-300 bg-white px-3 text-base sm:text-sm" value={day} onChange={event => { setDay(Number(event.target.value)); setSelected([]); }}>
+      {weekdays.map(weekday => <option key={weekday.value} value={weekday.value}>{weekday.label}</option>)}
+    </select></label>
+    <label className="grid gap-1 text-sm font-bold">ค้นหา {targetType}<input type="search" aria-label={`ค้นหาเป้าหมาย Pattern Week ${weekNumber}`} className="min-h-11 min-w-0 rounded-xl border border-slate-300 bg-white px-3 text-base sm:text-sm" value={search} onChange={event => setSearch(event.target.value)} placeholder={`ค้นหา ${targetType}...`} /></label>
+    <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-600"><span>ไม่แสดงรายการที่มีแล้วในวันที่เลือก</span><button type="button" disabled={!visible.length} className="min-h-11 px-2 font-bold text-emerald-700 disabled:opacity-40" onClick={() => setSelected(current => allVisible ? current.filter(id => !visible.some(target => target.id === id)) : Array.from(new Set([...current, ...visible.map(target => target.id)])))}>{allVisible ? "ยกเลิกที่ค้นหาทั้งหมด" : "เลือกที่ค้นหาทั้งหมด"}</button></div>
+    <div role="group" aria-label={`เลือก PM Pattern Week ${weekNumber}`} className="grid max-h-56 gap-2 overflow-y-auto sm:grid-cols-2">
+      {visible.map(target => <label key={target.id} className="flex min-h-11 cursor-pointer items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"><input type="checkbox" checked={selectedIds.includes(target.id)} onChange={() => setSelected(current => current.includes(target.id) ? current.filter(id => id !== target.id) : [...current, target.id])} className="size-4 shrink-0 accent-emerald-600" /><span className="min-w-0 break-words">{target.label}</span></label>)}
+      {!visible.length ? <p className="py-3 text-sm text-slate-500">ไม่มีเป้าหมายที่เพิ่มได้ในวันที่เลือกหรือไม่พบคำค้น</p> : null}
+    </div>
+    <button type="button" disabled={!selectedIds.length} className="min-h-11 rounded-xl bg-emerald-600 px-4 text-sm font-bold text-white hover:bg-emerald-700 disabled:bg-slate-300" onClick={() => { onAdd(weekNumber, day, selectedIds); setSelected([]); }}>เพิ่ม {selectedIds.length || ""} รายการใน Week {weekNumber}</button>
+  </div>;
 }
 
 function IconButton({
@@ -587,7 +607,7 @@ function IconButton({
   return (
     <button
       aria-label={label}
-      className={`grid size-10 place-items-center rounded-lg border ${
+      className={`grid size-11 place-items-center rounded-lg border ${
         danger
           ? "border-red-200 text-red-700 hover:bg-red-50"
           : "border-slate-200 text-slate-600 hover:bg-slate-100"

@@ -10,6 +10,7 @@ type PmRouteShellProps = {
   scope: AdminSiteScope;
   currentPage: PmPage;
   canManageGroups: boolean;
+  compact?: boolean;
   scopeAction: "/dashboardpm/setup" | "/dashboardpm/check-sheets" | "/dashboardpm" | "/dashboardpm/calendar" | "/dashboardpm/groups" | "/dashboardpm/work";
 };
 
@@ -19,6 +20,7 @@ export function PmRouteShell({
   scope,
   currentPage,
   scopeAction,
+  compact = false,
 }: PmRouteShellProps) {
   const widthClass = currentPage === "groups" ? "max-w-6xl" : "max-w-[1680px]";
 
@@ -32,7 +34,8 @@ export function PmRouteShell({
       />
     ) : null}
 
-    <section className="page-heading-shell min-w-0 overflow-hidden rounded-2xl border border-[var(--line)] bg-[var(--surface)] shadow-sm">
+    <section className={compact ? "min-w-0" : "page-heading-shell min-w-0 overflow-hidden rounded-2xl border border-[var(--line)] bg-[var(--surface)] shadow-sm"}>
+      {compact ? <div><h1 className="text-2xl font-extrabold sm:text-3xl">{title}</h1><p className="mt-2 text-sm text-[var(--muted)]">{description} · {scope.plant.name}</p></div> : <>
       <div className="px-5 pb-5 pt-6 sm:px-7">
         <div className="flex items-start gap-3">
           <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-emerald-500/12 text-emerald-600"><CalendarDays aria-hidden="true" size={20} /></span>
@@ -44,6 +47,7 @@ export function PmRouteShell({
         </div>
         <p className="mt-4 max-w-4xl text-sm text-[var(--muted)]">{description}</p>
       </div>
+      </>}
     </section>
   </div>;
 }

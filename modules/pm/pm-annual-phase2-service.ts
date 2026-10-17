@@ -102,7 +102,7 @@ export async function copyPreviousAnnualPmPlan(actor: PermissionUserContext, inp
           const date = nthWeekdayOfMonth(input.targetYear, month, pattern.dayOfWeek, pattern.weekNumber);
           if (date) scheduleCopies.push({ date, assetSystemId: pattern.assetSystemId, zoneId: pattern.zoneId, source: PmAnnualScheduleSource.PATTERN });
         }
-        if (source.monthlyWeek5Rule === PmAnnualMonthlyWeek5Rule.REPEAT_WEEK_1) for (const pattern of (source.monthlyPatterns ?? []).filter(item => item.weekNumber === 1)) {
+        if (!(source.monthlyWeeks ?? []).some(week => week.weekNumber === 5) && source.monthlyWeek5Rule === PmAnnualMonthlyWeek5Rule.REPEAT_WEEK_1) for (const pattern of (source.monthlyPatterns ?? []).filter(item => item.weekNumber === 1)) {
           const date = nthWeekdayOfMonth(input.targetYear, month, pattern.dayOfWeek, 5);
           if (date) scheduleCopies.push({ date, assetSystemId: pattern.assetSystemId, zoneId: pattern.zoneId, source: PmAnnualScheduleSource.PATTERN });
         }

@@ -13,27 +13,24 @@ import {
   SlidersHorizontal,
   Sun,
 } from "lucide-react";
-import { useState, type CSSProperties, type FormEvent, type ReactNode } from "react";
+import { useEffect, useState, type CSSProperties, type FormEvent, type ReactNode } from "react";
 import { getBangkokTheme } from "../lib/date-time/bangkok-time";
+import { saveDisplayPreferences } from "../app/settings/actions";
 import {
-  BACKGROUND_BLUR_COOKIE,
-  BACKGROUND_BRIGHTNESS_COOKIE,
-  BACKGROUND_PREFERENCE_COOKIE,
+  DEFAULT_BACKGROUND,
   DEFAULT_BACKGROUND_BLUR,
   DEFAULT_BACKGROUND_BRIGHTNESS,
-  LANGUAGE_PREFERENCE_COOKIE,
   MAX_BACKGROUND_BLUR,
   MAX_BACKGROUND_BRIGHTNESS,
   MIN_BACKGROUND_BLUR,
   MIN_BACKGROUND_BRIGHTNESS,
-  PREFERENCE_COOKIE_MAX_AGE,
-  THEME_PREFERENCE_COOKIE,
   type BackgroundPreference,
   type LanguagePreference,
   type ThemePreference,
 } from "../modules/settings/user-preferences";
 
 type Props = {
+  preferenceOwner?: string;
   initialBackground: BackgroundPreference;
   initialBackgroundBlur: number;
   initialBackgroundBrightness: number;
@@ -48,6 +45,11 @@ const themeOptions = [
 ] as const;
 
 const backgroundOptions = [
+  { value: "image-control-room", label: "ห้องควบคุม", description: "บรรยากาศห้องควบคุมพร้อมวิวโรงไฟฟ้า · ภาพสร้างด้วย AI" },
+  { value: "image-plant-dawn", label: "โรงงานยามเช้า", description: "แสงเช้าเหนืออาคารและระบบสาธารณูปโภค · ภาพสร้างด้วย AI" },
+  { value: "image-mechanical-hall", label: "ระบบเครื่องจักร", description: "โถงปั๊มและระบบท่อโทนฟ้าเทา · ภาพสร้างด้วย AI" },
+  { value: "image-maintenance", label: "ช่างซ่อมบำรุง", description: "ภาพจากหน้าเว็บไซต์ PowerCare · งานซ่อมบำรุงในโรงงาน" },
+  { value: "image-industrial-campus", label: "โรงงานอุตสาหกรรม", description: "ภาพจากหน้าเว็บไซต์ PowerCare · อาคารและระบบสาธารณูปโภค" },
   { value: "original", label: "พื้นหลังเดิม", description: "โทนน้ำเงินเข้มพร้อมลายเฟือง" },
   { value: "blue-gray", label: "ฟ้าเทาไล่เฉด", description: "กล่องสีขาวเด่น อ่านง่าย" },
   { value: "plain", label: "สีอ่อนเรียบ", description: "พื้นหลังสีอ่อน สบายตา" },
@@ -64,6 +66,11 @@ const backgroundOptions = [
 }>;
 
 const backgroundImages: Partial<Record<BackgroundPreference, string>> = {
+  "image-control-room": "/backgrounds/powercare-images/powercare-background-control-room.webp",
+  "image-plant-dawn": "/backgrounds/powercare-images/powercare-background-plant-dawn.webp",
+  "image-mechanical-hall": "/backgrounds/powercare-images/powercare-background-mechanical-hall.webp",
+  "image-maintenance": "/landing/powercare-maintenance-hero.webp",
+  "image-industrial-campus": "/landing/powercare-industrial-campus.webp",
   "image-blue-mist": "/backgrounds/01-blue-mist.webp",
   "image-aurora-flow": "/backgrounds/02-aurora-flow.webp",
   "image-soft-sunset": "/backgrounds/03-soft-sunset.webp",
@@ -73,6 +80,7 @@ const backgroundImages: Partial<Record<BackgroundPreference, string>> = {
 };
 
 export function SettingsPreferencesForm({
+  preferenceOwner = "",
   initialBackground,
   initialBackgroundBlur,
   initialBackgroundBrightness,
@@ -85,7 +93,18 @@ export function SettingsPreferencesForm({
   const [backgroundBrightness, setBackgroundBrightness] = useState(initialBackgroundBrightness);
   const [language, setLanguage] = useState<LanguagePreference>(initialLanguage);
   const [saved, setSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
   const imageSelected = isImageBackground(background);
+
+  useEffect(() => {
+    const observer = new MutationObserver(() => {
+      const preference = document.documentElement.dataset.themePreference;
+      if (preference === "auto" || preference === "day" || preference === "night") setTheme(preference);
+    });
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme-preference"] });
+    return () => observer.disconnect();
+  }, []);
 
   function chooseTheme(nextTheme: ThemePreference) {
     setTheme(nextTheme);
@@ -93,38 +112,45 @@ export function SettingsPreferencesForm({
   }
 
   function chooseBackground(nextBackground: BackgroundPreference) {
+    // Selecting another image must preserve the account's chosen image controls.
     setBackground(nextBackground);
     setSaved(false);
   }
 
   function resetPreferences() {
     setTheme("auto");
-    setBackground("original");
+    setBackground(DEFAULT_BACKGROUND);
     setBackgroundBlur(DEFAULT_BACKGROUND_BLUR);
     setBackgroundBrightness(DEFAULT_BACKGROUND_BRIGHTNESS);
     setLanguage("th");
     setSaved(false);
   }
 
-  function savePreferences(event: FormEvent<HTMLFormElement>) {
+  async function savePreferences(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    writePreferenceCookie(THEME_PREFERENCE_COOKIE, theme);
-    writePreferenceCookie(BACKGROUND_PREFERENCE_COOKIE, background);
-    writePreferenceCookie(BACKGROUND_BLUR_COOKIE, String(backgroundBlur));
-    writePreferenceCookie(BACKGROUND_BRIGHTNESS_COOKIE, String(backgroundBrightness));
-    writePreferenceCookie(LANGUAGE_PREFERENCE_COOKIE, language);
-
-    document.documentElement.dataset.themePreference = theme;
-    document.documentElement.dataset.theme = theme === "auto" ? getBangkokTheme() : theme;
-    document.documentElement.dataset.background = background;
-    document.documentElement.style.setProperty("--background-blur", `${backgroundBlur}px`);
-    document.documentElement.style.setProperty("--background-brightness", `${backgroundBrightness}%`);
-    document.documentElement.lang = language;
-    setSaved(true);
+    setSaving(true);
+    setSaved(false);
+    setError("");
+    try {
+      const result = await saveDisplayPreferences({ theme, background, backgroundBlur, backgroundBrightness, language }, preferenceOwner);
+      if (!result.ok) { setError(result.error); return; }
+      document.documentElement.dataset.themePreference = theme;
+      document.documentElement.dataset.theme = theme === "auto" ? getBangkokTheme() : theme;
+      document.documentElement.dataset.background = background;
+      document.documentElement.style.setProperty("--background-blur", `${backgroundBlur}px`);
+      document.documentElement.style.setProperty("--background-brightness", `${backgroundBrightness}%`);
+      document.documentElement.lang = language;
+      setSaved(true);
+    } catch {
+      setError("บันทึกการตั้งค่าไม่สำเร็จ กรุณาลองใหม่");
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
     <form className="grid gap-5" onSubmit={savePreferences}>
+      {error ? <p className="rounded-xl border border-red-300 bg-red-50 p-4 text-sm font-bold text-red-800" role="alert">{error}</p> : null}
       {saved ? (
         <p className="inline-flex min-h-11 items-center gap-2 rounded-2xl border border-emerald-500/30 bg-emerald-50 px-4 py-3 text-sm font-bold text-emerald-700" role="status">
           <Check aria-hidden="true" size={18} />
@@ -132,6 +158,7 @@ export function SettingsPreferencesForm({
         </p>
       ) : null}
 
+      <fieldset className="contents" disabled={saving}>
       <SettingsSection
         description="เลือกรูปแบบแสงของหน้าจอ"
         icon={<Sun aria-hidden="true" size={22} />}
@@ -158,20 +185,20 @@ export function SettingsPreferencesForm({
       </SettingsSection>
 
       <SettingsSection
-        description="เลือกบรรยากาศพื้นหลังของพื้นที่ทำงาน"
+        description="เลือกภาพจากหน้าเว็บไซต์ PowerCare หรือพื้นหลังแบบเดิม พร้อมดูตัวอย่างก่อนบันทึก"
         icon={<Palette aria-hidden="true" size={22} />}
         title="พื้นหลัง"
       >
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {backgroundOptions.map((option) => (
             <label
-              className={choiceClass(background === option.value)}
+              className={choiceClass(background === option.value, true)}
               key={option.value}
             >
               <span className="flex items-start gap-3">
                 <input
                   checked={background === option.value}
-                  className="mt-1 size-5 accent-[var(--primary)]"
+                  className="mt-1 size-5 shrink-0 accent-[var(--primary)]"
                   name="background"
                   onChange={() => chooseBackground(option.value)}
                   type="radio"
@@ -205,7 +232,7 @@ export function SettingsPreferencesForm({
               </span>
               <span>
                 <strong className="block">ปรับแต่งภาพพื้นหลัง</strong>
-                <span className="mt-1 block text-sm text-[var(--muted)]">ค่าจะใช้กับพื้นหลังชนิดภาพทั้ง 6 แบบ</span>
+                <span className="mt-1 block text-sm text-[var(--muted)]">ใช้ได้กับพื้นหลังชนิดภาพทุกแบบ · ภาพโรงงานแนะนำความเบลอ 0–4px</span>
               </span>
             </div>
 
@@ -260,7 +287,7 @@ export function SettingsPreferencesForm({
             {!imageSelected ? (
               <p className="mt-4 inline-flex items-center gap-2 text-xs font-semibold text-[var(--muted)]">
                 <ImageIcon aria-hidden="true" size={15} />
-                เลือก Blue Mist ถึง Prism Cloud เพื่อเปิดการปรับแต่งภาพ
+                เลือกพื้นหลังชนิดรูปภาพเพื่อเปิดการปรับแต่ง
               </p>
             ) : null}
           </div>
@@ -304,7 +331,7 @@ export function SettingsPreferencesForm({
       <section className="flex flex-col gap-4 rounded-3xl border border-[var(--line)] bg-[var(--surface-raised)] p-4 shadow-[var(--shadow)] sm:flex-row sm:items-center sm:justify-between">
         <p className="inline-flex items-center gap-2 text-sm text-[var(--muted)]">
           <Info aria-hidden="true" size={17} />
-          การตั้งค่ามีผลกับอุปกรณ์และเบราว์เซอร์นี้
+          บันทึกเฉพาะบัญชีของคุณ ใช้ค่าเดิมได้เมื่อเข้าสู่ระบบอีกครั้งหรือเปลี่ยนอุปกรณ์
         </p>
         <div className="grid w-full grid-cols-1 gap-2 sm:flex sm:w-auto sm:flex-wrap">
           <button className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-[var(--line)] bg-[var(--surface)] px-4 font-bold hover:bg-[var(--soft)]" onClick={resetPreferences} type="button">
@@ -313,10 +340,11 @@ export function SettingsPreferencesForm({
           </button>
           <button className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[var(--primary)] px-5 font-bold text-white shadow-sm hover:bg-[var(--primary-strong)]" type="submit">
             <Save aria-hidden="true" size={18} />
-            บันทึกการตั้งค่า
+            {saving ? "กำลังบันทึก..." : "บันทึกการตั้งค่า"}
           </button>
         </div>
       </section>
+      </fieldset>
     </form>
   );
 }
@@ -351,12 +379,12 @@ function ChoiceCard({ checked, children, description, label, name, onChange, val
 
 function BackgroundSwatch({ background, blur, brightness }: { background: BackgroundPreference; blur: number; brightness: number }) {
   return (
-    <span aria-hidden="true" className="relative mt-4 block h-20 overflow-hidden rounded-xl border border-black/5 bg-[var(--soft)] shadow-inner">
+    <span aria-hidden="true" className="relative mt-4 block h-32 w-full overflow-hidden rounded-xl border border-black/5 bg-[var(--soft)] shadow-inner">
       <span
         className="absolute -inset-3 bg-cover bg-center"
         style={{
           ...backgroundVisualStyle(background),
-          filter: isImageBackground(background) ? `blur(${Math.min(blur, 18)}px) brightness(${brightness}%)` : undefined,
+          filter: isImageBackground(background) && !isPhotoBackground(background) ? `blur(${Math.min(blur, 18)}px) brightness(${brightness}%)` : undefined,
         }}
       />
     </span>
@@ -406,10 +434,10 @@ function isImageBackground(background: BackgroundPreference) {
   return background.startsWith("image-");
 }
 
-function choiceClass(checked: boolean) {
-  return `cursor-pointer rounded-2xl border px-4 py-4 transition focus-within:ring-2 focus-within:ring-[var(--primary)] ${checked ? "border-[var(--primary)] bg-[color-mix(in_srgb,var(--primary)_7%,var(--surface-raised))] shadow-sm" : "border-[var(--line)] bg-[var(--surface-raised)] hover:bg-[var(--soft)]"} flex min-h-24 items-center gap-3`;
+function isPhotoBackground(background: BackgroundPreference) {
+  return ["image-maintenance", "image-industrial-campus", "image-control-room", "image-plant-dawn", "image-mechanical-hall"].includes(background);
 }
 
-function writePreferenceCookie(name: string, value: string) {
-  document.cookie = `${name}=${encodeURIComponent(value)}; path=/; max-age=${PREFERENCE_COOKIE_MAX_AGE}; samesite=lax`;
+function choiceClass(checked: boolean, stacked = false) {
+  return `cursor-pointer rounded-2xl border px-4 py-4 transition focus-within:ring-2 focus-within:ring-[var(--primary)] ${checked ? "border-[var(--primary)] bg-[color-mix(in_srgb,var(--primary)_7%,var(--surface-raised))] shadow-sm" : "border-[var(--line)] bg-[var(--surface-raised)] hover:bg-[var(--soft)]"} ${stacked ? "block min-w-0" : "flex min-h-24 items-center gap-3"}`;
 }

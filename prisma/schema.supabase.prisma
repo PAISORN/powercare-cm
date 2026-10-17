@@ -26,6 +26,7 @@ model User {
   profilePhoto   ProfilePhoto?
   active         Boolean        @default(true)
   lastSeenAt     DateTime?
+  displayPreferences String?
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt
 

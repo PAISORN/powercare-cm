@@ -1,20 +1,12 @@
 import type { Metadata } from "next";
-import { cookies } from "next/headers";
+import { getCurrentUser } from "../lib/session";
+import { getUserDisplayPreferences } from "../modules/settings/display-preferences-service";
 import { Suspense } from "react";
 import { ClientRuntimeErrorPopup } from "../components/client-runtime-error-popup";
 import { NavigationExperience } from "../components/navigation-experience";
 import { QueryErrorPopup } from "../components/query-error-popup";
 import {
-  BACKGROUND_BLUR_COOKIE,
-  BACKGROUND_BRIGHTNESS_COOKIE,
-  BACKGROUND_PREFERENCE_COOKIE,
-  LANGUAGE_PREFERENCE_COOKIE,
-  THEME_PREFERENCE_COOKIE,
-  parseBackgroundBlur,
-  parseBackgroundBrightness,
-  parseBackgroundPreference,
-  parseLanguagePreference,
-  parseThemePreference,
+  parseDisplayPreferences,
   resolveThemePreference,
 } from "../modules/settings/user-preferences";
 import "./globals.css";
@@ -27,17 +19,19 @@ export const metadata: Metadata = {
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  const cookieStore = await cookies();
-  const themePreference = parseThemePreference(cookieStore.get(THEME_PREFERENCE_COOKIE)?.value);
+  const user = await getCurrentUser();
+  const preferences = user ? await getUserDisplayPreferences(user.id) : parseDisplayPreferences();
+  const themePreference = preferences.theme;
   const initialTheme = resolveThemePreference(themePreference);
-  const initialBackground = parseBackgroundPreference(cookieStore.get(BACKGROUND_PREFERENCE_COOKIE)?.value);
-  const initialBackgroundBlur = parseBackgroundBlur(cookieStore.get(BACKGROUND_BLUR_COOKIE)?.value);
-  const initialBackgroundBrightness = parseBackgroundBrightness(cookieStore.get(BACKGROUND_BRIGHTNESS_COOKIE)?.value);
-  const initialLanguage = parseLanguagePreference(cookieStore.get(LANGUAGE_PREFERENCE_COOKIE)?.value);
+  const initialBackground = preferences.background;
+  const initialBackgroundBlur = preferences.backgroundBlur;
+  const initialBackgroundBrightness = preferences.backgroundBrightness;
+  const initialLanguage = preferences.language;
 
   return (
     <html
       data-background={initialBackground}
+      data-preference-user={user?.id ?? ""}
       data-theme={initialTheme}
       data-theme-preference={themePreference}
       lang={initialLanguage}

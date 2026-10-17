@@ -63,6 +63,16 @@ describe("Annual PM Setup route", () => {
     expect(source).toContain("RestoreListPosition");
   });
 
+  it("separates tasks without removing the baseline, calendar, or plan settings workflows", () => {
+    expect(source).toContain("<PmSetupWorkspace");
+    expect(source).toContain('<PmSetupPanel task="pattern">');
+    expect(source).toContain('<PmSetupPanel task="calendar">');
+    expect(source).toContain('<PmSetupPanel task="settings">');
+    expect(source).toContain("<PmSetupWorkspaceField />");
+    expect(source).toContain("workspace: ctx.workspace");
+    expect(source).toContain("query.editWeek || query.date");
+  });
+
   it("supports patterns, manual entries, No-PM exceptions, ranges and activation", () => {
     for (const action of [
       "saveAnnualWeeklyPattern",

@@ -37,7 +37,8 @@ describe("Annual PM Setup domain rules", () => {
 
   it("uses a unique Monthly Pattern key for occurrence, weekday, basis, and target", () => {
     expect(monthlyPatternKey("p1", 2, 3, PmAnnualBy.SYSTEM, "sys")).toBe("p1:2:3:SYSTEM:sys");
-    expect(() => monthlyPatternKey("p1", 5, 3, PmAnnualBy.SYSTEM, "sys")).toThrow(/Week 1 through Week 4/);
+    expect(monthlyPatternKey("p1", 5, 3, PmAnnualBy.SYSTEM, "sys")).toBe("p1:5:3:SYSTEM:sys");
+    expect(() => monthlyPatternKey("p1", 6, 3, PmAnnualBy.SYSTEM, "sys")).toThrow(/Week 1 through Week 5/);
   });
 
   it("alternates Week A and B on consecutive Wednesdays across the year boundary", () => {

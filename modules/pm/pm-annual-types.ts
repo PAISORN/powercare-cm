@@ -100,7 +100,7 @@ export function annualDateRange(start: string, end: string, year: number) {
 }
 
 export function monthlyPatternKey(planId: string, weekNumber: number, dayOfWeek: number, pmBy: PmAnnualBy, targetId: string) {
-  if (!Number.isInteger(weekNumber) || weekNumber < 1 || weekNumber > 4) throw new Error("Monthly Pattern week must be Week 1 through Week 4");
+  if (!Number.isInteger(weekNumber) || weekNumber < 1 || weekNumber > 5) throw new Error("Monthly Pattern week must be Week 1 through Week 5");
   if (!Number.isInteger(dayOfWeek) || dayOfWeek < 1 || dayOfWeek > 7) throw new Error("Monthly Pattern day must be Monday through Sunday");
   return `${planId}:${weekNumber}:${dayOfWeek}:${pmBy}:${targetId}`;
 }

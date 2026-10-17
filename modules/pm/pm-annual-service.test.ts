@@ -49,6 +49,7 @@ const db = {
   zone: { findMany: vi.fn() },
 };
 vi.mock("../../lib/db", () => ({ db }));
+vi.mock("../../lib/date-time/bangkok-time", () => ({ getBangkokDateString: () => "2026-09-23" }));
 const engineer = {
   id: "eng",
   role: RoleName.ENGINEER,
@@ -56,6 +57,7 @@ const engineer = {
   plantId: "site",
 };
 const scope = { organizationId: "org", plantId: "site" };
+import { pmMonthWeekRevision } from "./pm-month-week";
 const draft = {
   id: "annual",
   ...scope,
@@ -95,6 +97,76 @@ describe("Annual PM service", () => {
         ? draft.monthlyPatternVersion + data.monthlyPatternVersion.increment
         : (data.monthlyPatternVersion ?? draft.monthlyPatternVersion),
     }));
+  });
+
+  describe("month-specific Week editing", () => {
+    const row = { id: "original", planId: "annual", scheduleDateKey: "2027-03-01", assetSystemId: "sys", zoneId: null, slotKey: "annual:2027-03-01:SYSTEM:sys", source: "PATTERN", status: "SCHEDULED", releasedAt: null };
+    beforeEach(() => {
+      tx.pmAnnualPlan.findFirstOrThrow.mockResolvedValue({ ...draft, year: 2027, scheduleMode: "MONTHLY_PATTERN" });
+      tx.pmAnnualSchedule.findMany.mockResolvedValue([row]);
+    });
+    const input = () => ({ ...scope, planId: "annual", month: 3, weekNumber: 1, revision: pmMonthWeekRevision([row]), entries: [] as Array<{ scheduleId?: string; dayOfWeek: number; targetId: string }> });
+    it("changes only the submitted week with overrides and keeps the original slot canceled through regeneration", async () => {
+      const { saveAnnualPmMonthWeek } = await import("./pm-annual-service");
+      await saveAnnualPmMonthWeek(engineer, { ...input(), entries: [{ scheduleId: row.id, dayOfWeek: 2, targetId: "sys" }] });
+      expect(tx.pmAnnualSchedule.findMany).toHaveBeenCalledWith({ where: { planId: "annual", slotKey: { not: null }, scheduleDateKey: { in: expect.arrayContaining(["2027-03-01", "2027-03-07"]) } } });
+      const created = tx.pmAnnualSchedule.create.mock.calls.map(call => call[0].data);
+      expect(created).toEqual(expect.arrayContaining([
+        expect.objectContaining({ scheduleDateKey: "2027-03-01", status: "CANCELED", source: "OVERRIDE", overrideAction: "NO_PM", originalScheduleId: row.id }),
+        expect.objectContaining({ scheduleDateKey: "2027-03-02", status: "SCHEDULED", source: "OVERRIDE", originalScheduleId: row.id }),
+      ]));
+      expect(tx.pmAnnualMonthlyPattern.deleteMany).not.toHaveBeenCalled();
+      expect(tx.pmAnnualMonthlyWeek.deleteMany).not.toHaveBeenCalled();
+      expect(tx.pmAnnualPlan.update).not.toHaveBeenCalled();
+      expect(tx.pmAnnualSchedule.deleteMany).not.toHaveBeenCalled();
+    }, 20_000);
+    it("creates custom Week 5 assignments only on real dates", async () => {
+      const { saveAnnualPmMonthWeek } = await import("./pm-annual-service");
+      tx.pmAnnualSchedule.findMany.mockResolvedValue([]);
+      await saveAnnualPmMonthWeek(engineer, { ...input(), weekNumber: 5, revision: "[]", entries: [{ dayOfWeek: 1, targetId: "sys" }] });
+      expect(tx.pmAnnualSchedule.create).toHaveBeenCalledWith({ data: expect.objectContaining({ scheduleDateKey: "2027-03-29", overrideAction: "ADD" }) });
+      tx.pmAnnualSchedule.create.mockClear();
+      await expect(saveAnnualPmMonthWeek(engineer, { ...input(), weekNumber: 5, revision: "[]", entries: [{ dayOfWeek: 4, targetId: "sys" }] })).rejects.toThrow("ไม่มีใน Week");
+      expect(tx.pmAnnualSchedule.create).not.toHaveBeenCalled();
+    });
+    it("rejects stale weeks and duplicate date/targets before any changes", async () => {
+      const { saveAnnualPmMonthWeek } = await import("./pm-annual-service");
+      await expect(saveAnnualPmMonthWeek(engineer, { ...input(), revision: "[]" })).rejects.toThrow("เปลี่ยนแล้ว");
+      await expect(saveAnnualPmMonthWeek(engineer, { ...input(), entries: [{ dayOfWeek: 2, targetId: "sys" }, { dayOfWeek: 2, targetId: "sys" }] })).rejects.toThrow("ซ้ำ");
+      expect(tx.pmAnnualSchedule.update).not.toHaveBeenCalled();
+    });
+    it("retains a released row unchanged and refuses removing or changing it", async () => {
+      const { saveAnnualPmMonthWeek } = await import("./pm-annual-service");
+      const released = { ...row, status: "RELEASED", releasedAt: new Date() };
+      tx.pmAnnualSchedule.findMany.mockResolvedValue([released]);
+      const data = { ...input(), revision: pmMonthWeekRevision([released]) };
+      await expect(saveAnnualPmMonthWeek(engineer, data)).rejects.toThrow("ออก PM Work");
+      await expect(saveAnnualPmMonthWeek(engineer, { ...data, entries: [{ scheduleId: row.id, dayOfWeek: 2, targetId: "sys" }] })).rejects.toThrow("ออก PM Work");
+      await saveAnnualPmMonthWeek(engineer, { ...data, entries: [{ scheduleId: row.id, dayOfWeek: 1, targetId: "sys" }] });
+      expect(tx.pmAnnualSchedule.update).not.toHaveBeenCalled();
+      expect(tx.pmAnnualSchedule.create).not.toHaveBeenCalled();
+    });
+    it("requires reasons for Active edits and enforces scope and target validation", async () => {
+      const { saveAnnualPmMonthWeek } = await import("./pm-annual-service");
+      tx.pmAnnualPlan.findFirstOrThrow.mockResolvedValue({ ...draft, year: 2027, status: "ACTIVE", scheduleMode: "MONTHLY_PATTERN" });
+      await expect(saveAnnualPmMonthWeek(engineer, input())).rejects.toThrow("เหตุผล");
+      await expect(saveAnnualPmMonthWeek({ ...engineer, plantId: "other" }, input())).rejects.toThrow("Site");
+      tx.assetSystem.findFirst.mockResolvedValue(null);
+      await expect(saveAnnualPmMonthWeek(engineer, { ...input(), reason: "exception", entries: [{ dayOfWeek: 1, targetId: "foreign" }] })).rejects.toThrow("inactive or outside");
+      expect(tx.pmAnnualSchedule.update).not.toHaveBeenCalled();
+    });
+    it("protects past Active dates and the effective start even for forged requests", async () => {
+      const { saveAnnualPmMonthWeek } = await import("./pm-annual-service");
+      const past = { ...row, scheduleDateKey: "2026-09-01", slotKey: "annual:2026-09-01:SYSTEM:sys" };
+      tx.pmAnnualPlan.findFirstOrThrow.mockResolvedValue({ ...draft, status: "ACTIVE", scheduleMode: "MONTHLY_PATTERN" });
+      tx.pmAnnualSchedule.findMany.mockResolvedValue([past]);
+      await expect(saveAnnualPmMonthWeek(engineer, { ...input(), month: 9, reason: "forged removal", revision: pmMonthWeekRevision([past]) })).rejects.toThrow("ออก PM Work");
+      tx.pmAnnualPlan.findFirstOrThrow.mockResolvedValue({ ...draft, year: 2027, scheduleMode: "MONTHLY_PATTERN", effectiveDateKey: "2027-03-05" });
+      tx.pmAnnualSchedule.findMany.mockResolvedValue([]);
+      await expect(saveAnnualPmMonthWeek(engineer, { ...input(), revision: "[]", entries: [{ dayOfWeek: 1, targetId: "sys" }] })).rejects.toThrow("ช่วงเริ่มต้นแผน");
+      expect(tx.pmAnnualSchedule.update).not.toHaveBeenCalled();
+      expect(tx.pmAnnualSchedule.create).not.toHaveBeenCalled();
+    });
   });
 
   it("counts only active Main Assets in the selected Site for each System or Zone", async () => {
@@ -444,6 +516,34 @@ describe("Annual PM service", () => {
         effectiveDateKey: "2027-01-01",
       }),
     ).rejects.toThrow("Week 2 is Not Configured");
+  });
+
+  it("saves a five-week baseline without changing released schedules", async () => {
+    const { saveAnnualMonthlyPattern } = await import("./pm-annual-service");
+    tx.pmAnnualPlan.findFirstOrThrow.mockResolvedValue({ ...draft, scheduleMode: "MONTHLY_PATTERN" });
+    await saveAnnualMonthlyPattern(engineer, { ...scope, planId: "annual", week5Rule: "NO_PM",
+      weeks: [1, 2, 3, 4, 5].map(weekNumber => ({ weekNumber, mode: weekNumber === 5 ? "ASSIGNMENTS" : "NO_PM" })),
+      entries: [{ weekNumber: 5, dayOfWeek: 1, displayOrder: 0, assetSystemId: "sys" }],
+    });
+    expect(tx.pmAnnualMonthlyWeek.create).toHaveBeenCalledTimes(5);
+    expect(tx.pmAnnualMonthlyPattern.create).toHaveBeenCalledWith({ data: expect.objectContaining({ weekNumber: 5, dayOfWeek: 1 }) });
+    expect(tx.pmAnnualSchedule.update).not.toHaveBeenCalled();
+    expect(tx.pmAnnualSchedule.deleteMany).not.toHaveBeenCalled();
+  });
+
+  it("generates explicit Week 5 only on real fifth weekdays instead of also repeating Week 1", async () => {
+    const { applyAnnualMonthlyPattern } = await import("./pm-annual-service");
+    tx.pmAnnualPlan.findFirstOrThrow.mockResolvedValue({ ...draft, year: 2027, scheduleMode: "MONTHLY_PATTERN", monthlyWeek5Rule: "REPEAT_WEEK_1" });
+    tx.pmAnnualMonthlyWeek.findMany.mockResolvedValue([1, 2, 3, 4, 5].map(weekNumber => ({ weekNumber, mode: weekNumber === 1 || weekNumber === 5 ? "ASSIGNMENTS" : "NO_PM" })));
+    tx.pmAnnualMonthlyPattern.findMany.mockResolvedValue([
+      { weekNumber: 1, dayOfWeek: 1, displayOrder: 0, assetSystemId: "sys", zoneId: null },
+      { weekNumber: 5, dayOfWeek: 3, displayOrder: 0, assetSystemId: "other", zoneId: null },
+    ]);
+    await applyAnnualMonthlyPattern(engineer, { ...scope, planId: "annual", effectiveDateKey: "2027-01-01" });
+    const created = tx.pmAnnualSchedule.create.mock.calls.map(call => call[0].data);
+    expect(created).toContainEqual(expect.objectContaining({ scheduleDateKey: "2027-03-31", assetSystemId: "other" }));
+    expect(created.some(row => row.scheduleDateKey === "2027-03-29")).toBe(false);
+    expect(created.some(row => row.assetSystemId === "other" && row.scheduleDateKey.startsWith("2027-02"))).toBe(false);
   });
 
   it("generates nth weekdays for every month and repeats Week 1 only on a real fifth occurrence", async () => {

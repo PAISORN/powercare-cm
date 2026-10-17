@@ -39,7 +39,7 @@ html {
   --card-hover-shadow:
     0 8px 20px rgb(15 23 42 / 9%), 0 26px 64px rgb(35 65 95 / 20%),
     0 0 28px rgb(45 180 255 / 8%), inset 0 1px 0 rgb(255 255 255 / 72%);
-  --background-blur: 12px;
+  --background-blur: 2px;
   --background-brightness: 100%;
 }
 
@@ -119,6 +119,26 @@ html[data-background^="image-"] body::before {
 
 html[data-background="image-blue-mist"] body::before {
   background-image: url("/backgrounds/01-blue-mist.webp");
+}
+
+html[data-background="image-maintenance"] body::before {
+  background-image: url("/landing/powercare-maintenance-hero.webp");
+}
+
+html[data-background="image-control-room"] body::before {
+  background-image: url("/backgrounds/powercare-images/powercare-background-control-room.webp");
+}
+
+html[data-background="image-plant-dawn"] body::before {
+  background-image: url("/backgrounds/powercare-images/powercare-background-plant-dawn.webp");
+}
+
+html[data-background="image-mechanical-hall"] body::before {
+  background-image: url("/backgrounds/powercare-images/powercare-background-mechanical-hall.webp");
+}
+
+html[data-background="image-industrial-campus"] body::before {
+  background-image: url("/landing/powercare-industrial-campus.webp");
 }
 
 html[data-background="image-aurora-flow"] body::before {

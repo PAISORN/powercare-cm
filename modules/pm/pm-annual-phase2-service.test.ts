@@ -55,4 +55,18 @@ describe("Annual PM Phase 2 service",()=>{
    expect(created.some((row:any)=>row.scheduleDateKey==="2027-03-29")).toBe(true);
    expect(created.some((row:any)=>row.source==="OVERRIDE")).toBe(false);
    expect(result.copied).toBeGreaterThan(12);
+ });
+ it("copies explicit Week 5 assignments without combining the legacy Repeat Week 1 rule",async()=>{
+   tx.pmAnnualPlan.findFirstOrThrow.mockResolvedValue({...plan,year:2026,scheduleMode:"MONTHLY_PATTERN",monthlyWeek5Rule:"REPEAT_WEEK_1",monthlyPatternVersion:3,weeklyPatterns:[],
+     monthlyWeeks:[1,2,3,4,5].map(weekNumber=>({weekNumber,mode:weekNumber===1||weekNumber===5?"ASSIGNMENTS":"NO_PM"})),
+     monthlyPatterns:[{weekNumber:1,dayOfWeek:1,displayOrder:0,assetSystemId:"sys",zoneId:null},{weekNumber:5,dayOfWeek:3,displayOrder:0,assetSystemId:"other",zoneId:null}],schedules:[]});
+   tx.pmAnnualPlan.create.mockResolvedValue({...plan,id:"copy",year:2027,status:"DRAFT"});
+   tx.pmAnnualSchedule.create.mockResolvedValue({});
+   const {copyPreviousAnnualPmPlan}=await import("./pm-annual-phase2-service");
+   await copyPreviousAnnualPmPlan(actor,{...scope,sourcePlanId:"annual",targetYear:2027});
+   expect(tx.pmAnnualMonthlyWeek.create).toHaveBeenCalledTimes(5);
+   expect(tx.pmAnnualMonthlyPattern.create).toHaveBeenCalledWith({data:expect.objectContaining({weekNumber:5,patternKey:"copy:5:3:SYSTEM:other"})});
+   const created=tx.pmAnnualSchedule.create.mock.calls.map((call:any)=>call[0].data);
+   expect(created.some((row:any)=>row.scheduleDateKey==="2027-03-31"&&row.assetSystemId==="other")).toBe(true);
+   expect(created.some((row:any)=>row.scheduleDateKey==="2027-03-29")).toBe(false);
  });});

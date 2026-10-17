@@ -1,28 +1,11 @@
-import { cookies } from "next/headers";
 import { Settings2 } from "lucide-react";
 import { SettingsPreferencesForm } from "../../components/settings-preferences-form";
 import { requireUser } from "../../lib/session";
-import {
-  BACKGROUND_BLUR_COOKIE,
-  BACKGROUND_BRIGHTNESS_COOKIE,
-  BACKGROUND_PREFERENCE_COOKIE,
-  LANGUAGE_PREFERENCE_COOKIE,
-  THEME_PREFERENCE_COOKIE,
-  parseBackgroundBlur,
-  parseBackgroundBrightness,
-  parseBackgroundPreference,
-  parseLanguagePreference,
-  parseThemePreference,
-} from "../../modules/settings/user-preferences";
+import { getUserDisplayPreferences } from "../../modules/settings/display-preferences-service";
 
 export default async function UserSettingsPage() {
-  await requireUser();
-  const cookieStore = await cookies();
-  const initialTheme = parseThemePreference(cookieStore.get(THEME_PREFERENCE_COOKIE)?.value);
-  const initialBackground = parseBackgroundPreference(cookieStore.get(BACKGROUND_PREFERENCE_COOKIE)?.value);
-  const initialBackgroundBlur = parseBackgroundBlur(cookieStore.get(BACKGROUND_BLUR_COOKIE)?.value);
-  const initialBackgroundBrightness = parseBackgroundBrightness(cookieStore.get(BACKGROUND_BRIGHTNESS_COOKIE)?.value);
-  const initialLanguage = parseLanguagePreference(cookieStore.get(LANGUAGE_PREFERENCE_COOKIE)?.value);
+  const user = await requireUser();
+  const preferences = await getUserDisplayPreferences(user.id);
 
   return (
     <>
@@ -38,11 +21,13 @@ export default async function UserSettingsPage() {
         </header>
 
         <SettingsPreferencesForm
-          initialBackground={initialBackground}
-          initialBackgroundBlur={initialBackgroundBlur}
-          initialBackgroundBrightness={initialBackgroundBrightness}
-          initialLanguage={initialLanguage}
-          initialTheme={initialTheme}
+          key={user.id}
+          preferenceOwner={user.id}
+          initialBackground={preferences.background}
+          initialBackgroundBlur={preferences.backgroundBlur}
+          initialBackgroundBrightness={preferences.backgroundBrightness}
+          initialLanguage={preferences.language}
+          initialTheme={preferences.theme}
         />
       </div>
     </>
